@@ -702,6 +702,53 @@ private theorem liveElementsRule (destination : RecordDestination) (inst : InstI
     exact ih (index + 1) (pointer + stride) (fun child member => children child (.tail _ member))
       related grown checkedAt canonicalAt
 
+private theorem livePublish (destination : RecordDestination) (inst : InstId) (pointer count : Nat)
+    (output : Stored.Lower.Output) (checkNext : ValueCheckNext grow sig output) (canonNext : ValueCanonNext grow sig output)
+    (finish : ValueFinish grow sig output) {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {origin : CStore (core3 grow)}
+    (done : ∀ value left right check canon, LinkedCallback.ChildFrameOver older left right check canon →
+      Core3.Grows origin.core left.store.core → left.ctl = check.control (checkNext (.ok value)) →
+      right.ctl = canon.control (canonNext value) → finish value left right check canon)
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (paired : LinkedCallback.ChildFrameOver older left right check canon) (kept : Core3.Grows origin.core left.store.core)
+    (leftAt : left.ctl = check.control (ListLower.publish (destination.context inst) destination.width pointer count output >>= fun value => checkNext (.ok value)))
+    (rightAt : right.ctl = canon.control (ListLower.publish (destination.context inst) destination.width pointer count output >>= canonNext)) :
+    LiveListPublish profile ready base bindings output checkNext canonNext finish left right check canon := by
+  obtain ⟨store, result, labels, observed, lhsRun, rhsRun, tracks⟩ :=
+    collection_descriptor_cut_between (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+      (reference := specDispatch ready (LiveDispatch.host bindings base)) (destination.context inst) destination.width
+      output pointer count left right check canon (fun value => checkNext (.ok value)) canonNext paired.store leftAt rightAt
+  refine ⟨store, result, labels, observed, lhsRun, rhsRun, ?_⟩
+  intro value returned
+  have chain := kept.trans lhsRun.grows
+  subst result
+  exact ⟨fun depth => (tracks value rfl depth).1, fun depth => (tracks value rfl depth).2,
+    done value _ _ check canon ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread,
+      paired.frames, paired.rest⟩ chain rfl rfl⟩
+
+private theorem collectionElementFoci (destination : RecordDestination) (inst : InstId) (entries : List Field)
+    (area : Layout) (mode : CanonicalTree.EntryMode) (output : Stored.Lower.Output) (pointer index : Nat)
+    (checkNext : ValueCheckNext grow sig output) (canonNext : ValueCanonNext grow sig output)
+    {lhs rhs : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (checkAt : lhs.ctl = check.control (checkedCollectionTail destination inst entries area index output pointer (.ok ()) >>= checkNext))
+    (canonAt : rhs.ctl = canon.control (canonicalCollectionTail destination inst entries area output pointer mode >>= canonNext)) :
+    lhs.ctl = check.control (Record.Effects.elements recordClaims Limits.spec Quirks.none (destination.context inst)
+      destination.width entries area.size pointer 0 >>= publishChecked destination inst pointer entries.length index output checkNext) ∧
+    rhs.ctl = canon.control (CanonicalTree.elements Limits.spec Quirks.none (destination.context inst) destination.width
+      entries mode area.size pointer >>= publishCanonical destination inst pointer entries.length output canonNext) := by
+  constructor
+  · rw [checkAt]
+    congr 1
+    simp only [checkedCollectionTail, Prog.bind_eq, Prog.bind_assoc]
+    congr 1
+    funext verdict
+    cases verdict with
+    | error _ => rfl
+    | ok result => cases result; simp only [publishChecked, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind']
+  · rw [canonAt]
+    congr 1
+    exact Prog.bind_assoc _ _ _
+
 private theorem liveListVisitor (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
     (entries : List Field) (index : Nat) (output : Stored.Lower.Output) (compare : FieldComparison grow sig)
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
@@ -716,39 +763,14 @@ private theorem liveListVisitor (destination : RecordDestination) (inst : InstId
       (liveListTail profile ready base bindings destination inst element entries index output compare checkNext canonNext finish) := by
   intro pointer bytes lhs rhs check canon frame grown _ _ _ _ checkAt canonAt
   let area := layout destination.width element
-  let publish := (ListLower.publish (destination.context inst) destination.width pointer entries.length output : Session grow sig output.Result)
   let checked := publishChecked destination inst pointer entries.length index output checkNext
   let canonical := publishCanonical destination inst pointer entries.length output canonNext
-  have checkElements : lhs.ctl = check.control (Record.Effects.elements recordClaims Limits.spec Quirks.none
-      (destination.context inst) destination.width entries area.size pointer 0 >>= checked) := by
-    rw [checkAt]
-    congr 1
-    simp only [checkedCollectionTail, Prog.bind_eq, Prog.bind_assoc, checked]
-    congr 1
-    funext verdict
-    cases verdict with
-    | error _ => rfl
-    | ok result => cases result; simp only [publishChecked, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind']
-  have canonElements : rhs.ctl = canon.control (CanonicalTree.elements Limits.spec Quirks.none
-      (destination.context inst) destination.width entries .value area.size pointer >>= canonical) := by
-    rw [canonAt]
-    congr 1
-    change Prog.bind (Prog.bind _ (fun _ => publish)) canonNext = Prog.bind _ canonical
-    exact Prog.bind_assoc _ _ _
+  obtain ⟨checkElements, canonElements⟩ := collectionElementFoci destination inst entries area
+    (CanonicalTree.EntryMode.forOutput destination.width (.list element) output) output pointer index checkNext canonNext checkAt canonAt
   refine liveElementsRule destination inst entries area.size 0 pointer compare older origin children checked canonical _ ?_
     frame (growth.trans grown) checkElements canonElements
   intro left right cursor peer paired kept leftAt rightAt
-  obtain ⟨store, result, labels, observed, lhsRun, rhsRun, tracks⟩ :=
-    collection_descriptor_cut_between (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
-      (reference := specDispatch ready (LiveDispatch.host bindings base)) (destination.context inst) destination.width
-      output pointer entries.length left right cursor peer (fun value => checkNext (.ok value)) canonNext paired.store leftAt rightAt
-  refine ⟨store, result, labels, observed, lhsRun, rhsRun, ?_⟩
-  intro value returned
-  have chain := kept.trans lhsRun.grows
-  subst result
-  exact ⟨fun depth => (tracks value rfl depth).1, fun depth => (tracks value rfl depth).2,
-    done value _ _ cursor peer ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread,
-      paired.frames, paired.rest⟩ chain rfl rfl⟩
+  exact livePublish destination inst pointer entries.length output checkNext canonNext finish done paired kept leftAt rightAt
 
 private theorem nominalListRule (destination : RecordDestination) (inst : InstId) (depth : Nat)
     {schema : Stored.TypeOf} (family : NominalListType depth schema) (item : Field) (address : Nat)
@@ -774,31 +796,6 @@ private theorem nominalListRule (destination : RecordDestination) (inst : InstId
           (liveListVisitor destination inst element entries index (.memory address) _ older origin left.store growth
             (fun child member slot => ih family child slot (entries_match_of_mem shapes member) (compiled child member))
             checkNext canonNext (fun () => finish) (fun _ => ends))⟩
-
-private theorem nominalListEntry (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
-    (entries : List Field) (index : Nat) (output : Stored.Lower.Output) (depth : Nat) (family : NominalListType depth element)
-    (layout : Field.EntriesMatch entries element) (emitted : ∀ item ∈ entries, item.Emitted)
-    (checkNext : ValueCheckNext grow sig output) (canonNext : ValueCanonNext grow sig output)
-    {start incoming : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
-    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
-    (frame : LinkedCallback.ChildFrameOver older start incoming check canon)
-    (checkAt : start.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none
-      (destination.context inst) destination.width (.dynamic (.list element) element entries) index output >>= checkNext))
-    (canonAt : incoming.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none
-      (destination.context inst) destination.width (.dynamic (.list element) element entries) output >>= canonNext))
-    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
-    (finish : ValueFinish grow sig output)
-    (done : ∀ value left right check canon, LinkedCallback.ChildFrameOver older left right check canon →
-      Core3.Grows start.store.core left.store.core → left.ctl = check.control (checkNext (.ok value)) →
-      right.ctl = canon.control (canonNext value) → finish value left right check canon) :
-    LiveCollectionEntry profile ready base bindings older destination inst (.list element) element entries index output
-      checkNext canonNext start incoming check canon
-      (liveListTail profile ready base bindings destination inst element entries index output
-        (liveNominalList profile ready base bindings older destination inst depth) checkNext canonNext finish) :=
-  collectionEntryVisiting destination inst (.list element) element entries index output checkNext canonNext frame checkAt canonAt embedder _
-    (liveListVisitor destination inst element entries index output _ older start.store start.store (Core3.Grows.refl _)
-      (fun item member address => nominalListRule destination inst depth family item address
-        (entries_match_of_mem layout member) (emitted item member) embedder) checkNext canonNext finish done)
 
 private theorem mapPlacement (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType)
     (element : Stored.TypeOf) (output : Stored.Lower.Output)
@@ -1359,6 +1356,207 @@ private theorem mapValueLayout {key : WIT.KeyType} {element : Stored.TypeOf} {ke
       cases tail with
       | cons shape _ => exact shape
 
+private theorem liveMapEntry (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
+    (output : Stored.Lower.Output) (keyData : LocalDataType (.prim key.toPrimitive))
+    (keyPayload : Stored.Payload (.prim key.toPrimitive)) (value : Field) (origin : CStore (core3 grow))
+    (basePtr bytes count idx : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout destination.width (.record (mapEntryFields key element))).alignment)
+    (bounds : basePtr + count * (layout destination.width (.record (mapEntryFields key element))).size ≤ bytes)
+    (entry : idx < count) (compare : FieldComparison grow sig)
+    (checkNext : CheckNext grow sig) (canonNext : CanonNext grow sig) (finish : Finish grow sig)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
+    (done : ∀ lhs rhs check canon, LinkedCallback.ChildFrameOver older lhs rhs check canon →
+      Core3.Grows origin.core lhs.store.core → lhs.ctl = check.control (checkNext (.ok ())) →
+      rhs.ctl = canon.control (canonNext ()) → finish lhs rhs check canon) :
+    let type : Stored.TypeOf := .record (mapEntryFields key element)
+    let ptr := basePtr + idx * (layout destination.width type).size
+    let keyField := Field.data (.prim key.toPrimitive) keyPayload
+    let mode := CanonicalTree.EntryMode.forOutput destination.width (.map key element) output
+    let cx := destination.context inst
+    (∀ address, FieldRule compare older origin destination inst value address) →
+    left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+      (.aggregate type [keyField, value]) idx (.memory ptr) >>= checkNext) →
+    right.ctl = canon.control (mapFieldPlacement cx mode (mapKeyBody destination inst ptr mode keyField value canonNext)) →
+    LiveMapEntryThen profile ready base bindings destination inst mode keyField value idx ptr compare checkNext canonNext finish
+      left right check canon := by
+  intro type ptr keyField mode cx rule checkAt canonAt
+  let keyArea := layout destination.width keyField.type
+  let afterKey := alignTo ptr keyArea.alignment + keyArea.size
+  let address := alignTo afterKey (layout destination.width value.type).alignment
+  let report := aggregateNext idx checkNext
+  let pending := fun () => mapValueProgram destination inst mode value afterKey canonNext
+  let atKey := { right with ctl := canon.control (mapKeyBody destination inst ptr mode keyField value canonNext destination.width) }
+  obtain ⟨keyRead, quiet, tracks⟩ := mapPlacement (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+    destination inst key element output right canon _ (growth.memAddrType width) canonAt
+  obtain ⟨store, result, lhs, rhs, checkRun, canonRun, observed, keyResult⟩ :=
+    local_map_key_then_between (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+      (reference := specDispatch ready (LiveDispatch.host bindings base)) destination inst key element keyData keyPayload value
+      origin basePtr bytes count idx width sized aligned bounds entry idx left atKey growth frame.store
+      check canon frame.thread checkNext pending checkAt rfl
+  refine ⟨keyRead, quiet, tracks, store, result, lhs, rhs, checkRun, canonRun, observed, ?_⟩
+  cases result with
+  | error reason => exact keyResult
+  | ok data =>
+    cases data
+    obtain ⟨grown, checked, canonical⟩ := keyResult
+    let beforeValue := { right with store, ctl := canon.control (pending ()) }
+    let valueBody := fun reached => CanonicalTree.field Limits.spec Quirks.none cx destination.width value
+      (.memory (alignTo afterKey (layout reached value.type).alignment)) >>= canonNext
+    obtain ⟨valueRead, silent, valueTracks⟩ := mapPlacement (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+      destination inst key element output beforeValue canon valueBody (grown.memAddrType width) rfl
+    refine ⟨checked, canonical, valueRead, silent, valueTracks, ?_⟩
+    apply rule address 1 report canonNext
+    · exact ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+    · exact grown
+    · rfl
+    · rfl
+    · exact done
+
+private theorem liveMapElementsRule (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType)
+    (element : Stored.TypeOf) (output : Stored.Lower.Output) (keyData : LocalDataType (.prim key.toPrimitive))
+    (origin : CStore (core3 grow)) (basePtr bytes count : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout destination.width (.record (mapEntryFields key element))).alignment)
+    (bounds : basePtr + count * (layout destination.width (.record (mapEntryFields key element))).size ≤ bytes)
+    (entries : List Field) (idx : Nat) (room : idx + entries.length ≤ count) (compare : FieldComparison grow sig)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (shape : ∀ item ∈ entries, ∃ (keyPayload : Stored.Payload (.prim key.toPrimitive)) (value : Field),
+      item = .aggregate (.record (mapEntryFields key element)) [.data (.prim key.toPrimitive) keyPayload, value] ∧
+        ∀ address, FieldRule compare older origin destination inst value address)
+    (checkNext : CheckNext grow sig) (canonNext : CanonNext grow sig) (finish : Finish grow sig)
+    (done : ∀ lhs rhs check canon, LinkedCallback.ChildFrameOver older lhs rhs check canon →
+      Core3.Grows origin.core lhs.store.core → lhs.ctl = check.control (checkNext (.ok ())) →
+      rhs.ctl = canon.control (canonNext ()) → finish lhs rhs check canon)
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core left.store.core) :
+    let stride := (layout destination.width (.record (mapEntryFields key element))).size
+    let ptr := basePtr + idx * stride
+    let cx := destination.context inst
+    let mode := CanonicalTree.EntryMode.forOutput destination.width (.map key element) output
+    left.ctl = check.control (Record.Effects.elements recordClaims Limits.spec Quirks.none cx destination.width entries stride ptr idx >>= checkNext) →
+    right.ctl = canon.control (CanonicalTree.elements Limits.spec Quirks.none cx destination.width entries mode stride ptr >>= canonNext) →
+    liveMapElements profile ready base bindings destination inst key element output compare checkNext canonNext finish entries idx ptr
+      left right check canon := by
+  induction entries generalizing idx left right check canon with
+  | nil => intro _ _ _ _ checkAt canonAt; exact done left right check canon frame growth checkAt canonAt
+  | cons item rest ih =>
+    intro stride ptr cx mode checkAt canonAt
+    have valid : idx < count := by simp only [List.length_cons] at room; omega
+    have nextRoom : idx + 1 + rest.length ≤ count := by simp only [List.length_cons] at room; omega
+    have nextPtr : basePtr + (idx + 1) * stride = ptr + stride := by
+      simp only [ptr, Nat.add_mul, Nat.one_mul, Nat.add_assoc]
+    obtain ⟨keyPayload, value, entry, rule⟩ := shape item (by simp)
+    let type : Stored.TypeOf := .record (mapEntryFields key element)
+    let keyField := Field.data (.prim key.toPrimitive) keyPayload
+    let checked := checkTail (.elements stride) destination inst rest (idx + 1) (ptr + stride) checkNext
+    let canonRest : Session grow sig Unit := CanonicalTree.elements Limits.spec Quirks.none cx destination.width rest mode stride (ptr + stride)
+    let canonical : CanonNext grow sig := fun () => canonRest >>= canonNext
+    have atHead : left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+        (.aggregate type [keyField, value]) idx (.memory ptr) >>= checked) := by
+      rw [checkAt, entry, Record.Effects.elements]
+      congr 1
+      simp only [Prog.bind_eq, Prog.bind_assoc, checked]
+      congr 1
+      funext verdict
+      cases verdict with
+      | error _ => rfl
+      | ok result => cases result; rfl
+    have atCanonHead : right.ctl = canon.control (mapFieldPlacement cx mode (mapKeyBody destination inst ptr mode keyField value canonical)) := by
+      rw [canonAt, entry]
+      apply congrArg canon.control
+      let readWidth : Session grow sig AddrType := ptrType cx
+      let keySlot := fun reached => alignTo ptr (layout reached keyField.type).alignment
+      let keyBody : AddrType → Session grow sig Unit := fun reached =>
+        CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory (keySlot reached))
+      let valueBody : AddrType → AddrType → Session grow sig Unit := fun keyWidth reached =>
+        CanonicalTree.field Limits.spec Quirks.none cx destination.width value
+          (.memory (alignTo (keySlot keyWidth + (layout keyWidth keyField.type).size) (layout reached value.type).alignment))
+      cases output with
+      | memory address =>
+        simp only [mode, CanonicalTree.EntryMode.forOutput, CanonicalTree.elements]
+        let reached := destination.width
+        change ((keyBody reached).bind (fun _ => (valueBody reached reached).bind (fun _ => canonRest))).bind canonNext =
+          (keyBody reached).bind (fun _ => (valueBody reached reached).bind canonical)
+        simp only [canonical, Prog.bind_eq, Prog.bind_assoc]
+      | flat =>
+        simp only [mode, CanonicalTree.EntryMode.forOutput, CanonicalTree.elements]
+        change ((readWidth.bind (fun keyWidth => (keyBody keyWidth).bind fun _ =>
+          readWidth.bind fun reached => (valueBody keyWidth reached).bind fun _ => .pure ())).bind (fun _ => canonRest)).bind canonNext =
+          readWidth.bind (fun keyWidth => (keyBody keyWidth).bind fun _ =>
+            readWidth.bind fun reached => (valueBody keyWidth reached).bind canonical)
+        simp only [canonical, Prog.bind_eq, Prog.bind_assoc, Prog.pure_bind']
+    refine ⟨keyPayload, value, entry, liveMapEntry destination inst key element output keyData keyPayload value origin
+      basePtr bytes count idx width sized aligned bounds valid compare checked canonical _ frame (frame.store ▸ growth) ?_
+      rule atHead atCanonHead⟩
+    intro lhs rhs check canon paired kept checkAt canonAt
+    have tail := ih (idx + 1) nextRoom (fun child member => shape child (.tail _ member)) paired kept
+    dsimp only at tail
+    rw [nextPtr] at tail
+    exact tail checkAt canonAt
+
+private theorem liveMapVisitor (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
+    (entries : List Field) (index : Nat) (output : Stored.Lower.Output) (compare : FieldComparison grow sig)
+    (keyData : LocalDataType (.prim key.toPrimitive)) (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (origin : CStore (core3 grow))
+    (shape : ∀ item ∈ entries, ∃ (payload : Stored.Payload (.prim key.toPrimitive)) (value : Field),
+      item = .aggregate (.record (mapEntryFields key element)) [.data (.prim key.toPrimitive) payload, value] ∧
+        ∀ (reached : CStore (core3 grow)) address, FieldRule compare older reached destination inst value address)
+    (checkNext : ValueCheckNext grow sig output) (canonNext : ValueCanonNext grow sig output)
+    (finish : ValueFinish grow sig output)
+    (done : ∀ value lhs rhs check canon, LinkedCallback.ChildFrameOver older lhs rhs check canon →
+      Core3.Grows origin.core lhs.store.core → lhs.ctl = check.control (checkNext (.ok value)) →
+      rhs.ctl = canon.control (canonNext value) → finish value lhs rhs check canon) :
+    CollectionVisitor destination inst (.map key element) (.record (mapEntryFields key element)) entries index output
+      checkNext canonNext older origin
+      (liveMapTail profile ready base bindings destination inst key element entries index output compare checkNext canonNext finish) := by
+  intro pointer bytes lhs rhs check canon frame grown width sized aligned bounds checkAt canonAt
+  let area := layout destination.width (.record (mapEntryFields key element))
+  let mode := CanonicalTree.EntryMode.forOutput destination.width (.map key element) output
+  let checked := publishChecked destination inst pointer entries.length index output checkNext
+  let canonical := publishCanonical destination inst pointer entries.length output canonNext
+  obtain ⟨checkElements, canonElements⟩ := collectionElementFoci destination inst entries area mode output pointer index
+    checkNext canonNext checkAt canonAt
+  have visits : ∀ item ∈ entries, ∃ (payload : Stored.Payload (.prim key.toPrimitive)) (value : Field),
+      item = .aggregate (.record (mapEntryFields key element)) [.data (.prim key.toPrimitive) payload, value] ∧
+        ∀ address, FieldRule compare older lhs.store destination inst value address := by
+    intro item member
+    obtain ⟨payload, value, shape, compareAt⟩ := shape item member
+    exact ⟨payload, value, shape, compareAt lhs.store⟩
+  have publish := fun left right cursor peer paired kept leftAt rightAt =>
+    livePublish (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+      destination inst pointer entries.length output checkNext canonNext finish done
+      (left := left) (right := right) (check := cursor) (canon := peer) paired (grown.trans kept) leftAt rightAt
+  simpa only [liveMapTail, Nat.zero_mul, Nat.add_zero] using
+    liveMapElementsRule destination inst key element output keyData lhs.store pointer bytes entries.length width sized aligned bounds
+      entries 0 (Nat.zero_add _).le compare visits checked canonical
+      (LiveListPublish profile ready base bindings output checkNext canonNext finish) publish frame (Core3.Grows.refl _)
+      (by simpa only [Nat.zero_mul, Nat.add_zero] using checkElements)
+      (by simpa only [Nat.zero_mul, Nat.add_zero] using canonElements)
+
+private theorem mapCompiled {item : Field} {key : WIT.KeyType} {element : Stored.TypeOf}
+    (matched : item.LayoutMatches (.map key element)) (emitted : item.Emitted) :
+    ∃ entries, item = .dynamic (.map key element) (.record (mapEntryFields key element)) entries ∧
+      ∀ entry ∈ entries, ∃ (payload : Stored.Payload (.prim key.toPrimitive)) (value : Field),
+        entry = .aggregate (.record (mapEntryFields key element)) [.data (.prim key.toPrimitive) payload, value] ∧
+          value.LayoutMatches element ∧ value.Emitted := by
+  cases emitted with
+  | map entries emitted =>
+    cases matched with
+    | map layouts =>
+      refine ⟨_, rfl, ?_⟩
+      intro entry member
+      obtain ⟨payload, value, shape⟩ := entries entry member
+      have layout := entries_match_of_mem layouts member
+      rw [shape] at layout member
+      exact ⟨payload, value, shape, mapValueLayout layout, emitted payload value member⟩
+  | @endpoint channel _ _ => cases channel <;> cases matched
+  | primitive | enum | flags | context | owner | aggregate | fixed | list | sum => cases matched
+
 private theorem preflightAllocator {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) : Field.AllocatorFor site.destination.realloc site.field := by
   intro child desc pointer
@@ -1768,6 +1966,37 @@ private theorem referenceFrame {route : GiveEffectRoute} (site : PayloadRoot.Sit
         rename_i peerFrames
         exact ⟨⟨site.cursor.thread, peerFrames, peerRest⟩, ⟨rfl, rfl, rfl, rfl, saved, rfl, frames, rest⟩, rfl⟩
 
+private theorem linkedCollection {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (type element : Stored.TypeOf) (entries : List Field)
+    (field : site.field = .dynamic type element entries)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {incoming : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    (prepared : Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
+    (visit : List Field → Nat → Nat → Finish grow sig)
+    (children : CollectionVisitor site.destination site.inst type element entries 0 route.output site.reply site.referenceReply
+      older site.checked.store (visit entries)) :
+    LinkedCollectionBody profile ready base bindings older site type element incoming visit := by
+  obtain ⟨leading, entered, quiet, installed, framePaired, enteredHost⟩ :=
+    LiveDispatch.entry_paired (profile := profile) (ready := ready) (base := base) site linked paired selected
+  have bodyAt := site.reference_at linked site.referenceReply
+  rw [field] at bodyAt
+  obtain ⟨peer, frame, canonAt⟩ := referenceFrame site bodyAt framePaired
+  have checkAt : site.checked.ctl = site.cursor.control (Record.Effects.field recordClaims Limits.spec Quirks.none
+      (site.destination.context site.inst) site.destination.width (.dynamic type element entries) 0 route.output >>= site.reply) := by
+    simp only [PayloadRoot.Site.checked, PayloadRoot.Site.withBody, field]
+  have live : Record.prepare site.checked.store site.checked.host.writer (Field.listObjects entries) = .ok () := by
+    change Record.prepare site.start.store site.start.host.writer (Field.listObjects entries) = .ok ()
+    simpa only [field, Field.objects] using prepared
+  have width := site.destination.check_width site.start.store linked.destination
+  refine ⟨entries, leading, entered, peer, field, silent ?_, installed, enteredHost,
+    collectionPaths site.destination site.inst type element entries 0 route.output site.reply site.referenceReply frame
+      (frame.store ▸ width) live checkAt canonAt embedder (visit entries) children⟩
+  intro label member
+  have tau := List.all_eq_true.mp quiet label member
+  cases label <;> simp_all
+
 theorem linkedNominalListBody {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (depth : Nat) (element : Stored.TypeOf) (family : NominalListType depth element)
     (schema : sig.payload site.tag = .list element)
@@ -1782,25 +2011,32 @@ theorem linkedNominalListBody {route : GiveEffectRoute} (site : PayloadRoot.Site
   have matched := Record.preflightValue_layout _ _ _ _ _ plan compiled
   rw [schema] at matched
   obtain ⟨entries, field, shapes, emitted⟩ := listCompiled matched linked.emitted
-  obtain ⟨leading, entered, quiet, installed, framePaired, enteredHost⟩ :=
-    LiveDispatch.entry_paired (profile := profile) (ready := ready) (base := base) site linked paired selected
-  have bodyAt := site.reference_at linked site.referenceReply
-  rw [field] at bodyAt
-  obtain ⟨peer, frame, canonAt⟩ := referenceFrame site bodyAt framePaired
-  have checkAt : site.checked.ctl = site.cursor.control (Record.Effects.field recordClaims Limits.spec Quirks.none
-      (site.destination.context site.inst) site.destination.width (.dynamic (.list element) element entries) 0 route.output >>= site.reply) := by
-    simp only [PayloadRoot.Site.checked, PayloadRoot.Site.withBody, field]
-  have live : Record.prepare site.checked.store site.checked.host.writer (Field.listObjects entries) = .ok () := by
-    change Record.prepare site.start.store site.start.host.writer (Field.listObjects entries) = .ok ()
-    simpa only [field, Field.objects] using prepared
-  have branch := nominalListEntry (profile := profile) (ready := ready) site.destination site.inst element entries 0 route.output
-    depth family shapes emitted site.reply site.referenceReply frame checkAt canonAt embedder (fun _ _ _ _ _ => True) (by intros; trivial)
-  rw [LiveCollectionEntry, live] at branch
-  have width := site.destination.check_width site.start.store linked.destination
-  refine ⟨entries, leading, entered, peer, field, silent ?_, installed, enteredHost, branch (frame.store ▸ width)⟩
-  intro label member
-  have tau := List.all_eq_true.mp quiet label member
-  cases label <;> simp_all
+  exact linkedCollection site linked (.list element) element entries field paired selected embedder prepared _
+    (liveListVisitor site.destination site.inst element entries 0 route.output _ older site.checked.store site.checked.store (Core3.Grows.refl _)
+      (fun item member address => nominalListRule site.destination site.inst depth family item address
+        (entries_match_of_mem shapes member) (emitted item member) embedder) site.reply site.referenceReply _ (by intros; trivial))
+
+theorem linkedMapListBody {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (key : WIT.KeyType) (keyData : LocalDataType (.prim key.toPrimitive))
+    (depth : Nat) (element : Stored.TypeOf) (family : NominalListType depth element)
+    (schema : sig.payload site.tag = .map key element)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {incoming : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    PayloadRoot.Cut site profile ready bindings (LinkedMapListBody profile ready base bindings older site key depth element incoming)
+      base := by
+  refine site.parked_after_admission linked _ (fun _ _ prepared => ?_) base embedder
+  obtain ⟨plan, compiled⟩ := linked.compiled
+  have matched := Record.preflightValue_layout _ _ _ _ _ plan compiled
+  rw [schema] at matched
+  obtain ⟨entries, field, shapes⟩ := mapCompiled matched linked.emitted
+  refine linkedCollection site linked (.map key element) (.record (mapEntryFields key element)) entries field paired selected
+    embedder prepared _ (liveMapVisitor site.destination site.inst key element entries 0 route.output _ keyData older
+      site.checked.store ?_ site.reply site.referenceReply _ (by intros; trivial))
+  intro item member
+  obtain ⟨payload, value, shape, layout, emitted⟩ := shapes item member
+  exact ⟨payload, value, shape, fun _ address => nominalListRule site.destination site.inst depth family value address layout emitted embedder⟩
 
 theorem linkedStringMapDispatch {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (nominal : NominalElement element)

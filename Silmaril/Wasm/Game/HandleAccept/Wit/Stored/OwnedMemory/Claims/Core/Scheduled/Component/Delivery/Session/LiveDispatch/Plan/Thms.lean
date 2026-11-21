@@ -156,6 +156,21 @@ theorem linked_nominal_list_body {route : GiveEffectRoute} (site : PayloadRoot.S
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedNominalListBody
     site linked depth element family schema paired selected embedder
 
+/-- Both linked give routes run non-string map keys before their possibly
+allocating values. Values are derived from the compiler and compared by
+the recursive list rule at the reached slots. Memory maps use the outer
+allocation's placement mode; flat maps take the actual width reads. -/
+theorem linked_map_list_body {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (key : WIT.KeyType) (keyData : PayloadPrefix.LocalDataType (.prim key.toPrimitive))
+    (depth : Nat) (element : Stored.TypeOf) (family : NominalListType depth element)
+    (schema : sig.payload site.tag = .map key element)
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    PayloadRoot.Cut site profile ready bindings (LinkedMapListBody profile ready base bindings older site key depth element incoming) base :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedMapListBody
+    site linked key keyData depth element family schema paired selected embedder
+
 /-- Consume the installed allocator frame only at its actual top return.
 The canonical continuation is recovered by following its occurrence from the
 install, not by comparing continuation code at the reached position. -/

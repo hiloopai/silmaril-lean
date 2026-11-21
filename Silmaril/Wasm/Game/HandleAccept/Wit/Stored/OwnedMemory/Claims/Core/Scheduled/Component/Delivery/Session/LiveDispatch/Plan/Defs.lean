@@ -458,23 +458,30 @@ def liveNominalList (profile : ProfileKind) (ready : HostReady (HostState sig))
         (liveListTail profile ready base bindings destination inst element entries index (.memory address)
           (liveNominalList profile ready base bindings older destination inst depth) checkNext canonNext (fun () => finish))
 
-/-- Enter both actual public give bodies and compare their nested lists
-under the live overlay, up to the reached reply programs. A callback may
-remain parked and a typed late refusal never starts its canonical suffix. -/
-def LinkedNominalListBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+/-- Enter the actual public bodies. The collection visitor sees the
+children only at a valid return with a fresh successful reservation. -/
+def LinkedCollectionBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (type element : Stored.TypeOf)
+    (incoming : Config (core3 grow) (HostState sig))
+    (visit : List Stored.Endpoints.RecordLower.Field → Nat → Nat → LinkedCallback.MemorySequence.Finish grow sig) : Prop :=
+  ∃ entries leading entered peer,
+    site.field = .dynamic type element entries ∧ PayloadPrefix.visible leading = [] ∧
+    Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming leading entered ∧
+    entered.host = incoming.host ∧
+    LiveCollectionPaths profile ready base bindings older site.destination site.inst type element entries 0
+      route.output site.reply site.referenceReply site.checked entered site.cursor peer (visit entries)
+
+abbrev LinkedNominalListBody (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
     (site : PayloadRoot.Site grow sig route) (depth : Nat) (element : Stored.TypeOf)
     (incoming : Config (core3 grow) (HostState sig)) : Prop :=
-  ∃ entries leading entered peer,
-    site.field = .dynamic (.list element) element entries ∧ PayloadPrefix.visible leading = [] ∧
-    Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming leading entered ∧
-    entered.host = incoming.host ∧
-    LiveCollectionPaths profile ready base bindings older site.destination site.inst (.list element) element entries 0
-      route.output site.reply site.referenceReply site.checked entered site.cursor peer
-      (liveListTail profile ready base bindings site.destination site.inst element entries 0 route.output
-        (liveNominalList profile ready base bindings older site.destination site.inst depth)
-        site.reply site.referenceReply (fun _ _ _ _ _ => True))
+  LinkedCollectionBody profile ready base bindings older site (.list element) element incoming (fun entries =>
+    liveListTail profile ready base bindings site.destination site.inst element entries 0 route.output
+      (liveNominalList profile ready base bindings older site.destination site.inst depth)
+      site.reply site.referenceReply (fun _ _ _ _ _ => True))
 
 /-- Stop at fresh preparation or at a reached element; neither executes the
 remaining canonical elements or publishes a descriptor. -/
@@ -501,6 +508,100 @@ def mapValueProgram (destination : RecordDestination) (inst : InstId)
   mapFieldPlacement cx mode fun width =>
     CanonicalTree.field Limits.spec Quirks.none cx destination.width value
       (.memory (alignTo afterKey (layout width value.type).alignment)) >>= finish
+
+def mapKeyBody (destination : RecordDestination) (inst : InstId) (slot : Nat)
+    (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode) (key value : Stored.Endpoints.RecordLower.Field)
+    (next : LinkedCallback.MemorySequence.CanonNext grow sig) (width : AddrType) : Session grow sig (Ret (core3 grow)) :=
+  open Stored.Endpoints.RecordLower ABI in
+  let area := layout width key.type
+  let address := alignTo slot area.alignment
+  CanonicalTree.field Limits.spec Quirks.none (destination.context inst) destination.width key (.memory address) >>=
+    fun () => mapValueProgram destination inst mode value (address + area.size) next
+
+/-- The key uses the reached map placement and runs before value placement.
+If the value stops at its live guard, the stores in its comparison already
+include the key write; the entry is not restarted at the key. -/
+def LiveMapEntryThen (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (destination : RecordDestination) (inst : InstId) (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)
+    (key value : Stored.Endpoints.RecordLower.Field) (index slot : Nat)
+    (compare : LinkedCallback.MemorySequence.FieldComparison grow sig)
+    (checkNext : LinkedCallback.MemorySequence.CheckNext grow sig) (canonNext : LinkedCallback.MemorySequence.CanonNext grow sig)
+    (finish : LinkedCallback.MemorySequence.Finish grow sig) : LinkedCallback.MemorySequence.Finish grow sig :=
+  open Stored.Endpoints.RecordLower ABI LinkedCallback.MemorySequence PayloadPrefix ReturnFrame.Occurrence in
+  fun left right check canon =>
+    let checked := specDispatch ready base
+    let canonical := specDispatch ready (LiveDispatch.host bindings base)
+    let cx := destination.context inst
+    let keyArea := layout destination.width key.type
+    let afterKey := alignTo slot keyArea.alignment + keyArea.size
+    let valPtr := alignTo afterKey (layout destination.width value.type).alignment
+    let report := aggregateNext index checkNext
+    let valCheck := fun () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width value 1 (.memory valPtr) >>= report
+    let valCanon := fun () => mapValueProgram destination inst mode value afterKey canonNext
+    let atKey := { right with ctl := canon.control (mapKeyBody destination inst slot mode key value canonNext destination.width) }
+    ∃ keyRead, visible keyRead = [] ∧ RetainsActiveSlots profile ready canonical right keyRead atKey ∧
+    ∃ (store : CStore (core3 grow)) (result : Except TrapReason Unit) (checkLabels canonLabels : Trace grow sig),
+      let lhs := localLeafEnd left left.host store check.thread check.frames check.rest valCheck result
+      let rhs := localLeafEnd atKey right.host store canon.thread canon.frames canon.rest valCanon result
+      Steps profile ready checked left checkLabels lhs ∧ LocalSteps profile ready canonical atKey canonLabels rhs ∧
+      visible checkLabels = visible canonLabels ∧
+      match result with
+      | .error reason => ∃ leading, visible canonLabels = leading ++ [.trap reason]
+      | .ok () =>
+        let atValue := { rhs with ctl := canon.control (CanonicalTree.field Limits.spec Quirks.none cx destination.width value
+          (.memory valPtr) >>= canonNext) }
+        RetainsActiveSlots profile ready checked left checkLabels lhs ∧
+        RetainsActiveSlots profile ready canonical atKey canonLabels rhs ∧
+        ∃ valueRead, visible valueRead = [] ∧ RetainsActiveSlots profile ready canonical rhs valueRead atValue ∧
+          compare value 1 valPtr lhs atValue check canon report canonNext finish
+
+def liveMapElements (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
+    (output : Stored.Lower.Output) (compare : LinkedCallback.MemorySequence.FieldComparison grow sig)
+    (checkNext : LinkedCallback.MemorySequence.CheckNext grow sig) (canonNext : LinkedCallback.MemorySequence.CanonNext grow sig)
+    (finish : LinkedCallback.MemorySequence.Finish grow sig) :
+    List Stored.Endpoints.RecordLower.Field → Nat → Nat → LinkedCallback.MemorySequence.Finish grow sig
+  | [], _, _, left, right, check, canon => finish left right check canon
+  | item :: rest, index, pointer, left, right, check, canon =>
+    open Stored.Endpoints.RecordLower ABI LinkedCallback.MemorySequence in
+    let entryType : Stored.TypeOf := .record (mapEntryFields key element)
+    let stride := (layout destination.width entryType).size
+    let mode := CanonicalTree.EntryMode.forOutput destination.width (.map key element) output
+    ∃ (payload : Stored.Payload (.prim key.toPrimitive)) (value : Field),
+      let keyField := Field.data (.prim key.toPrimitive) payload
+      item = .aggregate entryType [keyField, value] ∧
+      LiveMapEntryThen profile ready base bindings destination inst mode keyField value index pointer compare
+        (checkTail (.elements stride) destination inst rest (index + 1) (pointer + stride) checkNext)
+        (fun () => CanonicalTree.elements Limits.spec Quirks.none (destination.context inst) destination.width
+          rest mode stride (pointer + stride) >>= canonNext)
+        (liveMapElements profile ready base bindings destination inst key element output compare checkNext canonNext finish
+          rest (index + 1) (pointer + stride)) left right check canon
+
+def liveMapTail (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
+    (entries : List Stored.Endpoints.RecordLower.Field) (index : Nat) (output : Stored.Lower.Output)
+    (compare : LinkedCallback.MemorySequence.FieldComparison grow sig)
+    (checkNext : LinkedCallback.MemorySequence.ValueCheckNext grow sig output)
+    (canonNext : LinkedCallback.MemorySequence.ValueCanonNext grow sig output)
+    (finish : LinkedCallback.MemorySequence.ValueFinish grow sig output) : Nat → Nat → LinkedCallback.MemorySequence.Finish grow sig :=
+  open LinkedCallback.MemorySequence in
+  fun pointer _ => liveMapElements profile ready base bindings destination inst key element output compare
+    (publishChecked destination inst pointer entries.length index output checkNext)
+    (publishCanonical destination inst pointer entries.length output canonNext)
+    (LiveListPublish profile ready base bindings output checkNext canonNext finish) entries 0 pointer
+
+abbrev LinkedMapListBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (key : WIT.KeyType) (depth : Nat) (element : Stored.TypeOf)
+    (incoming : Config (core3 grow) (HostState sig)) : Prop :=
+  LinkedCollectionBody profile ready base bindings older site (.map key element) (.record (ABI.mapEntryFields key element)) incoming
+    (fun entries => liveMapTail profile ready base bindings site.destination site.inst key element entries 0 route.output
+      (liveNominalList profile ready base bindings older site.destination site.inst depth)
+      site.reply site.referenceReply (fun _ _ _ _ _ => True))
 
 /-- A reached map key under the live dispatchers, from field placement
 through the recursive string plan. Only completed plans reach the supplied
