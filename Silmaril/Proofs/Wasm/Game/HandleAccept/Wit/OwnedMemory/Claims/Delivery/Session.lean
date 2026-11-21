@@ -282,7 +282,8 @@ theorem directCalleePlan (task : TaskId) (callee : (core3 grow).FuncAddr) (recor
     (fits : args.length ≤ ABI.maxFlatParams) :
     ∃ (read : CStore (core3 grow) → Session grow sig (Ret (core3 grow))),
       liftArgumentsBody .spec .none task callee record (args.map DirectArgument.value) = .op .get read ∧
-      ∀ store, ∃ next, read store = .op (.callCore callee (args.map DirectArgument.flat)) next := by
+      ∀ store, ∃ next, read store = (callCore callee (args.map DirectArgument.flat) >>= next) ∧
+        (record.opts.async_ = true → record.opts.callback = none → next = stackfulTail task) := by
   let values := args.map DirectArgument.value
   let flat := args.map DirectArgument.flat
   let ctx : LiftLowerContext (core3 grow) :=
@@ -300,7 +301,7 @@ theorem directCalleePlan (task : TaskId) (callee : (core3 grow).FuncAddr) (recor
   refine ⟨_, rfl, ?_⟩
   intro store
   cases mode : record.opts.async_ <;> cases callback : record.opts.callback <;>
-    simp [Prog.bind, pure, liftSyncTail, *] <;> exact ⟨_, rfl⟩
+    simp [Prog.bind, pure, liftSyncTail, *] <;> first | rfl | exact ⟨_, rfl⟩
 
 theorem liftDirectCoreAt (site : LiftSite grow sig) (state : State grow sig) (args : List DirectArgument)
     (focused : state.ctl = (site.withArguments (args.map DirectArgument.value)).ctl)
@@ -309,10 +310,10 @@ theorem liftDirectCoreAt (site : LiftSite grow sig) (state : State grow sig) (ar
     ∃ next, ∀ (profile : ProfileKind) (ready : HostReady (HostState sig)) (impl : HostImpl (core3 grow) (HostState sig)),
       Steps profile ready (specDispatch ready impl) state [.tau, .tau] (site.coreEnteredAt state (args.map DirectArgument.flat) next) := by
   obtain ⟨read, body, call⟩ := directCalleePlan site.storeAndTask.2 site.core site.registeredTask args schema fits
-  obtain ⟨next, selected⟩ := call state.store
+  obtain ⟨next, selected, _⟩ := call state.store
   have focus : state.ctl = ⟨some site.storeAndThread.2, .prog (.op .get read), []⟩ :: site.workerTail := by
     rw [focused, LiftSite.withArguments, LiftSite.argumentsTail, body]
-  exact ⟨next, fun _ _ _ => .cons (.get focus) (.cons (.callCore (by rw [selected])) (.refl _))⟩
+  exact ⟨next, fun _ _ _ => .cons (.get focus) (.cons (.callCore (by rw [selected]; rfl)) (.refl _))⟩
 
 theorem liftDirectCore (site : LiftSite grow sig) (args : List DirectArgument)
     (schema : paramTypes site.registeredTask.ft = args.map DirectArgument.type)
@@ -984,6 +985,57 @@ theorem k1LowerHandoff {atGate atHost : State grow sig} {thread : ThreadId} {tas
   exact ⟨cursor, rfl, rfl, rfl, rfl, rfl, rfl, appendSteps checked (lowerStart cursor),
     appendSteps canonical (lowerStart cursor), lowerStartRecord cursor⟩
 
+theorem stackfulComplete {reached : State grow sig} {site : StackfulReturn reached} (exit : StackfulExit site) :
+    Steps profile ready (specDispatch ready impl) reached exit.labels exit.completed := by
+  rw [StackfulExit.labels, List.replicate_add]
+  refine .cons (.coreReturned site.focused site.returned) (.cons (.get rfl) ?_)
+  have taskLive : ArenaField.tasks.get? reached.store site.taskId = some exit.record := exit.taskLive
+  have instanceLive : ArenaField.insts.get? reached.store exit.record.inst = some exit.inst := exit.instanceLive
+  simp [Task.unregisterThread, Prog.bind, pure, taskLive,
+    exit.implicitThread, orTrap]
+  refine .cons (.get rfl) ?_
+  simp only [Prog.bind, taskLive, pure, exit.allowed, trapIf, Bool.false_eq_true, ite_false]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, exit.threadLive, exit.index, pure]
+  refine .cons (.get rfl) ?_
+  simp [Prog.bind, instanceLive, exit.remove, pure]
+  refine .cons (.modify rfl) ?_
+  cases release : (exit.record.ft.async_ && exit.record.needsExclusive) with
+  | false =>
+    simp only [StackfulExit.completed, ← Bool.and_eq_true, release, Bool.false_eq_true, ite_false]
+    exact .refl _
+  | true =>
+    simp only [StackfulExit.completed, ← Bool.and_eq_true, release, ite_true]
+    exact .cons (.modify rfl) (.refl _)
+
+theorem stackfulUnresolved {reached : State grow sig} (site : StackfulReturn reached) {record : Task (core3 grow)}
+    (live : reached.store.task? site.taskId = some record) (implicitThread : record.implicitThread = some site.thread)
+    (last : (record.threads.erase site.thread).isEmpty = true) (unresolved : record.state ≠ .resolved) :
+    Steps profile ready (specDispatch ready impl) reached [.tau, .tau, .tau, .trap .taskNotResolved]
+      (StepDefs.trapCfg reached) := by
+  refine .cons (.coreReturned site.focused site.returned) (.cons (.get rfl) ?_)
+  have lookup : ArenaField.tasks.get? reached.store site.taskId = some record := live
+  simp [Task.unregisterThread, Prog.bind, pure, lookup, implicitThread, orTrap]
+  refine .cons (.get rfl) ?_
+  have guard : ((record.threads.erase site.thread).isEmpty && !decide (record.state = .resolved)) = true := by
+    simp only [last, decide_eq_false unresolved, Bool.not_false, Bool.and_true]
+  simp only [Prog.bind, lookup, pure, guard, trapIf, ite_true]
+  exact .cons (.trap rfl) (.refl _)
+
+theorem stackfulFrames {reached : State grow sig} {site : StackfulReturn reached} (exit : StackfulExit site) :
+    exit.finished.store.subtasks = reached.store.subtasks ∧ exit.finished.store.callers = reached.store.callers := by
+  obtain ⟨_, _, _, subtasks, _, _, _, _, _, _, _, _, callers⟩ :=
+    CStore.unregisterThreadSt_frame site.taskId site.thread exit.slot reached.store
+  unfold StackfulExit.finished StackfulExit.completed
+  split <;> exact ⟨subtasks, callers⟩
+
+theorem stackfulLeave {reached : State grow sig} {site : StackfulReturn reached} (exit : StackfulExit site)
+    (empty : site.segments = []) :
+    Steps profile ready (specDispatch ready impl) exit.completed [.tau] exit.finished := by
+  have focus : exit.completed.ctl = ⟨some site.thread, .prog (.pure .unit), []⟩ :: site.rest := by
+    simp only [StackfulExit.completed, empty]
+  exact .cons (.threadExit focus) (.refl _)
+
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by
   cases edge with
@@ -1008,6 +1060,9 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | lowerEmptyCore _ entry => exact entry
   | invokeReturn focused => exact invokeReturnSteps focused
   | lowerInstallCancel returned => exact lowerInstallCancel returned
+  | stackfulComplete exit => exact stackfulComplete exit
+  | stackfulUnresolved site live implicitThread last unresolved => exact stackfulUnresolved site live implicitThread last unresolved
+  | stackfulExit exit empty => exact stackfulLeave exit empty
   | lowerEagerDelivery returned asyncLower resolved => exact lowerEagerDelivery returned asyncLower resolved
   | lowerPending returned asyncLower recordLive unresolved live room =>
     exact lowerPending returned asyncLower (by simp only [CStore.subtaskResolved, lowerCancelRecord returned recordLive, unresolved])
@@ -1180,17 +1235,18 @@ theorem runLowerDirect {site : OnStartSite start} (handoff : LowerStartAt site)
     (suffix : List FlatValue) (words : handoff.flat.drop handoff.pos = args.map DirectArgument.flat ++ suffix) :
     ∃ (returned : LowerArgumentReturn handoff handoff.selectedRead), ∃ next,
       returned.cursor.pos = handoff.pos + args.length ∧
+      (record.opts.async_ = true → record.opts.callback = none → next = stackfulTail task) ∧
       ∀ impl, Run profile ready impl handoff.reading
         [.lowerReadWidth site.caller, .lowerArgsReturn site.caller, .coreEnter site.thread]
         [.tau, .tau, .tau, .tau, .tau] (site.entered returned.resumed callee (args.map DirectArgument.flat) next) := by
   let returned := lowerDirectReturn handoff args callerSchema callerFits suffix words
   obtain ⟨read, plan, call⟩ := directCalleePlan task callee record args calleeSchema calleeFits
-  obtain ⟨next, selected⟩ := call returned.resumed.store
+  obtain ⟨next, selected, stackful⟩ := call returned.resumed.store
   have focused : returned.resumed.ctl = ⟨some site.thread, .prog (.op .get read), site.segments⟩ :: site.rest := by
     change ⟨some site.thread, .prog (site.next (args.map DirectArgument.value)), site.segments⟩ :: site.rest = _
     rw [body, plan]
-  exact ⟨returned, next, rfl, fun _ => .next (.lowerReadWidth handoff) (.next (.lowerArgsReturn returned)
-    (.next (.lowerDirectCore (site := site) focused selected) (.stop _)))⟩
+  exact ⟨returned, next, rfl, stackful, fun _ => .next (.lowerReadWidth handoff) (.next (.lowerArgsReturn returned)
+    (.next (.lowerDirectCore (site := site) focused (by rw [selected]; rfl)) (.stop _)))⟩
 
 theorem k1LowerDirect {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
     {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
@@ -1209,14 +1265,15 @@ theorem k1LowerDirect {atGate atHost : State grow sig} {thread : ThreadId} {task
         [.tau, .tau, .tau, .tau, .tau]
       let entered := handoff.startCursor.entered returned.resumed handoff.callee (args.map DirectArgument.flat) next
       returned.cursor.pos = pos + args.length ∧
+        (handoff.registered.opts.async_ = true → handoff.registered.opts.callback = none → next = stackfulTail task) ∧
         Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels entered ∧
         Steps profile ready (Dispatch.linked ready bindings callees) atHost labels entered := by
   obtain ⟨cursor, _, _, actualFlat, actualPos, actualSchema, actualLimit, check, canon, _⟩ :=
     k1LowerHandoff handoff notPending caller live bindings callees
-  obtain ⟨returned, next, offset, run⟩ := runLowerDirect (profile := profile) (ready := ready) cursor task handoff.callee
+  obtain ⟨returned, next, offset, stackful, run⟩ := runLowerDirect (profile := profile) (ready := ready) cursor task handoff.callee
     handoff.registered rfl args (by rw [LowerStartAt.types, actualSchema]; exact callerSchema) calleeSchema
     (by rw [actualLimit]; exact callerFits) calleeFits suffix (by rw [actualFlat, actualPos]; exact words)
-  exact ⟨cursor, returned, next, offset.trans (congrArg (· + args.length) actualPos),
+  exact ⟨cursor, returned, next, offset.trans (congrArg (· + args.length) actualPos), stackful,
     appendSteps check (runSteps (run (host bindings))), appendSteps canon (runSteps (run (hostWithComponent bindings callees)))⟩
 
 theorem giveBodyCut {bindings : List (Binding sig)} {callees : List (Callee sig)} {route : GiveEffectRoute}

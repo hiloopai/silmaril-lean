@@ -509,6 +509,7 @@ theorem LowerStartAt.direct_callee {site : OnStartSite start} (handoff : LowerSt
     (suffix : List FlatValue) (words : handoff.flat.drop handoff.pos = args.map DirectArgument.flat ++ suffix) :
     ∃ (returned : LowerArgumentReturn handoff handoff.selectedRead), ∃ next,
       returned.cursor.pos = handoff.pos + args.length ∧
+      (record.opts.async_ = true → record.opts.callback = none → next = stackfulTail task) ∧
       ∀ impl, Run profile ready impl handoff.reading
         [.lowerReadWidth site.caller, .lowerArgsReturn site.caller, .coreEnter site.thread]
         [.tau, .tau, .tau, .tau, .tau] (site.entered returned.resumed callee (args.map DirectArgument.flat) next) :=
@@ -534,10 +535,25 @@ theorem K1LiftStart.linked_direct_callee {atGate atHost : State grow sig} {threa
         [.tau, .tau, .tau, .tau, .tau]
       let entered := handoff.startCursor.entered returned.resumed handoff.callee (args.map DirectArgument.flat) next
       returned.cursor.pos = pos + args.length ∧
+        (handoff.registered.opts.async_ = true → handoff.registered.opts.callback = none → next = stackfulTail task) ∧
         Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels entered ∧
         Steps profile ready (Dispatch.linked ready bindings callees) atHost labels entered :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.k1LowerDirect
     handoff notPending caller live args callerSchema calleeSchema callerFits calleeFits suffix words bindings callees
+
+/-- Stackful completion does not itself consume or replace the event reached
+at Core return, or change that store's caller cursor. -/
+theorem StackfulExit.live_records {reached : State grow sig} {site : StackfulReturn reached} (exit : StackfulExit site) :
+    exit.finished.store.subtasks = reached.store.subtasks ∧ exit.finished.store.callers = reached.store.callers :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.stackfulFrames exit
+
+/-- Append the closed return, live unregistration and actual worker exit
+after any classified finite interleaving that reaches the callee return. -/
+theorem Run.finish_stackful {reached : State grow sig} {site : StackfulReturn reached} {actions labels}
+    (run : Run profile ready impl start actions labels reached) (exit : StackfulExit site) (empty : site.segments = []) :
+    Run profile ready impl start (actions ++ [.stackfulComplete site.taskId, .workerExit site.thread])
+      (labels ++ (exit.labels ++ [.tau])) exit.finished := by
+  simpa only [List.append_nil] using run.append (.next (.stackfulComplete exit) (.next (.stackfulExit exit empty) (.stop _)))
 
 /-- No independent live-caller or progress-record premise is needed on the
 fresh, directly admitted lifted path: lift launch and registration leave both arenas alone. -/

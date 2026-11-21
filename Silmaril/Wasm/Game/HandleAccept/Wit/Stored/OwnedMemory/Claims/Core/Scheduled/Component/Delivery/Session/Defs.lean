@@ -549,6 +549,56 @@ def LowerStartAt.steps (handoff : LowerStartAt site) : Nat :=
 
 end
 
+/-- The return continuation of a lift with async canonical options and no callback. -/
+def stackfulTail (task : TaskId) (_flat : List FlatValue) : Session grow sig (Ret (core3 grow)) := do
+  Task.exitImplicitThread task
+  pure .unit
+
+/-- A reached Core return, after any intervening guest and scheduler effects. -/
+structure StackfulReturn (reached : State grow sig) where
+  taskId : TaskId
+  thread : ThreadId
+  core : (core3 grow).Thread (CanonHost (core3 grow))
+  values : List FlatValue
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : reached.ctl = ⟨some thread, .core core (stackfulTail taskId), segments⟩ :: rest
+  returned : (core3 grow).status reached.store.core core = .returned (.values values)
+
+/-- Registration witnessed in the store at Core return, not the store at admission. -/
+structure StackfulExit {reached : State grow sig} (site : StackfulReturn reached) where
+  record : Task (core3 grow)
+  registration : Thread
+  inst : InstState
+  slot : Nat
+  removed : InstState
+  taskLive : reached.store.task? site.taskId = some record
+  implicitThread : record.implicitThread = some site.thread
+  allowed : ((record.threads.erase site.thread).isEmpty && !decide (record.state = .resolved)) = false
+  threadLive : ArenaField.threads.get? reached.store site.thread = some registration
+  index : registration.index = some slot
+  instanceLive : reached.store.inst? record.inst = some inst
+  remove : inst.removeThread? slot = some (site.thread, removed)
+
+def StackfulExit.completed {reached : State grow sig} {site : StackfulReturn reached}
+    (exit : StackfulExit site) : State grow sig :=
+  let unregistered := reached.store.unregisterThreadSt site.taskId site.thread exit.slot
+  { reached with
+    store := if exit.record.ft.async_ && exit.record.needsExclusive then
+      ArenaField.insts.modify unregistered exit.record.inst (InstState.withExclusive none)
+    else unregistered
+    ctl := ⟨some site.thread, .prog (.pure .unit), site.segments⟩ :: site.rest }
+
+def StackfulExit.finished {reached : State grow sig} {site : StackfulReturn reached}
+    (exit : StackfulExit site) : State grow sig :=
+  { exit.completed with
+    store := StepDefs.threadStatusSt site.thread .exited exit.completed.store
+    ctl := site.rest }
+
+def StackfulExit.labels {reached : State grow sig} {site : StackfulReturn reached}
+    (exit : StackfulExit site) : Trace grow sig :=
+  List.replicate (6 + (exit.record.ft.async_ && exit.record.needsExclusive).toNat) .tau
+
 /-- No K1 wait is entered on this branch. Full registration tables are not
 classified as admitted and must take the canonical trap branch instead. -/
 structure LiftAdmission (site : LiftSite grow sig) where
@@ -596,6 +646,9 @@ inductive Action where
   | coreTrap
   | commit (target : SubtaskId) (index : Nat)
   | poll (target : SubtaskId) (index : Nat) (result : BufferResult)
+  | stackfulComplete (task : TaskId)
+  | stackfulUnresolved (task : TaskId)
+  | workerExit (thread : ThreadId)
   | wait (target : SubtaskId) (index : Nat) (result : BufferResult)
   | waitEnter (thread : ThreadId) (early : Bool)
   | waitResume (thread : ThreadId)
@@ -698,6 +751,16 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
   | lowerInstallCancel {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
       (returned : LowerReturn request reached) :
       Transition profile ready impl reached (.lowerInstallCancel returned.subtask) [.tau, .tau] returned.cancelInstalled
+  | stackfulComplete {reached} {site : StackfulReturn reached} (exit : StackfulExit site) :
+      Transition profile ready impl reached (.stackfulComplete site.taskId) exit.labels exit.completed
+  | stackfulUnresolved {reached} (site : StackfulReturn reached) {record : Task (core3 grow)}
+      (live : reached.store.task? site.taskId = some record)
+      (implicitThread : record.implicitThread = some site.thread)
+      (last : (record.threads.erase site.thread).isEmpty = true) (unresolved : record.state ≠ .resolved) :
+      Transition profile ready impl reached (.stackfulUnresolved site.taskId)
+        [.tau, .tau, .tau, .trap .taskNotResolved] (StepDefs.trapCfg reached)
+  | stackfulExit {reached} {site : StackfulReturn reached} (exit : StackfulExit site) (empty : site.segments = []) :
+      Transition profile ready impl exit.completed (.workerExit site.thread) [.tau] exit.finished
   | lowerEagerDelivery {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
       (returned : LowerReturn request reached) (asyncLower : request.opts.async_ = true)
       (resolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = true) :
