@@ -231,9 +231,10 @@ private theorem rejoin {route : GiveEffectRoute} (call : PayloadRoot.Site grow s
   exact resume_returned_give call value frame (path 0) checked canonical
 
 theorem parkedMemoryRejoined {pointer : FlatValue} (call : PayloadRoot.Site grow sig (.memory pointer))
-    (linked : call.Linked bindings) :
-    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedRejoinedMemory call depth profile ready bindings) := by
-  obtain ⟨depth, cut⟩ := parked_compiled_memory (profile := profile) (ready := ready) call linked call.referenceReply
+    (linked : call.Linked bindings) (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
+    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedRejoinedMemory call depth profile ready bindings) impl := by
+  obtain ⟨depth, cut⟩ := parked_compiled_memory (profile := profile) (ready := ready) call linked call.referenceReply impl embedder
   refine ⟨depth, ?_⟩
   cases cut with
   | refused issue silent run => exact .refused issue silent run
@@ -245,10 +246,11 @@ theorem parkedMemoryRejoined {pointer : FlatValue} (call : PayloadRoot.Site grow
     exact rejoin call () path finish.1 finish.2.1 finish.2.2
 
 theorem parkedFlatRejoined {schema : TypeOf} (call : PayloadRoot.Site grow sig (.flat schema))
-    (linked : call.Linked bindings) :
+    (linked : call.Linked bindings) (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
     ∃ flatDepth entryDepth, PayloadRoot.Cut call profile ready bindings
-      (ParkedRejoinedFlat call flatDepth entryDepth profile ready bindings) := by
-  obtain ⟨flatDepth, entryDepth, cut⟩ := parked_compiled_flat (profile := profile) (ready := ready) call linked call.referenceReply
+      (ParkedRejoinedFlat call flatDepth entryDepth profile ready bindings) impl := by
+  obtain ⟨flatDepth, entryDepth, cut⟩ := parked_compiled_flat (profile := profile) (ready := ready) call linked call.referenceReply impl embedder
   refine ⟨flatDepth, entryDepth, ?_⟩
   cases cut with
   | refused issue silent run => exact .refused issue silent run

@@ -1,6 +1,8 @@
 module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Callback.Defs
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Defs
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence.Traversal.Defs
 
 @[expose] public section
 
@@ -17,6 +19,12 @@ abbrev Trace (grow : SingleThreaded.GrowOracle) (sig : Signature) := List (Label
 inductive BufferResult where
   | replied
   | trapped (reason : TrapReason)
+
+inductive GivePhase where
+  | entered
+  | refused (issue : Stored.Endpoints.RecordLower.Issue)
+  | placementTrap (reason : TrapReason)
+  | returned
 
 def BufferResult.finish {α : Type} (result : BufferResult) (resumed trapped : α) : α :=
   match result with
@@ -68,6 +76,7 @@ inductive Action where
   | callbackBorrowTrap (thread : ThreadId)
   | callbackExit (thread : ThreadId)
   | closedCallback (tracked : SubtaskId)
+  | give (route : GiveEffectRoute) (phase : GivePhase)
 
 /-- Each edge starts at the exact preceding machine cut. In particular there
 is no cross-edge pending invariant: a take clears the reached record, and a
@@ -156,6 +165,31 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       Transition profile ready impl start (.callbackExit wait.thread) exit.labels exit.unwound
   | closedCallback {start finish target labels} (path : ClosedCallbackPrefix profile ready impl target start labels finish) :
       Transition profile ready impl start (.closedCallback target) labels finish
+  | giveEntry {route bindings labels} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+      (silent : PayloadPrefix.visible labels = [])
+      (placed : PayloadPrefix.rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok ())
+      (prepared : OwnedMemory.Claims.Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
+      (run : Steps profile ready (specDispatch ready impl) site.start labels site.checked) :
+      Transition profile ready impl site.start (.give route .entered) labels site.checked
+  | giveRefused {route bindings labels} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+      (issue : Stored.Endpoints.RecordLower.Issue) (silent : PayloadPrefix.visible labels = [])
+      (run : Steps profile ready (specDispatch ready impl) site.start labels (site.withBody (site.reply (.error issue)))) :
+      Transition profile ready impl site.start (.give route (.refused issue)) (labels ++ [.tau, .tau, .tau]) (site.refusedReply issue)
+  | givePlacementTrap {route bindings} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+      (reason : TrapReason) (count : Nat)
+      (verdict : PayloadPrefix.rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .error reason)
+      (run : Steps profile ready (specDispatch ready impl) site.start (List.replicate count .tau ++ [.trap reason])
+        (StepDefs.trapCfg site.checked)) :
+      Transition profile ready impl site.start (.give route (.placementTrap reason))
+        (List.replicate count .tau ++ [.trap reason]) (StepDefs.trapCfg site.checked)
+  | giveReturned {route bindings callees checkLabels canonLabels reached reference left right}
+      (site : PayloadRoot.Site grow sig route) (value : route.output.Result)
+      (overlay : impl = hostWithComponent bindings callees)
+      (checked : Dispatch.Compatible profile ready bindings callees site.checked checkLabels reached)
+      (canonical : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonLabels reference)
+      (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels)
+      (replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference left right) :
+      Transition profile ready impl site.checked (.give route .returned) (checkLabels ++ [.tau, .tau, .tau]) left
 
 /-- Finite concatenation, with machine labels in their original order. A run
 can stop at a parked callback, at a producer, or at a delivery trap. -/
@@ -166,5 +200,18 @@ inductive Run (profile : ProfileKind) (ready : HostReady (HostState sig)) (impl 
       (head : Transition profile ready impl start action leading middle)
       (tail : Run profile ready impl middle actions trailing finish) :
       Run profile ready impl start (action :: actions) (leading ++ trailing) finish
+
+/-- The return proof already derives paired paths from the compiled body.
+This contract concerns only dispatch at the late-bound calls on those paths;
+it does not assume successful recursive lowering or common endpoints. -/
+def GiveBodyAgreement (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (callees : List (Callee sig)) {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (reached reference : State grow sig) : Prop :=
+  ∀ checkLabels canonLabels,
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels reached →
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready (Dispatch.coreOnly ready bindings)
+      (site.reference site.referenceReply) canonLabels reference →
+    Dispatch.Compatible profile ready bindings callees site.checked checkLabels reached ∧
+    Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonLabels reference
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession

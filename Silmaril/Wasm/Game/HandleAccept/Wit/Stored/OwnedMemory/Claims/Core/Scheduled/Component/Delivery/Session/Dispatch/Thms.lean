@@ -1,0 +1,36 @@
+module
+
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Defs
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Session.Dispatch
+
+public section
+
+namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession.Dispatch
+
+open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
+  Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
+
+variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
+  {ready : HostReady (HostState sig)} {bindings : List (Binding sig)} {callees : List (Callee sig)}
+  {start finish : Config (core3 grow) (HostState sig)}
+
+theorem ClosedAt.agrees (closed : ClosedAt start) : AgreesAt ready bindings callees start :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.closedAgrees closed
+
+theorem Compatible.steps {labels} (run : Compatible profile ready bindings callees start labels finish) :
+    Steps profile ready (linked ready bindings callees) start labels finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.compatibleSteps run
+
+theorem Compatible.of_closed {labels} (run : Steps profile ready (coreOnly ready bindings) start labels finish)
+    (closed : ClosedThrough profile ready bindings start labels finish) : Compatible profile ready bindings callees start labels finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.closedPrefix run closed
+
+/-- All steps of a finite guest-only prefix classify without a host
+agreement premise. This transports its exact Core effects, not a frame on
+the bytes it was allowed to change. -/
+theorem Compatible.of_core {count : Nat}
+    (run : Steps profile ready (coreOnly ready bindings) start (List.replicate count .core) finish) :
+    Compatible profile ready bindings callees start (List.replicate count .core) finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.corePrefix run
+
+end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession.Dispatch

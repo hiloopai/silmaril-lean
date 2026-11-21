@@ -44,6 +44,13 @@ def Site.withBody (site : Site grow sig route) (program : Session grow sig (Ret 
   { site.start with host := site.start.host.enter site.name site.functionType (route.args site.handle)
                     ctl := site.cursor.control program }
 
+def Site.refusedReply (site : Site grow sig route) (issue : RecordLower.Issue) : Config (core3 grow) (HostState sig) :=
+  let reply := route.reply site.destination site.start.host.nextTicket (.error issue)
+  let reached := site.withBody (site.reply (.error issue))
+  { reached with host := reached.host.record reply.1
+                 ctl := ⟨site.thread, .core ((core3 grow).resume reached.store.core site.core (.values reply.2))
+                   site.resume, site.frames⟩ :: site.rest }
+
 def Site.checked (site : Site grow sig route) : Config (core3 grow) (HostState sig) :=
   site.withBody (Record.Effects.field recordClaims Limits.spec Quirks.none (site.destination.context site.inst)
     site.destination.width site.field 0 route.output >>= site.reply)
@@ -82,18 +89,18 @@ structure Site.Linked (site : Site grow sig route) (bindings : List (Binding sig
 /-- The actual prefix before the first recursive field. No recursive
 comparison, allocator return or completion delivery is assumed. -/
 inductive Cut (site : Site grow sig route) (profile : ProfileKind) (ready : HostReady (HostState sig))
-    (bindings : List (Binding sig)) (body : Prop := True) : Prop where
+    (bindings : List (Binding sig)) (body : Prop := True) (impl : HostImpl (core3 grow) (HostState sig) := host bindings) : Prop where
   | refused (issue : RecordLower.Issue) {labels} (silent : visible labels = []) :
-      Steps profile ready (specDispatch ready (host bindings)) site.start labels (site.withBody (site.reply (.error issue))) →
-      Cut site profile ready bindings body
+      Steps profile ready (specDispatch ready impl) site.start labels (site.withBody (site.reply (.error issue))) →
+      Cut site profile ready bindings body impl
   | placementTrap (reason : TrapReason) (count : Nat)
       (verdict : rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .error reason) :
-      Steps profile ready (specDispatch ready (host bindings)) site.start (List.replicate count .tau ++ [.trap reason])
-        (StepDefs.trapCfg site.checked) → Cut site profile ready bindings body
+      Steps profile ready (specDispatch ready impl) site.start (List.replicate count .tau ++ [.trap reason])
+        (StepDefs.trapCfg site.checked) → Cut site profile ready bindings body impl
   | placed {labels} (silent : visible labels = [])
       (verdict : rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok ())
       (prepared : Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ()) :
-      Steps profile ready (specDispatch ready (host bindings)) site.start labels site.checked → body →
-      Cut site profile ready bindings body
+      Steps profile ready (specDispatch ready impl) site.start labels site.checked → body →
+      Cut site profile ready bindings body impl
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot

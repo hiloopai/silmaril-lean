@@ -462,9 +462,11 @@ theorem parked_give_payload {sig : Signature} {grow : SingleThreaded.GrowOracle}
     (mayLeave : (start.store.inst? inst).any (·.mayLeave) = true)
     (word : Stored.flatType pointer = ABI.pointerType destination.width)
     (destinationChecked : destination.check start.store = .ok ())
-    (selected : Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree) :
+    (selected : Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
     ∃ labels, labels.all (· matches .tau) = true ∧
-      Machine.Steps profile ready (specDispatch ready (host (grow := grow) bindings)) start labels
+      Machine.Steps profile ready (specDispatch ready impl) start labels
         { start with host := start.host.enter name type [.int .i32 handle, pointer]
                      ctl := ⟨thread, .prog (do
                        let result ← Record.lowerPayloadRoot recordClaims Limits.spec Quirks.none
@@ -474,7 +476,7 @@ theorem parked_give_payload {sig : Signature} {grow : SingleThreaded.GrowOracle}
                        .core core continuation :: segments⟩ :: rest } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.parked_give_payload
     bindings name type handle pointer inst destination tree start thread profile ready
-    parked calling linked caller mayLeave word destinationChecked selected
+    parked calling linked caller mayLeave word destinationChecked selected impl embedder
 
 /-- The flat give checks the selected root schema before lowering. The linked
 flat shape and its original ticket remain in the saved reply continuation. -/
@@ -490,9 +492,11 @@ theorem parked_give_flat {sig : Signature} {grow : SingleThreaded.GrowOracle}
     (mayLeave : (start.store.inst? inst).any (·.mayLeave) = true)
     (destinationChecked : destination.check start.store = .ok ())
     (selected : Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree)
-    (schema : rootHasSchema tree payload = true) :
+    (schema : rootHasSchema tree payload = true)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
     ∃ labels, labels.all (· matches .tau) = true ∧
-      Machine.Steps profile ready (specDispatch ready (host (grow := grow) bindings)) start labels
+      Machine.Steps profile ready (specDispatch ready impl) start labels
         { start with host := start.host.enter name type [.int .i32 handle]
                      ctl := ⟨thread, .prog (do
                        let result ← Record.lowerPayloadRoot recordClaims Limits.spec Quirks.none
@@ -502,17 +506,17 @@ theorem parked_give_flat {sig : Signature} {grow : SingleThreaded.GrowOracle}
                        .core core continuation :: segments⟩ :: rest } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.parked_give_flat
     bindings name type handle inst destination payload tree start thread profile ready
-    parked calling linked caller mayLeave destinationChecked selected schema
+    parked calling linked caller mayLeave destinationChecked selected schema impl embedder
 
 /-- Complete a returned lowering result from the reached store and journal, not
 the entry snapshots. Trap configurations never reach this continuation. -/
 theorem give_completion_steps {sig : Signature} {grow : SingleThreaded.GrowOracle}
     {start : Machine.Config (core3 grow) (HostState sig)} (reply : Event × List FlatValue)
-    {profile : ProfileKind} {ready : HostReady (HostState sig)} {bindings : List (Binding sig)}
+    {profile : ProfileKind} {ready : HostReady (HostState sig)} {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     {thread core continuation segments rest}
     (reached : start.ctl = ⟨thread, .prog (do return .flat (← writeCompletion reply)),
       .core core continuation :: segments⟩ :: rest) :
-    Machine.Steps profile ready (specDispatch ready (host (grow := grow) bindings)) start [.tau, .tau, .tau]
+    Machine.Steps profile ready dispatch start [.tau, .tau, .tau]
       { start with host := start.host.record reply.1
                    ctl := ⟨thread, .core ((core3 grow).resume start.store.core core (.values reply.2))
                      continuation, segments⟩ :: rest } :=

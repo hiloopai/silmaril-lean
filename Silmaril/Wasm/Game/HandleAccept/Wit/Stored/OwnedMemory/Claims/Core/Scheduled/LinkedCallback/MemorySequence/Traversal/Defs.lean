@@ -34,17 +34,20 @@ def CarriesFlatFinish (profile : ProfileKind) (ready : HostReady (HostState sig)
       finish words lhs rhs check canon → target words lhs rhs check canon) →
     compare item index left right check canon checkNext canonNext target
 
+def GiveReplies {route : GiveEffectRoute} (call : PayloadRoot.Site grow sig route) (value : route.output.Result)
+    (profile : ProfileKind) (ready : HostReady (HostState sig)) (reached reference left right : State grow sig) : Prop :=
+  let reply := route.reply call.destination call.start.host.nextTicket (.ok value)
+  let older : ReturnFrame.Substitutions (core3 grow) (HostState sig) := fun _ _ => False
+  (∀ dispatch, Steps profile ready dispatch reached [.tau, .tau, .tau] left) ∧
+    (∀ dispatch, Steps profile ready dispatch reference [.tau] right) ∧ left.store = right.store ∧
+    left.host = reached.host.record reply.1 ∧ right.host = reference.host ∧
+    List.Forall₂ (ReturnFrame.Related.Active older) left.ctl right.ctl
+
 def RejoinedGive {route : GiveEffectRoute} (call : PayloadRoot.Site grow sig route) (value : route.output.Result)
     (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
     (reached reference : State grow sig) : Prop :=
-  let reply := route.reply call.destination call.start.host.nextTicket (.ok value)
-  let dispatch := specDispatch ready (host bindings)
-  let older : ReturnFrame.Substitutions (core3 grow) (HostState sig) := fun _ _ => False
   TrackedAdvance profile ready bindings call.checked (call.reference call.referenceReply) reached reference ∧
-    ∃ left right, Steps profile ready dispatch reached [.tau, .tau, .tau] left ∧
-      Steps profile ready dispatch reference [.tau] right ∧ left.store = right.store ∧
-      left.host = reached.host.record reply.1 ∧ right.host = reference.host ∧
-      List.Forall₂ (ReturnFrame.Related.Active older) left.ctl right.ctl
+    ∃ left right, GiveReplies call value profile ready reached reference left right
 
 def ParkedRejoinedMemory {pointer : FlatValue} (call : PayloadRoot.Site grow sig (.memory pointer)) (depth : Nat)
     (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig)) : Prop :=

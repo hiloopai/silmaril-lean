@@ -3,6 +3,8 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Thms
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Callback.Thms
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot.Thms
 
 public section
 
@@ -17,6 +19,14 @@ open ComponentCall.Delivery ComponentCall.Delivery.FiniteSession
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {impl : HostImpl (core3 grow) (HostState sig)}
   {start middle finish : State grow sig}
+
+private theorem appendSteps {leading trailing}
+    (left : Steps profile ready (specDispatch ready impl) start leading middle)
+    (right : Steps profile ready (specDispatch ready impl) middle trailing finish) :
+    Steps profile ready (specDispatch ready impl) start (leading ++ trailing) finish := by
+  induction left with
+  | refl => exact right
+  | cons step _ ih => exact .cons step (ih right)
 
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by
@@ -56,14 +66,12 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
     exact (entry.enters_resolution (profile := profile) (ready := ready) (impl := impl)).2 borrows
   | callbackExit exit => exact (exit.unwinds (profile := profile) (ready := ready) (impl := impl)).1
   | closedCallback path => exact path.reaches.1
-
-private theorem appendSteps {leading trailing}
-    (left : Steps profile ready (specDispatch ready impl) start leading middle)
-    (right : Steps profile ready (specDispatch ready impl) middle trailing finish) :
-    Steps profile ready (specDispatch ready impl) start (leading ++ trailing) finish := by
-  induction left with
-  | refl => exact right
-  | cons step _ ih => exact .cons step (ih right)
+  | giveEntry _ _ _ _ _ run => exact run
+  | giveRefused site _ issue _ run => exact site.refusal_resumes issue run
+  | givePlacementTrap _ _ _ _ _ run => exact run
+  | giveReturned _ _ overlay checked _ _ replies =>
+    subst impl
+    exact appendSteps checked.steps (replies.1 _)
 
 theorem runSteps {actions labels} (path : Run profile ready impl start actions labels finish) :
     Steps profile ready (specDispatch ready impl) start labels finish := by
@@ -91,5 +99,32 @@ theorem takenRecord {target event labels}
   | callbackTake wait kind focused live noCancel setLive allowed selects tracked resolved pending chosen =>
     exact ⟨_, tracked, (wait.wait_takes_resolution (ready := ready) (impl := impl) kind focused live noCancel setLive allowed
       selects tracked resolved pending chosen).2⟩
+
+theorem giveRoot {route : GiveEffectRoute} {bindings : List (Binding sig)} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) {body : Prop} (cut : PayloadRoot.Cut site profile ready bindings body impl) :
+    ∃ phase labels finish, Transition profile ready impl site.start (.give route phase) labels finish ∧
+      (phase = .entered → finish = site.checked ∧ body) := by
+  cases cut with
+  | refused issue silent run =>
+    exact ⟨.refused issue, _, _, .giveRefused site linked issue silent run, fun equal => by cases equal⟩
+  | placementTrap reason count verdict run =>
+    exact ⟨.placementTrap reason, _, _, .givePlacementTrap site linked reason count verdict run, fun equal => by cases equal⟩
+  | placed silent verdict prepared run body =>
+    exact ⟨.entered, _, _, .giveEntry site linked silent verdict prepared run, fun _ => ⟨rfl, body⟩⟩
+
+theorem giveReturned {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (ComponentCall.Callee sig)}
+    (site : PayloadRoot.Site grow sig route) (value : route.output.Result) {reached reference : State grow sig}
+    (comparison : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference)
+    (agreement : GiveBodyAgreement profile ready bindings callees site reached reference) :
+    ∃ checkLabels canonLabels left right,
+      Transition profile ready (ComponentCall.hostWithComponent bindings callees) site.checked (.give route .returned)
+        (checkLabels ++ [.tau, .tau, .tau]) left ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) (site.reference site.referenceReply) (canonLabels ++ [.tau]) right ∧
+      PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
+      LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference left right := by
+  obtain ⟨⟨checkLabels, canonLabels, seen, checked, canonical⟩, left, right, replies⟩ := comparison
+  obtain ⟨checkRun, canonRun⟩ := agreement checkLabels canonLabels checked canonical
+  exact ⟨checkLabels, canonLabels, left, right, .giveReturned site value rfl checkRun canonRun seen replies,
+    appendSteps canonRun.steps (replies.2.1 _), seen, replies⟩
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession

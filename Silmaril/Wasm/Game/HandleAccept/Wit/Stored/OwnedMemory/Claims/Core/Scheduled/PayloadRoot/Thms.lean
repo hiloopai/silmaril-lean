@@ -32,11 +32,12 @@ theorem Site.parked (site : Site grow sig route) (linked : site.Linked bindings)
 completion. This records the typed error and resumes the original Core
 frame. There is no corresponding canonical return for this branch. -/
 theorem Site.refusal_resumes (site : Site grow sig route) (issue : Stored.Endpoints.RecordLower.Issue) {labels}
-    (run : Steps profile ready (specDispatch ready (host bindings)) site.start labels
+    {impl : HostImpl (core3 grow) (HostState sig)}
+    (run : Steps profile ready (specDispatch ready impl) site.start labels
       (site.withBody (site.reply (.error issue)))) :
     let reply := route.reply site.destination site.start.host.nextTicket (.error issue)
     let reached := site.withBody (site.reply (.error issue))
-    Steps profile ready (specDispatch ready (host bindings)) site.start (labels ++ [.tau, .tau, .tau])
+    Steps profile ready (specDispatch ready impl) site.start (labels ++ [.tau, .tau, .tau])
       { reached with host := reached.host.record reply.1
                      ctl := ⟨site.thread, .core ((core3 grow).resume reached.store.core site.core (.values reply.2))
                        site.resume, site.frames⟩ :: site.rest } :=
@@ -56,16 +57,21 @@ theorem Site.reached_caller (site : Site grow sig route) {reached : Config (core
 The refusal and placement-trap branches never require a body comparison. -/
 theorem Site.parked_after_fit (site : Site grow sig route) (linked : site.Linked bindings) (body : Prop)
     (afterFit : Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag)
-      site.payload.val.value = true → body) : Cut site profile ready bindings body :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadRoot.parkedAfterFit site linked body afterFit
+      site.payload.val.value = true → body)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) : Cut site profile ready bindings body impl :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadRoot.parkedAfterAdmission site linked body
+    (fun fits _ _ => afterFit fits) impl embedder
 
 /-- Use both public guards only on the branch that enters the actual body. -/
 theorem Site.parked_after_placement (site : Site grow sig route) (linked : site.Linked bindings) (body : Prop)
     (afterPlacement : Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag)
       site.payload.val.value = true →
-      rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok () → body) :
-    Cut site profile ready bindings body :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadRoot.parkedAfterPlacement site linked body afterPlacement
+      rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok () → body)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) : Cut site profile ready bindings body impl :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadRoot.parkedAfterAdmission site linked body
+    (fun fits placed _ => afterPlacement fits placed) impl embedder
 
 /-- The placed branch exposes the successful live dry run with the actual
 fit and placement checks. The fact authorizes no later transfer by itself. -/
@@ -73,9 +79,11 @@ theorem Site.parked_after_admission (site : Site grow sig route) (linked : site.
     (afterAdmission : Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag)
       site.payload.val.value = true →
       rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok () →
-      Record.prepare site.start.store site.start.host.writer site.field.objects = .ok () → body) :
-    Cut site profile ready bindings body :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadRoot.parkedAfterAdmission site linked body afterAdmission
+      Record.prepare site.start.store site.start.host.writer site.field.objects = .ok () → body)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
+    Cut site profile ready bindings body impl :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadRoot.parkedAfterAdmission site linked body afterAdmission impl embedder
 
 theorem Site.reference_at (site : Site grow sig route) (linked : site.Linked bindings) (next : site.ReferenceNext) :
     (site.reference next).ctl = site.cursor.control

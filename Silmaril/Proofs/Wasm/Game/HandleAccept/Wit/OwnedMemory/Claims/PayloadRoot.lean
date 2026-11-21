@@ -24,9 +24,10 @@ variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {route : GiveEffec
   {profile : ProfileKind} {ready : HostReady (HostState sig)} {bindings : List (Binding sig)}
 
 private theorem appendSteps {first middle finish : Config (core3 grow) (HostState sig)} {front back}
-    (lhs : Steps profile ready (specDispatch ready (host bindings)) first front middle)
-    (rhs : Steps profile ready (specDispatch ready (host bindings)) middle back finish) :
-    Steps profile ready (specDispatch ready (host bindings)) first (front ++ back) finish := by
+    {impl : HostImpl (core3 grow) (HostState sig)}
+    (lhs : Steps profile ready (specDispatch ready impl) first front middle)
+    (rhs : Steps profile ready (specDispatch ready impl) middle back finish) :
+    Steps profile ready (specDispatch ready impl) first (front ++ back) finish := by
   induction lhs with
   | refl => exact rhs
   | cons step _ next => exact .cons step (next rhs)
@@ -35,11 +36,12 @@ private theorem visibleAppend {E : CoreEngine} {Host : Type} (front back : List 
     visible (front ++ back) = visible front ++ visible back := List.filter_append ..
 
 theorem refusalResumes (site : Site grow sig route) (issue : Endpoints.RecordLower.Issue) {labels}
-    (run : Steps profile ready (specDispatch ready (host bindings)) site.start labels
+    {impl : HostImpl (core3 grow) (HostState sig)}
+    (run : Steps profile ready (specDispatch ready impl) site.start labels
       (site.withBody (site.reply (.error issue)))) :
     let reply := route.reply site.destination site.start.host.nextTicket (.error issue)
     let reached := site.withBody (site.reply (.error issue))
-    Steps profile ready (specDispatch ready (host bindings)) site.start (labels ++ [.tau, .tau, .tau])
+    Steps profile ready (specDispatch ready impl) site.start (labels ++ [.tau, .tau, .tau])
       { reached with host := reached.host.record reply.1
                      ctl := ⟨site.thread, .core ((core3 grow).resume reached.store.core site.core (.values reply.2))
                        site.resume, site.frames⟩ :: site.rest } :=
@@ -66,13 +68,14 @@ theorem parkedAfterAdmission (site : Site grow sig route) (linked : site.Linked 
     (afterFit : Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag)
       site.payload.val.value = true →
       rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok () →
-      Record.prepare site.start.store site.start.host.writer site.field.objects = .ok () → body) :
-    Cut site profile ready bindings body := by
-  let dispatch := specDispatch ready (host (grow := grow) bindings)
+      Record.prepare site.start.store site.start.host.writer site.field.objects = .ok () → body)
+    (impl : HostImpl (core3 grow) (HostState sig)) (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
+    Cut site profile ready bindings body impl := by
+  let dispatch := specDispatch ready impl
   obtain ⟨plan, compiled⟩ := linked.compiled
   obtain ⟨front, allTau, entry⟩ := route.parked bindings site.name site.functionType site.handle site.inst site.destination
     site.tree site.start site.thread profile ready linked.parked linked.calling linked.linked linked.caller linked.mayLeave
-    linked.destination linked.selected linked.admitted
+    linked.destination linked.selected linked.admitted impl embedder
   have onlyTau : ∀ label ∈ front, label = .tau := by
     intro label member
     have test := List.all_eq_true.mp allTau label member
@@ -132,7 +135,7 @@ theorem parkedAfterPlacement (site : Site grow sig route) (linked : site.Linked 
       site.payload.val.value = true →
       rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok () → body) :
     Cut site profile ready bindings body :=
-  parkedAfterAdmission site linked body (fun fits placed _ => afterFit fits placed)
+  parkedAfterAdmission site linked body (fun fits placed _ => afterFit fits placed) (host bindings) rfl
 
 theorem parkedAfterFit (site : Site grow sig route) (linked : site.Linked bindings) (body : Prop)
     (afterFit : Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag)

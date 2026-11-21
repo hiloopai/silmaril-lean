@@ -35,15 +35,17 @@ theorem GiveEffectRoute.parked {sig : Signature} {grow : SingleThreaded.GrowOrac
     (mayLeave : (start.store.inst? inst).any (·.mayLeave) = true)
     (destinationChecked : destination.check start.store = .ok ())
     (selected : Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree)
-    (admitted : route.admits destination tree) :
+    (admitted : route.admits destination tree)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
     ∃ labels, labels.all (· matches .tau) = true ∧
-      Machine.Steps profile ready (specDispatch ready (host (grow := grow) bindings)) start labels
+      Machine.Steps profile ready (specDispatch ready impl) start labels
         { start with host := start.host.enter name type (route.args handle)
                      ctl := ⟨thread, .prog (route.run destination inst tree start.host.nextTicket),
                        .core core continuation :: segments⟩ :: rest } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LinkedPayloadEffects.parked
     bindings name type handle route inst destination tree start thread profile ready parked calling linked caller
-    mayLeave destinationChecked selected admitted
+    mayLeave destinationChecked selected admitted impl embedder
 
 /-- The actual start steps give the effect view the compiler's value, layout,
 and exact receipt order. A failed dry run or width-dependent fit check reaches

@@ -1050,13 +1050,13 @@ private theorem parked_give_prefix {sig : Signature} {grow : SingleThreaded.Grow
     (mayLeave : (start.store.inst? inst).any (·.mayLeave) = true)
     (routed : route start.host.nextTicket bindings name type args = (admitGive inst selection >>= next))
     (checked : let entered := start.host.enter name type args
-      Plain.runBody selection start.store entered (some thread) = (start.store, entered, .ok (.ok selected))) :
+      Plain.runBody selection start.store entered (some thread) = (start.store, entered, .ok (.ok selected)))
+    (impl : HostImpl (core3 grow) (HostState sig)) (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
     ∃ labels, labels.all (· matches .tau) = true ∧
-      Machine.Steps profile ready (specDispatch ready (host (grow := grow) bindings)) start labels
+      Machine.Steps profile ready (specDispatch ready impl) start labels
         { start with host := start.host.enter name type args
                      ctl := ⟨thread, .prog (next (.ok selected) >>= fun words => pure (.flat words)),
                        .core core continuation :: segments⟩ :: rest } := by
-  let impl := host (grow := grow) bindings
   let entered := start.host.enter name type args
   let saved := .core core continuation :: segments
   let admission := admitGive inst selection
@@ -1077,7 +1077,7 @@ private theorem parked_give_prefix {sig : Signature} {grow : SingleThreaded.Grow
   have installed : calloutBody Limits.spec Quirks.none ready impl start.store thread (.embedder name type) args =
       .op .hostGet (fun state => .op (.hostSet (state.enter name type args)) (fun _ =>
         route state.nextTicket bindings name type args >>= fun words => pure (.flat words))) := by
-    simp only [calloutBody, leaves, ite_true]
+    simp only [calloutBody, leaves, ite_true, embedder]
     rfl
   have entry : Machine.Steps profile ready (specDispatch ready impl)
       { start with ctl := ⟨thread, .prog (calloutBody Limits.spec Quirks.none ready impl
@@ -1115,9 +1115,10 @@ theorem parked_give_payload {sig : Signature} {grow : SingleThreaded.GrowOracle}
     (mayLeave : (start.store.inst? inst).any (·.mayLeave) = true)
     (word : Stored.flatType pointer = ABI.pointerType destination.width)
     (destinationChecked : destination.check start.store = .ok ())
-    (selected : Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree) :
+    (selected : Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree)
+    (impl : HostImpl (core3 grow) (HostState sig)) (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
     ∃ labels, labels.all (· matches .tau) = true ∧
-      Machine.Steps profile ready (specDispatch ready (host (grow := grow) bindings)) start labels
+      Machine.Steps profile ready (specDispatch ready impl) start labels
         { start with host := start.host.enter name type [.int .i32 handle, pointer]
                      ctl := ⟨thread, .prog (do
                        let result ← Claims.Record.lowerPayloadRoot recordClaims Limits.spec Quirks.none
@@ -1164,7 +1165,7 @@ theorem parked_give_payload {sig : Signature} {grow : SingleThreaded.GrowOracle}
     rw [show Stored.Endpoints.Core.childFromHistory entered.writer.accepted handle = some tree from selected]
     rfl
   have actual := parked_give_prefix bindings name type _ start thread inst profile ready selection
-    (tree, flatNat pointer) next parked calling caller mayLeave routed checked
+    (tree, flatNat pointer) next parked calling caller mayLeave routed checked impl embedder
   simp only [next, Prog.bind_eq, Prog.bind_assoc] at actual ⊢
   exact actual
 
@@ -1180,9 +1181,10 @@ theorem parked_give_flat {sig : Signature} {grow : SingleThreaded.GrowOracle}
     (mayLeave : (start.store.inst? inst).any (·.mayLeave) = true)
     (destinationChecked : destination.check start.store = .ok ())
     (selected : Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree)
-    (schema : rootHasSchema tree payload = true) :
+    (schema : rootHasSchema tree payload = true)
+    (impl : HostImpl (core3 grow) (HostState sig)) (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
     ∃ labels, labels.all (· matches .tau) = true ∧
-      Machine.Steps profile ready (specDispatch ready (host (grow := grow) bindings)) start labels
+      Machine.Steps profile ready (specDispatch ready impl) start labels
         { start with host := start.host.enter name type [.int .i32 handle]
                      ctl := ⟨thread, .prog (do
                        let result ← Claims.Record.lowerPayloadRoot recordClaims Limits.spec Quirks.none
@@ -1228,7 +1230,7 @@ theorem parked_give_flat {sig : Signature} {grow : SingleThreaded.GrowOracle}
     simp [schema]
     rfl
   have actual := parked_give_prefix bindings name type _ start thread inst profile ready selection
-    tree next parked calling caller mayLeave routed checked
+    tree next parked calling caller mayLeave routed checked impl embedder
   simp only [next, reply, Prog.bind_eq, Prog.bind_assoc] at actual ⊢
   exact actual
 

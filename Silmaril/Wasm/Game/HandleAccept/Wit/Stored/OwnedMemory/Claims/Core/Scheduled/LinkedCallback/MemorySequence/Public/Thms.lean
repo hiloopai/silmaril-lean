@@ -83,20 +83,22 @@ theorem parked_recursive_flat {schema : TypeOf} (call : PayloadRoot.Site grow si
 map pair placement for the parked memory comparison. No per-child comparison
 or leaf coverage is a premise. -/
 theorem parked_compiled_memory (call : PayloadRoot.Site grow sig (.memory pointer)) (linked : call.Linked bindings)
-    (next : call.ReferenceNext) :
-    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedListTreeBody call depth next profile ready bindings) :=
+    (next : call.ReferenceNext) (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
+    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedListTreeBody call depth next profile ready bindings) impl :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PublicMemorySequence.parkedCompiledMemory
-    call linked next
+    call linked next impl embedder
 
 /-- The same compiler evidence supplies flat aggregate and selected-sum
 descent and recursive memory traversal at every reached collection return.
 This compares the body through the original reply continuation, not delivery. -/
 theorem parked_compiled_flat {schema : TypeOf} (call : PayloadRoot.Site grow sig (.flat schema)) (linked : call.Linked bindings)
-    (next : call.ReferenceNext) :
+    (next : call.ReferenceNext) (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
     ∃ flatDepth entryDepth, PayloadRoot.Cut call profile ready bindings
-      (ParkedFlatBody call flatDepth entryDepth next profile ready bindings) :=
+      (ParkedFlatBody call flatDepth entryDepth next profile ready bindings) impl :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PublicMemorySequence.parkedCompiledFlat
-    call linked next
+    call linked next impl embedder
 
 /-- At a reached successful reply with the original caller on top, both
 machines resume that Core thread on the reached store and the same ABI
@@ -111,9 +113,8 @@ theorem resume_returned_give {route : GiveEffectRoute} (call : PayloadRoot.Site 
     (checked : reached.ctl = check.control (call.reply (.ok value)))
     (canonical : reference.ctl = canon.control (call.referenceReply value)) :
     let reply := route.reply call.destination call.start.host.nextTicket (.ok value)
-    let dispatch := specDispatch ready (host bindings)
-    ∃ left right, Steps profile ready dispatch reached [.tau, .tau, .tau] left ∧
-      Steps profile ready dispatch reference [.tau] right ∧ left.store = right.store ∧
+    ∃ left right, (∀ dispatch, Steps profile ready dispatch reached [.tau, .tau, .tau] left) ∧
+      (∀ dispatch, Steps profile ready dispatch reference [.tau] right) ∧ left.store = right.store ∧
       left.host = reached.host.record reply.1 ∧ right.host = reference.host ∧
       List.Forall₂ (ReturnFrame.Related.Active older) left.ctl right.ctl := by
   obtain ⟨_, caller⟩ := call.reached_caller checked tracked

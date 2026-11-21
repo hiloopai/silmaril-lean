@@ -197,9 +197,11 @@ private theorem linkedAllocator {route : GiveEffectRoute} (call : PayloadRoot.Si
     split at compiled <;> contradiction
 
 theorem parkedListTree (call : PayloadRoot.Site grow sig (.memory pointer)) (linked : call.Linked bindings)
-    (depth : Nat) (next : call.ReferenceNext) (shape : ParkedListTreeShape depth call.field) :
-    PayloadRoot.Cut call profile ready bindings (ParkedListTreeBody call depth next profile ready bindings) := by
-  apply call.parked_after_placement linked
+    (depth : Nat) (next : call.ReferenceNext) (shape : ParkedListTreeShape depth call.field)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
+    PayloadRoot.Cut call profile ready bindings (ParkedListTreeBody call depth next profile ready bindings) impl := by
+  refine call.parked_after_placement linked _ ?_ impl embedder
   intro admitted placed
   obtain ⟨plan, compiled⟩ := linked.compiled
   have matched := OwnedMemory.Claims.Record.preflightValue_layout _ _ _ _ _ _ compiled
@@ -324,9 +326,11 @@ private theorem flatAllocatingRule {older : ReturnFrame.Substitutions (core3 gro
       · exact fun _ _ _ _ _ frame grown checked canonical => ends _ _ _ _ _ frame (growth.trans grown) checked canonical
 
 theorem parkedFlat {schema : TypeOf} (call : PayloadRoot.Site grow sig (.flat schema)) (linked : call.Linked bindings)
-    (flatDepth entryDepth : Nat) (next : call.ReferenceNext) (shape : ParkedFlatShape flatDepth entryDepth call.field) :
-    PayloadRoot.Cut call profile ready bindings (ParkedFlatBody call flatDepth entryDepth next profile ready bindings) := by
-  apply call.parked_after_fit linked
+    (flatDepth entryDepth : Nat) (next : call.ReferenceNext) (shape : ParkedFlatShape flatDepth entryDepth call.field)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
+    PayloadRoot.Cut call profile ready bindings (ParkedFlatBody call flatDepth entryDepth next profile ready bindings) impl := by
+  refine call.parked_after_fit linked _ ?_ impl embedder
   intro admitted
   obtain ⟨plan, compiled⟩ := linked.compiled
   have width := call.destination.check_width call.start.store linked.destination
@@ -488,17 +492,19 @@ private theorem compiledShapes (item : Field) (compiled : item.Emitted)
               (children child rfl) (memoryDepth + 1) flatDepth (by omega) (by omega)).2
 
 theorem parkedCompiledMemory (call : PayloadRoot.Site grow sig (.memory pointer)) (linked : call.Linked bindings)
-    (next : call.ReferenceNext) :
-    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedListTreeBody call depth next profile ready bindings) :=
+    (next : call.ReferenceNext) (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
+    ∃ depth, PayloadRoot.Cut call profile ready bindings (ParkedListTreeBody call depth next profile ready bindings) impl :=
   ⟨sizeOf call.field, parkedListTree call linked _ next
-    (compiledShapes call.field linked.emitted _ _ (Nat.le_refl _) (Nat.le_refl _)).1⟩
+    (compiledShapes call.field linked.emitted _ _ (Nat.le_refl _) (Nat.le_refl _)).1 impl embedder⟩
 
 theorem parkedCompiledFlat {schema : TypeOf} (call : PayloadRoot.Site grow sig (.flat schema)) (linked : call.Linked bindings)
-    (next : call.ReferenceNext) :
+    (next : call.ReferenceNext) (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder) :
     ∃ flatDepth entryDepth, PayloadRoot.Cut call profile ready bindings
-      (ParkedFlatBody call flatDepth entryDepth next profile ready bindings) :=
+      (ParkedFlatBody call flatDepth entryDepth next profile ready bindings) impl :=
   ⟨sizeOf call.field, sizeOf call.field, parkedFlat call linked _ _ next
-    (compiledShapes call.field linked.emitted _ _ (Nat.le_refl _) (Nat.le_refl _)).2⟩
+    (compiledShapes call.field linked.emitted _ _ (Nat.le_refl _) (Nat.le_refl _)).2 impl embedder⟩
 
 private theorem pairedCoreHead {route : GiveEffectRoute} (call : PayloadRoot.Site grow sig route)
     {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {checked canonical : List (Seg (core3 grow) (HostState sig))}
@@ -515,9 +521,8 @@ theorem resumeReturned {route : GiveEffectRoute} (call : PayloadRoot.Site grow s
     (checked : reached.ctl = check.control (call.reply (.ok value)))
     (canonical : reference.ctl = canon.control (call.referenceReply value)) :
     let reply := route.reply call.destination call.start.host.nextTicket (.ok value)
-    let dispatch := specDispatch ready (host bindings)
-    ∃ left right, Steps profile ready dispatch reached [.tau, .tau, .tau] left ∧
-      Steps profile ready dispatch reference [.tau] right ∧ left.store = right.store ∧
+    ∃ left right, (∀ dispatch, Steps profile ready dispatch reached [.tau, .tau, .tau] left) ∧
+      (∀ dispatch, Steps profile ready dispatch reference [.tau] right) ∧ left.store = right.store ∧
       left.host = reached.host.record reply.1 ∧ right.host = reference.host ∧
       List.Forall₂ (ReturnFrame.Related.Active older) left.ctl right.ctl := by
   have paired := frame.frames
@@ -526,8 +531,8 @@ theorem resumeReturned {route : GiveEffectRoute} (call : PayloadRoot.Site grow s
   let reply := route.reply call.destination call.start.host.nextTicket (.ok value)
   rw [Cursor.control, caller] at checked
   rw [Cursor.control, referenceCaller] at canonical
-  have checkRun := Plain.give_completion_steps (profile := profile) (ready := ready) (bindings := bindings) reply checked
-  have referenceRun : Steps profile ready (specDispatch ready (host bindings)) reference [.tau]
+  have checkRun dispatch := Plain.give_completion_steps (profile := profile) (ready := ready) (dispatch := dispatch) reply checked
+  have referenceRun (dispatch) : Steps profile ready dispatch reference [.tau]
       { reference with ctl := ⟨canon.thread, .core ((core3 grow).resume reference.store.core call.core (.values reply.2))
         call.resume, referenceSegments⟩ :: canon.rest } := .cons (.popCore canonical) (.refl _)
   refine ⟨_, _, checkRun, referenceRun, frame.store, rfl, rfl, ?_⟩
