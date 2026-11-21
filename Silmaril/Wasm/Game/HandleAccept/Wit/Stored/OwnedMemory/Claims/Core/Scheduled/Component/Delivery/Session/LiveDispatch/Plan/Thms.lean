@@ -160,6 +160,15 @@ theorem linked_flat_exit {schema : Stored.TypeOf} (site : PayloadRoot.Site grow 
         ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels value reached reference)) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedFlatExit site linked
 
+/-- At a reached Core give with successful ABI selection, compute the
+compiler outcome and obtain the corresponding public checked path. If the
+body is entered, its recursive continuation comes from the actual compiler,
+without a supplied body comparison or replay plan. -/
+theorem CoreGiveRequest.Selected.linked_admission {route : GiveEffectRoute} {request : CoreGiveRequest bindings start}
+    (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)} :
+    ReachedGiveAdmission profile ready callees selection :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.reachedGiveAdmission selection
+
 /-- Classify the actual matched body prefix of a typed refusal or canonical
 trap. Reaching a refusal does not pop a canonical caller or emit its checked
 error there. A canonical trap is compared with its reached store, not the

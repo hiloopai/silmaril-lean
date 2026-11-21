@@ -219,4 +219,31 @@ inductive RootAdmission (bindings : List (Binding sig)) (profile : ProfileKind) 
   | entered {labels} (entry : Transition profile ready base site.start (.give route .entered) labels site.checked)
       (compared : body) : RootAdmission bindings profile ready base site body
 
+/-- Entry and the recursive success continuation for either public ABI under
+the worker's linked dispatcher. This supplies no callback return or progress. -/
+def LinkedRootExit (bindings : List (Binding sig)) (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (callees : List (ComponentCall.Callee sig)) (route : GiveEffectRoute) : PayloadRoot.Site grow sig route → Prop :=
+  match route with
+  | .memory _ => fun site => ∃ depth,
+    RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedMemoryBody site depth profile ready bindings (fun reached reference =>
+        ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels () reached reference))
+  | .flat _ => fun site => ∃ flatDepth entryDepth,
+    RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedFlatResult site flatDepth entryDepth profile ready bindings (fun value reached reference =>
+        ∃ entryLabels, LinkedGiveExit bindings profile ready callees site entryLabels value reached reference))
+
+/-- Compiler rejection has no emitter or canonical typed error. Success
+supplies the real compiled site, whose later entry guards still execute. -/
+inductive ReachedGiveAdmission (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (callees : List (ComponentCall.Callee sig)) {bindings : List (Binding sig)} {start : Config (core3 grow) (HostState sig)}
+    {request : CoreGiveRequest bindings start} {route : GiveEffectRoute} (selection : request.Selected route) : Prop where
+  | refused {issue count} (preflight : selection.preflight = .error issue)
+      (checked : Steps profile ready (specDispatch ready (ComponentCall.hostWithComponent bindings callees))
+        start (List.replicate count .tau) (selection.compilerRefused issue))
+  | compiled {tag payload arity children field plan} (preflight : selection.preflight = .ok (field, plan))
+      (root : selection.tree = .tag ⟨tag, payload⟩ arity children)
+      (linked : (selection.site tag payload arity children field).Linked bindings)
+      (exit : LinkedRootExit bindings profile ready callees route (selection.site tag payload arity children field))
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LiveDispatch

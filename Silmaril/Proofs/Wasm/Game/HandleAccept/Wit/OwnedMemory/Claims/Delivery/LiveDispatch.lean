@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Plain.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadEffects.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
@@ -238,6 +239,220 @@ theorem dispatchUnchanged {call : Call (core3 grow)} (unmodified : Unchanged bin
   | _ => rfl
 
 variable {start finish : Config (core3 grow) (HostState sig)}
+
+private theorem resolveName {name : String} {kind : V1.FuncType} {binding : Binding sig}
+    (found : resolveBinding bindings name kind = .ok binding) : binding.name = name := by
+  unfold resolveBinding at found
+  cases hits : bindings.filter (·.name == name) with
+  | nil => simp [hits] at found
+  | cons candidate rest =>
+    cases rest with
+    | cons => simp [hits] at found
+    | nil =>
+      simp only [hits] at found
+      split at found
+      · contradiction
+      · obtain rfl := Except.ok.inj found
+        have member : candidate ∈ bindings.filter (·.name == name) := by simp [hits]
+        exact beq_iff_eq.mp (List.mem_filter.mp member).2
+
+private theorem resolvedGive {name : String} {kind : V1.FuncType} {inst : InstId} {destination : RecordDestination}
+    {schema : Option Stored.TypeOf}
+    (selected : selectBinding bindings name kind = some (inst, destination, schema)) :
+    resolveBinding bindings name kind = .ok ⟨name, inst, schema.elim (.givePayload destination) (.giveFlat destination)⟩ := by
+  cases found : resolveBinding bindings name kind with
+  | error => simp [selectBinding, found] at selected
+  | ok binding =>
+    have named := resolveName found
+    cases binding with
+    | mk key target action =>
+      change key = name at named
+      subst key
+      cases action <;> simp [selectBinding, found] at selected
+      case givePayload =>
+        obtain ⟨rfl, rfl, rfl⟩ := selected
+        rfl
+      case giveFlat =>
+        obtain ⟨rfl, rfl, rfl⟩ := selected
+        rfl
+
+private theorem selectResolved {name : String} {kind : V1.FuncType}
+    (changed : selectBinding bindings name kind ≠ none) :
+    ∃ inst destination schema, resolveBinding bindings name kind =
+      .ok ⟨name, inst, Option.elim schema (.givePayload destination) (.giveFlat destination)⟩ := by
+  cases selected : selectBinding bindings name kind with
+  | none => exact (changed selected).elim
+  | some result =>
+    obtain ⟨inst, destination, schema⟩ := result
+    exact ⟨inst, destination, schema, resolvedGive selected⟩
+
+theorem classifyGiveRequest {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))} {label}
+    (install : GiveInstall bindings dispatch start label finish) :
+    Nonempty (CoreGiveRequest bindings start) ∨ DirectGiveAt bindings start := by
+  cases install with
+  | @direct thread call next frames rest focused changed =>
+    cases call <;> try exact (changed trivial).elim
+    case hostCallout callee args =>
+      cases callee <;> try exact (changed trivial).elim
+      case embedder name kind =>
+        obtain ⟨inst, destination, schema, linked⟩ := selectResolved changed
+        exact .inr ⟨name, kind, args, thread, next, frames, rest, inst, destination, schema, focused, linked⟩
+  | @core thread core next frames rest callee args focused calling changed =>
+    cases callee <;> try exact (changed trivial).elim
+    case embedder name kind =>
+      obtain ⟨inst, destination, schema, linked⟩ := selectResolved changed
+      exact .inl ⟨⟨name, kind, args, inst, destination, schema, thread, core, next, frames, rest, focused, calling, linked⟩⟩
+
+private theorem selectedMemory {destination : RecordDestination} {args : List FlatValue} {thread : Option ThreadId}
+    {tree : Stored.OwnedMemory.Tree sig} {address : Nat}
+    (evaluation : Plain.runBody (selectMemoryDestination destination args) start.store start.host (some thread) =
+      (start.store, start.host, .ok (.ok (tree, address)))) :
+    ∃ handle pointer, args = (.memory pointer : GiveEffectRoute).args handle ∧
+      (.memory pointer : GiveEffectRoute).admits destination tree ∧ destination.check start.store = .ok () ∧
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree ∧ address = flatNat pointer := by
+  unfold selectMemoryDestination at evaluation
+  split at evaluation
+  next handle pointer =>
+    by_cases width : Stored.flatType pointer = ABI.pointerType destination.width
+    · simp only [width, bne_self_eq_false, Bool.false_eq_true, ite_false, Prog.bind_eq, readStore] at evaluation
+      cases checked : destination.check start.store with
+      | error => simp [checked, Prog.pure_eq, Plain.runBody] at evaluation
+      | ok checkedValue =>
+        cases checkedValue
+        rw [checked] at evaluation
+        simp only [readSelection] at evaluation
+        cases chosen : Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle with
+        | none => simp [chosen, Prog.pure_eq, Plain.runBody] at evaluation
+        | some root =>
+          simp [chosen, Prog.pure_eq, Plain.runBody] at evaluation
+          obtain ⟨rfl, rfl⟩ := evaluation
+          exact ⟨handle, pointer, rfl, width, rfl, chosen, rfl⟩
+    · simp [width, Prog.pure_eq, Plain.runBody] at evaluation
+  next => simp [Prog.pure_eq, Plain.runBody] at evaluation
+
+private theorem selectedFlat {destination : RecordDestination} {args : List FlatValue} {thread : Option ThreadId}
+    {tree : Stored.OwnedMemory.Tree sig} {schema : Stored.TypeOf}
+    (evaluation : Plain.runBody (selectFlatDestination destination schema args) start.store start.host (some thread) =
+      (start.store, start.host, .ok (.ok tree))) :
+    ∃ handle, args = (.flat schema : GiveEffectRoute).args handle ∧
+      (.flat schema : GiveEffectRoute).admits destination tree ∧ destination.check start.store = .ok () ∧
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle = some tree := by
+  unfold selectFlatDestination at evaluation
+  split at evaluation
+  next handle =>
+    simp only [Prog.bind_eq, readStore] at evaluation
+    cases checked : destination.check start.store with
+    | error => simp [checked, Prog.pure_eq, Plain.runBody] at evaluation
+    | ok checkedValue =>
+      cases checkedValue
+      rw [checked] at evaluation
+      simp only [readSelection] at evaluation
+      cases chosen : Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle with
+      | none => simp [chosen, Prog.pure_eq, Plain.runBody] at evaluation
+      | some root =>
+        by_cases matchesSchema : rootHasSchema root schema = true
+        · simp [chosen, matchesSchema, Prog.pure_eq, Plain.runBody] at evaluation
+          subst root
+          exact ⟨handle, rfl, matchesSchema, rfl, chosen⟩
+        · simp [chosen, Bool.eq_false_iff.mpr matchesSchema, Prog.pure_eq, Plain.runBody] at evaluation
+  next => simp [Prog.pure_eq, Plain.runBody] at evaluation
+
+private theorem admitSuccess {Result : Type} {inst : InstId} {thread : Option ThreadId}
+    {selection : Session grow sig (Except Issue Result)} {chosen : Result}
+    (evaluation : Plain.runBody (admit inst selection) start.store start.host (some thread) =
+      (start.store, start.host, .ok (.ok chosen))) :
+    Plain.callerInstance start.store thread = .ok (some inst) ∧
+      (start.store.inst? inst).any (·.mayLeave) = true ∧
+      Plain.runBody selection start.store start.host (some thread) = (start.store, start.host, .ok (.ok chosen)) := by
+  simp only [admit, Prog.bind_eq, Plain.runBody_currentInst] at evaluation
+  cases caller : Plain.callerInstance start.store thread with
+  | error => simp [caller] at evaluation
+  | ok actual =>
+    by_cases same : actual = some inst
+    · subst actual
+      by_cases mayLeave : (start.store.inst? inst).any (·.mayLeave) = true
+      · exact ⟨rfl, mayLeave, by simpa [caller, readStore, mayLeave] using evaluation⟩
+      · simp [caller, readStore, Bool.eq_false_iff.mpr mayLeave, Prog.pure_eq, Plain.runBody] at evaluation
+    · simp [caller, readStore, bne_iff_ne.mpr same, Prog.pure_eq, Plain.runBody] at evaluation
+
+theorem memorySelection (request : CoreGiveRequest bindings start) (memory : request.schema = none)
+    {tree : Stored.OwnedMemory.Tree sig} {address : Nat}
+    (evaluation : Plain.runBody (admit request.inst (selectMemoryDestination request.destination request.args))
+      start.store start.host (some request.thread) = (start.store, start.host, .ok (.ok (tree, address)))) :
+    ∃ (pointer : FlatValue) (selection : request.Selected (.memory pointer)), selection.tree = tree ∧ flatNat pointer = address := by
+  obtain ⟨caller, mayLeave, picked⟩ := admitSuccess evaluation
+  obtain ⟨handle, pointer, args, admitted, destination, selected, addressEq⟩ := selectedMemory picked
+  refine ⟨pointer, ⟨handle, tree, args, ?_, caller, mayLeave, destination, selected, admitted⟩, rfl, addressEq.symm⟩
+  simpa [memory, GiveEffectRoute.action] using request.linked
+
+theorem flatSelection (request : CoreGiveRequest bindings start) {schema : Stored.TypeOf} (flat : request.schema = some schema)
+    {tree : Stored.OwnedMemory.Tree sig}
+    (evaluation : Plain.runBody (admit request.inst (selectFlatDestination request.destination schema request.args))
+      start.store start.host (some request.thread) = (start.store, start.host, .ok (.ok tree))) :
+    ∃ selection : request.Selected (.flat schema), selection.tree = tree := by
+  obtain ⟨caller, mayLeave, picked⟩ := admitSuccess evaluation
+  obtain ⟨handle, args, admitted, destination, selected⟩ := selectedFlat picked
+  refine ⟨⟨handle, tree, args, ?_, caller, mayLeave, destination, selected, admitted⟩, rfl⟩
+  simpa [flat, GiveEffectRoute.action] using request.linked
+
+theorem selectionLinked {request : CoreGiveRequest bindings start} (selection : request.Selected route)
+    {tag : sig.Tag} {payload : Stored.OwnedMemory.Payload (sig.payload tag)} {arity : Nat}
+    {children : Fin arity → Stored.OwnedMemory.Tree sig} {field : Stored.Endpoints.RecordLower.Field} {plan}
+    (picked : selection.tree = .tag ⟨tag, payload⟩ arity children)
+    (preflight : Stored.OwnedMemory.Claims.Record.preflightValue (request.destination.context (grow := grow) request.inst) (sig.payload tag)
+      payload route.output = .ok (field, plan)) :
+    (selection.site tag payload arity children field).Linked bindings := by
+  refine ⟨request.focused, ?_, selection.linked, selection.caller, selection.mayLeave, selection.destination,
+    ?_, ?_, ⟨plan, preflight⟩⟩
+  · simpa only [CoreGiveRequest.Selected.site, ← selection.args] using request.calling
+  · simpa only [picked, CoreGiveRequest.Selected.site, Site.tree] using selection.selected
+  · simpa only [picked, CoreGiveRequest.Selected.site, Site.tree] using selection.admitted
+
+theorem compilerSuccess {request : CoreGiveRequest bindings start} (selection : request.Selected route)
+    {field : Stored.Endpoints.RecordLower.Field} {plan}
+    (compiled : selection.preflight = .ok (field, plan)) :
+    ∃ (tag : sig.Tag) (payload : Stored.OwnedMemory.Payload (sig.payload tag)) (arity : Nat)
+      (children : Fin arity → Stored.OwnedMemory.Tree sig),
+      selection.tree = .tag ⟨tag, payload⟩ arity children ∧
+      (selection.site tag payload arity children field).Linked bindings := by
+  cases picked : selection.tree with
+  | atom impossible => exact impossible.elim
+  | tag value arity children =>
+    obtain ⟨tag, payload⟩ := value
+    simp only [CoreGiveRequest.Selected.preflight, picked] at compiled
+    exact ⟨tag, payload, arity, children, rfl, selectionLinked selection picked compiled⟩
+
+theorem compilerRefusal {request : CoreGiveRequest bindings start} (selection : request.Selected route)
+    {issue : Stored.Endpoints.RecordLower.Issue} (refused : selection.preflight = .error issue)
+    (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (Stored.OwnedMemory.Claims.Core.Scheduled.host (grow := grow) bindings).embedder) :
+    ∃ count, Steps profile ready (specDispatch ready impl) start (List.replicate count .tau) (selection.compilerRefused issue) := by
+  have calling := request.calling
+  rw [selection.args] at calling
+  obtain ⟨front, silent, entry⟩ := GiveEffectRoute.parked bindings request.name request.kind selection.handle route request.inst
+    request.destination selection.tree start request.thread profile ready request.focused calling selection.linked
+    selection.caller selection.mayLeave selection.destination selection.selected selection.admitted impl embedder
+  have replyOnly : route.run (grow := grow) request.destination request.inst selection.tree start.host.nextTicket =
+      (do return .flat (← writeCompletion (route.reply request.destination start.host.nextTicket (.error issue)))) := by
+    cases chosen : selection.tree with
+    | atom impossible => exact impossible.elim
+    | tag value arity children =>
+      simp only [CoreGiveRequest.Selected.preflight, chosen] at refused
+      simp only [GiveEffectRoute.run, Stored.OwnedMemory.Claims.Record.Effects.lowerTree,
+        Stored.Endpoints.RecordLower.Internal.lowerWithPlan, refused, Prog.pure_eq, Prog.bind_eq, Prog.pure_bind']
+  rw [replyOnly] at entry
+  have completed := Plain.give_completion_steps (profile := profile) (ready := ready) (dispatch := specDispatch ready impl)
+    (start := { start with host := start.host.enter request.name request.kind (route.args selection.handle)
+                           ctl := ⟨request.thread, .prog (route.run request.destination request.inst selection.tree start.host.nextTicket),
+                             .core request.core request.next :: request.frames⟩ :: request.rest })
+    (route.reply request.destination start.host.nextTicket (.error issue)) (by rw [replyOnly])
+  rw [replyOnly] at completed
+  have replicated : front = List.replicate front.length .tau := List.eq_replicate_length.mpr (fun label member => by
+    have tau := List.all_eq_true.mp silent label member
+    cases label <;> first | rfl | contradiction)
+  refine ⟨front.length + 3, ?_⟩
+  rw [List.replicate_add, ← replicated]
+  exact append entry completed
 
 theorem classifyStep {label} (step : Step profile ready (specDispatch ready base) start label finish) :
     Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) start label finish ∨

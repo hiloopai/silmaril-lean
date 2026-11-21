@@ -370,6 +370,22 @@ theorem linkedFlatExit {schema : Stored.TypeOf} (site : PayloadRoot.Site grow si
     (composeLinkedReturn (profile := profile) (ready := ready) site linked (callees := callees))
   exact ⟨flatDepth, entryDepth, rootAdmission linked cut⟩
 
+theorem reachedGiveAdmission {route : GiveEffectRoute} {request : CoreGiveRequest bindings start}
+    (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)} :
+    ReachedGiveAdmission profile ready callees selection := by
+  cases preflight : selection.preflight with
+  | error issue =>
+    obtain ⟨count, checked⟩ := selection.compiler_refusal (profile := profile) (ready := ready) preflight
+      (ComponentCall.hostWithComponent bindings callees) rfl
+    exact .refused preflight checked
+  | ok result =>
+    obtain ⟨field, plan⟩ := result
+    obtain ⟨tag, payload, arity, children, root, linked⟩ := selection.compiler_success preflight
+    refine .compiled preflight root linked ?_
+    cases route with
+    | memory pointer => exact linkedMemoryExit _ linked
+    | flat schema => exact linkedFlatExit _ linked
+
 theorem linkedGiveStop {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
     {callees : List (ComponentCall.Callee sig)} {entryLabels checkLabels canonLabels reached reference check phase}
     (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)

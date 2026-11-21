@@ -102,6 +102,63 @@ theorem LiveDispatch.GiveInstall.step {dispatch : Call (core3 grow) → Session 
   | direct focused _ => exact .call focused
   | core focused calling _ => exact .coreCallout focused calling
 
+/-- Recover the exact nominal binding, arguments, and frames at the reached
+installation. A direct program call is not disguised as a Core caller. -/
+theorem LiveDispatch.GiveInstall.request {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))} {label}
+    (install : LiveDispatch.GiveInstall bindings dispatch start label finish) :
+    Nonempty (LiveDispatch.CoreGiveRequest bindings start) ∨ LiveDispatch.DirectGiveAt bindings start :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.classifyGiveRequest install
+
+/-- Invert successful memory admission at the actual reached request. -/
+theorem LiveDispatch.CoreGiveRequest.memory_selection (request : LiveDispatch.CoreGiveRequest bindings start)
+    (memory : request.schema = none) {tree : Stored.OwnedMemory.Tree sig} {address : Nat}
+    (evaluation : Plain.runBody (LiveDispatch.admit request.inst (selectMemoryDestination request.destination request.args))
+      start.store start.host (some request.thread) = (start.store, start.host, .ok (.ok (tree, address)))) :
+    ∃ (pointer : FlatValue) (selection : request.Selected (.memory pointer)), selection.tree = tree ∧ flatNat pointer = address :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.memorySelection request memory evaluation
+
+/-- Invert successful flat admission at the actual reached request. -/
+theorem LiveDispatch.CoreGiveRequest.flat_selection (request : LiveDispatch.CoreGiveRequest bindings start)
+    {schema : Stored.TypeOf} (flat : request.schema = some schema) {tree : Stored.OwnedMemory.Tree sig}
+    (evaluation : Plain.runBody (LiveDispatch.admit request.inst
+      (selectFlatDestination request.destination schema request.args)) start.store start.host (some request.thread) =
+      (start.store, start.host, .ok (.ok tree))) :
+    ∃ selection : request.Selected (.flat schema), selection.tree = tree :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.flatSelection request flat evaluation
+
+/-- Turn the actual selected root and successful compiler result into a
+linked recursive site. No emitter readiness or live claim validity is assumed. -/
+theorem LiveDispatch.CoreGiveRequest.Selected.linked_site {request : LiveDispatch.CoreGiveRequest bindings start}
+    (selection : request.Selected route) {tag : sig.Tag} {payload : Stored.OwnedMemory.Payload (sig.payload tag)}
+    {arity : Nat} {children : Fin arity → Stored.OwnedMemory.Tree sig} {field : Stored.Endpoints.RecordLower.Field} {plan}
+    (picked : selection.tree = .tag ⟨tag, payload⟩ arity children)
+    (preflight : Record.preflightValue (request.destination.context (grow := grow) request.inst) (sig.payload tag)
+      payload route.output = .ok (field, plan)) :
+    (selection.site tag payload arity children field).Linked bindings :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.selectionLinked selection picked preflight
+
+/-- Recover the exact tagged root and recursive site when the compiler check
+succeeds. The selected tag and its payload are not caller-supplied. -/
+theorem LiveDispatch.CoreGiveRequest.Selected.compiler_success {request : LiveDispatch.CoreGiveRequest bindings start}
+    (selection : request.Selected route) {field : Stored.Endpoints.RecordLower.Field} {plan}
+    (compiled : selection.preflight = .ok (field, plan)) :
+    ∃ (tag : sig.Tag) (payload : Stored.OwnedMemory.Payload (sig.payload tag)) (arity : Nat)
+      (children : Fin arity → Stored.OwnedMemory.Tree sig),
+      selection.tree = .tag ⟨tag, payload⟩ arity children ∧
+      (selection.site tag payload arity children field).Linked bindings :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.compilerSuccess selection compiled
+
+/-- A failed compiler check reaches the actual checked status reply without
+entering the emitter. This does not run the canonical body or synthesize a
+canonical error. The parked caller resumes against the original store. -/
+theorem LiveDispatch.CoreGiveRequest.Selected.compiler_refusal {request : LiveDispatch.CoreGiveRequest bindings start}
+    (selection : request.Selected route) {issue : Stored.Endpoints.RecordLower.Issue}
+    (refused : selection.preflight = .error issue)
+    (impl : HostImpl (core3 grow) (HostState sig) := Core.Scheduled.host bindings)
+    (embedder : impl.embedder = (Core.Scheduled.host (grow := grow) bindings).embedder := by rfl) :
+    ∃ count, Steps profile ready (specDispatch ready impl) start (List.replicate count .tau) (selection.compilerRefused issue) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.compilerRefusal selection refused impl embedder
+
 /-- Enter on the live root and compare the reached prefix of the nested body,
 even if it has not returned or executes another public give. Further requests
 are exposed at their real caller and with all older frames still paired. -/
