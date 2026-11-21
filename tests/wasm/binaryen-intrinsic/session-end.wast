@@ -1,0 +1,5 @@
+(assert_return (invoke "choose" (i32.const 0) (i64.const 0)) (i32.const 7))
+(assert_return (invoke "choose" (i32.const 1) (i64.const 42)) (i32.const 42))
+(assert_trap (invoke "choose" (i32.const 1) (i64.const 0)) "unreachable")
+(assert_return (invoke "branch" (i32.const 0)))
+(assert_return (invoke "branch" (i32.const 1)))
