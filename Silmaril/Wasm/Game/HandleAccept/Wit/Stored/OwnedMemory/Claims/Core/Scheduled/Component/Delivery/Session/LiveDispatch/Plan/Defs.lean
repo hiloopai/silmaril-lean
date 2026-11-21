@@ -621,54 +621,10 @@ abbrev LinkedMapListBody (profile : ProfileKind) (ready : HostReady (HostState s
 inductive NominalCollectionType : Stored.TypeOf → Prop where
   | leaf {type} : NominalElement type → NominalCollectionType type
   | list {element} : NominalCollectionType element → NominalCollectionType (.list element)
-  | map {key element} : PayloadPrefix.LocalDataType (.prim key.toPrimitive) → NominalCollectionType element →
-      NominalCollectionType (.map key element)
+  | map {key element} : NominalCollectionType element → NominalCollectionType (.map key element)
 
 def NominalCollectionRoot : Stored.TypeOf → Prop
   | .list _ | .map .. => True
-  | _ => False
-
-/-- Recursion follows the declared element type, not the number of reached
-allocator returns. List and map nodes use the same live collection entry. -/
-def liveCollectionField (profile : ProfileKind) (ready : HostReady (HostState sig))
-    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
-    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) (destination : RecordDestination) (inst : InstId) :
-    Stored.TypeOf → LinkedCallback.MemorySequence.FieldComparison grow sig
-  | .list element => fun item index address left right check canon checkNext canonNext finish =>
-    ∃ entries, item = .dynamic (.list element) element entries ∧
-      LiveCollectionEntry profile ready base bindings older destination inst (.list element) element entries index
-        (.memory address) checkNext canonNext left right check canon
-        (liveListTail profile ready base bindings destination inst element entries index (.memory address)
-          (liveCollectionField profile ready base bindings older destination inst element) checkNext canonNext (fun () => finish))
-  | .map key element => fun item index address left right check canon checkNext canonNext finish =>
-    let entryType : Stored.TypeOf := .record (ABI.mapEntryFields key element)
-    ∃ entries, item = .dynamic (.map key element) entryType entries ∧
-      LiveCollectionEntry profile ready base bindings older destination inst (.map key element) entryType entries index
-        (.memory address) checkNext canonNext left right check canon
-        (liveMapTail profile ready base bindings destination inst key element entries index (.memory address)
-          (liveCollectionField profile ready base bindings older destination inst element) checkNext canonNext (fun () => finish))
-  | _ => fun item index address left right check canon checkNext canonNext finish =>
-    LinkedCallback.HandleFieldThenBetween profile ready (specDispatch ready base)
-      (specDispatch ready (LiveDispatch.host bindings base)) item index (.memory address) left right check canon
-      checkNext canonNext (fun () => finish)
-termination_by structural type => type
-
-/-- Compare the actual public body for either route and arbitrary mixed
-list/map nesting with non-string keys and nominal terminal fields. -/
-def LinkedRecursiveCollectionBody (profile : ProfileKind) (ready : HostReady (HostState sig))
-    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
-    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
-    (site : PayloadRoot.Site grow sig route) (incoming : Config (core3 grow) (HostState sig)) : Stored.TypeOf → Prop
-  | .list element =>
-    LinkedCollectionBody profile ready base bindings older site (.list element) element incoming (fun entries =>
-      liveListTail profile ready base bindings site.destination site.inst element entries 0 route.output
-        (liveCollectionField profile ready base bindings older site.destination site.inst element)
-        site.reply site.referenceReply (fun _ _ _ _ _ => True))
-  | .map key element =>
-    LinkedCollectionBody profile ready base bindings older site (.map key element) (.record (ABI.mapEntryFields key element)) incoming
-      (fun entries => liveMapTail profile ready base bindings site.destination site.inst key element entries 0 route.output
-        (liveCollectionField profile ready base bindings older site.destination site.inst element)
-        site.reply site.referenceReply (fun _ _ _ _ _ => True))
   | _ => False
 
 /-- A reached map key under the live dispatchers, from field placement
@@ -754,16 +710,67 @@ def LiveStringMapEntryThen (profile : ProfileKind) (ready : HostReady (HostState
               ∃ widthRead, visible widthRead = [] ∧ RetainsActiveSlots profile ready canonDispatch canonEnd widthRead atValue ∧
                 compare value 1 valuePtr checkEnd atValue cursor peer report canonNext finish)
 
+def liveCollectionMapEntry (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
+    (output : Stored.Lower.Output) : MapEntryComparison grow sig :=
+  if key = .string then LiveStringMapEntryThen profile ready base bindings older destination inst element output
+  else LiveMapEntryThen profile ready base bindings destination inst
+    (Stored.Endpoints.RecordLower.CanonicalTree.EntryMode.forOutput destination.width (.map key element) output)
+
+/-- Recursion follows the declared type, not the number of reached allocator
+returns. Every map selects the actual key rule before visiting its value. -/
+def liveCollectionField (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) (destination : RecordDestination) (inst : InstId) :
+    Stored.TypeOf → LinkedCallback.MemorySequence.FieldComparison grow sig
+  | .list element => fun item index address left right check canon checkNext canonNext finish =>
+    ∃ entries, item = .dynamic (.list element) element entries ∧
+      LiveCollectionEntry profile ready base bindings older destination inst (.list element) element entries index
+        (.memory address) checkNext canonNext left right check canon
+        (liveListTail profile ready base bindings destination inst element entries index (.memory address)
+          (liveCollectionField profile ready base bindings older destination inst element) checkNext canonNext (fun () => finish))
+  | .map key element => fun item index address left right check canon checkNext canonNext finish =>
+    let entryType : Stored.TypeOf := .record (ABI.mapEntryFields key element)
+    let output := Stored.Lower.Output.memory address
+    ∃ entries, item = .dynamic (.map key element) entryType entries ∧
+      LiveCollectionEntry profile ready base bindings older destination inst (.map key element) entryType entries index
+        output checkNext canonNext left right check canon
+        (liveMapTailWith profile ready base bindings (liveCollectionMapEntry profile ready base bindings older destination inst key element output)
+          destination inst key element entries index output
+          (liveCollectionField profile ready base bindings older destination inst element) checkNext canonNext (fun () => finish))
+  | _ => fun item index address left right check canon checkNext canonNext finish =>
+    LinkedCallback.HandleFieldThenBetween profile ready (specDispatch ready base)
+      (specDispatch ready (LiveDispatch.host bindings base)) item index (.memory address) left right check canon
+      checkNext canonNext (fun () => finish)
+termination_by structural type => type
+
+/-- Compare the actual public body of either route for arbitrary list/map
+nesting with all WIT key types and nominal terminal fields. -/
+def LinkedRecursiveCollectionBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (incoming : Config (core3 grow) (HostState sig)) : Stored.TypeOf → Prop
+  | .list element =>
+    LinkedCollectionBody profile ready base bindings older site (.list element) element incoming (fun entries =>
+      liveListTail profile ready base bindings site.destination site.inst element entries 0 route.output
+        (liveCollectionField profile ready base bindings older site.destination site.inst element)
+        site.reply site.referenceReply (fun _ _ _ _ _ => True))
+  | .map key element =>
+    LinkedCollectionBody profile ready base bindings older site (.map key element) (.record (ABI.mapEntryFields key element)) incoming
+      (fun entries => liveMapTailWith profile ready base bindings
+        (liveCollectionMapEntry profile ready base bindings older site.destination site.inst key element route.output)
+        site.destination site.inst key element entries 0 route.output
+        (liveCollectionField profile ready base bindings older site.destination site.inst element)
+        site.reply site.referenceReply (fun _ _ _ _ _ => True))
+  | _ => False
+
 abbrev LinkedStringRecursiveMapBody (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
     (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (incoming : Config (core3 grow) (HostState sig)) : Prop :=
-  LinkedCollectionBody profile ready base bindings older site (.map .string element) (.record (ABI.mapEntryFields .string element)) incoming
-    (fun entries => liveMapTailWith profile ready base bindings
-      (LiveStringMapEntryThen profile ready base bindings older site.destination site.inst element route.output)
-      site.destination site.inst .string element entries 0 route.output
-      (liveCollectionField profile ready base bindings older site.destination site.inst element)
-      site.reply site.referenceReply (fun _ _ _ _ _ => True))
+  LinkedRecursiveCollectionBody profile ready base bindings older site incoming (.map .string element)
 
 /-- Compare the descriptor and reached nominal value at the end of a
 string-key replay. Late refusal leaves the value program unexecuted, even

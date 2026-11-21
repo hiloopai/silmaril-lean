@@ -171,10 +171,10 @@ theorem linked_map_list_body {route : GiveEffectRoute} (site : PayloadRoot.Site 
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedMapListBody
     site linked key keyData depth element family schema paired selected embedder
 
-/-- The linked compiler derives the children of arbitrarily interleaved
-list and map nodes on both public routes. Each reached allocator return
-uses its own live range and reservation checks; terminal nominal fields
-still transfer only after their reached checks. -/
+/-- The linked compiler derives children of arbitrarily interleaved list
+and map nodes on both public routes, including allocating string keys at
+any depth. Reached returns run live range and reservation checks; nominal
+terminal fields transfer only after their reached checks. -/
 theorem linked_recursive_collection_body {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) {type : Stored.TypeOf} (family : NominalCollectionType type)
     (collection : NominalCollectionRoot type) (schema : sig.payload site.tag = type)

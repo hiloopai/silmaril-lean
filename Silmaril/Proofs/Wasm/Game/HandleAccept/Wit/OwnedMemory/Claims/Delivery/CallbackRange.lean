@@ -1616,42 +1616,6 @@ private theorem mapCompiled {item : Field} {key : WIT.KeyType} {element : Stored
   | @endpoint channel _ _ => cases channel <;> cases matched
   | primitive | enum | flags | context | owner | aggregate | fixed | list | sum => cases matched
 
-private theorem collectionFieldRule (destination : RecordDestination) (inst : InstId)
-    {schema : Stored.TypeOf} (family : NominalCollectionType schema) (item : Field) (address : Nat)
-    (matched : item.LayoutMatches schema) (emitted : item.Emitted)
-    {origin : CStore (core3 grow)}
-    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
-    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} :
-    FieldRule (liveCollectionField profile ready base bindings older destination inst schema) older origin destination inst item address := by
-  induction family generalizing item address origin with
-  | leaf nominal =>
-    intro index checkNext canonNext left right check canon frame growth checkAt canonAt finish ends
-    have leaf := LinkedCallback.ChildFrameOver.handle_field_then_between (profile := profile) (ready := ready)
-      (dispatch := specDispatch ready base) (reference := specDispatch ready (LiveDispatch.host bindings base))
-      destination inst item (nominalEntry nominal matched emitted) index (.memory address) checkNext canonNext
-      frame growth checkAt canonAt (fun _ => ends)
-    cases nominal <;> exact leaf
-  | @list element _ ih =>
-    obtain ⟨entries, rfl, shapes, compiled⟩ := listCompiled matched emitted
-    intro index checkNext canonNext left right check canon frame growth checkAt canonAt finish ends
-    exact ⟨entries, rfl, collectionEntryVisiting destination inst (.list element) element entries index (.memory address)
-      checkNext canonNext frame checkAt canonAt embedder _
-        (liveListVisitor destination inst element entries index (.memory address) _ older origin left.store growth
-          (fun child member slot => ih child slot (entries_match_of_mem shapes member) (compiled child member))
-          checkNext canonNext (fun () => finish) (fun _ => ends))⟩
-  | @map key element keyData _ ih =>
-    obtain ⟨entries, rfl, shapes⟩ := mapCompiled matched emitted
-    intro index checkNext canonNext left right check canon frame growth checkAt canonAt finish ends
-    refine ⟨entries, rfl, collectionEntryVisiting destination inst (.map key element) (.record (mapEntryFields key element))
-      entries index (.memory address) checkNext canonNext frame checkAt canonAt embedder _
-        (liveMapVisitor destination inst key element entries index (.memory address) _ keyData older left.store ?_
-          checkNext canonNext (fun () => finish) ?_)⟩
-    · intro child member
-      obtain ⟨payload, value, shape, layout, compiled⟩ := shapes child member
-      exact ⟨payload, value, shape, fun _ slot => ih value slot layout compiled⟩
-    · intro _ lhs rhs cursor peer paired kept leftAt rightAt
-      exact ends lhs rhs cursor peer paired (growth.trans kept) leftAt rightAt
-
 private theorem preflightAllocator {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) : Field.AllocatorFor site.destination.realloc site.field := by
   intro child desc pointer
@@ -1738,6 +1702,89 @@ private theorem stringMapSlotRule (destination : RecordDestination) (inst : Inst
       · rfl
       · rfl
       · exact done
+
+private structure CollectionSource (destination : RecordDestination) (root : Field) (schema : Stored.TypeOf) : Prop where
+  layout : root.LayoutMatches schema
+  fits : Stored.Lower.fits Quirks.none destination.encoding destination.width schema root.value = true
+  allocator : Field.AllocatorFor destination.realloc root
+
+private theorem liveCompiledMapVisitor (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType)
+    (element : Stored.TypeOf) (entries : List Field) (index : Nat) (output : Stored.Lower.Output)
+    (compare : FieldComparison grow sig) (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (origin : CStore (core3 grow)) {root : Field} {schema : Stored.TypeOf}
+    (source : CollectionSource destination root schema)
+    (path : Field.Descendant root (.dynamic (.map key element) (.record (mapEntryFields key element)) entries))
+    (shapes : ∀ item ∈ entries, ∃ (payload : Stored.Payload (.prim key.toPrimitive)) (value : Field),
+      item = .aggregate (.record (mapEntryFields key element)) [.data (.prim key.toPrimitive) payload, value] ∧
+        value.LayoutMatches element ∧ value.Emitted)
+    (child : ∀ value, Field.Descendant root value → value.LayoutMatches element → value.Emitted →
+      ∀ reached address, FieldRule compare older reached destination inst value address)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    (checkNext : ValueCheckNext grow sig output) (canonNext : ValueCanonNext grow sig output)
+    (finish : ValueFinish grow sig output)
+    (done : ∀ value lhs rhs check canon, LinkedCallback.ChildFrameOver older lhs rhs check canon →
+      Core3.Grows origin.core lhs.store.core → lhs.ctl = check.control (checkNext (.ok value)) →
+      rhs.ctl = canon.control (canonNext value) → finish value lhs rhs check canon) :
+    CollectionVisitor destination inst (.map key element) (.record (mapEntryFields key element)) entries index output
+      checkNext canonNext older origin (liveMapTailWith profile ready base bindings
+        (liveCollectionMapEntry profile ready base bindings older destination inst key element output)
+        destination inst key element entries index output compare checkNext canonNext finish) := by
+  refine liveMapVisitorWith destination inst key element entries index output compare _ older origin
+    (fun payload value => Field.Descendant root (.aggregate (.record (mapEntryFields key element))
+      [.data (.prim key.toPrimitive) payload, value])) ?_ ?_ checkNext canonNext finish done
+  · intro reached pointer bytes width sized aligned bounds payload value entryPath idx valid
+    by_cases stringKey : key = .string
+    · subst key
+      rw [liveCollectionMapEntry, ite_eq_left (show WIT.KeyType.string = .string from rfl)]
+      exact stringMapSlotRule destination inst element output root source.layout source.fits source.allocator reached pointer bytes
+        entries.length width sized aligned bounds payload value entryPath idx valid compare embedder
+    · have keyData : LocalDataType (.prim key.toPrimitive) := .primitive (by
+        cases key <;> first | exact (stringKey rfl).elim | intro impossible; cases impossible)
+      rw [liveCollectionMapEntry, ite_eq_right stringKey]
+      intro checked canonical last left right check canon frame growth rule doneAt checkAt canonAt
+      exact liveMapEntry destination inst key element output keyData payload value reached pointer bytes entries.length idx
+        width sized aligned bounds valid compare checked canonical last frame growth doneAt rule checkAt canonAt
+  · intro item member
+    obtain ⟨payload, value, shape, layout, emitted⟩ := shapes item member
+    have entryPath : Field.Descendant root (.aggregate (.record (mapEntryFields key element))
+        [.data (.prim key.toPrimitive) payload, value]) := path.trans (.dynamic (shape ▸ member) (.self _))
+    have valuePath : Field.Descendant root value := entryPath.trans (.aggregate (by simp) (.self _))
+    exact ⟨payload, value, shape, entryPath, child value valuePath layout emitted⟩
+
+private theorem collectionFieldRule (destination : RecordDestination) (inst : InstId)
+    {schema : Stored.TypeOf} (family : NominalCollectionType schema) (item : Field) (address : Nat)
+    (matched : item.LayoutMatches schema) (emitted : item.Emitted) {root : Field} {rootSchema : Stored.TypeOf}
+    (source : CollectionSource destination root rootSchema) (path : Field.Descendant root item)
+    {origin : CStore (core3 grow)}
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} :
+    FieldRule (liveCollectionField profile ready base bindings older destination inst schema) older origin destination inst item address := by
+  induction family generalizing item address origin with
+  | leaf nominal =>
+    intro index checkNext canonNext left right check canon frame growth checkAt canonAt finish ends
+    have leaf := LinkedCallback.ChildFrameOver.handle_field_then_between (profile := profile) (ready := ready)
+      (dispatch := specDispatch ready base) (reference := specDispatch ready (LiveDispatch.host bindings base))
+      destination inst item (nominalEntry nominal matched emitted) index (.memory address) checkNext canonNext
+      frame growth checkAt canonAt (fun _ => ends)
+    cases nominal <;> exact leaf
+  | @list element _ ih =>
+    obtain ⟨entries, rfl, shapes, compiled⟩ := listCompiled matched emitted
+    intro index checkNext canonNext left right check canon frame growth checkAt canonAt finish ends
+    exact ⟨entries, rfl, collectionEntryVisiting destination inst (.list element) element entries index (.memory address)
+      checkNext canonNext frame checkAt canonAt embedder _
+        (liveListVisitor destination inst element entries index (.memory address) _ older origin left.store growth
+          (fun child member slot => ih child slot (entries_match_of_mem shapes member) (compiled child member)
+            (path.trans (.dynamic member (.self _)))) checkNext canonNext (fun () => finish) (fun _ => ends))⟩
+  | @map key element _ ih =>
+    obtain ⟨entries, rfl, shapes⟩ := mapCompiled matched emitted
+    intro index checkNext canonNext left right check canon frame growth checkAt canonAt finish ends
+    refine ⟨entries, rfl, collectionEntryVisiting destination inst (.map key element) (.record (mapEntryFields key element))
+      entries index (.memory address) checkNext canonNext frame checkAt canonAt embedder _
+        (liveCompiledMapVisitor destination inst key element entries index (.memory address) _ older left.store source path shapes
+          (fun value ancestry layout compiled _ slot => ih value slot layout compiled ancestry) embedder
+          checkNext canonNext (fun () => finish) ?_)⟩
+    intro _ lhs rhs cursor peer paired kept leftAt rightAt
+    exact ends lhs rhs cursor peer paired (growth.trans kept) leftAt rightAt
 
 theorem linkedStringMapEntry {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (index : Fin entries.length)
@@ -2199,28 +2246,32 @@ theorem linkedRecursiveCollectionBody {route : GiveEffectRoute} (site : PayloadR
     (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
     PayloadRoot.Cut site profile ready bindings (LinkedRecursiveCollectionBody profile ready base bindings older site incoming type)
       base := by
-  refine site.parked_after_admission linked _ (fun _ _ prepared => ?_) base embedder
+  refine site.parked_after_admission linked _ (fun fits _ prepared => ?_) base embedder
   obtain ⟨plan, compiled⟩ := linked.compiled
   have matched := Record.preflightValue_layout _ _ _ _ _ plan compiled
+  have source : CollectionSource site.destination site.field (sig.payload site.tag) :=
+    ⟨matched, Record.preflightValue_value _ _ _ _ _ plan compiled ▸ fits, preflightAllocator site linked⟩
   rw [schema] at matched
   cases family with
   | leaf nominal => cases nominal <;> cases collection
   | @list element child =>
     obtain ⟨entries, field, shapes, emitted⟩ := listCompiled matched linked.emitted
+    have rootPath : Field.Descendant site.field (.dynamic (.list element) element entries) := by
+      rw [← field]; exact .self _
     exact linkedCollection site linked (.list element) element entries field paired selected embedder prepared _
       (liveListVisitor site.destination site.inst element entries 0 route.output _ older site.checked.store site.checked.store
         (Core3.Grows.refl _) (fun item member address => collectionFieldRule site.destination site.inst child item address
-          (entries_match_of_mem shapes member) (emitted item member) embedder)
+          (entries_match_of_mem shapes member) (emitted item member) source (rootPath.trans (.dynamic member (.self _))) embedder)
         site.reply site.referenceReply _ (by intros; trivial))
-  | @map key element keyData child =>
+  | @map key element child =>
     obtain ⟨entries, field, shapes⟩ := mapCompiled matched linked.emitted
-    refine linkedCollection site linked (.map key element) (.record (mapEntryFields key element)) entries field paired selected
-      embedder prepared _ (liveMapVisitor site.destination site.inst key element entries 0 route.output _ keyData older
-        site.checked.store ?_ site.reply site.referenceReply _ (by intros; trivial))
-    intro item member
-    obtain ⟨payload, value, shape, layout, emitted⟩ := shapes item member
-    exact ⟨payload, value, shape, fun _ address =>
-      collectionFieldRule site.destination site.inst child value address layout emitted embedder⟩
+    have rootPath : Field.Descendant site.field (.dynamic (.map key element) (.record (mapEntryFields key element)) entries) := by
+      rw [← field]; exact .self _
+    exact linkedCollection site linked (.map key element) (.record (mapEntryFields key element)) entries field paired selected
+      embedder prepared _ (liveCompiledMapVisitor site.destination site.inst key element entries 0 route.output _ older
+        site.checked.store source rootPath shapes (fun value ancestry layout emitted _ address =>
+          collectionFieldRule site.destination site.inst child value address layout emitted source ancestry embedder)
+        embedder site.reply site.referenceReply _ (by intros; trivial))
 
 theorem linkedStringRecursiveMapBody {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (element : Stored.TypeOf) (family : NominalCollectionType element)
@@ -2230,27 +2281,8 @@ theorem linkedStringRecursiveMapBody {route : GiveEffectRoute} (site : PayloadRo
     (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
     (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
     PayloadRoot.Cut site profile ready bindings (LinkedStringRecursiveMapBody profile ready base bindings older site element incoming)
-      base := by
-  refine site.parked_after_admission linked _ (fun fits _ prepared => ?_) base embedder
-  obtain ⟨plan, compiled⟩ := linked.compiled
-  have matched := Record.preflightValue_layout _ _ _ _ _ plan compiled
-  have rootFits := Record.preflightValue_value _ _ _ _ _ plan compiled ▸ fits
-  rw [schema] at matched rootFits
-  obtain ⟨entries, field, shapes⟩ := mapCompiled matched linked.emitted
-  refine linkedCollection site linked (.map .string element) (.record (mapEntryFields .string element)) entries field paired selected
-    embedder prepared _ (liveMapVisitorWith site.destination site.inst .string element entries 0 route.output _ _ older
-      site.checked.store (fun payload value => Field.Descendant site.field
-        (.aggregate (.record (mapEntryFields .string element)) [.data (.prim .string) payload, value]))
-      ?_ ?_ site.reply site.referenceReply _ (by intros; trivial))
-  · intro origin pointer bytes width sized aligned bounds payload value path idx valid
-    exact stringMapSlotRule site.destination site.inst element route.output site.field matched rootFits (preflightAllocator site linked)
-      origin pointer bytes entries.length width sized aligned bounds payload value path idx valid _ embedder
-  · intro item member
-    obtain ⟨payload, value, shape, layout, emitted⟩ := shapes item member
-    refine ⟨payload, value, shape, ?_, fun _ address =>
-      collectionFieldRule site.destination site.inst family value address layout emitted embedder⟩
-    rw [field]
-    exact .dynamic (shape ▸ member) (.self _)
+      base :=
+  linkedRecursiveCollectionBody site linked (.map family) True.intro schema paired selected embedder
 
 theorem linkedStringMapDispatch {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (nominal : NominalElement element)
