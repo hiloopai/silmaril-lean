@@ -19,6 +19,7 @@ PRELUDE = r'''
 import Lean
 import Silmaril.Data.BytesTrie.Thms
 import Silmaril.Data.NatBitSet.Thms
+import Silmaril.Data.NatRangeMap.Runs.Defs
 open Lean Elab Term Meta Silmaril.Data Silmaril.Data.BytesTrie
 
 /-- Dense keys: `i` as three big-endian bytes (up to 256 siblings per level). -/
@@ -97,6 +98,18 @@ def bitset_scenarios(n):
         ("build+equality", b, "S = S2"),
     ]
 
+def range_scenarios(n):
+    runs = ", ".join(f"⟨{int(index > 0)}, 1, {index % 2}⟩" for index in range(n))
+    setup = f"open Silmaril.Data.NatRangeMap\ndef M : Raw Nat := [{runs}]\n"
+    end = 3 * n
+    return [
+        ("last lookup(materialized)", setup, f"M.find? {end - 2} = some {(n - 1) % 2}"),
+        ("split assign at end + lookup(materialized)", setup,
+         f"(Raw.assignSplit M {end} 0 7).find? {end} = some 7"),
+        ("fused assign at end + lookup(materialized)", setup,
+         f"(M.assign {end} 0 7).find? {end} = some 7"),
+    ]
+
 def run(lean_src, workdir, timeout):
     path = os.path.join(workdir, "Bench.lean")
     with open(path, "w") as f:
@@ -123,8 +136,8 @@ def main():
     with tempfile.TemporaryDirectory() as d:
         for dist in a.dists.split(","):
             for n in map(int, a.sizes.split(",")):
-                for name, setup, prop in (bitset_scenarios(n) if dist == "bitset"
-                                          else scenarios(n, dist)):
+                cases = {"bitset": bitset_scenarios, "range": range_scenarios}.get(dist)
+                for name, setup, prop in (cases(n) if cases else scenarios(n, dist)):
                     src = (PRELUDE + "set_option Elab.async false\nset_option maxRecDepth 1000000\n" + setup
                            + f"#kernel_time 1 = 1\n#kernel_time {prop}\n")
                     ms, note = run(src, d, a.timeout)

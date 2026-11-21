@@ -144,10 +144,23 @@ repeated three times, giving about ±50 ms of noise; times in ms:
 | `m = ofList m.toList` | 30 | 479 | 3,093 |
 | top-down build + lookup at end | 21 | 322 | 2,285 |
 
-Run lists are linear: about 50–120 µs per run traversed. Appending at the end
-is O(n²) (400 appends: 31 s), so build top-down or with `ofList`. `assign` at the
-end grows faster than linearly between 1000 and 5000 runs; the cause has not been
-found. Use `decide +kernel`: plain `decide` exceeds `maxRecDepth` at 200 runs.
+These are the original split-and-join `assign` results. A single end edit on a
+literal map was slow independently of the quadratic walk for repeated end edits.
+At 5,000 runs, isolating the passes gave about 0.53 s for `takeBelow` + length,
+0.33 s for `dropBelow`, and 2.77 s for `catMerge` + lookup. Forcing the residual
+offset at each step of `catMerge` in a probe reduced the latter to 0.66 s. This
+implicates the deferred offset chain in addition to the cost of multiple walks;
+these are elapsed kernel timings, not a complexity bound on reduction.
+
+Production `assign` now fuses the prefix walk, retaining the split-and-join
+operation at the edit boundary. The proof rewrites to the original operation on
+every raw input, including noncanonical ones. On the same 5,000-run input,
+one end edit + lookup took 0.72 s in the kernel versus 5.50 s with the original
+implementation (two samples each, Lean nightly 2026-11-05). Reproduce with
+`scripts/bench/finmap-kernel.py --dists range --sizes 100,1000,2000,5000`.
+Repeated end edits still rebuild a linear prefix each time; build top-down or
+with `ofList`. `erase` still uses split-and-join. Use `decide +kernel`: plain
+`decide` exceeds `maxRecDepth` at 200 runs.
 
 ### Reading the numbers
 

@@ -121,11 +121,25 @@ theorem find?_dropBelow (r : Raw α) (n k : Nat) :
       · simp only [find?_cons]; nrm_arith
       · simp only [find?_cons, ih]; nrm_arith
 
+theorem assign_eq_split [DecidableEq α] (r : Raw α) (lo len1 : Nat) (value : α) :
+    assign r lo len1 value = assignSplit r lo len1 value := by
+  induction r generalizing lo with
+  | nil => simp [assign, assignSplit, catMerge, takeBelow, dropBelow, addGap, mergeCons]
+  | cons run rest ih =>
+    obtain ⟨gap, length, old⟩ := run
+    by_cases after : gap + length < lo
+    · have shift : lo - (gap + length + 1) + len1 + 1 = lo + len1 + 1 - (gap + length + 1) := by omega
+      simp only [assign, ite_eq_left after, ih, assignSplit, takeBelow, dropBelow, catMerge,
+        ite_eq_right (show ¬ lo ≤ gap by omega), ite_eq_right (show ¬ lo ≤ gap + length by omega),
+        ite_eq_right (show ¬ lo + len1 + 1 ≤ gap by omega), ite_eq_right (show ¬ lo + len1 + 1 ≤ gap + length by omega),
+        shift]
+    · simp [assign, after]
+
 theorem find?_assign [DecidableEq α] (r : Raw α) (lo len1 : Nat) (v : α) (k : Nat) :
     find? (assign r lo len1 v) k = if lo ≤ k ∧ k ≤ lo + len1 then some v else find? r k := by
   have h : ∀ k, lo ≤ k → find? (takeBelow r lo) k = none := fun k hk => by
     rw [find?_takeBelow]; nrm_arith
-  simp only [assign, find?_catMerge _ h, find?_takeBelow, find?_mergeCons, find?_cons,
+  simp only [assign_eq_split, assignSplit, find?_catMerge _ h, find?_takeBelow, find?_mergeCons, find?_cons,
     find?_dropBelow]
   nrm_arith
 
@@ -218,8 +232,9 @@ theorem canonical_dropBelow {r : Raw α} (hr : Canonical r) (n : Nat) :
       · exact ih (canonical_tail hr) _
 
 theorem canonical_assign [DecidableEq α] {r : Raw α} (hr : Canonical r) (lo len1 : Nat)
-    (v : α) : Canonical (assign r lo len1 v) :=
-  canonical_catMerge _ _ (canonical_mergeCons _ (canonical_dropBelow hr _))
+    (v : α) : Canonical (assign r lo len1 v) := by
+  rw [assign_eq_split]
+  exact canonical_catMerge _ _ (canonical_mergeCons _ (canonical_dropBelow hr _))
 
 theorem canonical_erase [DecidableEq α] {r : Raw α} (hr : Canonical r) (lo len1 : Nat) :
     Canonical (erase r lo len1) :=

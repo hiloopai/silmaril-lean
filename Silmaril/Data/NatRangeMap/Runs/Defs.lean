@@ -111,10 +111,19 @@ def catMerge [DecidableEq α] : Raw α → Nat → Raw α → Raw α
   | [], n, s => addGap n s
   | ⟨g, l, v⟩ :: rs, n, s => mergeCons ⟨g, l, v⟩ (catMerge rs (n - (g + l + 1)) s)
 
-/-- Map the keys `[lo, lo + len1]` to `v`. Canonical on canonical input; the runs
-above `lo + len1` are shared, not rebuilt. -/
-def assign [DecidableEq α] (r : Raw α) (lo len1 : Nat) (v : α) : Raw α :=
+/-- Split-and-join specification of `assign`, also used at the edit boundary. -/
+def assignSplit [DecidableEq α] (r : Raw α) (lo len1 : Nat) (v : α) : Raw α :=
   catMerge (takeBelow r lo) lo (mergeCons ⟨0, len1, v⟩ (dropBelow r (lo + len1 + 1)))
+
+/-- Map the keys `[lo, lo + len1]` to `v`. Walk the prefix once instead of
+combining a delayed `takeBelow` with a second chain of offsets in `catMerge`.
+Runs beyond the edited interval are shared. -/
+def assign [DecidableEq α] : Raw α → Nat → Nat → α → Raw α
+  | [], lo, len1, value => [⟨lo, len1, value⟩]
+  | run :: rest, lo, len1, value =>
+    if run.gap + run.len1 < lo then
+      mergeCons run (assign rest (lo - (run.gap + run.len1 + 1)) len1 value)
+    else assignSplit (run :: rest) lo len1 value
 
 /-- Unmap the keys `[lo, lo + len1]`. Canonical on canonical input. -/
 def erase [DecidableEq α] (r : Raw α) (lo len1 : Nat) : Raw α :=
