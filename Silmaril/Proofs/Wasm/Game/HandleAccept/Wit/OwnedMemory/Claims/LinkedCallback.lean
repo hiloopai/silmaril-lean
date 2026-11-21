@@ -82,7 +82,7 @@ theorem replayMarked {left right last : State grow sig} {visibleLabels}
     · exact (List.filter_append [_] rightLabels).trans (congrArg (PayloadPrefix.visible [_] ++ ·) seenRight)
   | closedGive callout _ ih =>
     obtain ⟨leftCount, rightCount, nextRight, rightFrames, rightRest, lhs, rhs, _, matched, _, _, leftTrack,
-      rightTrack, rightParked, nextState⟩ :=
+      rightTrack, rightParked, nextState, leftClosed, rightClosed⟩ :=
       Plain.parked_closed_give_rejoin bindings callout.name callout.type callout.args callout.inst
         callout.destination callout.schema paired callout.thread profile ready callout.parked
         callout.calling callout.linked callout.caller callout.live callout.closed
@@ -107,7 +107,7 @@ theorem replayMarked {left right last : State grow sig} {visibleLabels}
       leftTrail, rightTrail, trace⟩ := ih matched nextOutside
     refine ⟨_, _, other, reached, lhs.append leftTail, rhs.append rightTail, still, ?_, ?_, remaining,
       (trailUnchanged lhs.steps leftTrack mark).append leftTrail, (trailUnchanged rhs.steps rightTrack mark).append rightTrail,
-      .closedGive callout peer lhs.steps (nextEq ▸ rhs.steps) (nextEq ▸ trace)⟩
+      .closedGive callout peer lhs.steps (nextEq ▸ rhs.steps) leftClosed (nextEq ▸ rightClosed) (nextEq ▸ trace)⟩
     · rw [PayloadPrefix.visible, List.filter_append]
       exact (congrArg (· ++ PayloadPrefix.visible leftLabels) (silent leftCount)).trans seenLeft
     · rw [PayloadPrefix.visible, List.filter_append]

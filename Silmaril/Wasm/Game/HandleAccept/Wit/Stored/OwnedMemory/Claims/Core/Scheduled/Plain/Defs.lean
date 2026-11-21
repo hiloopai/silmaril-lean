@@ -2,13 +2,27 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Plain.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.Step.Defs
 
 @[expose] public section
 
 namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Plain
 
 open Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine Silmaril.Wasm.Component.Runtime
+open Silmaril.Wasm.Component
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Core (LocalIssue)
+
+/-- An exact finite path whose executed steps never focus a direct dispatch.
+The terminal focus need not be closed. -/
+inductive NoDirectCalls {E : CoreEngine} {Host : Type} (profile : ProfileKind) (ready : HostReady Host)
+    (dispatch : Call E → P E Host (Ret E)) :
+    Machine.Config E Host → List (Machine.Label E Host) → Machine.Config E Host → Prop where
+  | done (state : Machine.Config E Host) : NoDirectCalls profile ready dispatch state [] state
+  | next {start middle finish label labels}
+      (closed : ∀ {thread call next frames rest}, start.ctl ≠ ⟨thread, .prog (.op (.call call) next), frames⟩ :: rest)
+      (step : Machine.Step profile ready dispatch start label middle)
+      (tail : NoDirectCalls profile ready dispatch middle labels finish) :
+      NoDirectCalls profile ready dispatch start (label :: labels) finish
 
 /-- Evaluate the non-suspending part of a checked import. A known activation
 supplies its thread (which may be absent on a host frame). With no activation

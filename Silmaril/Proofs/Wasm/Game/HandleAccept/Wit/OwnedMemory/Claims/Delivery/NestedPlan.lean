@@ -183,7 +183,7 @@ theorem callbackPlanExact {right reference : Config (core3 grow) (HostState sig)
   | segments lhs _ => exact planOfSteps lhs
   | append _ _ head tail => exact .sequence head tail
   | step lhs _ _ ih => exact .sequence (planOfSteps (.cons lhs (.refl _))) ih
-  | closedGive callout _ lhs _ _ ih => exact .sequence (.closedGive callout lhs) ih
+  | closedGive callout _ lhs _ _ _ _ ih => exact .sequence (.closedGive callout lhs) ih
   | syncReady focused agrees _ _ _ ih => exact .sequence (.syncReady focused agrees) ih
 
 theorem callbackPeerPlanExact {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
@@ -194,8 +194,68 @@ theorem callbackPeerPlanExact {right reference : Config (core3 grow) (HostState 
   | segments _ rhs => exact planOfSteps rhs
   | append _ _ head tail => exact .sequence head tail
   | step _ rhs _ ih => exact .sequence (planOfSteps (.cons rhs (.refl _))) ih
-  | closedGive _ peer _ rhs _ ih => exact .sequence (.closedGive peer rhs) ih
+  | closedGive _ peer _ rhs _ _ _ ih => exact .sequence (.closedGive peer rhs) ih
   | syncReady _ _ focused agrees _ ih => exact .sequence (.syncReady focused agrees) ih
+
+private theorem noDirectCompatible {callees : List (ComponentCall.Callee sig)}
+    (run : Plain.NoDirectCalls profile ready (Dispatch.coreOnly ready bindings) start labels finish) :
+    Dispatch.Compatible profile ready bindings callees start labels finish := by
+  induction run with
+  | done => exact .done _
+  | next closed step _ ih => exact .next (Dispatch.ClosedAt.agrees fun focused => (closed focused).elim) step ih
+
+private theorem rawOverlay {callees : List (ComponentCall.Callee sig)}
+    (run : Steps profile ready (Dispatch.coreOnly ready bindings) start labels finish) :
+    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) start labels finish ∨
+      CallbackOverlayCut bindings profile ready callees start labels finish := by
+  rcases Dispatch.compatible_or_lookup (callees := callees) run with result | cut
+  · exact .inl (planOfSteps result.steps)
+  · exact .inr ⟨start, finish, [], labels, [], by simp, .localSegment (.refl _), cut, .refl _⟩
+
+private theorem spliceOverlay {callees : List (ComponentCall.Callee sig)}
+    {middle : Config (core3 grow) (HostState sig)} {front back}
+    (head : NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) start front middle ∨
+      CallbackOverlayCut bindings profile ready callees start front middle)
+    (tail : NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) middle back finish ∨
+      CallbackOverlayCut bindings profile ready callees middle back finish)
+    (sourceTail : Steps profile ready (Dispatch.coreOnly ready bindings) middle back finish) :
+    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) start (front ++ back) finish ∨
+      CallbackOverlayCut bindings profile ready callees start (front ++ back) finish := by
+  rcases head with head | ⟨cut, after, leading, window, suffix, rfl, head, lookup, rest⟩
+  · rcases tail with tail | ⟨cut, after, leading, window, suffix, rfl, tail, lookup, rest⟩
+    · exact .inl (.sequence head tail)
+    · exact .inr ⟨cut, after, front ++ leading, window, suffix, by simp only [List.append_assoc],
+        .sequence head tail, lookup, rest⟩
+  · exact .inr ⟨cut, after, leading, window, suffix ++ back, by simp only [List.append_assoc], head, lookup,
+      append rest sourceTail⟩
+
+theorem linkedCallbackPeer {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
+    {callees : List (ComponentCall.Callee sig)}
+    (trace : LinkedCallback.ReplayTrace profile ready bindings start labels finish right referenceLabels reference) :
+    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) right referenceLabels reference ∨
+      CallbackOverlayCut bindings profile ready callees right referenceLabels reference := by
+  induction trace with
+  | done _ right => exact .inl (.localSegment (.refl right))
+  | segments _ rhs => exact rawOverlay rhs
+  | append _ tail headPlan tailPlan => exact spliceOverlay headPlan tailPlan (source (callbackPeerPlanExact tail))
+  | step _ rhs tail ih => exact spliceOverlay (rawOverlay (.cons rhs (.refl _))) ih (source (callbackPeerPlanExact tail))
+  | closedGive _ peer _ _ _ closed tail ih =>
+    exact spliceOverlay (.inl (.closedGive peer (noDirectCompatible (callees := callees) closed).steps)) ih
+      (source (callbackPeerPlanExact tail))
+  | syncReady _ _ focused agrees tail ih =>
+    exact spliceOverlay (.inl (.syncReady focused agrees)) ih (source (callbackPeerPlanExact tail))
+
+private theorem swapTrace {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
+    (trace : LinkedCallback.ReplayTrace profile ready bindings start labels finish right referenceLabels reference) :
+    LinkedCallback.ReplayTrace profile ready bindings right referenceLabels reference start labels finish := by
+  induction trace with
+  | done left right => exact .done right left
+  | segments lhs rhs => exact .segments rhs lhs
+  | append _ _ head tail => exact .append head tail
+  | step lhs rhs _ ih => exact .step rhs lhs ih
+  | closedGive callout peer lhs rhs leftClosed rightClosed _ ih =>
+    exact .closedGive peer callout rhs lhs rightClosed leftClosed ih
+  | syncReady focused agrees rightFocused rightAgrees _ ih => exact .syncReady rightFocused rightAgrees focused agrees ih
 
 theorem rejoinedBodyPlan {route : GiveEffectRoute} {site : PayloadRoot.Site grow sig route}
     {value : route.output.Result} {checked reference : Config (core3 grow) (HostState sig)}
@@ -266,13 +326,14 @@ theorem linkedRejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site gr
       LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline ∧
       (NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
           (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∨
-        Dispatch.LookupCut profile ready bindings callees site.checked checkLabels reached ∨
-        Dispatch.LookupCut profile ready bindings callees (site.reference site.referenceReply) canonLabels reference) := by
-  obtain ⟨⟨checkLabels, canonLabels, seen, left, right, _⟩, checked, baseline, replies⟩ := compared
+        CallbackOverlayCut bindings profile ready callees site.checked checkLabels reached ∨
+        CallbackOverlayCut bindings profile ready callees (site.reference site.referenceReply) canonLabels reference) := by
+  obtain ⟨⟨checkLabels, canonLabels, seen, _, _, classified⟩, checked, baseline, replies⟩ := compared
   refine ⟨checkLabels, canonLabels, checked, baseline, replies, ?_⟩
-  rcases Dispatch.compatible_or_lookup (callees := callees) (ReturnFrame.Occurrence.prefix_survives (left 0)).1 with accepted | lookup
-  · rcases Dispatch.compatible_or_lookup (callees := callees) (ReturnFrame.Occurrence.prefix_survives (right 0)).1 with canonical | lookup
-    · exact .inl (comparedGive site linked value entry accepted.steps canonical.steps seen replies)
+  rcases linkedCallbackPeer (callees := callees) (swapTrace classified) with accepted | lookup
+  · rcases linkedCallbackPeer (callees := callees) classified with canonical | lookup
+    · exact .inl (.give site linked entry (source accepted)
+        (.sequence canonical (planOfSteps (replies.2.1 _))) value replies seen)
     · exact .inr (.inr lookup)
   · exact .inr (.inl lookup)
 

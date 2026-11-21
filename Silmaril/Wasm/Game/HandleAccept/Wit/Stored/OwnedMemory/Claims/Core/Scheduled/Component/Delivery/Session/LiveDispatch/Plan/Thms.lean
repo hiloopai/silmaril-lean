@@ -61,6 +61,17 @@ theorem NestedPlan.of_callback_peer {right reference : Config (core3 grow) (Host
     NestedPlan bindings profile ready (Scheduled.host bindings) right referenceLabels reference :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.callbackPeerPlanExact trace
 
+/-- Lift the exact classified reference trace to the fixed component worker
+dispatcher. The actual confined reentry cannot invoke a direct dispatch,
+and each readiness read keeps its own reached agreement. Unclassified
+segments can still end at an explicit dispatch lookup boundary. -/
+theorem linked_callback_peer_plan {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
+    {callees : List (ComponentCall.Callee sig)}
+    (trace : LinkedCallback.ReplayTrace profile ready bindings start labels finish right referenceLabels reference) :
+    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) right referenceLabels reference ∨
+      CallbackOverlayCut bindings profile ready callees right referenceLabels reference :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedCallbackPeer trace
+
 /-- Extract the canonical body plan from a reached public give comparison.
 It uses the same trace as the recursive traversal and does not rebuild a plan
 from unclassified steps. Component-only dispatch extensions are not asserted
@@ -132,8 +143,8 @@ theorem linked_rejoined_give_plan {route : GiveEffectRoute} (site : PayloadRoot.
       LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline ∧
       (NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
           (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) checked ∨
-        Dispatch.LookupCut profile ready bindings callees site.checked checkLabels reached ∨
-        Dispatch.LookupCut profile ready bindings callees (site.reference site.referenceReply) canonLabels reference) :=
+        CallbackOverlayCut bindings profile ready callees site.checked checkLabels reached ∨
+        CallbackOverlayCut bindings profile ready callees (site.reference site.referenceReply) canonLabels reference) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedRejoinedGive site linked value entry compared
 
 /-- Classify the actual matched body prefix of a typed refusal or canonical

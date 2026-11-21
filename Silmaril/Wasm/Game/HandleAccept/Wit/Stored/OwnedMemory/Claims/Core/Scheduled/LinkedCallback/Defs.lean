@@ -120,6 +120,10 @@ inductive ReplayTrace (profile : ProfileKind) (ready : HostReady (HostState sig)
       (callout : ClosedGive bindings left) (peer : ClosedGive bindings right)
       (lhs : Steps profile ready (specDispatch ready (host bindings)) left (List.replicate leftCount .tau) callout.resume)
       (rhs : Steps profile ready (specDispatch ready (host bindings)) right (List.replicate rightCount .tau) peer.resume)
+      (leftClosed : Plain.NoDirectCalls profile ready (specDispatch ready (host bindings)) left
+        (List.replicate leftCount .tau) callout.resume)
+      (rightClosed : Plain.NoDirectCalls profile ready (specDispatch ready (host bindings)) right
+        (List.replicate rightCount .tau) peer.resume)
       (tail : ReplayTrace profile ready bindings callout.resume leftLabels last peer.resume rightLabels other) :
       ReplayTrace profile ready bindings left (List.replicate leftCount .tau ++ leftLabels) last
         right (List.replicate rightCount .tau ++ rightLabels) other

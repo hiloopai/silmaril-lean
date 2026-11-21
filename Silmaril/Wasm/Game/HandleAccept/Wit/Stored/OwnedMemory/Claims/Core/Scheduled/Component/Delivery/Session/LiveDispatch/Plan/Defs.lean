@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Defs
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence.Traversal.Defs
 
 @[expose] public section
@@ -128,6 +129,18 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
       (store : reached.store = reference.store)
       (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible referenceLabels) :
       NestedPlan bindings profile ready base site.start (entryLabels ++ checkLabels) reached
+
+/-- An exact callback trace reaches a dispatch lookup not covered by the
+classified window. The prefix retains its specialized edges, and the
+source suffix is retained but not replayed. A window ending at a lifted
+install does not assert that the subsequent arena read will disagree. -/
+def CallbackOverlayCut (bindings : List (Binding sig)) (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (callees : List (ComponentCall.Callee sig)) (start : Config (core3 grow) (HostState sig))
+    (labels : Trace grow sig) (finish : Config (core3 grow) (HostState sig)) : Prop :=
+  ∃ middle after leading window suffix, labels = leading ++ window ++ suffix ∧
+    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) start leading middle ∧
+    Dispatch.LookupCut profile ready bindings callees middle window after ∧
+    Steps profile ready (Dispatch.coreOnly ready bindings) after suffix finish
 
 /-- Reasons to stop at an actual live configuration. A local checked stop
 has a matched store and observed trace, but does not rejoin (including when

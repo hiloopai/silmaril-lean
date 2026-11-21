@@ -430,7 +430,7 @@ theorem parked_closed_give_steps {sig : Signature} {grow : SingleThreaded.GrowOr
         host := reached
         ctl := ⟨thread, .core ((core3 grow).resume start.store.core core (.values reply.2))
           continuation, segments⟩ :: rest }) := by
-  obtain ⟨count, run, writer, growing, _⟩ :=
+  obtain ⟨count, run, writer, growing, _, _⟩ :=
     Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.parked_closed_give_steps
       bindings name type args inst destination schema start thread profile ready parked calling linked caller live closed impl embedder
   exact ⟨count, run, writer, growing⟩
@@ -479,7 +479,9 @@ theorem parked_closed_give_rejoin {sig : Signature} {grow : SingleThreaded.GrowO
         ctl := ⟨thread, next, otherSegments⟩ :: otherRest
         host := (other.host.enter name type args).record
           (schema.elim (completion other.host.nextTicket (.error .wrongContext))
-            (fun payload => flatCompletion other.host.nextTicket (ABI.flatten destination.width payload) (.error .wrongContext))).1 } :=
+            (fun payload => flatCompletion other.host.nextTicket (ABI.flatten destination.width payload) (.error .wrongContext))).1 } ∧
+      NoDirectCalls profile ready dispatch start (List.replicate leftCount .tau) leftNext ∧
+      NoDirectCalls profile ready dispatch other (List.replicate rightCount .tau) rightNext :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.parked_closed_give_rejoin
     bindings name type args inst destination schema paired thread profile ready parked calling linked caller live closed
 
