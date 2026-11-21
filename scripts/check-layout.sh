@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cheap textual layout checks until `sil` takes them over (docs/design.md):
-# no `axiom` declarations, no `native_decide`, and no module importing another
+# no `axiom` declarations, no `native_decide` or `bv_decide`, and no module importing another
 # topic's Proofs/Raw tree from outside it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -11,6 +11,33 @@ fi
 if grep -rnw 'native_decide' Silmaril --include='*.lean'; then
   echo "error: native_decide is not allowed" >&2; status=1
 fi
+# `bv_decide` proves goals that need SAT through a native-evaluation axiom
+# (`…._native.bv_decide.ax_…`); main uses `bv_decide_kernel`, which fails instead
+# (Silmaril/Prelude/BVDecide/Defs.lean, docs/bv-decide-trust.md). Comments,
+# strings and code spans are not invocations.
+python3 -I - <<'PY' || status=1
+import pathlib, re, sys
+call = re.compile(r"\bbv_decide(?![\w?'])")
+bad = 0
+for p in sorted(pathlib.Path("Silmaril").rglob("*.lean")):
+    source = p.read_text()
+    if "bv_decide" not in source:
+        continue
+    depth = 0
+    for n, line in enumerate(source.splitlines(), 1):
+        code, i = [], 0
+        while i < len(line):
+            if depth == 0 and line.startswith("--", i): break
+            if line.startswith("/-", i): depth += 1; i += 2; continue
+            if depth and line.startswith("-/", i): depth -= 1; i += 2; continue
+            if depth == 0: code.append(line[i])
+            i += 1
+        text = re.sub(r'"(\\.|[^"\\])*"|`[^`]*`', "", "".join(code))
+        if call.search(text):
+            print(f"{p}:{n}: bv_decide is not allowed on main; use bv_decide_kernel", file=sys.stderr)
+            bad = 1
+raise SystemExit(bad)
+PY
 # Proofs/Raw of topic Silmaril.{Proofs,Raw}.<Region>.<Topic> may be imported only
 # from the same region and topic, in the header, Proofs or Raw trees. One awk
 # pass over every module: a per-file shell loop took 15 s on CI.
