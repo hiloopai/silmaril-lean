@@ -525,6 +525,43 @@ theorem local_data_collection_tail
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localDataCollectionTail destination inst element data
     entries matched pointer bytes index output left right width sized aligned bounds same check canon thread checkNext canonNext checkAt canonAt
 
+/-- Validate the checked record slot and execute the actual scalar map key
+under either dispatcher, stopping at the value's effect program. The value
+may allocate or use nominal claims; the key proof neither runs it nor
+requires a comparison hypothesis about it. -/
+theorem local_map_key_between {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
+    (keyData : LocalDataType (.prim key.toPrimitive)) (keyPayload : Stored.Payload (.prim key.toPrimitive)) (valField : Field)
+    (origin : CStore (core3 grow)) (base bytes count index : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : base = alignTo base (layout destination.width (.record (mapEntryFields key element))).alignment)
+    (bounds : base + count * (layout destination.width (.record (mapEntryFields key element))).size ≤ bytes)
+    (entry : index < count) (issueIndex : Nat) (left right : Config (core3 grow) (HostState sig))
+    (growth : Core3.Grows origin.core right.store.core) (same : left.store = right.store)
+    (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) :
+    let cx := destination.context inst
+    let type : TypeOf := .record (mapEntryFields key element)
+    let addr := base + index * (layout destination.width type).size
+    let keyArea := layout destination.width (.prim key.toPrimitive : TypeOf)
+    let keyPtr := alignTo addr keyArea.alignment
+    let valPtr := alignTo (keyPtr + keyArea.size) (layout destination.width valField.type).alignment
+    let keyField := Field.data (.prim key.toPrimitive) keyPayload
+    left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+      (.aggregate type [keyField, valField]) issueIndex (.memory addr) >>= checkNext) →
+    right.ctl = canon.control (Prog.bind (CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr))
+      (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)) >>= canonNext) →
+    LocalCutKeepingBetween profile ready dispatch reference
+      (fun store => Core3.Grows origin.core store.core) left right check canon
+      (fun (_ : Unit) => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr) >>=
+        fun result => checkNext (result.mapError (.nested issueIndex)))
+      (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr) >>= canonNext) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localMapKey
+    destination inst key element keyData keyPayload valField origin base bytes count index width sized aligned bounds entry
+    issueIndex left right growth same check canon thread checkNext canonNext
+
 theorem local_data_map_objects {key : WIT.KeyType} {element : TypeOf} {entries : List Field}
     (data : LocalDataType element)
     (matched : Field.EntriesMatch entries (.record (mapEntryFields key element)))

@@ -2145,6 +2145,99 @@ private theorem localDataAt {reference : Call (core3 grow) → Session grow sig 
   exact localDataLeafFrameBetween destination inst type data payload index (.memory pointer) origin left right growth
     (same ▸ placed.1) (same ▸ placed.2) same
 
+theorem localMapKey {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
+    (keyData : LocalDataType (.prim key.toPrimitive)) (keyPayload : Payload (.prim key.toPrimitive)) (valField : Field)
+    (origin : CStore (core3 grow)) (base bytes count index : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : base = alignTo base (layout destination.width (.record (mapEntryFields key element))).alignment)
+    (bounds : base + count * (layout destination.width (.record (mapEntryFields key element))).size ≤ bytes)
+    (entry : index < count) (issueIndex : Nat) (left right : Config (core3 grow) (HostState sig))
+    (growth : Core3.Grows origin.core right.store.core) (same : left.store = right.store)
+    (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) :
+    let cx := destination.context inst
+    let type : TypeOf := .record (mapEntryFields key element)
+    let addr := base + index * (layout destination.width type).size
+    let keyArea := layout destination.width (.prim key.toPrimitive : TypeOf)
+    let keyPtr := alignTo addr keyArea.alignment
+    let valPtr := alignTo (keyPtr + keyArea.size) (layout destination.width valField.type).alignment
+    let keyField := Field.data (.prim key.toPrimitive) keyPayload
+    left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+      (.aggregate type [keyField, valField]) issueIndex (.memory addr) >>= checkNext) →
+    right.ctl = canon.control (Prog.bind (CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr))
+      (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)) >>= canonNext) →
+    LocalCutKeepingBetween profile scheduledReady scheduledDispatch reference
+      (fun store => Core3.Grows origin.core store.core) left right check canon
+      (fun (_ : Unit) => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr) >>=
+        fun result => checkNext (result.mapError (.nested issueIndex)))
+      (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr) >>= canonNext) := by
+  intro cx type addr keyArea keyPtr valPtr keyField checkAt canonAt
+  let area := layout destination.width type
+  let following := fun verdict : Except RecordLower.Issue Unit => (match verdict with
+    | .error issue => pure (.error issue)
+    | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr))
+      >>= fun result => checkNext (result.mapError (.nested issueIndex))
+  let refVal : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)
+  let refKey : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr)
+  let refFollowing := fun (_ : Unit) => refVal >>= canonNext
+  let keyBody : Session grow sig (Except RecordLower.Issue Unit) :=
+    Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width keyField 0 (.memory keyPtr)
+  let entered := { left with ctl := check.control (keyBody >>= following) }
+  obtain ⟨modulo, within⟩ := listEntryBounds area aligned bounds entry
+  change addr % area.alignment.bytes = 0 at modulo
+  change addr + area.size ≤ bytes at within
+  obtain ⟨reachedBytes, reachedSize, widened⟩ := growth.memSize sized
+  have sizeAt : (core3 grow).memSize? left.store.core destination.memory = some reachedBytes := same ▸ reachedSize
+  have placed : placement destination left.store area addr = .ok () := by
+    simp [placement, modulo, sizeAt, Nat.not_lt.mpr (within.trans widened)]
+    rfl
+  have guardAt : left.ctl = check.control (do
+      checkAligned addr area.alignment.bytes
+      checkInBounds cx addr area.size
+      keyBody >>= following) := by
+    rw [Record.Effects.field] at checkAt
+    rw [checkAt]
+    apply congrArg check.control
+    simp only [checkAligned, trapIf, modulo, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
+      Prog.bind_eq, Prog.pure_eq, Prog.pure_bind']
+    let body : Session grow sig (Except RecordLower.Issue Unit) :=
+      Record.Effects.memory recordClaims Limits.spec Quirks.none cx destination.width [keyField, valField] addr 0
+    change ((checkInBounds cx addr area.size).bind (fun _ => body.bind (fun result => Prog.pure (result.mapError (.nested issueIndex))))).bind
+      checkNext = (checkInBounds cx addr area.size).bind (fun _ => keyBody.bind following)
+    rw [Prog.bind_assoc]
+    congr 1
+    funext result
+    cases result
+    simp only [body, Record.Effects.memory, keyBody, keyField, keyPtr, keyArea, Field.type, Prog.bind_eq, Prog.bind_assoc, Prog.pure_bind']
+    congr 1
+    funext verdict
+    cases verdict with
+    | error issue => rfl
+    | ok value =>
+      cases value
+      simp only [following, valPtr, keyPtr, keyArea, Nat.zero_add, Prog.bind_eq, Prog.bind_assoc]
+      congr 1
+      funext result
+      cases result with
+      | error issue => rfl
+      | ok value => cases value; rfl
+  have guard := checkPlacementRun (profile := profile) (ready := scheduledReady) (placementDispatch := scheduledDispatch)
+    destination inst left area addr check (keyBody >>= following) guardAt
+  rw [placed] at guard
+  obtain ⟨typed, keyPlaced, _⟩ := mapEntryPlacement destination inst key element growth width sized aligned bounds entry
+  have first := localDataAt (reference := reference) (profile := profile) (scheduledReady := scheduledReady)
+    (scheduledDispatch := scheduledDispatch) destination inst (.prim key.toPrimitive) keyData keyPayload 0 keyPtr origin entered
+    right growth ⟨typed, keyPlaced⟩ same check canon thread following refFollowing rfl
+    (by
+      change right.ctl = canon.control ((refKey.bind (fun _ => refVal)).bind canonNext) at canonAt
+      rw [Prog.bind_assoc] at canonAt
+      exact canonAt)
+  apply prependLocalCut guard rfl
+  exact first
+
 private theorem localMapEntry {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
     (keyData : LocalDataType (.prim key.toPrimitive)) (valueData : LocalDataType element)
@@ -2171,76 +2264,18 @@ private theorem localMapEntry {reference : Call (core3 grow) → Session grow si
         CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr)
         CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)) := by
   intro cx type addr keyArea keyPtr valPtr keyField valField same check canon thread checkNext canonNext checkAt canonAt
-  change Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)) at checkNext
-  change Unit → Session grow sig (Ret (core3 grow)) at canonNext
-  let area := layout destination.width type
-  let following := fun verdict : Except RecordLower.Issue Unit => (match verdict with
-    | .error issue => pure (.error issue)
-    | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr))
-      >>= fun result => checkNext (result.mapError (.nested index))
-  let refVal : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)
-  let refKey : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr)
-  let refFollowing := fun (_ : Unit) => refVal >>= canonNext
-  let keyBody : Session grow sig (Except RecordLower.Issue Unit) :=
-    Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width keyField 0 (.memory keyPtr)
-  let entered := { left with ctl := check.control (keyBody >>= following) }
-  obtain ⟨modulo, within⟩ := listEntryBounds area aligned bounds entry
-  change addr % area.alignment.bytes = 0 at modulo
-  change addr + area.size ≤ bytes at within
-  obtain ⟨reachedBytes, reachedSize, widened⟩ := growth.memSize sized
-  have sizeAt : (core3 grow).memSize? left.store.core destination.memory = some reachedBytes := same ▸ reachedSize
-  have placed : placement destination left.store area addr = .ok () := by
-    simp [placement, modulo, sizeAt, Nat.not_lt.mpr (within.trans widened)]
-    rfl
-  have guardAt : left.ctl = check.control (do
-      checkAligned addr area.alignment.bytes
-      checkInBounds cx addr area.size
-      keyBody >>= following) := by
-    rw [Record.Effects.field] at checkAt
-    rw [checkAt]
-    apply congrArg check.control
-    simp only [checkAligned, trapIf, modulo, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
-      Prog.bind_eq, Prog.pure_eq, Prog.pure_bind']
-    let body : Session grow sig (Except RecordLower.Issue Unit) :=
-      Record.Effects.memory recordClaims Limits.spec Quirks.none cx destination.width [keyField, valField] addr 0
-    change ((checkInBounds cx addr area.size).bind (fun _ => body.bind (fun result => Prog.pure (result.mapError (.nested index))))).bind
-      checkNext = (checkInBounds cx addr area.size).bind (fun _ => keyBody.bind following)
-    rw [Prog.bind_assoc]
-    congr 1
-    funext result
-    cases result
-    simp only [body, Record.Effects.memory, keyBody, keyField, keyPtr, keyArea, Field.type, Prog.bind_eq, Prog.bind_assoc, Prog.pure_bind']
-    congr 1
-    funext verdict
-    cases verdict with
-    | error issue => rfl
-    | ok value =>
-      cases value
-      simp only [following, valPtr, valField, keyPtr, keyArea, Nat.zero_add, Prog.bind_eq, Prog.bind_assoc]
-      congr 1
-      funext result
-      cases result with
-      | error issue => rfl
-      | ok value => cases value; rfl
-  have guard := checkPlacementRun (profile := profile) (ready := scheduledReady) (placementDispatch := scheduledDispatch)
-    destination inst left area addr check (keyBody >>= following) guardAt
-  rw [placed] at guard
-  obtain ⟨typed, keyPlaced, _⟩ := mapEntryPlacement destination inst key element growth width sized aligned bounds entry
-  have first := localDataAt (reference := reference) (profile := profile) (scheduledReady := scheduledReady)
-    (scheduledDispatch := scheduledDispatch) destination inst (.prim key.toPrimitive) keyData keyPayload 0 keyPtr origin entered
-    right growth ⟨typed, keyPlaced⟩ same check canon thread following refFollowing rfl
-    (by
-      change right.ctl = canon.control ((refKey.bind (fun _ => refVal)).bind canonNext) at canonAt
-      rw [Prog.bind_assoc] at canonAt
-      exact canonAt)
-  apply prependLocalCut guard rfl
+  have first := localMapKey (profile := profile) (scheduledReady := scheduledReady) (scheduledDispatch := scheduledDispatch)
+    (reference := reference) destination inst key element keyData keyPayload valField origin base bytes count index width sized aligned bounds
+    entry index left right growth same check canon thread checkNext canonNext checkAt canonAt
   apply continueLocal first
   intro store value grown
   cases value
   obtain ⟨typed, _, valuePlaced⟩ := mapEntryPlacement destination inst key element grown width sized aligned bounds entry
   exact localDataAt destination inst element valueData valuePayload 1 valPtr origin
-    (localLeafEnd entered entered.host store check.thread check.frames check.rest (fun value => following (.ok value)) (.ok ()))
-    (localLeafEnd right right.host store canon.thread canon.frames canon.rest refFollowing (.ok ()))
+    { left with store, ctl := check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+        valField 1 (.memory valPtr) >>= fun result => checkNext (result.mapError (.nested index))) }
+    { right with store, ctl := canon.control (CanonicalTree.field Limits.spec Quirks.none cx destination.width
+        valField (.memory valPtr) >>= canonNext) }
     grown ⟨typed, valuePlaced⟩ rfl check canon thread (fun result => checkNext (result.mapError (.nested index))) canonNext rfl rfl
 
 private theorem localMapElements {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
