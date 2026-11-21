@@ -217,6 +217,30 @@ theorem Run.invoke_launched {call func args core fnType opts inst}
   (Run.invoke_lifted hostReady fresh lookup).append
     (.next (.liftLaunch (LiftSite.ofInvoke start call func args core fnType opts inst)) (.stop _))
 
+/-- The reached direct gate checks registration on the post-lock instance
+and marks the task started before asking for the caller's arguments. -/
+theorem LiftSite.admission_steps (site : LiftSite grow sig) (admission : LiftAdmission site) :
+    Steps profile ready (specDispatch ready impl) site.launched (List.replicate site.admissionLength .tau) site.onStart :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.liftAdmission site admission
+
+/-- The actual top-level caller supplies the original arguments and the
+start observation. This cut precedes canonical argument lowering. -/
+theorem Run.invoke_arguments {call func args core fnType opts inst}
+    (hostReady : StepDefs.HostReadyCfg start) (fresh : ∀ entry ∈ start.pending, entry.1 ≠ call)
+    (lookup : start.store.func? func = some (.lifted core fnType opts inst))
+    (admission : LiftAdmission (LiftSite.ofInvoke start call func args core fnType opts inst)) :
+    let site := LiftSite.ofInvoke start call func args core fnType opts inst
+    Run profile ready impl start
+      ([.invoke call func, .invokePrologue call func, .liftedLookup func (invokeCaller start),
+        .liftLaunch site.storeAndTask.2 site.storeAndThread.2] ++
+        [.liftAdmit site.storeAndTask.2 site.storeAndThread.2, .liftArguments call])
+      ((.host (.invoke call func args) :: List.replicate 10 .tau) ++
+        (List.replicate site.admissionLength .tau ++ [.tau, .tau, .obs (.started call), .tau]))
+      (site.withArguments args) :=
+  (Run.invoke_launched hostReady fresh lookup).append
+    (.next (.liftAdmit _ admission)
+      (.next (.liftArguments _ (ArenaField.get?_alloc_self ArenaField.callers start.store (.host call args 0))) (.stop _)))
+
 /-- Actual backpressure makes the launched worker park at K1, even after
 incrementing the entry count. The async parent returns the cancellation
 handle while that worker is still saved; this is not result delivery. -/

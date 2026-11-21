@@ -9,6 +9,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.CollectionVisit.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
+import Silmaril.Wasm.Component.Reference.Runtime.Task.Thms
 
 public section
 
@@ -181,6 +182,83 @@ theorem invokeBackpressure {call func args core fnType opts inst instance_}
   unfold StepDefs.hostFinish
   split <;> exact Config.cont?_setCont_self entry.waitingEntry site.storeAndThread.2 (some entry.wait.saved)
 
+theorem liftAdmission (site : LiftSite grow sig) (admission : LiftAdmission site) :
+    Steps profile ready (specDispatch ready impl) site.launched (List.replicate site.admissionLength .tau) site.onStart := by
+  let task := site.storeAndTask.2
+  let thread := site.storeAndThread.2
+  let base := site.launched.store.setImplicitThread task thread
+  have liveTask : ArenaField.tasks.get? site.launched.store task = some (liftTaskData site.fnType site.opts site.inst site.caller) :=
+    ArenaField.get?_alloc_self ArenaField.tasks site.start.store _
+  have marked : ArenaField.tasks.get? base task = some site.markedTask := by
+    simp only [base, CStore.setImplicitThread, ArenaField.get?_modify_self, liveTask, Option.map_some, LiftSite.markedTask, thread]
+  have liveInst : ArenaField.insts.get? base site.inst = some admission.instance_ := admission.live
+  dsimp only [base] at marked liveInst
+  have entryTask : ArenaField.tasks.get? site.entryStore task = some site.markedTask := by
+    unfold LiftSite.entryStore
+    split <;> exact marked
+  have entryInst : ArenaField.insts.get? site.entryStore site.inst = some (site.entryInstance admission.instance_) := by
+    unfold LiftSite.entryStore LiftSite.entryInstance
+    change (ArenaField.insts.get? (if site.fnType.async_ && site.markedTask.needsExclusive then _ else base) site.inst) =
+      some (if site.fnType.async_ && site.markedTask.needsExclusive then _ else _)
+    split
+    · rw [ArenaField.get?_modify_self, liveInst, Option.map_some]
+    · exact liveInst
+  have registered : ArenaField.tasks.get? (site.entryStore.registerThreadSt task thread) task = some site.registeredTask := by
+    simp only [CStore.registerThreadSt, CStore.task?, CStore.inst?, entryTask,
+      show site.markedTask.inst = site.inst from rfl, entryInst, Option.bind_some]
+    rw [show (site.entryInstance admission.instance_).addThread? thread = _ from admission.capacity]
+    change ArenaField.tasks.get? (ArenaField.tasks.modify site.entryStore task
+      (fun reached => { reached with threads := reached.threads ++ [thread] })) task = some site.registeredTask
+    rw [ArenaField.get?_modify_self, entryTask, Option.map_some]
+    rfl
+  have focused : site.launched.ctl = ⟨some thread, .prog (liftThreadBody .spec .none task site.core), []⟩ :: site.workerTail := rfl
+  cases asyncMode : site.fnType.async_ <;> cases exclusive : site.markedTask.needsExclusive
+  all_goals
+    have mode : site.markedTask.ft.async_ = _ := asyncMode
+    simp only [LiftSite.admissionLength, asyncMode, exclusive, Bool.false_and, Bool.true_and, Bool.false_eq_true,
+      ite_false, ite_true]
+    have first := Step.currentThread (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focused
+    refine .cons first (.cons (.modify rfl) (.cons (.get rfl) ?_))
+    simp [Prog.bind, marked, mode, pure]
+    try
+      have cleared : ¬ (admission.instance_.hasBackpressure site.markedTask.needsExclusive = true ∨
+          0 < admission.instance_.numWaitingToEnter) := by
+        simpa using admission.ungated asyncMode
+      rw [exclusive] at cleared
+      refine .cons (.get rfl) ?_
+      simp [Prog.bind, pure, liveInst, show site.markedTask.inst = site.inst from rfl, Quirks.none, exclusive, cleared]
+      try refine .cons (.modify rfl) ?_
+    simp [LiftSite.entryStore, asyncMode, exclusive] at entryTask entryInst registered
+    simp [Task.registerThread, Prog.bind]
+    refine .cons (.get rfl) ?_
+    dsimp only [thread, task] at entryTask entryInst registered ⊢
+    simp [Prog.bind, pure, ArenaOps.updateSt, entryTask, show site.markedTask.inst = site.inst from rfl]
+    refine .cons (.get rfl) ?_
+    simp [Prog.bind, pure, entryInst, admission.capacity]
+    refine .cons (.modify rfl) (.cons (.get rfl) ?_)
+    simp [Prog.bind, pure, registered, Task.start]
+    refine .cons (.get rfl) ?_
+    simp [Prog.bind, pure, registered]
+    refine .cons (.modify rfl) ?_
+    unfold LiftSite.onStart LiftSite.argumentsTail
+    simp [LiftSite.entryStore, Prog.bind, asyncMode, exclusive]
+    refine Steps.refl _
+
+theorem liftArguments (site : LiftSite grow sig) {call args}
+    (live : ArenaField.callers.get? site.start.store site.caller = some (.host call args 0)) :
+    Steps profile ready (specDispatch ready impl) site.onStart [.tau, .tau, .obs (.started call), .tau]
+      (site.withArguments args) := by
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, callerFrame⟩ :=
+    CStore.registerThreadSt_frame site.storeAndTask.2 site.storeAndThread.2 site.entryStore
+  have reached : ArenaField.callers.get? site.onStart.store site.registeredTask.caller = some (.host call args 0) := by
+    change ((site.entryStore.registerThreadSt site.storeAndTask.2 site.storeAndThread.2).callers.get? _) = _
+    rw [callerFrame]
+    unfold LiftSite.entryStore
+    split <;> exact live
+  refine .cons (.call rfl) (.cons (.get rfl) ?_)
+  simp [Prog.bind, pure, reached]
+  exact .cons (.emit rfl) (.cons (.popProg rfl) (.refl _))
+
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {beforeCheck beforeCanon left right reached reference : State grow sig}
@@ -233,6 +311,8 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | invokePrologue focused => exact invokePrologueSteps focused
   | liftedLookup focused lookup => exact Dispatch.liftedLookup_steps focused lookup
   | liftLaunch site => exact liftLaunchSteps site
+  | liftAdmit site admission => exact liftAdmission site admission
+  | liftArguments site live => exact liftArguments site live
   | invokeReturn focused => exact invokeReturnSteps focused
   | tick tick => exact tick.selects_thread
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)

@@ -174,6 +174,53 @@ def LiftSite.launched (site : LiftSite grow sig) : State grow sig :=
     store := StepDefs.threadStatusSt thread .running site.storeAndThread.1
     ctl := site.activation :: ⟨site.parent, .prog (liftAfterThread site.storeAndTask.2 site.fnType.async_), site.frames⟩ :: site.rest }
 
+/-- The direct-entry branch of the canonical gate. The exclusive update is
+made before registration, whose table capacity is checked on that instance. -/
+def LiftSite.entryInstance (site : LiftSite grow sig) (instance_ : InstState) : InstState :=
+  if site.fnType.async_ && (liftTaskData site.fnType site.opts site.inst site.caller).needsExclusive then
+    instance_.withExclusive (some site.storeAndThread.2)
+  else instance_
+
+def LiftSite.markedTask (site : LiftSite grow sig) : Task (core3 grow) :=
+  { liftTaskData site.fnType site.opts site.inst site.caller with implicitThread := some site.storeAndThread.2 }
+
+def LiftSite.entryStore (site : LiftSite grow sig) : CStore (core3 grow) :=
+  let marked := site.launched.store.setImplicitThread site.storeAndTask.2 site.storeAndThread.2
+  if site.fnType.async_ && site.markedTask.needsExclusive then
+    ArenaField.insts.modify marked site.inst (InstState.withExclusive (some site.storeAndThread.2))
+  else marked
+
+def LiftSite.registeredTask (site : LiftSite grow sig) : Task (core3 grow) :=
+  { site.markedTask with threads := site.markedTask.threads ++ [site.storeAndThread.2] }
+
+def LiftSite.argumentsTail (site : LiftSite grow sig) : List Value.Val → Session grow sig (Ret (core3 grow)) :=
+  liftArgumentsBody Limits.spec Quirks.none site.storeAndTask.2 site.core site.registeredTask
+
+def LiftSite.workerTail (site : LiftSite grow sig) : List (Activation (core3 grow) (HostState sig)) :=
+  ⟨site.parent, .prog (liftAfterThread site.storeAndTask.2 site.fnType.async_), site.frames⟩ :: site.rest
+
+def LiftSite.onStart (site : LiftSite grow sig) : State grow sig :=
+  { site.launched with
+    store := (site.entryStore.registerThreadSt site.storeAndTask.2 site.storeAndThread.2).setTaskState site.storeAndTask.2 .started
+    ctl := ⟨some site.storeAndThread.2, .prog (callVals (.onStart site.registeredTask.caller) >>= site.argumentsTail), []⟩ :: site.workerTail }
+
+def LiftSite.withArguments (site : LiftSite grow sig) (args : List Value.Val) : State grow sig :=
+  { site.onStart with ctl := ⟨some site.storeAndThread.2, .prog (site.argumentsTail args), []⟩ :: site.workerTail }
+
+/-- No K1 wait is entered on this branch. Full registration tables are not
+classified as admitted and must take the canonical trap branch instead. -/
+structure LiftAdmission (site : LiftSite grow sig) where
+  instance_ : InstState
+  live : site.start.store.inst? site.inst = some instance_
+  ungated : site.fnType.async_ = true →
+    (instance_.hasBackpressure site.markedTask.needsExclusive || decide (instance_.numWaitingToEnter > 0)) = false
+  index : Nat
+  registered : InstState
+  capacity : (site.entryInstance instance_).addThread? site.storeAndThread.2 = some (index, registered)
+
+def LiftSite.admissionLength (site : LiftSite grow sig) : Nat :=
+  9 + (if site.fnType.async_ then 1 else 0) + (if site.fnType.async_ && site.markedTask.needsExclusive then 1 else 0)
+
 /-- A semantic action is not a machine label: one action can emit several
 machine labels, including choices, and a callback take need not reply to Core. -/
 inductive Action where
@@ -181,6 +228,8 @@ inductive Action where
   | invokePrologue (call : CallId) (func : FuncId)
   | liftedLookup (func : FuncId) (caller : CallerId)
   | liftLaunch (task : TaskId) (thread : ThreadId)
+  | liftAdmit (task : TaskId) (thread : ThreadId)
+  | liftArguments (call : CallId)
   | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
   | coreStep
@@ -227,6 +276,13 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
   | liftLaunch (site : LiftSite grow sig) :
       Transition profile ready impl site.start (.liftLaunch site.storeAndTask.2 site.storeAndThread.2)
         [.tau, .tau, .tau, .tau, .tau] site.launched
+  | liftAdmit (site : LiftSite grow sig) (admission : LiftAdmission site) :
+      Transition profile ready impl site.launched (.liftAdmit site.storeAndTask.2 site.storeAndThread.2)
+        (List.replicate site.admissionLength .tau) site.onStart
+  | liftArguments {call args} (site : LiftSite grow sig)
+      (live : ArenaField.callers.get? site.start.store site.caller = some (.host call args 0)) :
+      Transition profile ready impl site.onStart (.liftArguments call) [.tau, .tau, .obs (.started call), .tau]
+        (site.withArguments args)
   | invokeReturn {start cancel} (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
       Transition profile ready impl start (.invokeReturn cancel) [.tau, .tau, .tau]
         (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store })

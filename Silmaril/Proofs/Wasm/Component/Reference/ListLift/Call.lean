@@ -259,6 +259,7 @@ theorem specQ_mainBody {c : ListComp} {I : Silmaril.Wasm.Game.ScalarInstance} (h
     show Store.mapH _ m₁.store.core = _
     rw [hcore₁]
     exact hcs
+  unfold liftArgumentsBody
   rw [paramTypes_liftedFtL]
   refine SpecQ.bind (SpecQ.ofSpec (spec_lowerParams hcx _ (by simpa using hflat) htop vs hvs hinv₃))
     fun fl m₄ ⟨hi₄, hg₄, hp₄⟩ _ hres₄ => ?_
