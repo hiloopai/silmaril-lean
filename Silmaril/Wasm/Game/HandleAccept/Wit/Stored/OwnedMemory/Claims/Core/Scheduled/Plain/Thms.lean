@@ -16,6 +16,15 @@ open Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Compone
   Silmaril.Wasm.Component.Runtime
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Core (Contract)
 
+/-- The non-suspending interpreter resolves the caller from its live thread and task arenas. -/
+theorem runBody_currentInst {E : CoreEngine} {Host Result : Type} (next : Option InstId → P E Host Result)
+    (reference : CStore E) (host : Host) (thread : Option ThreadId) :
+    runBody (currentInst?.bind next) reference host (some thread) =
+      match callerInstance reference thread with
+      | .ok caller => runBody (next caller) reference host (some thread)
+      | .error issue => (reference, host, .error issue) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.resolve_caller next reference host thread
+
 /-- A successful body evaluation is a silent reference execution, with the actual
 parked Core continuation, resumers, and saved activations left in place. -/
 theorem runBody_steps {E : CoreEngine} {Host Result : Type} (body : P E Host Result)
