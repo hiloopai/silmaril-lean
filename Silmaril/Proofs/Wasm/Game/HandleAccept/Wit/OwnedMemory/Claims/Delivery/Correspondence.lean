@@ -334,6 +334,72 @@ theorem pollPaired {target index result suffix} (poll : ParkedPoll start target 
       simpa only [BufferResult.finish, delivered] using paired.clear_control.set_store (StepDefs.lockdownSt poll.delivered)
   · cases result <;> rfl
 
+private def waitAtFrames {initial : State grow sig} (wait : ParkedWait initial)
+    (segments : List (Seg (core3 grow) (HostState sig))) :
+    ParkedWait { initial with ctl := ⟨some wait.thread, .core wait.core wait.next, segments⟩ :: wait.rest } :=
+  { wait with segments, focused := rfl }
+
+theorem waitTakePaired {initial : State grow sig} {wait : ParkedWait initial} {target index result suffix}
+    (delivery : WaitDelivery wait start profile target)
+    (focused : start.ctl = ⟨some wait.thread, .prog wait.takeEvent, .core wait.core wait.next :: wait.segments⟩ :: start.ctl.drop 1)
+    (pending : PendingAt start.store target index)
+    (branch : BufferBranch delivery.delivered wait.memory (flatNat wait.out) result suffix)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.wait target index result) (delivery.labels ++ suffix) reached ∧
+      HostFrame.Related.Paired older
+        (result.finish (delivery.resumed index) { start with store := StepDefs.lockdownSt delivery.delivered, ctl := [] }) reached ∧
+      reached.host = other.host := by
+  let written := (delivery.resumed index).store
+  let resumed := (core3 grow).resume written.core wait.core (.values [i32Flat EventCode.subtask.toNat])
+  obtain ⟨frames, rest, atOther, framed⟩ :=
+    paired.retarget_core_frame focused (.core resumed wait.next) start.host other.host
+  have store := paired.data.1
+  let replay : WaitDelivery (waitAtFrames wait frames) other profile target :=
+    { delivery with
+      setLive := store ▸ delivery.setLive
+      selects := store ▸ delivery.selects }
+  have replayFocus : other.ctl = ⟨some wait.thread, .prog (waitAtFrames wait frames).takeEvent,
+      .core wait.core wait.next :: frames⟩ :: other.ctl.drop 1 := by
+    rw [atOther]
+    rfl
+  have delivered : replay.delivered = delivery.delivered := by
+    simp only [WaitDelivery.delivered, replay, waitAtFrames, ← store]
+  have replayBranch : BufferBranch replay.delivered wait.memory (flatNat wait.out) result suffix := by
+    rw [delivered]
+    exact branch
+  refine ⟨_, .waitTake replay replayFocus (store ▸ pending) replayBranch, ?_, ?_⟩
+  · cases result with
+    | replied =>
+      have control : other.ctl.drop 1 = rest := by rw [atOther]; rfl
+      simp only [BufferResult.finish, WaitDelivery.resumed, waitAtFrames, control]
+      erw [delivered]
+      exact framed.set_store written
+    | trapped _ =>
+      simpa only [BufferResult.finish, delivered] using paired.clear_control.set_store (StepDefs.lockdownSt delivery.delivered)
+  · cases result <;> rfl
+
+theorem cancelReturnedPaired {target index} (cancel : ParkedCancel start target)
+    (pending : PendingAt start.store target index) (available : CancelAvailable start.store target)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.cancel target .returned) (List.replicate 15 .tau) reached ∧
+      HostFrame.Related.Paired older cancel.resumed reached ∧ reached.host = other.host := by
+  let delivered := cancelDelivered start.store target
+  let resumed := (core3 grow).resume delivered.core cancel.core (.values [i32Flat (subtaskCancelResult (some .returned))])
+  obtain ⟨segments, rest, focused, framed⟩ :=
+    paired.retarget cancel.focused (.core resumed cancel.next) start.host other.host
+  have store := paired.data.1
+  let replay : ParkedCancel other target :=
+    { cancel with
+      segments, rest, focused
+      callout := by rw [← store]; exact cancel.callout
+      liveThread := by rw [← store]; exact cancel.liveThread
+      liveTask := by rw [← store]; exact cancel.liveTask
+      liveInst := by rw [← store]; exact cancel.liveInst }
+  refine ⟨_, .cancelReturned replay (store ▸ pending) (store ▸ available), ?_, rfl⟩
+  simpa only [ParkedCancel.resumed, replay, resumed, delivered, ← store] using framed.set_store delivered
+
 private theorem tickCandidates (other : HostState sig) (agrees : TickReadsAgree ready start other) :
     (StepDefs.enterHostSt start.store).candidates (ready start.host) =
       (StepDefs.enterHostSt start.store).candidates (ready other) := by

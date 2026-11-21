@@ -106,6 +106,16 @@ theorem Paired.retarget {left right : Config E Host} (paired : Paired changes le
         { right with host, ctl := ⟨thread, next, otherFrames⟩ :: otherRest } :=
   Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.retarget paired focused next host
 
+/-- A saved Core caller is shared; only older program continuations can differ. -/
+theorem Paired.retarget_core_frame {left right : Config E Host} (paired : Paired changes left right)
+    {thread focus core coreNext frames rest}
+    (focused : left.ctl = ⟨thread, focus, .core core coreNext :: frames⟩ :: rest)
+    (next : Focus E Host) (host : Host) :
+    ∃ otherFrames otherRest, right.ctl = ⟨thread, focus, .core core coreNext :: otherFrames⟩ :: otherRest ∧
+      Paired changes { left with host, ctl := ⟨thread, next, frames⟩ :: rest }
+        { right with host, ctl := ⟨thread, next, otherFrames⟩ :: otherRest } :=
+  Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.retargetCoreFrame paired focused next host
+
 /-- Save the same caller segment on both sides (including a Core caller).
 Active and blocked frame substitutions are unchanged. -/
 theorem Paired.push_shared {left right : Config E Host} (paired : Paired changes left right)

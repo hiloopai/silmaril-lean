@@ -141,6 +141,15 @@ theorem Paired.retarget {left right : Config E Host} (paired : Paired changes le
         { right with host := rightHost, ctl := ⟨thread, next, otherFrames⟩ :: otherRest } :=
   ReturnFrame.Related.Paired.retarget paired focused next rightHost
 
+theorem Paired.retarget_core_frame {left right : Config E Host} (paired : Paired changes left right)
+    {thread focus core coreNext frames rest}
+    (focused : left.ctl = ⟨thread, focus, .core core coreNext :: frames⟩ :: rest)
+    (next : Focus E Host) (leftHost rightHost : Host) :
+    ∃ otherFrames otherRest, right.ctl = ⟨thread, focus, .core core coreNext :: otherFrames⟩ :: otherRest ∧
+      Paired changes { left with host := leftHost, ctl := ⟨thread, next, frames⟩ :: rest }
+        { right with host := rightHost, ctl := ⟨thread, next, otherFrames⟩ :: otherRest } :=
+  ReturnFrame.Related.Paired.retarget_core_frame paired focused next rightHost
+
 theorem Paired.set_store {left right : Config E Host} (paired : Paired changes left right) (store : CStore E) :
     Paired changes { left with store } { right with store } :=
   ReturnFrame.Related.Paired.set_store paired store

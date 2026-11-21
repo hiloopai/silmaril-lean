@@ -153,6 +153,32 @@ theorem Transition.poll_paired {target index result suffix} (poll : ParkedPoll s
       reached.host = other.host :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.pollPaired poll pending branch paired
 
+/-- Compare a wait at the actual reached selection, not its historical
+admission. Rejoin the saved Core caller or retain the consumed event on trap. -/
+theorem Transition.wait_take_paired {initial : State grow sig} {wait : ParkedWait initial} {target index result suffix}
+    (delivery : WaitDelivery wait start profile target)
+    (focused : start.ctl = ⟨some wait.thread, .prog wait.takeEvent, .core wait.core wait.next :: wait.segments⟩ :: start.ctl.drop 1)
+    (pending : PendingAt start.store target index)
+    (branch : BufferBranch delivery.delivered wait.memory (flatNat wait.out) result suffix)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.wait target index result) (delivery.labels ++ suffix) reached ∧
+      HostFrame.Related.Paired older
+        (result.finish (delivery.resumed index) { start with store := StepDefs.lockdownSt delivery.delivered, ctl := [] }) reached ∧
+      reached.host = other.host :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.waitTakePaired
+    delivery focused pending branch paired
+
+/-- Deliver a returned event through cancel, without invoking an open cancel hook. -/
+theorem Transition.cancel_returned_paired {target index} (cancel : ParkedCancel start target)
+    (pending : PendingAt start.store target index) (available : CancelAvailable start.store target)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.cancel target .returned) (List.replicate 15 .tau) reached ∧
+      HostFrame.Related.Paired older cancel.resumed reached ∧ reached.host = other.host :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelReturnedPaired
+    cancel pending available paired
+
 /-- Replay the actual selected candidate, not an arbitrary runnable
 thread. No host-read premise is needed for store-only ready conditions. -/
 theorem Transition.tick_on_journal {thread} (tick : SelectedTick thread start ready profile) (other : HostState sig)

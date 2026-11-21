@@ -31,6 +31,17 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
       (branch : BufferBranch start.store poll.memory (flatNat poll.out) result suffix) :
       NestedPlan bindings profile ready base start (pollLabels poll ++ suffix)
         (result.finish (pollReply poll index) { start with store := StepDefs.lockdownSt poll.delivered, ctl := [] })
+  | waitTake {initial start target index result suffix} {wait : ComponentCall.Delivery.ParkedWait initial}
+      (delivery : ComponentCall.Delivery.WaitDelivery wait start profile target)
+      (focused : start.ctl = ⟨some wait.thread, .prog wait.takeEvent, .core wait.core wait.next :: wait.segments⟩ :: start.ctl.drop 1)
+      (pending : ComponentCall.Delivery.PendingAt start.store target index)
+      (branch : BufferBranch delivery.delivered wait.memory (flatNat wait.out) result suffix) :
+      NestedPlan bindings profile ready base start (delivery.labels ++ suffix)
+        (result.finish (delivery.resumed index) { start with store := StepDefs.lockdownSt delivery.delivered, ctl := [] })
+  | cancelReturned {start target index} (cancel : ComponentCall.Delivery.ParkedCancel start target)
+      (pending : ComponentCall.Delivery.PendingAt start.store target index)
+      (available : ComponentCall.Delivery.CancelAvailable start.store target) :
+      NestedPlan bindings profile ready base start (List.replicate 15 .tau) cancel.resumed
   | sequence {start middle finish leading trailing}
       (front : NestedPlan bindings profile ready base start leading middle)
       (back : NestedPlan bindings profile ready base middle trailing finish) :

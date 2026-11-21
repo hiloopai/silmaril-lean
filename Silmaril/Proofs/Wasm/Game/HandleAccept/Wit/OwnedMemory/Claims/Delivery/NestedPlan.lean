@@ -68,6 +68,8 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
   | segment path => exact path.steps
   | commit resolve => exact (Transition.commit (impl := base) resolve).steps
   | poll poll pending branch => exact (Transition.poll (impl := base) poll pending branch).steps
+  | waitTake delivery focused pending branch => exact (Transition.waitTake (impl := base) delivery focused pending branch).steps
+  | cancelReturned cancel pending available => exact (Transition.cancelReturned (impl := base) cancel pending available).steps
   | sequence _ _ front back => exact append front back
   | give _ _ entry checkedBody _ _ replies _ _ => exact append (append entry.steps checkedBody) (replies.1 _)
   | stop _ _ entry checkedBody _ _ _ _ _ => exact append entry.steps checkedBody
@@ -100,6 +102,15 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
   | poll poll pending branch =>
     obtain ⟨_, replay, aligned, _⟩ :=
       Transition.poll_paired (ready := ready) (impl := LiveDispatch.host bindings base) poll pending branch paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | waitTake delivery focused pending branch =>
+    obtain ⟨_, replay, aligned, _⟩ :=
+      Transition.wait_take_paired (ready := ready) (impl := LiveDispatch.host bindings base) delivery focused pending branch paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | cancelReturned cancel pending available =>
+    obtain ⟨_, replay, aligned, _⟩ :=
+      Transition.cancel_returned_paired (profile := profile) (ready := ready) (impl := LiveDispatch.host bindings base)
+        cancel pending available paired
     exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | sequence _ _ replayFront replayBack =>
     obtain ⟨_, _, front, frontPrefix, ⟨seenFront, aligned⟩ | cut⟩ := replayFront paired
