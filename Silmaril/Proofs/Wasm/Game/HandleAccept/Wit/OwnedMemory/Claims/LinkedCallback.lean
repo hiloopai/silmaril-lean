@@ -889,7 +889,8 @@ theorem stringFlatRule {older : ReturnFrame.Substitutions (core3 grow) (HostStat
   exact ⟨item, rfl, stringFieldThen destination inst item .flat index checkNext canonNext frame growth present realloc fit rfl
     checkAt canonAt ends⟩
 
-theorem handleFieldThen {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {origin : CStore (core3 grow)}
+theorem handleFieldThenBetween {dispatch reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {origin : CStore (core3 grow)}
     (destination : RecordDestination) (inst : InstId) (item : Field) (handle : CanonicalHandle item)
     (index : Nat) (output : Lower.Output)
     (checkNext : Except RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
@@ -905,18 +906,18 @@ theorem handleFieldThen {older : ReturnFrame.Substitutions (core3 grow) (HostSta
     (ends : ∀ value reached reference check canon, ChildFrameOver older reached reference check canon →
       Core3.Grows origin.core reached.store.core → reached.ctl = check.control (checkNext (.ok value)) →
       reference.ctl = canon.control (canonNext value) → next value reached reference check canon) :
-    HandleFieldThen profile ready bindings item index output left right check canon checkNext canonNext next := by
+    HandleFieldThenBetween profile ready dispatch reference item index output left right check canon checkNext canonNext next := by
   have checkLeaf : left.ctl = check.control (Record.Effects.checkedLeaf recordClaims Limits.spec Quirks.none
       (destination.context inst) destination.width item index output >>= checkNext) := by
     cases item <;> first | exact checkAt | exact False.elim handle
   have canonLeaf : right.ctl = canon.control (CanonicalTree.leaf Limits.spec Quirks.none
       (destination.context inst) destination.width item output >>= canonNext) := by
     cases item <;> first | exact canonAt | exact False.elim handle
-  have run := RecordDestination.compare_handle_leaf (profile := profile) (ready := ready)
-    (dispatch := specDispatch ready (host bindings)) frame.store destination inst item handle index output checkNext canonNext
+  have run := RecordDestination.compare_handle_leaf_between (profile := profile) (ready := ready)
+    (dispatch := dispatch) (reference := reference) frame.store destination inst item handle index output checkNext canonNext
     (thread := check.thread) (checkFrames := check.frames) (checkRest := check.rest)
     (canonFrames := canon.frames) (canonRest := canon.rest) checkLeaf (by simpa only [Cursor.control, frame.thread] using canonLeaf)
-  unfold HandleFieldThen
+  unfold HandleFieldThenBetween
   cases planned : liveLeafPlan left.store left.host.writer index item with
   | error issue => simpa only [planned, Cursor.control] using run
   | ok plan =>
@@ -930,6 +931,9 @@ theorem handleFieldThen {older : ReturnFrame.Substitutions (core3 grow) (HostSta
       refine ⟨checkTrack, by simpa only [canonThread, localLeafEnd, Cursor.control] using canonTrack, ?_⟩
       exact ends value _ _ _ _ ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
         ((frame.store ▸ growth).trans grew) rfl rfl
+
+private abbrev handleFieldThen :=
+  @handleFieldThenBetween grow sig profile ready (specDispatch ready (host bindings)) (specDispatch ready (host bindings))
 
 theorem mixedFlatRule {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {origin : CStore (core3 grow)}
     (destination : RecordDestination) (inst : InstId) (item : Field)

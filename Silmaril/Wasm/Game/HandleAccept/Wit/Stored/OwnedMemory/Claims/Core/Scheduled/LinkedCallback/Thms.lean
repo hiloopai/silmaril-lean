@@ -308,7 +308,8 @@ theorem mixed_flat_rule {older : ReturnFrame.Substitutions (core3 grow) (HostSta
     FlatFieldRule (mixedFlatComparison profile ready bindings older destination inst) older origin destination inst item :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LinkedCallback.mixedFlatRule destination inst item present allocator fit
 
-theorem ChildFrameOver.handle_field_then {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+theorem ChildFrameOver.handle_field_then_between {dispatch reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {origin : CStore (core3 grow)} (destination : RecordDestination) (inst : InstId) (item : Field) (handle : CanonicalHandle item)
     (index : Nat) (output : Stored.Lower.Output)
     (checkNext : Except RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
@@ -324,9 +325,12 @@ theorem ChildFrameOver.handle_field_then {older : ReturnFrame.Substitutions (cor
     (ends : ∀ value reached reference check canon, ChildFrameOver older reached reference check canon →
       Core3.Grows origin.core reached.store.core → reached.ctl = check.control (checkNext (.ok value)) →
       reference.ctl = canon.control (canonNext value) → next value reached reference check canon) :
-    HandleFieldThen profile ready bindings item index output left right check canon checkNext canonNext next :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LinkedCallback.handleFieldThen
+    HandleFieldThenBetween profile ready dispatch reference item index output left right check canon checkNext canonNext next :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LinkedCallback.handleFieldThenBetween
     destination inst item handle index output checkNext canonNext frame growth checkAt canonAt ends
+
+abbrev ChildFrameOver.handle_field_then :=
+  @ChildFrameOver.handle_field_then_between grow sig profile ready (specDispatch ready (host bindings)) (specDispatch ready (host bindings))
 
 theorem ChildFrameOver.string_field_then {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {origin : CStore (core3 grow)} (destination : RecordDestination) (inst : InstId) (item : StringField) (output : Stored.Lower.Output)

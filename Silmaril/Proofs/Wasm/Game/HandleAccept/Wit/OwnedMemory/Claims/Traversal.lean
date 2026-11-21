@@ -79,7 +79,7 @@ theorem handleTrackFinish {originLeft originRight left right : State grow sig}
     (next : ∀ value lhs rhs check canon, TrackedAdvance profile ready bindings originLeft originRight lhs rhs →
       finish value lhs rhs check canon → target value lhs rhs check canon) :
     HandleFieldThen profile ready bindings item index output left right check canon checkNext canonNext target := by
-  unfold HandleFieldThen at run ⊢
+  unfold HandleFieldThen HandleFieldThenBetween at run ⊢
   split <;> rename_i verdict live <;> simp only [live] at run
   · exact run
   · obtain ⟨store, result, reads, checkLabels, canonLabels, readTau, checkSilent, canonSilent, checked, canonical, tail⟩ := run

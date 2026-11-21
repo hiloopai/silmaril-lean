@@ -38,9 +38,9 @@ the leaf. After successful admission, both sides execute the real canonical
 leaf with the same value or trap and reached store. Earlier store effects and
 the checked spend survive a late trap. The two success continuations and host
 states need not match. -/
-theorem RecordDestination.compare_handle_leaf {grow : SingleThreaded.GrowOracle} {sig : Signature}
+theorem RecordDestination.compare_handle_leaf_between {grow : SingleThreaded.GrowOracle} {sig : Signature}
     {profile : ProfileKind} {ready : HostReady (HostState sig)}
-    {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {dispatch reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     {checked canonical : Config (core3 grow) (HostState sig)}
     (sameStore : checked.store = canonical.store) (destination : RecordDestination) (inst : InstId)
     (item : Field) (handle : CanonicalHandle item) (index : Nat) (output : Stored.Lower.Output)
@@ -60,14 +60,19 @@ theorem RecordDestination.compare_handle_leaf {grow : SingleThreaded.GrowOracle}
         (∀ label ∈ leading, label = .tau) ∧ LocalLeafLabels outcome checkLabels ∧ LocalLeafLabels outcome canonLabels ∧
         Steps profile ready dispatch checked (leading ++ checkLabels)
           (localLeafEnd checked host reached thread checkFrames checkRest (fun result => checkNext (.ok result)) outcome) ∧
-        Steps profile ready dispatch canonical canonLabels
+        Steps profile ready reference canonical canonLabels
           (localLeafEnd canonical canonical.host reached thread canonFrames canonRest canonNext outcome) ∧
         ∀ value, outcome = .ok value →
           RetainsActiveSlots profile ready dispatch checked (leading ++ checkLabels)
             (localLeafEnd checked host reached thread checkFrames checkRest (fun result => checkNext (.ok result)) (.ok value)) ∧
-          RetainsActiveSlots profile ready dispatch canonical canonLabels
+          RetainsActiveSlots profile ready reference canonical canonLabels
             (localLeafEnd canonical canonical.host reached thread canonFrames canonRest canonNext (.ok value)) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LocalLeaf.compare
     sameStore destination inst item handle index output checkNext canonNext checkAt canonAt
+
+abbrev RecordDestination.compare_handle_leaf {grow : SingleThreaded.GrowOracle} {sig : Signature}
+    {profile : ProfileKind} {ready : HostReady (HostState sig)}
+    {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))} :=
+  @RecordDestination.compare_handle_leaf_between grow sig profile ready dispatch dispatch
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled

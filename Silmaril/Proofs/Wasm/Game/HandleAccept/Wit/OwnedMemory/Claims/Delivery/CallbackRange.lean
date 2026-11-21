@@ -94,8 +94,8 @@ private theorem appendRun {dispatch : Call (core3 grow) → Session grow sig (Re
   | refl => exact back
   | cons step _ ih => exact .cons step (ih back)
 
-theorem localData (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
-    (entries : List Field) (matched : Field.EntriesMatch entries element) (data : LocalDataType element)
+private theorem localTail (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
+    (entries : List Field) (mode : CanonicalTree.EntryMode)
     (output : Stored.Lower.Output) (index pointer : Nat)
     (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
     (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
@@ -103,11 +103,19 @@ theorem localData (destination : RecordDestination) (inst : InstId) (element : S
     {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)} :
     let area := layout destination.width element
     let lhs := fun addr verdict => checkedCollectionTail destination inst entries area index output addr verdict >>= checkNext
-    let rhs := fun addr => canonicalCollectionTail destination inst entries area output addr >>= canonNext
+    let rhs := fun addr => canonicalCollectionTail destination inst entries area output addr mode >>= canonNext
+    (∀ bytes (left right : Config (core3 grow) (HostState sig)) (canon : Cursor (E := core3 grow) (HostState sig)),
+      (core3 grow).memAddrType? left.store.core destination.memory = some destination.width →
+      (core3 grow).memSize? left.store.core destination.memory = some bytes →
+      pointer = alignTo pointer area.alignment → pointer + entries.length * area.size ≤ bytes →
+      left.store = right.store → check.thread = canon.thread →
+      left.ctl = check.control (lhs pointer (.ok ())) → right.ctl = canon.control (rhs pointer) →
+      LocalCutKeepingBetween profile ready (specDispatch ready base) (specDispatch ready (LiveDispatch.host bindings base))
+        (fun store => Core3.Grows left.store.core store.core) left right check canon (fun value => checkNext (.ok value)) canonNext) →
     CollectionRangeCut profile ready base bindings older checked canonical check destination area entries.length pointer
       (Field.listObjects entries) lhs rhs →
     CollectionReturn profile ready base bindings older checked canonical check checkNext canonNext (rhs pointer) := by
-  intro area lhs rhs cut
+  intro area lhs rhs visit cut
   obtain ⟨canon, bytes, width, sized, frame, range⟩ := cut
   have trapped (reason : TrapReason)
       (checkRun : ∃ steps, Steps profile ready (specDispatch ready base) checked
@@ -146,10 +154,7 @@ theorem localData (destination : RecordDestination) (inst : InstId) (element : S
         rw [prepared] at checkRun
         let entered := { checked with ctl := check.control (lhs pointer (.ok ())) }
         obtain ⟨store, outcome, checkedTail, canonTail, checkedRun, canonicalRun, seen, result⟩ :=
-          local_data_collection_tail (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
-            (reference := specDispatch ready (LiveDispatch.host bindings base)) destination inst element data entries matched
-            pointer bytes index output entered other width sized aligned bounds frame.store check canon frame.thread
-            checkNext canonNext rfl rfl
+          visit bytes entered other canon width sized aligned bounds frame.store frame.thread rfl rfl
         have left := appendRun (prefix_survives (checkRun 0)).1 checkedRun
         have right := appendRun (prefix_survives (canonRun 0)).1 canonicalRun.steps
         have labels : visible (leading ++ checkedTail) = visible (referenceLabels ++ canonTail) := by
@@ -259,6 +264,32 @@ theorem refusalReply {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig
   exact ⟨canon, lhs, rhs, segments, checkTau, canonTau,
     appendRun (prefix_survives (checkedRun 0)).1 (Plain.give_completion_steps reply atReply), canonRun⟩
 
+private theorem collectionCaller {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (type element : Stored.TypeOf) (entries : List Field)
+    (field : site.field = .dynamic type element entries)
+    (prepared : Stored.OwnedMemory.Claims.Record.prepare site.checked.store site.checked.host.writer (Field.listObjects entries) = .ok ())
+    {checked : Config (core3 grow) (HostState sig)} {checkTrace} :
+    let area := layout site.destination.width element
+    let resume := checkedCollectionResume site.destination site.inst entries area 0 route.output site.reply
+    Trail profile ready (specDispatch ready base)
+      (collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor resume)
+      (some (.active 0 0)) checkTrace checked (some (.active 0 0)) →
+    ∃ trace, Prefix profile ready (specDispatch ready base) site.checked (.active 0 0) trace checked (.active 0 1) := by
+  intro area resume trail
+  have width := site.destination.check_width site.start.store linked.destination
+  have checkAt : site.checked.ctl = site.cursor.control (Stored.OwnedMemory.Claims.Record.Effects.field
+      recordClaims Limits.spec Quirks.none (site.destination.context site.inst) site.destination.width
+      (.dynamic type element entries) 0 route.output >>= site.reply) := by
+    simp only [PayloadRoot.Site.checked, PayloadRoot.Site.withBody, field]
+  have canonAt := site.reference_at linked site.referenceReply
+  rw [field] at canonAt
+  have entered := (collection_install_tracks (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+    site.destination site.inst type element entries route.output 0 site.checked (site.reference site.referenceReply)
+    site.cursor site.cursor site.reply site.referenceReply width prepared checkAt canonAt 0).1
+  obtain ⟨place, initial, track⟩ := trail.survives
+  cases initial
+  exact ⟨_, entered.append (track.under 1)⟩
+
 theorem localListReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (data : LocalDataType element)
     (field : site.field = .dynamic (.list element) element entries) (pointer : Nat)
@@ -285,22 +316,58 @@ theorem localListReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow
   have width := site.destination.check_width site.start.store linked.destination
   have prepared : Stored.OwnedMemory.Claims.Record.prepare site.checked.store site.checked.host.writer
       (Field.listObjects entries) = .ok () := by rw [local_data_objects data children]; rfl
-  have checkAt : site.checked.ctl = site.cursor.control (Stored.OwnedMemory.Claims.Record.Effects.field
-      recordClaims Limits.spec Quirks.none (site.destination.context site.inst) site.destination.width
-      (.dynamic (.list element) element entries) 0 route.output >>= site.reply) := by
-    simp only [PayloadRoot.Site.checked, PayloadRoot.Site.withBody, field]
-  have canonAt := site.reference_at linked site.referenceReply
-  rw [field] at canonAt
-  have entered := (collection_install_tracks (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
-    site.destination site.inst (.list element) element entries route.output 0 site.checked (site.reference site.referenceReply)
-    site.cursor site.cursor site.reply site.referenceReply width prepared checkAt canonAt 0).1
-  obtain ⟨place, initial, track⟩ := mark.checkedTrail.survives
-  cases initial
-  have below := track.under 1
-  have caller := entered.append below
+  obtain ⟨_, caller⟩ := collectionCaller site linked (.list element) element entries field prepared mark.checkedTrail
   have cut := collectionRange (profile := profile) (ready := ready) site.destination site.inst (.list element) element
     entries route.output 0 pointer site.reply site.referenceReply mark paired returned width growth
-  exact replies site caller (localData site.destination site.inst element entries children data route.output 0 pointer
-    site.reply site.referenceReply cut)
+  exact replies site caller (localTail site.destination site.inst element entries .value route.output 0 pointer
+    site.reply site.referenceReply (fun bytes left right canon reachedWidth sized aligned bounds same thread checkAt rightAt =>
+      local_data_collection_tail site.destination site.inst element data entries children pointer bytes 0 route.output left right
+        reachedWidth sized aligned bounds same check canon thread site.reply site.referenceReply checkAt rightAt) cut)
+
+private theorem mapEntries {entries : List Field} {key : WIT.KeyType} {element schema : Stored.TypeOf}
+    (matched : Field.LayoutMatches (.dynamic (.map key element) (.record (mapEntryFields key element)) entries) schema) :
+    Field.EntriesMatch entries (.record (mapEntryFields key element)) := by
+  cases matched with
+  | map children => exact children
+
+theorem localMapReplies {outputPointer : FlatValue} (site : PayloadRoot.Site grow sig (.memory outputPointer))
+    (linked : site.Linked bindings) (key : WIT.KeyType) (element : Stored.TypeOf) (entries : List Field)
+    (keyData : LocalDataType (.prim key.toPrimitive)) (valueData : LocalDataType element)
+    (field : site.field = .dynamic (.map key element) (.record (mapEntryFields key element)) entries) (pointer : Nat)
+    {older wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {checked canonical : Config (core3 grow) (HostState sig)}
+    {check : Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace} :
+    let entryType : Stored.TypeOf := .record (mapEntryFields key element)
+    let area := layout site.destination.width entryType
+    let mode := CanonicalTree.EntryMode.memoryMap site.destination.width key element
+    let output := (GiveEffectRoute.memory outputPointer).output
+    let first := checkedCollectionResume site.destination site.inst entries area 0 output site.reply
+    let second := canonicalCollectionResume site.destination site.inst entries area output site.referenceReply mode
+    AllocatorMark profile ready base bindings older
+      (collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
+      (collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+    HostFrame.Related.Paired wider checked canonical →
+    checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
+    Core3.Grows site.checked.store.core checked.store.core →
+    CollectionReplies profile ready base bindings older site checked canonical
+      (canonicalCollectionTail site.destination site.inst entries area output pointer mode >>= site.referenceReply) := by
+  intro entryType area mode output first second mark paired returned growth
+  obtain ⟨objects, compiled⟩ := linked.compiled
+  have matched := Stored.OwnedMemory.Claims.Record.preflightValue_layout _ _ _ _ _ objects compiled
+  have emitted := Stored.OwnedMemory.Claims.Record.preflightValue_emitted _ _ _ _ _ objects compiled
+  rw [field] at matched emitted
+  have children := mapEntries matched
+  have prepared : Stored.OwnedMemory.Claims.Record.prepare site.checked.store site.checked.host.writer
+      (Field.listObjects entries) = .ok () := by rw [local_data_map_objects valueData children emitted]; rfl
+  obtain ⟨_, caller⟩ := collectionCaller site linked (.map key element) entryType entries field prepared mark.checkedTrail
+  have width := site.destination.check_width site.start.store linked.destination
+  have cut := collectionRange (profile := profile) (ready := ready) site.destination site.inst (.map key element) entryType
+    entries output 0 pointer site.reply site.referenceReply mark paired returned width growth
+  exact replies site caller (localTail site.destination site.inst entryType entries mode output 0 pointer site.reply site.referenceReply
+    (fun bytes left right canon reachedWidth sized aligned bounds same thread checkAt rightAt =>
+      local_map_collection_tail site.destination site.inst key element keyData valueData entries children emitted pointer bytes 0
+        (flatNat outputPointer) left right reachedWidth sized aligned bounds same check canon thread site.reply site.referenceReply
+        checkAt rightAt) cut)
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange

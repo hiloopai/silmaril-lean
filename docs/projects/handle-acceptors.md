@@ -1457,6 +1457,15 @@ the reached store and host journal. This refusal rule also applies to
 resource plans and the allocation-time map mode: canonical stops before
 child effects or publication, and neither dispatcher undoes callback effects.
 
+For `givePayload` of a map with non-string primitive keys and local data
+values, `AllocatorMark.local_map_replies` obtains each entry's shape from
+the actual compiler and traverses the entries in order. The checked
+aggregate bounds check and the canonical allocation-time offsets are
+related at each entry. Growth rather than byte equality across the
+callback justifies the reached ranges. The proof runs the actual descriptor
+writes and rejoins the tracked caller on success, with no reply on a trap.
+It does not compare allocating map keys or values or require a callback to return.
+
 `LiveDispatch.linked_memory_admission` and `linked_flat_admission` join the
 actual linked root cut to the corresponding recursive body certificate. A
 checked preflight refusal resumes the checked Core caller, but the canonical

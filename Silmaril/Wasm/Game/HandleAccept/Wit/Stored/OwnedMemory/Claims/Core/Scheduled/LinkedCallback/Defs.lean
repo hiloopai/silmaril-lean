@@ -435,14 +435,14 @@ def StringField.field (item : StringField) : Field := .data (.prim .string) ⟨.
 slots. On success the same slots reach the next field along with the spent
 writer and the reached canonical store. On trap neither side enters a success
 continuation, and the reached effects are retained. -/
-def HandleFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+def HandleFieldThenBetween (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (dispatch reference : Call (core3 grow) → Session grow sig (Ret (core3 grow)))
     (item : Field) (index : Nat) (output : Stored.Lower.Output) (left right : State grow sig)
     (check canon : Cursor (E := core3 grow) (HostState sig))
     (checkNext : Except Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
     (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
     (next : output.Result → State grow sig → State grow sig → Cursor (E := core3 grow) (HostState sig) →
       Cursor (E := core3 grow) (HostState sig) → Prop) : Prop :=
-  let dispatch := specDispatch ready (host bindings)
   match liveLeafPlan left.store left.host.writer index item with
   | .error issue => ∃ labels, (∀ label ∈ labels, label = .tau) ∧ ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left labels
       { left with ctl := check.control (checkNext (.error issue)) }
@@ -453,14 +453,17 @@ def HandleFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) 
       (∀ label ∈ leading, label = .tau) ∧ LocalLeafLabels result checkLabels ∧ LocalLeafLabels result canonLabels ∧
       Steps profile ready dispatch left (leading ++ checkLabels)
         (localLeafEnd left spent store check.thread check.frames check.rest (fun value => checkNext (.ok value)) result) ∧
-      Steps profile ready dispatch right canonLabels
+      Steps profile ready reference right canonLabels
         (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) ∧
       ∀ value, result = .ok value →
         let lhs := { left with store, host := spent, ctl := check.control (checkNext (.ok value)) }
         let rhs := { right with store, ctl := canon.control (canonNext value) }
         ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left (leading ++ checkLabels) lhs ∧
-        ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch right canonLabels rhs ∧
+        ReturnFrame.Occurrence.RetainsActiveSlots profile ready reference right canonLabels rhs ∧
         next value lhs rhs check canon
+
+abbrev HandleFieldThen (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig)) :=
+  HandleFieldThenBetween profile ready (specDispatch (E := core3 grow) ready (host bindings)) (specDispatch ready (host bindings))
 
 def flatSequenceChecked (destination : RecordDestination) (inst : InstId) (items : List Field) (index : Nat)
     (leading : List FlatValue) (finish : Except Endpoints.RecordLower.Issue (List FlatValue) → Session grow sig (Ret (core3 grow))) :

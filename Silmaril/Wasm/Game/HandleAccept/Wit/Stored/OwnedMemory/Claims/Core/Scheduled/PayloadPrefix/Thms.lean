@@ -521,6 +521,39 @@ theorem local_data_collection_tail
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localDataCollectionTail destination inst element data
     entries matched pointer bytes index output left right width sized aligned bounds same check canon thread checkNext canonNext checkAt canonAt
 
+theorem local_data_map_objects {key : WIT.KeyType} {element : TypeOf} {entries : List Field}
+    (data : LocalDataType element)
+    (matched : Field.EntriesMatch entries (.record (mapEntryFields key element)))
+    (emitted : Field.Emitted (.dynamic (.map key element) (.record (mapEntryFields key element)) entries)) :
+    Field.listObjects entries = [] :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localMapObjects data matched emitted
+
+/-- Reached memory-map entries use allocation-time key and value offsets.
+Follow every compiled data entry, then execute the real descriptor writes. -/
+theorem local_map_collection_tail {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
+    (keyData : LocalDataType (.prim key.toPrimitive)) (valueData : LocalDataType element)
+    (entries : List Field)
+    (matched : Field.EntriesMatch entries (.record (mapEntryFields key element)))
+    (emitted : Field.Emitted (.dynamic (.map key element) (.record (mapEntryFields key element)) entries))
+    (pointer bytes index outputAddress : Nat) (left right : Config (core3 grow) (HostState sig))
+    (width : (core3 grow).memAddrType? left.store.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? left.store.core destination.memory = some bytes)
+    (aligned : pointer = alignTo pointer (layout destination.width (.record (mapEntryFields key element))).alignment)
+    (bounds : pointer + entries.length * (layout destination.width (.record (mapEntryFields key element))).size ≤ bytes)
+    (same : left.store = right.store) (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) :
+    let area := layout destination.width (.record (mapEntryFields key element))
+    let mode := CanonicalTree.EntryMode.memoryMap destination.width key element
+    left.ctl = check.control (checkedCollectionTail destination inst entries area index (.memory outputAddress) pointer (.ok ()) >>= checkNext) →
+    right.ctl = canon.control (canonicalCollectionTail destination inst entries area (.memory outputAddress) pointer mode >>= canonNext) →
+    LocalCutKeepingBetween profile ready dispatch reference (fun store => Core3.Grows left.store.core store.core)
+      left right check canon (fun value => checkNext (.ok value)) canonNext :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localMapCollectionTail
+    destination inst key element keyData valueData entries matched emitted pointer bytes index outputAddress left right
+    width sized aligned bounds same check canon thread checkNext canonNext
+
 /-- Use the validated collection range, rather than a fresh placement
 assumption for the scalar at its reached list index. -/
 theorem primitive_list_entry (destination : RecordDestination) (inst : InstId) (primitive : WIT.Primitive)

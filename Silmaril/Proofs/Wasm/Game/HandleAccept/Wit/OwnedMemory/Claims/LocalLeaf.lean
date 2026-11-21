@@ -210,7 +210,8 @@ private theorem canonical_growth (base : CStore (core3 grow)) (destination : Rec
   | memory ptr => exact P.Inv.store laws _ _ _ _ _ ptr
   | flat => exact P.Inv.lowerFlatAt laws _ _ _ _ _ _
 
-theorem compare {checked canonical : Config (core3 grow) (HostState sig)}
+theorem compare {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {checked canonical : Config (core3 grow) (HostState sig)}
     (sameStore : checked.store = canonical.store) (destination : RecordDestination) (inst : InstId)
     (item : Field) (handle : CanonicalHandle item) (index : Nat) (output : Stored.Lower.Output)
     (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
@@ -229,12 +230,12 @@ theorem compare {checked canonical : Config (core3 grow) (HostState sig)}
         (∀ label ∈ leading, label = .tau) ∧ LocalLeafLabels outcome checkLabels ∧ LocalLeafLabels outcome canonLabels ∧
         Steps profile ready dispatch checked (leading ++ checkLabels)
           (localLeafEnd checked host reached thread checkFrames checkRest (fun result => checkNext (.ok result)) outcome) ∧
-        Steps profile ready dispatch canonical canonLabels
+        Steps profile ready reference canonical canonLabels
           (localLeafEnd canonical canonical.host reached thread canonFrames canonRest canonNext outcome) ∧
         ∀ value, outcome = .ok value →
           RetainsActiveSlots profile ready dispatch checked (leading ++ checkLabels)
             (localLeafEnd checked host reached thread checkFrames checkRest (fun result => checkNext (.ok result)) (.ok value)) ∧
-          RetainsActiveSlots profile ready dispatch canonical canonLabels
+          RetainsActiveSlots profile ready reference canonical canonLabels
             (localLeafEnd canonical canonical.host reached thread canonFrames canonRest canonNext (.ok value)) := by
   let body := (CanonicalTree.leaf Component.Limits.spec Quirks.none (destination.context inst)
     destination.width item output : Session grow sig output.Result)
@@ -265,7 +266,7 @@ theorem compare {checked canonical : Config (core3 grow) (HostState sig)}
     obtain ⟨checkLabels, checkTrace, checkRun, checkTracks⟩ := execute (profile := profile) (ready := ready) (dispatch := dispatch)
       body checkedNext reached outcome (fun result => checkNext (.ok result)) (thread := thread)
       (frames := checkFrames) (rest := checkRest) rfl checkedEval
-    obtain ⟨canonLabels, canonTrace, canonRun, canonTracks⟩ := execute (profile := profile) (ready := ready) (dispatch := dispatch)
+    obtain ⟨canonLabels, canonTrace, canonRun, canonTracks⟩ := execute (profile := profile) (ready := ready) (dispatch := reference)
       body canonical reached outcome canonNext canonAt canonEval
     refine ⟨reached, outcome, guardLabels, checkLabels, canonLabels, grown, guardSilent, checkTrace, canonTrace, ?_, canonRun, ?_⟩
     · cases outcome <;> exact chain (prefix_survives (prefixTracks 0)).1 checkRun

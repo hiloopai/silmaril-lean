@@ -6,6 +6,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.Thms
 
 public section
 
@@ -196,6 +197,55 @@ theorem AllocatorMark.local_list_replies {route : GiveEffectRoute} (site : Paylo
       (PayloadPrefix.canonicalCollectionTail site.destination site.inst entries area route.output pointer >>= site.referenceReply) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.localListReplies
     site linked element entries data field pointer
+
+/-- Replay a reached memory-map return through every compiled data entry,
+descriptor writes, and the original public `givePayload` caller reply.
+The canonical offsets are those selected when the allocation was installed. -/
+theorem AllocatorMark.local_map_replies {outputPointer : FlatValue} (site : PayloadRoot.Site grow sig (.memory outputPointer))
+    (linked : site.Linked bindings) (key : WIT.KeyType) (element : Stored.TypeOf) (entries : List Field)
+    (keyData : PayloadPrefix.LocalDataType (.prim key.toPrimitive)) (valueData : PayloadPrefix.LocalDataType element)
+    (field : site.field = .dynamic (.map key element) (.record (mapEntryFields key element)) entries) (pointer : Nat)
+    {wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {checked canonical : Config (core3 grow) (HostState sig)}
+    {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace} :
+    let area := layout site.destination.width (.record (mapEntryFields key element))
+    let mode := CanonicalTree.EntryMode.memoryMap site.destination.width key element
+    let output := (GiveEffectRoute.memory outputPointer).output
+    let first := PayloadPrefix.checkedCollectionResume site.destination site.inst entries area 0 output site.reply
+    let second := PayloadPrefix.canonicalCollectionResume site.destination site.inst entries area output site.referenceReply mode
+    AllocatorMark profile ready base bindings older
+      (PayloadPrefix.collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
+      (PayloadPrefix.collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+    HostFrame.Related.Paired wider checked canonical →
+    checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
+    Core3.Grows site.checked.store.core checked.store.core →
+    CollectionReplies profile ready base bindings older site checked canonical
+      (PayloadPrefix.canonicalCollectionTail site.destination site.inst entries area output pointer mode >>= site.referenceReply) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.localMapReplies
+    site linked key element entries keyData valueData field pointer
+
+/-- At a reached owner, endpoint, or error-context leaf, use the live
+checked writer, not the enclosing dry run. Neither branch dispatches a
+callback at this leaf. A checked refusal leaves canonical before the leaf;
+after a successful check the actual spend survives a later canonical trap. -/
+theorem reached_handle_field (destination : RecordDestination) (inst : InstId) (item : Field) (handle : CanonicalHandle item)
+    (index : Nat) (output : Stored.Lower.Output)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    {origin : CStore (core3 grow)} {left right : Config (core3 grow) (HostState sig)}
+    {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core left.store.core)
+    (checkAt : left.ctl = check.control (OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width item index output >>= checkNext))
+    (canonAt : right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none
+      (destination.context inst) destination.width item output >>= canonNext)) :
+    LinkedCallback.HandleFieldThenBetween profile ready (specDispatch ready base) (specDispatch ready (LiveDispatch.host bindings base))
+      item index output left right check canon checkNext canonNext (fun value reached reference lhs rhs =>
+        LinkedCallback.ChildFrameOver older reached reference lhs rhs ∧ Core3.Grows origin.core reached.store.core ∧
+        reached.ctl = lhs.control (checkNext (.ok value)) ∧ reference.ctl = rhs.control (canonNext value)) :=
+  frame.handle_field_then_between destination inst item handle index output checkNext canonNext growth checkAt canonAt
+    (fun _ _ _ _ _ related grown lhs rhs => ⟨related, grown, lhs, rhs⟩)
 
 /-- On a valid reached range with failed live preparation, execute exactly
 the checked refusal reply. This applies to the actual map entry mode as
