@@ -16,6 +16,7 @@ LIBS=(
   "glibc-libc.so.6 https://launchpad.net/ubuntu/+archive/primary/+files/libc6_2.39-0ubuntu8.9_amd64.deb ff5557d99b51f761c4b7c92368b9cc45565eda17df9bf9eb4b134d09825008be ./usr/lib/x86_64-linux-gnu/libc.so.6 3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf"
   "glibc-libm.so.6 https://launchpad.net/ubuntu/+archive/primary/+files/libc6_2.39-0ubuntu8.9_amd64.deb ff5557d99b51f761c4b7c92368b9cc45565eda17df9bf9eb4b134d09825008be ./usr/lib/x86_64-linux-gnu/libm.so.6 fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0"
   "zlib-libz.so.1.3 https://launchpad.net/ubuntu/+archive/primary/+files/zlib1g_1.3.dfsg-3.1ubuntu2.3_amd64.deb 376249c8de139568221dbb242318cc8cb8f02299e3a62b7432948e1754fbddf9 ./usr/lib/x86_64-linux-gnu/libz.so.1.3 f61677c7bdb7c2aa2a243ea781bfd16afcb361cede7b4ef76127a9d8eb9a5242"
+  "zlib-libz.so.1.2.11 https://launchpad.net/ubuntu/+archive/primary/+files/zlib1g_1.2.11.dfsg-2ubuntu9.2_amd64.deb 9dc17e51a1be2d9ed63b7b84ef0e4e29c5abe6f1bc62cb03e7181483cce8a2f2 ./lib/x86_64-linux-gnu/libz.so.1.2.11 64c206f0146cc58bbddc4f22054436f4ff278f5a554aa3ce6921ddf7e9133370"
 )
 fetch_member() {  # fetch_member NAME URL DEB_SHA MEMBER FILE_SHA
   local tmp; tmp=$(mktemp -d)
@@ -34,6 +35,7 @@ case "${1:-}" in
     check pinned/gnu-sha256sum "$SHA256SUM_SHA"
     for l in "${LIBS[@]}"; do set -- $l; check "pinned/$1" "$5"; done
     check ../elf-ladder/03-zlib-checksums/pinned/zlib-checksums eeb7934b8c5a13b6fb98ee1a3a15dd2e6861436a6502544dcc549695c39df343
+    (cd ../libs/zlib/pinned && sha256sum --check --quiet SHA256SUMS)
     for h in hello-gcc hello-clang; do check "../dyn/pinned/$h" "$(awk -v h="$h" '$1 == h {print $2}' ../dyn/pins.txt)"; done
     echo "pin.sh: ok" ;;
   --fetch)
