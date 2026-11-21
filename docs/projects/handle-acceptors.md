@@ -1382,8 +1382,12 @@ growth evidence is still required separately for allocation invariants.
 For a placed public memory or flat give at a nonallocating data root,
 `local_data_give_plan` derives the body comparison and caller reply from the
 compiled field and linked width. The trap branch keeps the reached store and
-does not journal a completion. The worker plan still needs a classified body
-and delivery tail; this does not classify all recursive callback paths.
+does not journal a completion. Its canonical body and reply carry a local
+focus at each actual step; the live replay crosses that segment with the older
+frames still paired and does not discover a nested installation, divergent
+host read or substituted return there. The worker plan still needs a
+classified body and delivery tail; this does not classify all recursive
+callback paths.
 
 ## Checking
 

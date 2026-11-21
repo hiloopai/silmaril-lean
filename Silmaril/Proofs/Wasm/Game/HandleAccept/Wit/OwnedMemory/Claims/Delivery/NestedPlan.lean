@@ -13,6 +13,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
 
 public section
 
@@ -73,6 +74,7 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
     Steps profile ready (specDispatch ready base) start labels finish := by
   induction plan with
   | segment path => exact path
+  | localSegment path => exact path.steps
   | commit resolve => exact (Transition.commit (impl := base) resolve).steps
   | poll poll pending branch => exact (Transition.poll (impl := base) poll pending branch).steps
   | waitBlock wait empty => exact (Transition.waitBlock (impl := base) wait empty).steps
@@ -91,6 +93,35 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
   | give _ _ entry checkedBody _ _ replies _ _ => exact append (append entry.steps checkedBody) (replies.1 _)
   | stop _ _ entry checkedBody _ _ _ _ _ => exact append entry.steps checkedBody
 
+theorem replayLocal (run : PayloadPrefix.LocalSteps profile ready (specDispatch ready base) start labels finish)
+    (paired : HostFrame.Related.Paired older start incoming) :
+    ∃ reached, Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming labels reached ∧
+      HostFrame.Related.Paired older finish reached := by
+  induction run generalizing incoming with
+  | refl => exact ⟨_, .refl _, paired⟩
+  | @cons before next finish label labels localFocus step tail ih =>
+    have unchanged : UnchangedAt bindings before := by
+      constructor
+      · intro thread call cont frames rest focused
+        simp [PayloadPrefix.LocalFocus, focused] at localFocus
+      · intro thread core cont frames rest callee args focused calling
+        simp [PayloadPrefix.LocalFocus, focused] at localFocus
+    rcases LiveDispatch.classify_step (bindings := bindings) step with canonical | install
+    · obtain ⟨_, reached, aligned | boundary⟩ := HostFrame.Related.paired_step paired canonical
+      · obtain ⟨_, replay, last⟩ := ih aligned
+        exact ⟨_, .cons reached replay, last⟩
+      · cases boundary with
+        | read cut _ =>
+          cases cut with
+          | mk focused _ => simp [PayloadPrefix.LocalFocus, focused] at localFocus
+        | returned cut =>
+          obtain ⟨_, _, _, _, _, _, _, focused⟩ := cut.left_input
+          simp only [HostFrame.replace] at focused
+          simp [PayloadPrefix.LocalFocus, focused] at localFocus
+    · cases install with
+      | direct focused give => exact (give (unchanged.direct focused)).elim
+      | core focused calling give => exact (give (unchanged.core focused calling)).elim
+
 theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     (paired : HostFrame.Related.Paired older start incoming) :
     ∃ trace reached, Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming trace reached ∧
@@ -107,6 +138,9 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     | @boundary _ _ trailing _ _ _ _ split _ replay aligned cut lhs rhs _ =>
       refine ⟨_, _, append replay (.cons rhs (.refl _)), visiblePrefix ⟨trailing, ?_⟩, .inr (.boundary aligned cut lhs rhs)⟩
       simpa only [List.append_assoc, List.singleton_append] using split.symm
+  | localSegment path =>
+    obtain ⟨_, replay, aligned⟩ := replayLocal (bindings := bindings) path paired
+    exact ⟨_, _, replay, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | commit resolve =>
     by_cases compatible : ∃ writer, incoming.host.writer.register resolve.tree = .ok writer ∧
         writer.accepted.length = resolve.writer.accepted.length
@@ -283,7 +317,7 @@ theorem localDataGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow si
   cases result with
   | error reason =>
     obtain ⟨leading, trapped⟩ := outcome
-    exact ⟨_, _, .stop site linked entry checked (.segment canon)
+    exact ⟨_, _, .stop site linked entry checked (.localSegment canon)
       (.trapped (check := site.cursor) rfl rfl ⟨leading, trapped⟩) rfl seen,
       .inr ⟨rfl, leading, reason, seen.trans trapped⟩⟩
   | ok value =>
@@ -305,7 +339,20 @@ theorem localDataGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow si
       LinkedCallback.MemorySequence.resume_returned_give site value frame (outcome.2.1 0) rfl rfl
     refine ⟨_, _, ?_, .inl ⟨value, checkedLabels, reached, checked, rfl, rfl, checkHost⟩⟩
     rw [← List.append_assoc]
-    exact .give site linked entry checked (.segment (append canon (canonReply _))) value
+    have popFocus : PayloadPrefix.LocalFocus canonical := by
+      simp only [canonical, localLeafEnd, PayloadRoot.Site.cursor, PayloadRoot.Site.referenceReply, PayloadPrefix.LocalFocus]
+      exact True.intro
+    have pop : PayloadPrefix.LocalSteps profile ready (specDispatch ready base) canonical [.tau] right := by
+      generalize traceEq : ([.tau] : Trace grow sig) = trace
+      have run := canonReply (specDispatch ready base)
+      rw [traceEq] at run
+      cases run with
+      | refl => contradiction
+      | cons step tail =>
+        cases traceEq
+        cases tail
+        exact .cons popFocus step (.refl _)
+    exact .give site linked entry checked (.localSegment (canon.append pop)) value
       ⟨checkReply, canonReply, storeEq, checkHost, canonHost, paired⟩ seen
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan

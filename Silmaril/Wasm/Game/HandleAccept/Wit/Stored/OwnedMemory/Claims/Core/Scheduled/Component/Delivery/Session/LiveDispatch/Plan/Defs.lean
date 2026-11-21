@@ -24,6 +24,9 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
   | segment {start labels finish}
       (run : Steps profile ready (specDispatch ready base) start labels finish) :
       NestedPlan bindings profile ready base start labels finish
+  | localSegment {start labels finish}
+      (run : PayloadPrefix.LocalSteps profile ready (specDispatch ready base) start labels finish) :
+      NestedPlan bindings profile ready base start labels finish
   | commit {start target index} (resolve : ComponentCall.Delivery.LinkedResolution start target index) :
       NestedPlan bindings profile ready base start (List.replicate 17 .tau) resolve.committed
   | poll {start target index result suffix} (poll : ComponentCall.Delivery.ParkedPoll start target profile)

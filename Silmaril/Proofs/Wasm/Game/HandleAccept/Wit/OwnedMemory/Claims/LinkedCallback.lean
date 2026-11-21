@@ -724,7 +724,7 @@ private theorem flatSumThen {older : ReturnFrame.Substitutions (core3 grow) (Hos
         arms.length ((flatten destination.width type).drop 1) tag haves words
         (keep := fun store => Core3.Grows origin.core store.core) reached reference (paired.store ▸ grown)
         paired.store check canon paired.thread checkNext canonNext checked canonAt
-    refine ⟨store, result, chk, ref, checkRun, canonRun, labels, ?_⟩
+    refine ⟨store, result, chk, ref, checkRun, canonRun.steps, labels, ?_⟩
     cases result with
     | error _ => exact status
     | ok value =>

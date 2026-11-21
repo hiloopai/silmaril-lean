@@ -270,6 +270,27 @@ def MemoryReaches {E : CoreEngine} {Host : Type} (profile : ProfileKind) (ready 
       Steps profile ready dispatch left (List.replicate count .tau ++ [.trap reason]) reached ∧
       reached.ctl = [] ∧ reached.store = StepDefs.lockdownSt left.store
 
+/-- Focus at a local operation, or at the reply to a saved Core caller. No
+direct or Core callout is about to install a program, no host query is run,
+and the pure reply cannot pop a substituted program continuation. -/
+def LocalFocus {E : CoreEngine} {Host : Type} (cfg : Config E Host) : Prop :=
+  match cfg.ctl with
+  | ⟨_, .prog (.op operation _), _⟩ :: _ =>
+    match operation with
+    | .get | .modify _ | .currentThread | .trap _ | .choose _ => True
+    | _ => False
+  | ⟨_, .prog (.pure _), .core .. :: _⟩ :: _ => True
+  | _ => False
+
+/-- Actual scheduler steps confined to local foci. The endpoint can be an
+open callback or a new callout; it need not be local until another step runs. -/
+inductive LocalSteps {E : CoreEngine} {Host : Type} (profile : ProfileKind) (ready : HostReady Host)
+    (dispatch : Call E → P E Host (Ret E)) : Config E Host → List (Label E Host) → Config E Host → Prop where
+  | refl (state : Config E Host) : LocalSteps profile ready dispatch state [] state
+  | cons {before next finish label labels} (focus : LocalFocus before) (step : Step profile ready dispatch before label next)
+      (tail : LocalSteps profile ready dispatch next labels finish) :
+      LocalSteps profile ready dispatch before (label :: labels) finish
+
 /-- A local comparison with exact reached configurations. Unlike the
 handle-only cut, it permits synchronized observations such as NaN choices. -/
 def LocalCutKeeping {E : CoreEngine} {Host Result : Type} (profile : ProfileKind) (ready : HostReady Host)
@@ -278,7 +299,7 @@ def LocalCutKeeping {E : CoreEngine} {Host Result : Type} (profile : ProfileKind
   ∃ (store : CStore E) (result : Except TrapReason Result) (checked canonical : List (Label E Host)),
     Steps profile ready dispatch left checked
       (localLeafEnd left left.host store check.thread check.frames check.rest checkNext result) ∧
-    Steps profile ready dispatch right canonical
+    LocalSteps profile ready dispatch right canonical
       (localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result) ∧
     visible checked = visible canonical ∧
     match result with

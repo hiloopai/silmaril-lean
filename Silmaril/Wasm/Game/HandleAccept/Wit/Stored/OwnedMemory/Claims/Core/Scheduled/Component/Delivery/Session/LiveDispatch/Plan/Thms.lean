@@ -21,6 +21,15 @@ theorem NestedPlan.source (plan : NestedPlan bindings profile ready base start l
     Steps profile ready (specDispatch ready base) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.source plan
 
+/-- A closed local segment replays to the end, even with a different host and
+older paired continuations. Each reached focus rules out a give installation,
+host read, or pop of a substituted program return. -/
+theorem local_segment_replay (run : PayloadPrefix.LocalSteps profile ready (specDispatch ready base) start labels finish)
+    (paired : HostFrame.Related.Paired older start incoming) :
+    ∃ reached, Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming labels reached ∧
+      HostFrame.Related.Paired older finish reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.replayLocal run paired
+
 /-- Descend through compared nested bodies, then continue from the actual
 caller rejoin with the reached host. Only the completed case has the full
 checked observable trace as a guarantee. A cut records a reached configuration

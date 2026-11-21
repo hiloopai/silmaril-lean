@@ -18,6 +18,18 @@ open Stored.Endpoints.RecordLower
 
 /-- Prepend replayed segments with equal visible labels. The two segments
 may take different numbers of internal steps. -/
+theorem LocalSteps.steps {E : CoreEngine} {Host : Type} {profile : ProfileKind} {ready : HostReady Host}
+    {dispatch : Call E → P E Host (Ret E)} {before finish labels}
+    (run : LocalSteps profile ready dispatch before labels finish) : Steps profile ready dispatch before labels finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localSteps run
+
+theorem LocalSteps.append {E : CoreEngine} {Host : Type} {profile : ProfileKind} {ready : HostReady Host}
+    {dispatch : Call E → P E Host (Ret E)} {before middle finish leading trailing}
+    (front : LocalSteps profile ready dispatch before leading middle)
+    (back : LocalSteps profile ready dispatch middle trailing finish) :
+    LocalSteps profile ready dispatch before (leading ++ trailing) finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localAppend front back
+
 theorem ReachesKeeping.prepend {E : CoreEngine} {Host Result : Type} {profile : ProfileKind}
     {ready : HostReady Host} {dispatch : Call E → P E Host (Ret E)} {keep : CStore E → Prop}
     {left left' right right' : Config E Host} {checkLabels canonLabels : List (Label E Host)}

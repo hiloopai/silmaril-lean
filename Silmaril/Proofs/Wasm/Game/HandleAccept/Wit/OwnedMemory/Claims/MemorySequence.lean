@@ -632,7 +632,7 @@ private theorem scalarRule {older : ReturnFrame.Substitutions (core3 grow) (Host
     destination inst type data payload index (.memory address) origin left right (frame.store ▸ growth) width placed
     frame.store check canon frame.thread checkNext canonNext checkAt canonAt
   obtain ⟨store, result, chk, ref, checkRun, canonRun, labels, status⟩ := cut
-  refine .inr ⟨⟨type, payload, rfl, data⟩, store, result, chk, ref, checkRun, canonRun, labels, ?_⟩
+  refine .inr ⟨⟨type, payload, rfl, data⟩, store, result, chk, ref, checkRun, canonRun.steps, labels, ?_⟩
   cases result with
   | ok value =>
     exact ⟨status.2.1, status.2.2,
@@ -768,7 +768,7 @@ theorem listTreeRule {older : ReturnFrame.Substitutions (core3 grow) (HostState 
         memory_sum_tag (profile := profile) (ready := ready) (dispatch := specDispatch ready (host bindings))
           destination inst type arms tag index address selected origin left right check canon checkNext canonNext
           frame.store frame.thread width (frame.store ▸ growth) checkAt canonAt
-      refine ⟨store, result, chk, ref, runChk, runRef, labels, ?_⟩
+      refine ⟨store, result, chk, ref, runChk, runRef.steps, labels, ?_⟩
       cases result with
       | error _ => exact status
       | ok value =>

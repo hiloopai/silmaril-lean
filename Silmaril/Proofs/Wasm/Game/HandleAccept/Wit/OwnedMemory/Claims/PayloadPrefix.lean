@@ -218,6 +218,20 @@ private theorem sequentialKeeping {keep : CStore E → Prop} {left right : Confi
       convert checkAt using 3)
     (by simpa only [Prog.bind_eq, Prog.bind_assoc] using canonAt)) rest
 
+theorem localSteps {before finish labels} (run : LocalSteps profile ready dispatch before labels finish) :
+    Steps profile ready dispatch before labels finish := by
+  induction run with
+  | refl => exact .refl _
+  | cons _ step _ ih => exact .cons step ih
+
+theorem localAppend {before middle finish leading trailing}
+    (front : LocalSteps profile ready dispatch before leading middle)
+    (back : LocalSteps profile ready dispatch middle trailing finish) :
+    LocalSteps profile ready dispatch before (leading ++ trailing) finish := by
+  induction front with
+  | refl => exact back
+  | cons focus step _ ih => exact .cons focus step (ih back)
+
 private theorem closedCut {body : P E Host Result} {keep : CStore E → Prop}
     (closed : Prog.Every (ClosedOp profile keep) body) :
     ∀ (left right : Config E Host) (check canon : Cursor (E := E) Host)
@@ -249,6 +263,7 @@ private theorem closedCut {body : P E Host Result} {keep : CStore E → Prop}
           { left with store := leftStore, ctl := check.control (next response >>= checkNext) })
         (canonical : Step profile ready dispatch right label
           { right with store := rightStore, ctl := canon.control (next response >>= canonNext) })
+        (localFocus : LocalFocus right)
         (checkEdit : ReturnFrame.Occurrence.transitionEdit left label = .same)
         (canonEdit : ReturnFrame.Occurrence.transitionEdit right label = .same) :
         LocalCutKeeping profile ready dispatch keep left right check canon checkNext canonNext := by
@@ -262,7 +277,7 @@ private theorem closedCut {body : P E Host Result} {keep : CStore E → Prop}
         intro start localStore ctl cursor finish
         cases result <;> rfl
       rw [final] at runChk runRef
-      refine ⟨store, result, label :: chk, label :: ref, .cons checked runChk, .cons canonical runRef, ?_, ?_⟩
+      refine ⟨store, result, label :: chk, label :: ref, .cons checked runChk, .cons localFocus canonical runRef, ?_, ?_⟩
       · change visible ([label] ++ chk) = visible ([label] ++ ref)
         rw [visible_append, visible_append, labels]
       · cases result with
@@ -287,25 +302,29 @@ private theorem closedCut {body : P E Host Result} {keep : CStore E → Prop}
       exact advance .tau right.store left.store right.store kept same
         (by simpa only [same, Cursor.control, Prog.bind_eq] using
           (Step.get (prof := profile) (hr := ready) (dispatch := dispatch) checkAt)) (.get canonAt)
+        (by simp only [LocalFocus, canonAt, Cursor.control, Prog.bind_eq, Prog.bind])
         (by rw [ReturnFrame.Occurrence.transitionEdit, checkAt]; rfl) (by rw [ReturnFrame.Occurrence.transitionEdit, canonAt]; rfl)
     | modify update =>
       exact advance .tau () (update left.store) (update right.store) (admitted right.store kept)
         (congrArg update same) (.modify checkAt) (.modify canonAt)
+        (by simp only [LocalFocus, canonAt, Cursor.control, Prog.bind_eq, Prog.bind])
         (by rw [ReturnFrame.Occurrence.transitionEdit, checkAt]; rfl) (by rw [ReturnFrame.Occurrence.transitionEdit, canonAt]; rfl)
     | currentThread =>
       exact advance .tau canon.thread left.store right.store kept same
         (by simpa only [thread, Cursor.control, Prog.bind_eq] using
           (Step.currentThread (prof := profile) (hr := ready) (dispatch := dispatch) checkAt))
-        (.currentThread canonAt)
+        (.currentThread canonAt) (by simp only [LocalFocus, canonAt, Cursor.control, Prog.bind_eq, Prog.bind])
         (by rw [ReturnFrame.Occurrence.transitionEdit, checkAt]; rfl) (by rw [ReturnFrame.Occurrence.transitionEdit, canonAt]; rfl)
     | trap reason =>
-      refine ⟨right.store, .error reason, [.trap reason], [.trap reason], ?_, .cons (.trap canonAt) (.refl _), rfl, [], rfl⟩
+      refine ⟨right.store, .error reason, [.trap reason], [.trap reason], ?_,
+        .cons (by simp only [LocalFocus, canonAt, Cursor.control, Prog.bind_eq, Prog.bind]) (.trap canonAt) (.refl _), rfl, [], rfl⟩
       rw [← same]
       exact .cons (.trap checkAt) (.refl _)
     | choose choice =>
       obtain ⟨answer, allowed⟩ := admitted
       exact advance (.choice choice answer) answer left.store right.store kept same
-        (.choose answer checkAt allowed) (.choose answer canonAt allowed) rfl rfl
+        (.choose answer checkAt allowed) (.choose answer canonAt allowed)
+        (by simp only [LocalFocus, canonAt, Cursor.control, Prog.bind_eq, Prog.bind]) rfl rfl
     | _ => contradiction
 
 private theorem localCutReaches {keep : CStore E → Prop} {left right : Config E Host} {check canon : Cursor (E := E) Host}
@@ -314,8 +333,8 @@ private theorem localCutReaches {keep : CStore E → Prop} {left right : Config 
     ReachesKeeping profile ready dispatch keep left right check canon checkNext canonNext := by
   obtain ⟨store, result, chk, ref, runChk, runRef, labels, status⟩ := cut
   cases result with
-  | ok value => exact ⟨.returned value, chk, ref, _, _, runChk, runRef, rfl, labels, status.1, rfl, rfl⟩
-  | error reason => exact ⟨.trapped reason, chk, ref, _, _, runChk, runRef, rfl, labels, trivial, rfl, rfl, status⟩
+  | ok value => exact ⟨.returned value, chk, ref, _, _, runChk, localSteps runRef, rfl, labels, status.1, rfl, rfl⟩
+  | error reason => exact ⟨.trapped reason, chk, ref, _, _, runChk, localSteps runRef, rfl, labels, trivial, rfl, rfl, status⟩
 
 private theorem compareClosedKeeping {body : P E Host Result} {keep : CStore E → Prop}
     (closed : Prog.Every (ClosedOp profile keep) body) :
@@ -712,16 +731,17 @@ theorem memorySumTag (destination : RecordDestination) (inst : InstId) (type : T
   have final : localLeafEnd entered entered.host store canon.thread canon.frames canon.rest (resumed destination.width) result =
       localLeafEnd right right.host store canon.thread canon.frames canon.rest (resumed destination.width) result := by cases result <;> rfl
   rw [final] at runRef
-  refine ⟨store, result, chk, .tau :: ref, runChk, .cons read runRef, labels, ?_⟩
-  cases result with
-  | error _ => exact status
-  | ok _ =>
-    obtain ⟨kept, checkTrack, canonTrack⟩ := status
-    refine ⟨kept, checkTrack, ?_⟩
-    intro depth
-    have tracked := canonTrack depth
-    rw [final] at tracked
-    exact .step read (by rw [ReturnFrame.Occurrence.transitionEdit, focus]; rfl) tracked
+  refine ⟨store, result, chk, .tau :: ref, runChk, .cons ?_ read runRef, labels, ?_⟩
+  · simp only [LocalFocus, focus, Cursor.control]
+  · cases result with
+    | error _ => exact status
+    | ok _ =>
+      obtain ⟨kept, checkTrack, canonTrack⟩ := status
+      refine ⟨kept, checkTrack, ?_⟩
+      intro depth
+      have tracked := canonTrack depth
+      rw [final] at tracked
+      exact .step read (by rw [ReturnFrame.Occurrence.transitionEdit, focus]; rfl) tracked
 
 theorem memoryHandleLeaf (destination : RecordDestination) (inst : InstId) (field : Field) (index ptr : Nat)
     (fragment : CanonicalHandle field) :
