@@ -72,6 +72,8 @@ inductive ArgumentField where
   | string (value : Value.StrVal)
   | tuple (members : List ArgumentField)
   | record (members : List (String × ArgumentField))
+  | optionNone (payloadShape : ArgumentField)
+  | optionSome (payload : ArgumentField)
 
 private theorem namedArgumentSize {members : List (String × ArgumentField)} {member : String × ArgumentField}
     (present : member ∈ members) : sizeOf member.2 < sizeOf members := by
@@ -85,6 +87,8 @@ def ArgumentField.type : ArgumentField → Stored.TypeOf
   | .string _ => .prim .string
   | .tuple members => .tuple (members.map type)
   | .record members => .record (members.map fun member => (member.1, type member.2))
+  | .optionNone payloadShape => .option (type payloadShape)
+  | .optionSome payload => .option (type payload)
 termination_by field => sizeOf field
 decreasing_by
   all_goals simp_wf
@@ -95,6 +99,8 @@ def ArgumentField.value : ArgumentField → Value.Val
   | .string value => .string value
   | .tuple members => .record (members.map value)
   | .record members => .record (members.map fun member => value member.2)
+  | .optionNone _ => .variant 0 none
+  | .optionSome payload => .variant 1 (some (value payload))
 termination_by field => sizeOf field
 decreasing_by
   all_goals simp_wf

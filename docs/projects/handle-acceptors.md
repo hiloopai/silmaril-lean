@@ -1285,15 +1285,20 @@ do not assume that it returns or preserves memory.
 
 `direct_arguments` and `spilled_arguments` iterate those cuts across a
 parameter list mixing bool, u32, and strings through arbitrarily nested
-tuples and named records. Direct scalars add their
+tuples, named records, and options. Direct scalars add their
 canonical flat word; spilled scalars do a live width read and bounds-checked
 write. The next field uses the reached cursor; in the spill path it starts at
 the previous field's ABI end offset. Canonical tuple and record programs
-share the field traversal without a premise about individual children. The
+share the field traversal without a premise about individual children. In
+memory, a canonical option reads the live ABI width for placement and writes
+its discriminant before traversing the selected payload. A later trap or suspension retains
+that reached write and any allocator effects. Flat options run the canonical
+slot adjustment only after the payload completes. An absent option never
+executes its payload; its shape still determines padding and layout. The
 string-only theorems specialize the same traversal.
 `enter_stackful_after_strings` starts actual Core execution with the computed
 flat words or the outer spill pointer when lowering completes. A suspension
-or trap does not enter Core. This does not yet cover sums, collections,
+or trap does not enter Core. This does not yet cover general variants, results, collections,
 resource parameters, or arbitrary component host reentry.
 
 `finish_stackful_after_arguments` continues the reached Core entry along a

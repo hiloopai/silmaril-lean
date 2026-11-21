@@ -214,19 +214,57 @@ private theorem argumentStringRead (context : LiftLowerContext (core3 grow)) (wi
     (congrArg cursor.control (Prog.bind_assoc (runStoreSteps context 0 plan.steps)
       (PayloadPrefix.stringPlanTail context width output plan) next))
 
-private theorem argumentScalarWrite (context : LiftLowerContext (core3 grow)) (arg : DirectArgument) (address : Nat)
+private theorem argumentWrite (context : LiftLowerContext (core3 grow)) (address : Nat) (bytes : ByteArray)
     (next : Unit → Session grow sig (Ret (core3 grow))) (start : State grow sig)
     (cursor : Cursor (E := core3 grow) (HostState sig))
-    (focused : start.ctl = cursor.control (writeMem context address arg.bytes >>= next)) :
+    (focused : start.ctl = cursor.control (writeMem context address bytes >>= next)) :
     StringPlanPair profile ready bindings callees start next := by
   obtain ⟨_, result, _, observed, left, right, _⟩ := PayloadPrefix.write_cut_between
     (profile := profile) (ready := ready) (dispatch := Dispatch.coreOnly ready bindings)
-    (reference := Dispatch.linked ready bindings callees) context address arg.bytes start start cursor cursor next next rfl focused focused
+    (reference := Dispatch.linked ready bindings callees) context address bytes start start cursor cursor next next rfl focused focused
   cases result with
   | ok written => exact ⟨_, _, left.steps, right.steps, .complete cursor written rfl⟩
   | error reason =>
     obtain ⟨count, rfl⟩ := observed
     exact ⟨_, _, left.steps, right.steps, .trap reason⟩
+
+private theorem identicalFlatSlots (types : List CoreType) (words : List FlatValue) :
+    (coerceLowerSlots types types words : Session grow sig (List FlatValue × List CoreType)) =
+      pure (words, types.drop words.length) := by
+  induction types generalizing words with
+  | nil => cases words <;> rfl
+  | cons slot slots ih =>
+    cases words with
+    | nil => rfl
+    | cons word words =>
+      rw [coerceLowerSlots, ih]
+      cases slot with
+      | int kind => cases kind <;> rfl
+      | float kind => cases kind <;> rfl
+
+private theorem sumTag (context : LiftLowerContext (core3 grow)) (payloadAlign : AddrType → ABI.Alignment)
+    (count tag ptr : Nat)
+    (next : (AddrType × Nat) → Session grow sig (Ret (core3 grow))) (start : State grow sig)
+    (cursor : Cursor (E := core3 grow) (HostState sig))
+    (focused : start.ctl = cursor.control (do
+      let width ← ptrType context
+      let address ← storeVariantHead context count (payloadAlign width) tag ptr
+      next (width, address))) :
+    StringPlanPair profile ready bindings callees start next := by
+  let address width := ABI.alignTo (ptr + discSize count) (payloadAlign width)
+  let bytes := intToLE (discSize count) tag
+  let body := fun live =>
+    let width := ptrTypeIn live context
+    writeMem context ptr bytes >>= fun _ => next (width, address width)
+  let afterWidth := { start with ctl := cursor.control (body start.store) }
+  have readAt : start.ctl = cursor.control (.op .get body) := by
+    rw [focused]
+    simp only [storeVariantHead, storeInt, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind']
+    rfl
+  apply prependPair (middle := afterWidth) (.cons (.get readAt) (.refl _)) (.cons (.get readAt) (.refl _))
+  let width := ptrTypeIn start.store context
+  exact mapPair next (fun _ : Unit => (width, address width))
+    (argumentWrite context ptr bytes _ afterWidth cursor rfl)
 
 private theorem flatFieldNames (context : LiftLowerContext (core3 grow)) (width : AddrType)
     (values : List Value.Val) (types : List (String × Stored.TypeOf)) :
@@ -272,7 +310,7 @@ private theorem lowerArgument (context : LiftLowerContext (core3 grow)) (width :
       rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type, flatScalar] at focused
       exact focused
     | memory address =>
-      exact argumentScalarWrite context arg address next start cursor (by
+      exact argumentWrite context address arg.bytes next start cursor (by
         simpa only [Stored.Lower.Output.Result, ArgumentField.lower, ArgumentField.value, ArgumentField.type,
           memoryScalar, Prog.bind_eq] using focused)
   | string value =>
@@ -305,6 +343,55 @@ private theorem lowerArgument (context : LiftLowerContext (core3 grow)) (width :
       exact spilledSequence context next choose (members.map Prod.snd) address start cursor (by
         simpa only [Stored.Lower.Output.Result, ArgumentField.lower, ArgumentField.value, ArgumentField.type,
           store.eq_def, storeFieldNames, List.map_map, Function.comp_def, Prog.bind_eq] using focused)
+  | optionNone payloadShape =>
+    cases output with
+    | flat =>
+      change List FlatValue → Session grow sig (Ret (core3 grow)) at next
+      refine ⟨[], start, .refl _, .refl _, .complete cursor
+        (i32Flat 0 :: (flatten width payloadShape.type).map Execution.Runtime.Value.zero) ?_⟩
+      simpa only [Stored.Lower.Output.Result, ArgumentField.lower, ArgumentField.value, ArgumentField.type,
+        lowerFlatAt, Nat.zero_ne_one, not_false_eq_true, lowerFlatVariantWith, show 0 < 2 by decide, ite_true,
+        optionWants, coerceLowerSlots, List.nil_append, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind'] using focused
+    | memory ptr =>
+      change Unit → Session grow sig (Ret (core3 grow)) at next
+      rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type, store.eq_def] at focused
+      dsimp only at focused
+      change start.ctl = cursor.control (Prog.bind _ next) at focused
+      exact mapPair next (fun _ : AddrType × Nat => ())
+        (sumTag context (fun width => ABI.maxCaseAlignment [none, some (ABI.layout width payloadShape.type)])
+          2 0 ptr (fun _ => next ()) start cursor (by
+          simpa only [Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind'] using focused))
+  | optionSome payload =>
+    cases output with
+    | flat =>
+      change List FlatValue → Session grow sig (Ret (core3 grow)) at next
+      let types := flatten width payload.type
+      let wrap := fun words : List FlatValue =>
+        i32Flat 1 :: (words ++ (types.drop words.length).map Execution.Runtime.Value.zero)
+      apply mapPair next wrap
+      apply lowerArgument context width .flat (fun words => next (wrap words)) choose payload start cursor
+      rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type, lowerFlatAt, lowerFlatVariantWith,
+        ite_eq_left (by decide : 1 < 2), optionWants] at focused
+      simp only [Stored.Lower.Output.Result, ArgumentField.lower, Prog.bind_eq, Prog.bind_assoc,
+        identicalFlatSlots, Prog.pure_eq, Prog.pure_bind', wrap, types] at focused ⊢
+      exact focused
+    | memory ptr =>
+      change Unit → Session grow sig (Ret (core3 grow)) at next
+      rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type, store.eq_def] at focused
+      dsimp only at focused
+      change start.ctl = cursor.control (Prog.bind _ next) at focused
+      let tail := fun placed : AddrType × Nat => Prog.bind (payload.lower context placed.1 (.memory placed.2)) next
+      have tagAt : start.ctl = cursor.control (do
+          let liveWidth ← ptrType context
+          let address ← storeVariantHead context 2
+            (ABI.maxCaseAlignment [none, some (ABI.layout liveWidth payload.type)]) 1 ptr
+          tail (liveWidth, address)) := by
+        simp only [ArgumentField.lower, Prog.bind_eq, Prog.bind_assoc, tail] at focused ⊢
+        exact focused
+      exact continuePair (sumTag context (fun width => ABI.maxCaseAlignment [none, some (ABI.layout width payload.type)])
+        2 1 ptr tail start cursor tagAt)
+        (fun last reached placed nextAt => lowerArgument context placed.1 (.memory placed.2) next choose payload
+          last reached nextAt)
 termination_by sizeOf field
 decreasing_by
   all_goals subst_vars; simp_wf
