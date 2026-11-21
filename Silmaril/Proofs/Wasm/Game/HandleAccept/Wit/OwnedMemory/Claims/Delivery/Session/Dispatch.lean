@@ -1,6 +1,8 @@
 module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -155,6 +157,19 @@ theorem closedPrefix {labels} (run : Steps profile ready (coreOnly ready binding
   | refl => exact .done _
   | cons step tail ih =>
     refine .next (closedAgrees (closed (leading := []) rfl (.refl _) (.cons step tail))) step (ih ?_)
+    intro leading cut label trailing eq before after
+    exact closed (leading := _ :: leading) (congrArg (_ :: ·) eq) (.cons step before) after
+
+theorem closedOccurrence {labels origin mark}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (coreOnly ready bindings) start origin labels finish mark)
+    (closed : ClosedThrough profile ready bindings start labels finish) :
+    ReturnFrame.Occurrence.Prefix profile ready (linked ready bindings callees) start origin labels finish mark := by
+  induction path with
+  | done => exact .done _ _
+  | step step follows tail ih =>
+    have suffix := (ReturnFrame.Occurrence.prefix_survives tail).1
+    refine .step (overlayStep (closedAgrees (closed (leading := []) rfl (.refl _) (.cons step suffix))) step)
+      follows (ih ?_)
     intro leading cut label trailing eq before after
     exact closed (leading := _ :: leading) (congrArg (_ :: ·) eq) (.cons step before) after
 

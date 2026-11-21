@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Session.Dispatch
 
 public section
@@ -60,6 +61,14 @@ theorem Compatible.append {middle : Config (core3 grow) (HostState sig)} {leadin
 theorem Compatible.of_closed {labels} (run : Steps profile ready (coreOnly ready bindings) start labels finish)
     (closed : ClosedThrough profile ready bindings start labels finish) : Compatible profile ready bindings callees start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.closedPrefix run closed
+
+/-- A closed prefix retains exactly the same allocator occurrence under the
+linked dispatch overlay, including at a saved slot. -/
+theorem occurrence_of_closed {labels origin mark}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (coreOnly ready bindings) start origin labels finish mark)
+    (closed : ClosedThrough profile ready bindings start labels finish) :
+    ReturnFrame.Occurrence.Prefix profile ready (linked ready bindings callees) start origin labels finish mark :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.closedOccurrence path closed
 
 /-- All steps of a finite guest-only prefix classify without a host
 agreement premise. This transports its exact Core effects, not a frame on

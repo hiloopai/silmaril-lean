@@ -560,6 +560,74 @@ def LowerArgumentReturn.resumed {handoff : LowerStartAt site} {reached : State g
     store := LowerSt.setCallerPosSt site.caller returned.cursor.pos reached.store
     ctl := ⟨some site.thread, .prog (site.next returned.values), site.segments⟩ :: site.rest }
 
+/-- The callee argument program installed by committing the reached caller cursor. -/
+structure CalleeArguments {handoff : LowerStartAt site} {reached : State grow sig}
+    (returned : LowerArgumentReturn handoff reached) where
+  task : TaskId
+  callee : (core3 grow).FuncAddr
+  record : Task (core3 grow)
+  body : site.next = liftArgumentsBody .spec .none task callee record
+
+variable {handoff : LowerStartAt site} {reached : State grow sig} {returned : LowerArgumentReturn handoff reached}
+
+def CalleeArguments.context (args : CalleeArguments returned) : LiftLowerContext (core3 grow) :=
+  { opts := args.record.opts, inst := args.record.inst, scope := .task args.task }
+
+def CalleeArguments.width (args : CalleeArguments returned) : AddrType :=
+  ptrTypeIn returned.resumed.store args.context
+
+def CalleeArguments.types (args : CalleeArguments returned) := paramTypes args.record.ft
+
+def CalleeArguments.layout (args : CalleeArguments returned) : ABI.Layout :=
+  ABI.layout args.width (.tuple args.types)
+
+def CalleeArguments.atProgram (_ : CalleeArguments returned) (state : State grow sig)
+    (program : Session grow sig (Ret (core3 grow))) : State grow sig :=
+  { state with ctl := ⟨some site.thread, .prog program, site.segments⟩ :: site.rest }
+
+def CalleeArguments.enter (args : CalleeArguments returned) (flat : List FlatValue) : Session grow sig (Ret (core3 grow)) :=
+  liftArgumentsTail .spec .none args.task args.callee args.record args.context flat
+
+def CalleeArguments.direct (args : CalleeArguments returned) : State grow sig :=
+  args.atProgram returned.resumed (lowerFlatTypes .spec .none args.context args.width returned.values args.types >>= args.enter)
+
+def CalleeArguments.write (args : CalleeArguments returned) (pointer : Nat) : Session grow sig (Ret (core3 grow)) := do
+  store .spec .none args.context (.record returned.values) (.tuple args.types) pointer
+  args.enter [ptrFlat args.width pointer]
+
+def CalleeArguments.place (args : CalleeArguments returned) (pointer : Nat) : Session grow sig (Ret (core3 grow)) := do
+  trapIf (decide (pointer ≠ ABI.alignTo pointer args.layout.alignment)) .unalignedPointer
+  checkInBounds args.context pointer args.layout.size
+  args.write pointer
+
+def CalleeArguments.request (args : CalleeArguments returned) : Call (core3 grow) :=
+  .reallocate args.context 0 0 args.layout.alignment.bytes args.layout.size
+
+def CalleeArguments.afterAllocate (args : CalleeArguments returned) : Ret (core3 grow) → Session grow sig (Ret (core3 grow))
+  | .nat pointer => args.place pointer
+  | _ => internal "late-bound call: expected Ret.nat"
+
+def CalleeArguments.allocating (args : CalleeArguments returned) : State grow sig :=
+  args.atProgram returned.resumed (.op (.call args.request) args.afterAllocate)
+
+def CalleeArguments.installed (args : CalleeArguments returned)
+    (dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))) : State grow sig :=
+  { returned.resumed with ctl :=
+      ⟨some site.thread, .prog (dispatch args.request), .prog args.afterAllocate :: site.segments⟩ :: site.rest }
+
+/-- The reached return to the saved spill frame. All placement checks use
+the reached store, which can differ from the store at allocator entry. -/
+structure CalleeSpillReturn (args : CalleeArguments returned) (state : State grow sig) where
+  pointer : Nat
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : state.ctl =
+    ⟨some site.thread, .prog (.pure (.nat pointer)), .prog args.afterAllocate :: segments⟩ :: rest
+
+def CalleeSpillReturn.writing {args : CalleeArguments returned} {state : State grow sig}
+    (result : CalleeSpillReturn args state) : State grow sig :=
+  { state with ctl := ⟨some site.thread, .prog (args.write result.pointer), result.segments⟩ :: result.rest }
+
 def LiftSite.withLowerValues (site : LiftSite grow sig) (state : State grow sig) (args : List Value.Val)
     (pos : Nat) : State grow sig :=
   { state with
@@ -659,6 +727,9 @@ inductive Action where
   | lowerSpill (caller : CallerId)
   | lowerLoadScalars (caller : CallerId)
   | lowerArgsReturn (caller : CallerId)
+  | calleeArguments (thread : ThreadId) (spill : Bool)
+  | calleeSpillPlacement (thread : ThreadId) (trap : Option TrapReason)
+  | calleeAllocationPrefix (thread : ThreadId) (mark : ReturnFrame.Occurrence.Location)
   | lowerSpillTrap (caller : CallerId) (reason : TrapReason)
   | lowerInstallCancel (subtask : SubtaskId)
   | lowerEagerDelivery (subtask : SubtaskId)
@@ -769,6 +840,47 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
   | lowerArgsReturn {start reached} {site : OnStartSite start} {handoff : LowerStartAt site}
       (returned : LowerArgumentReturn handoff reached) :
       Transition profile ready impl reached (.lowerArgsReturn site.caller) [.tau, .tau] returned.resumed
+  | calleeDirect {start reached} {site : OnStartSite start} {handoff : LowerStartAt site}
+      {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+      (fits : (ABI.flattenTypes args.width args.types).length ≤ ABI.maxFlatParams) :
+      Transition profile ready impl returned.resumed (.calleeArguments site.thread false) [.tau] args.direct
+  | calleeAllocate {start reached} {site : OnStartSite start} {handoff : LowerStartAt site}
+      {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+      (spill : ABI.maxFlatParams < (ABI.flattenTypes args.width args.types).length) :
+      Transition profile ready impl returned.resumed (.calleeArguments site.thread true) [.tau, .tau]
+        (args.installed (specDispatch ready impl))
+  | calleeAllocationPrefix {start reached state labels mark} {site : OnStartSite start} {handoff : LowerStartAt site}
+      {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+      (path : ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready impl)
+        (args.installed (specDispatch ready impl)) (.active 0 0) labels state mark) :
+      Transition profile ready impl (args.installed (specDispatch ready impl))
+        (.calleeAllocationPrefix site.thread mark) labels state
+  | calleeUnaligned {start reached state} {site : OnStartSite start} {handoff : LowerStartAt site}
+      {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned} (result : CalleeSpillReturn args state)
+      (bad : result.pointer ≠ ABI.alignTo result.pointer args.layout.alignment) :
+      Transition profile ready impl state (.calleeSpillPlacement site.thread (some .unalignedPointer))
+        [.tau, .trap .unalignedPointer] (StepDefs.trapCfg state)
+  | calleePlaced {start reached state} {site : OnStartSite start} {handoff : LowerStartAt site}
+      {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned} (result : CalleeSpillReturn args state)
+      {memory size} (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+      (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+      (fits : result.pointer + args.layout.size ≤ size) :
+      Transition profile ready impl state (.calleeSpillPlacement site.thread none) [.tau, .tau]
+        result.writing
+  | calleeOutside {start reached state} {site : OnStartSite start} {handoff : LowerStartAt site}
+      {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned} (result : CalleeSpillReturn args state)
+      {memory size} (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+      (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+      (outside : size < result.pointer + args.layout.size) :
+      Transition profile ready impl state (.calleeSpillPlacement site.thread (some .outOfBounds))
+        [.tau, .tau, .trap .outOfBounds] (StepDefs.trapCfg state)
+  | calleeStackfulCore {start reached state} {site : OnStartSite start} {handoff : LowerStartAt site}
+      {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned) {flat segments rest}
+      (focused : state.ctl = ⟨some site.thread, .prog (args.enter flat), segments⟩ :: rest)
+      (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none) :
+      Transition profile ready impl state (.coreEnter site.thread) [.tau]
+        { state with ctl :=
+            ⟨some site.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), segments⟩ :: rest }
   | lowerDirectCore {start reached} {site : OnStartSite start} {callee flat next read}
       (focused : reached.ctl = ⟨some site.thread, .prog (.op .get read), site.segments⟩ :: site.rest)
       (selected : read reached.store = .op (.callCore callee flat) next) :

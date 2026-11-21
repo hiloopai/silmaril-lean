@@ -516,6 +516,41 @@ theorem LowerStartAt.direct_callee {site : OnStartSite start} (handoff : LowerSt
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runLowerDirect
     handoff task callee record body args callerSchema calleeSchema callerFits calleeFits suffix words
 
+/-- Both dispatchers install the same closed realloc request after the live
+cursor update, with the actual spill continuation above the older frames. -/
+theorem CalleeArguments.linked_spill_request {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached : State grow sig} {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+    (spill : ABI.maxFlatParams < (ABI.flattenTypes args.width args.types).length)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    let installed := args.installed (Dispatch.coreOnly ready bindings)
+    Steps profile ready (Dispatch.coreOnly ready bindings) reached [.tau, .tau, .tau, .tau] installed ∧
+    Steps profile ready (Dispatch.linked ready bindings callees) reached [.tau, .tau, .tau, .tau] installed :=
+  ⟨(Run.next (.lowerArgsReturn returned) (.next (.calleeAllocate args spill) (.stop _))).steps,
+    (Run.next (.lowerArgsReturn returned) (.next (.calleeAllocate args spill) (.stop _))).steps⟩
+
+/-- A finite closed allocator path need not return. The linked execution
+reaches the same configuration and retains the same live or saved occurrence. -/
+theorem CalleeArguments.linked_spill_prefix {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    {bindings : List (Binding sig)} {callees : List (Callee sig)} {labels mark}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (Dispatch.coreOnly ready bindings)
+      (args.installed (Dispatch.coreOnly ready bindings)) (.active 0 0) labels state mark)
+    (closed : Dispatch.ClosedThrough profile ready bindings (args.installed (Dispatch.coreOnly ready bindings)) labels state) :
+    ReturnFrame.Occurrence.Prefix profile ready (Dispatch.linked ready bindings callees)
+      (args.installed (Dispatch.linked ready bindings callees)) (.active 0 0) labels state mark :=
+  Dispatch.occurrence_of_closed path closed
+
+/-- Recognize the return to the original spill occurrence, even if it was
+parked and resumed with a different scheduler tail. -/
+theorem CalleeSpillReturn.of_occurrence {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    {labels pointer next segments rest}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready impl)
+      (args.installed (specDispatch ready impl)) (.active 0 0) labels state (.active 0 0))
+    (focused : state.ctl = ⟨some site.thread, .prog (.pure (.nat pointer)), .prog next :: segments⟩ :: rest) :
+    ∃ result : CalleeSpillReturn args state, result.pointer = pointer :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.calleeReachedReturn path focused
+
 /-- A spilled scalar tuple is loaded in ABI field order from the reached memory.
 It consumes one caller word before using the same direct callee entry as flat arguments. -/
 theorem LowerStartAt.spilled_scalar_callee {site : OnStartSite start} (handoff : LowerStartAt site)

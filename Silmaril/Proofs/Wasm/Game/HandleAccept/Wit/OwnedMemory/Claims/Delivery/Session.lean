@@ -301,7 +301,7 @@ theorem directCalleePlan (task : TaskId) (callee : (core3 grow).FuncAddr) (recor
   refine ⟨_, rfl, ?_⟩
   intro store
   cases mode : record.opts.async_ <;> cases callback : record.opts.callback <;>
-    simp [Prog.bind, pure, liftSyncTail, *] <;> first | rfl | exact ⟨_, rfl⟩
+    simp [Prog.bind, pure, liftArgumentsTail, liftSyncTail, *] <;> first | rfl | exact ⟨_, rfl⟩
 
 theorem liftDirectCoreAt (site : LiftSite grow sig) (state : State grow sig) (args : List DirectArgument)
     (focused : state.ctl = (site.withArguments (args.map DirectArgument.value)).ctl)
@@ -1085,6 +1085,104 @@ theorem stackfulLeave {reached : State grow sig} {site : StackfulReturn reached}
     simp only [StackfulExit.completed, empty]
   exact .cons (.threadExit focus) (.refl _)
 
+section CalleeArguments
+
+variable {site : OnStartSite start} {handoff : LowerStartAt site} {reached : State grow sig}
+  {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+
+def calleeSelected (args : CalleeArguments returned) (width : AddrType) : Session grow sig (Ret (core3 grow)) := do
+  let lowered : Session grow sig (List FlatValue) := if ABI.maxFlatParams < (ABI.flattenTypes width args.types).length then do
+      let layout := ABI.layout width (.tuple args.types)
+      let (pointer, result) ← spillPointer args.context width layout none
+      trapIf (decide (pointer ≠ ABI.alignTo pointer layout.alignment)) .unalignedPointer
+      checkInBounds args.context pointer layout.size
+      store .spec .none args.context (.record returned.values) (.tuple args.types) pointer
+      pure result
+    else lowerFlatTypes .spec .none args.context width returned.values args.types
+  lowered >>= args.enter
+
+theorem calleeRead (args : CalleeArguments returned) :
+    Step profile ready (specDispatch ready impl) returned.resumed .tau
+      (args.atProgram returned.resumed (calleeSelected args args.width)) := by
+  have focused : returned.resumed.ctl = ⟨some site.thread, .prog (site.next returned.values), site.segments⟩ :: site.rest := rfl
+  exact .get (k := fun store => calleeSelected args (ptrTypeIn store args.context)) (by rw [focused, args.body]; rfl)
+
+theorem calleeDirect (args : CalleeArguments returned)
+    (fits : (ABI.flattenTypes args.width args.types).length ≤ ABI.maxFlatParams) :
+    Step profile ready (specDispatch ready impl) returned.resumed .tau args.direct := by
+  have step := calleeRead (profile := profile) (ready := ready) (impl := impl) args
+  simpa only [calleeSelected, ite_eq_right (Nat.not_lt.mpr fits), CalleeArguments.direct] using step
+
+theorem calleeAllocate (args : CalleeArguments returned)
+    (spill : ABI.maxFlatParams < (ABI.flattenTypes args.width args.types).length) :
+    Steps profile ready (specDispatch ready impl) returned.resumed [.tau, .tau]
+      (args.installed (specDispatch ready impl)) := by
+  have request : calleeSelected args args.width = .op (.call args.request) args.afterAllocate := by
+    simp only [calleeSelected, ite_eq_left spill]
+    change Prog.op (S := Eff (core3 grow) (HostState sig)) (.call args.request) _ =
+      Prog.op (S := Eff (core3 grow) (HostState sig)) (.call args.request) _
+    apply congrArg (Prog.op (S := Eff (core3 grow) (HostState sig)) (.call args.request))
+    funext reply
+    cases reply <;> simp only [CalleeArguments.afterAllocate, Prog.bind, Prog.pure_bind', pure, internal, trap]
+    case nat =>
+      simp only [CalleeArguments.place, CalleeArguments.write, CalleeArguments.layout, Prog.bind_eq, Prog.bind_assoc,
+        Prog.pure_bind']
+      rfl
+    all_goals
+      apply congrArg (Prog.op (S := Eff (core3 grow) (HostState sig))
+        (.trap (.internal "late-bound call: expected Ret.nat")))
+      funext impossible
+      exact nomatch impossible
+  have read := calleeRead (profile := profile) (ready := ready) (impl := impl) args
+  rw [request] at read
+  have selected : Step profile ready (specDispatch ready impl) returned.resumed .tau args.allocating := read
+  exact .cons selected (.cons (.call rfl) (.refl _))
+
+theorem calleeReachedReturn {state : State grow sig} {labels pointer next segments rest}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready impl)
+      (args.installed (specDispatch ready impl)) (.active 0 0) labels state (.active 0 0))
+    (focused : state.ctl = ⟨some site.thread, .prog (.pure (.nat pointer)), .prog next :: segments⟩ :: rest) :
+    ∃ result : CalleeSpillReturn args state, result.pointer = pointer := by
+  have retained := (ReturnFrame.Occurrence.prefix_survives path).2
+  simp [ReturnFrame.Occurrence.segmentStorage, ReturnFrame.Occurrence.segmentAt,
+    CalleeArguments.installed, focused] at retained
+  exact ⟨⟨pointer, segments, rest, by simpa only [retained] using focused⟩, rfl⟩
+
+theorem calleeUnaligned {state : State grow sig} (result : CalleeSpillReturn args state)
+    (bad : result.pointer ≠ ABI.alignTo result.pointer args.layout.alignment) :
+    Steps profile ready (specDispatch ready impl) state [.tau, .trap .unalignedPointer] (StepDefs.trapCfg state) := by
+  refine .cons (.popProg result.focused) ?_
+  simp [CalleeArguments.afterAllocate, CalleeArguments.place, bad, trapIf]
+  exact .cons (.trap rfl) (.refl _)
+
+theorem calleePlaced {state : State grow sig} (result : CalleeSpillReturn args state) {memory size}
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory)
+    (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (fits : result.pointer + args.layout.size ≤ size) :
+    Steps profile ready (specDispatch ready impl) state [.tau, .tau] result.writing := by
+  refine .cons (.popProg result.focused) ?_
+  simp [CalleeArguments.afterAllocate, CalleeArguments.place, ← aligned, trapIf,
+    checkInBounds, memLen, memAddr, selected, orTrap, Prog.bind, pure]
+  refine .cons (.get rfl) ?_
+  simp [sized, Nat.not_lt.mpr fits, Prog.bind, CalleeSpillReturn.writing]
+  exact .refl _
+
+theorem calleeOutside {state : State grow sig} (result : CalleeSpillReturn args state) {memory size}
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory)
+    (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (outside : size < result.pointer + args.layout.size) :
+    Steps profile ready (specDispatch ready impl) state [.tau, .tau, .trap .outOfBounds] (StepDefs.trapCfg state) := by
+  refine .cons (.popProg result.focused) ?_
+  simp [CalleeArguments.afterAllocate, CalleeArguments.place, ← aligned, trapIf,
+    checkInBounds, memLen, memAddr, selected, orTrap, Prog.bind, pure]
+  refine .cons (.get rfl) ?_
+  simp [sized, outside, Prog.bind]
+  exact .cons (.trap rfl) (.refl _)
+
+end CalleeArguments
+
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by
   cases edge with
@@ -1104,7 +1202,18 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
     exact lowerSpillRangeTrap handoff spilled found aligned selected sized outside
   | lowerLoadScalars handoff schema selected fields => exact lowerLoadScalars handoff schema selected fields
   | lowerArgsReturn returned => exact lowerArgsReturn returned
+  | calleeDirect args fits => exact .cons (calleeDirect args fits) (.refl _)
+  | calleeAllocate args spill => exact calleeAllocate args spill
+  | calleeAllocationPrefix _ path => exact (ReturnFrame.Occurrence.prefix_survives path).1
+  | calleeUnaligned result bad => exact calleeUnaligned result bad
+  | calleePlaced result aligned selected sized fits => exact calleePlaced result aligned selected sized fits
+  | calleeOutside result aligned selected sized outside => exact calleeOutside result aligned selected sized outside
   | lowerEmptyArgs handoff empty => exact lowerEmptyArgs handoff empty
+  | calleeStackfulCore args focused asyncMode callback =>
+    have call (values : List FlatValue) : args.enter values = .op (.callCore args.callee values) (stackfulTail args.task) := by
+      simp only [CalleeArguments.enter, liftArgumentsTail, asyncMode, callback, Bool.not_true, Bool.false_eq_true, ite_false]
+      rfl
+    exact .cons (.callCore (by rw [focused, call])) (.refl _)
   | lowerDirectCore focused selected =>
     exact .cons (.get focused) (.cons (.callCore (by rw [selected])) (.refl _))
   | lowerEmptyCore _ entry => exact entry

@@ -302,20 +302,9 @@ def liftSyncTail (lim : Limits) (q : Quirks) (task : TaskId) (callee : E.FuncAdd
     | none => pure () : P E σ Unit)
   Task.exitImplicitThread task
 
-/-- The continuation of `thread_func` after `args = task.start()`:
-`cx = LiftLowerContext(opts, inst, task)`;
-`flat_args = lower_flat_values(cx, MAX_FLAT_PARAMS, args, param_types)`; then
-* sync (`not opts.async_`): `liftSyncTail`;
-* stackful (async, no callback, L2100-2104): `[] = callee(flat_args)`,
-  `task.exit_implicit_thread()`;
-* callback (L2106-2135): `[packed] = callee(flat_args)`, `code, si =
-  unpack_callback_result(packed)`, then the callback loop `LoopPoint.callbackLoop` (tail
-  call; `thread` is the current, implicit thread).
-Returns `Ret.unit`. -/
-def liftArgumentsBody (lim : Limits) (q : Quirks) (task : TaskId) (callee : E.FuncAddr)
-    (tk : Task E) (args : List Val) : P E σ (Ret E) := do
-  let cx : LiftLowerContext E := { opts := tk.opts, inst := tk.inst, scope := .task task }
-  let flatArgs ← lowerFlatValues lim q cx maxFlatParams args (paramTypes tk.ft) none
+/-- Invoke the actual Core callee after canonical parameter lowering. -/
+def liftArgumentsTail (lim : Limits) (q : Quirks) (task : TaskId) (callee : E.FuncAddr)
+    (tk : Task E) (cx : LiftLowerContext E) (flatArgs : List FlatValue) : P E σ (Ret E) := do
   if !tk.opts.async_ then
     liftSyncTail lim q task callee tk cx flatArgs
     return .unit
@@ -331,6 +320,22 @@ def liftArgumentsBody (lim : Limits) (q : Quirks) (task : TaskId) (callee : E.Fu
       let thread ← currentThreadId
       callRet (.loop (.callbackLoop task thread code.toNat si))
     | _ => internal "canon_lift: callback-lifted callee must return one value"
+
+/-- The continuation of `thread_func` after `args = task.start()`:
+`cx = LiftLowerContext(opts, inst, task)`;
+`flat_args = lower_flat_values(cx, MAX_FLAT_PARAMS, args, param_types)`; then
+* sync (`not opts.async_`): `liftSyncTail`;
+* stackful (async, no callback, L2100-2104): `[] = callee(flat_args)`,
+  `task.exit_implicit_thread()`;
+* callback (L2106-2135): `[packed] = callee(flat_args)`, `code, si =
+  unpack_callback_result(packed)`, then the callback loop `LoopPoint.callbackLoop` (tail
+  call; `thread` is the current, implicit thread).
+Returns `Ret.unit`. -/
+def liftArgumentsBody (lim : Limits) (q : Quirks) (task : TaskId) (callee : E.FuncAddr)
+    (tk : Task E) (args : List Val) : P E σ (Ret E) := do
+  let cx : LiftLowerContext E := { opts := tk.opts, inst := tk.inst, scope := .task task }
+  let flatArgs ← lowerFlatValues lim q cx maxFlatParams args (paramTypes tk.ft) none
+  liftArgumentsTail lim q task callee tk cx flatArgs
 
 /-- REF `thread_func` of `canon_lift` (L2077-2135): perform K1 admission,
 start the reached task, then lower its arguments and invoke the callee. -/
