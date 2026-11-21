@@ -70,6 +70,12 @@ theorem ParkedPoll.delivered_clears (poll : ParkedPoll parked subtask profile) (
       record.lenders = none ∧ record.state = .returned ∧ record.index = some index :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.deliveredClears poll pending
 
+/-- A poll uses the event in the reached store; its producer need not be
+part of the same proof or leave the event pending throughout an earlier path. -/
+theorem ParkedPoll.delivers_returned (poll : ParkedPoll parked subtask profile)
+    (pending : PendingAt parked.store subtask index) : poll.steps index ready impl parked [] :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.pollReturned poll pending
+
 /-- An empty poll or another waitable's delivery preserves the tracked return event
 and saved slot at each cut, including through the actual canonical shuffle and take.
 The endpoint is just before result-buffer validation and writes. -/
@@ -137,6 +143,21 @@ theorem WaitResume.resumes_tracked {atResume : Config (core3 grow) (HostState si
     (prefixRun : ParkedPrefix profile ready (specDispatch ready impl) wait.thread wait.blocked leading atResume) :
     Steps profile ready (specDispatch ready impl) wait.blocked (leading ++ List.replicate 4 .tau) resume.reached :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeTrackedWait resume prefixRun
+
+/-- Selection and occurrence tracking are separate: this rule starts at the
+reached resume and checks the original saved activation in that state. -/
+theorem WaitResume.resumes {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+    (resume : WaitResume wait atResume) (saved : atResume.cont? wait.thread = some wait.saved) :
+    Steps profile ready (specDispatch ready impl) atResume (List.replicate 4 .tau) resume.reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeWait resume saved
+
+/-- Once a wait reaches its selection program, consume from that state, not
+from the store when the wait was started or parked. -/
+theorem WaitDelivery.at_selection {wait : ParkedWait parked} (delivery : WaitDelivery wait initial profile subtask)
+    (focused : initial.ctl = ⟨some wait.thread, .prog wait.takeEvent,
+      .core wait.core wait.next :: wait.segments⟩ :: initial.ctl.drop 1)
+    (pending : PendingAt initial.store subtask index) : delivery.outcomes index ready impl initial [] :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.waitDeliveryAtSelection delivery focused pending
 
 /-- A reached forced resume without an event does not behave like an empty poll.
 The actual wait decrements its count and shuffles before trapping. -/

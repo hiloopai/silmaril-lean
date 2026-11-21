@@ -281,6 +281,16 @@ theorem CallbackResume.resumes_tracked {wait : CallbackWait grow sig} (resume : 
     Steps profile ready (specDispatch ready impl) (wait.blocked start rest) (leading ++ resume.labels) resume.resumed :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeTrackedCallback resume path
 
+theorem CallbackResume.resumes {wait : CallbackWait grow sig} (resume : CallbackResume wait reached)
+    (saved : reached.cont? wait.thread = some wait.saved) :
+    Steps profile ready (specDispatch ready impl) reached resume.labels resume.resumed :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.resumeCallback resume saved
+
+theorem CallbackExit.unwinds {wait : CallbackWait grow sig} (exit : CallbackExit wait reached) :
+    Steps profile ready (specDispatch ready impl) reached exit.labels exit.unwound ∧
+      exit.unwound.store.subtasks = reached.store.subtasks :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.callbackExit wait exit
+
 /-- The original K3 occurrence can be forcibly resumed with no event, and
 then traps after decrement and shuffle on the reached store. -/
 theorem CallbackResume.traps_empty {wait : CallbackWait grow sig} (resume : CallbackResume wait reached) {leading}

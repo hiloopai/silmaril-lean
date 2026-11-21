@@ -75,6 +75,14 @@ theorem retainingParked {labels saved}
     obtain ⟨prefixRun, stillPending⟩ := ih (keepsEvent pending)
     exact ⟨.step run keepsSlot prefixRun, stillPending⟩
 
+theorem pollReturned (poll : ParkedPoll parked subtask profile) (pending : PendingAt parked.store subtask index) :
+    poll.steps index ready impl parked [] := by
+  obtain ⟨record, live, returned, indexed, queued⟩ := pending
+  exact parked_poll_returned (prof := profile) (ready := ready) impl poll.memory poll.slot poll.out poll.ws
+    poll.thread poll.active poll.task poll.instance_ poll.core poll.next poll.focused poll.callout poll.liveThread poll.liveTask
+    poll.liveInst poll.mayLeave poll.handle poll.set poll.perm subtask record index poll.setLive poll.member poll.allowed poll.selects
+    live returned indexed queued
+
 theorem resolutionPoll (resolve : LinkedResolution initial subtask index) {between}
     (path : Retaining profile ready (specDispatch ready impl) subtask index resolve.committed between parked)
     (poll : ParkedPoll parked subtask profile) :
@@ -245,7 +253,7 @@ theorem parkedWaitReady (wait : ParkedWait initial) (available : initial.store.w
     simp [Prog.bind]
     exact .cons (.modify rfl) (.refl _)
 
-private theorem resumeWait {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
+theorem resumeWait {atResume : Config (core3 grow) (HostState sig)} {wait : ParkedWait initial}
     (resume : WaitResume wait atResume) (saved : atResume.cont? wait.thread = some wait.saved) :
     Steps profile ready (specDispatch ready impl) atResume (List.replicate 4 .tau) resume.reached := by
   have read := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) resume.focused
@@ -345,6 +353,12 @@ private theorem waitDelivery {reached : Config (core3 grow) (HostState sig)} {wa
     · intro outside
       exact appendSteps leading (unpack_event_bad_range (config := consumed) cx (flatNat wait.out) wait.memory size event
         aligned rfl sized outside reply rfl)
+
+theorem waitDeliveryAtSelection {wait : ParkedWait parked} (delivery : WaitDelivery wait initial profile subtask)
+    (focused : initial.ctl = ⟨some wait.thread, .prog wait.takeEvent,
+      .core wait.core wait.next :: wait.segments⟩ :: initial.ctl.drop 1)
+    (pending : PendingAt initial.store subtask index) : delivery.outcomes index ready impl initial [] :=
+  waitDelivery delivery focused pending (.refl _)
 
 theorem earlyWaitDelivery (wait : ParkedWait initial) (available : initial.store.wsetHasEvent wait.ws = true)
     (allowed : Allowed profile (.earlyReturn .waitableSetWait) true)
