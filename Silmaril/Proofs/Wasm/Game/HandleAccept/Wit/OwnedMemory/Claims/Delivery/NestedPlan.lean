@@ -1,10 +1,16 @@
 module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Plan.Defs
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.StringPlan.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.StringPlan.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence.Public.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadCursor.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 
@@ -66,7 +72,7 @@ private theorem prefixBefore {left right : Trace grow sig} (front : Trace grow s
 theorem source (plan : NestedPlan bindings profile ready base start labels finish) :
     Steps profile ready (specDispatch ready base) start labels finish := by
   induction plan with
-  | segment path => exact path.steps
+  | segment path => exact path
   | commit resolve => exact (Transition.commit (impl := base) resolve).steps
   | poll poll pending branch => exact (Transition.poll (impl := base) poll pending branch).steps
   | waitBlock wait empty => exact (Transition.waitBlock (impl := base) wait empty).steps
@@ -206,5 +212,100 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
         · exact .stopped site stopped checkedBody body reached (store.trans reached.data.1) (seen.trans bodySeen)
         · exact cut
     · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.unselected site linked paired selected)⟩
+
+theorem stackfulEnd {task : TaskId} (edge : StackfulBodyEnd task start labels finish)
+    (outer : ∀ (site : StackfulReturn start), site.segments = []) :
+    NestedPlan bindings profile ready base start labels finish := by
+  cases edge with
+  | «prefix» => exact .segment (.refl _)
+  | @exited site _ exit =>
+    exact .sequence (.segment (Transition.stackfulComplete (impl := base) exit).steps)
+      (.segment (Transition.stackfulExit (impl := base) exit (outer site)).steps)
+  | unresolved site _ records last unresolved =>
+    exact .segment (Transition.stackfulUnresolved (impl := base) site records.live records.implicitThread last unresolved).steps
+
+theorem stackfulWorker {start reached first : State grow sig} {site : OnStartSite start} {handoff : LowerStartAt site}
+    {returned : LowerArgumentReturn handoff reached} {callees : List (ComponentCall.Callee sig)}
+    (args : CalleeArguments returned) {Result : Type} (words : Result → List FlatValue)
+    (lowered : StringPlanPair profile ready bindings callees first (fun result => args.enter (words result)))
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none)
+    (body : ∀ (entry : State grow sig) (cursor : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue),
+      entry.ctl = ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest →
+      ∃ bodyLabels afterBody exitLabels afterExit deliveryLabels last,
+        NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) entry bodyLabels afterBody ∧
+        StackfulBodyEnd args.task afterBody exitLabels afterExit ∧
+        (∀ (site : StackfulReturn afterBody), site.segments = []) ∧
+        NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) afterExit deliveryLabels last) :
+    ∃ leading entry trailing last,
+      Steps profile ready (Dispatch.linked ready bindings callees) first leading entry ∧
+      NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) first (leading ++ trailing) last ∧
+      ((∃ (cursor : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue),
+          entry.ctl = ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest ∧
+          NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) entry trailing last) ∨
+        (StringPlanStopped profile ready bindings first leading entry ∧ trailing = [] ∧ last = entry)) := by
+  obtain ⟨leading, entry, _, linked, entered | stopped⟩ := args.enter_stackful_after_strings words lowered asyncMode callback
+  · obtain ⟨cursor, flat, control⟩ := entered
+    obtain ⟨_, _, _, _, _, _, coreRun, ending, outer, delivery⟩ := body entry cursor flat control
+    have tail := NestedPlan.sequence coreRun (.sequence (stackfulEnd ending outer) delivery)
+    exact ⟨_, _, _, _, linked, .sequence (.segment linked) tail, .inl ⟨cursor, flat, control, tail⟩⟩
+  · exact ⟨leading, entry, [], entry, linked, by simpa only [List.append_nil] using NestedPlan.segment (bindings := bindings) linked,
+      .inr ⟨stopped, rfl, rfl⟩⟩
+
+theorem localDataGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    (data : PayloadPrefix.LocalDataType (sig.payload site.tag)) (payload : Stored.Payload (sig.payload site.tag))
+    (field : site.field = .data (sig.payload site.tag) payload) {entryLabels}
+    (entryPath : Steps profile ready (specDispatch ready base) site.start entryLabels site.checked)
+    (silent : PayloadPrefix.visible entryLabels = [])
+    (placed : PayloadPrefix.rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok ())
+    (prepared : Stored.OwnedMemory.Claims.Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ()) :
+    ∃ bodyLabels finish, NestedPlan bindings profile ready base site.start (entryLabels ++ bodyLabels) finish ∧
+      ((∃ value checkedLabels reached,
+        Steps profile ready (specDispatch ready base) site.checked checkedLabels reached ∧
+        reached.ctl = site.cursor.control (site.reply (.ok value)) ∧ bodyLabels = checkedLabels ++ [.tau, .tau, .tau] ∧
+        finish.host = reached.host.record (route.reply site.destination site.start.host.nextTicket (.ok value)).1) ∨
+      (finish.ctl = [] ∧ ∃ leading reason, PayloadPrefix.visible bodyLabels = leading ++ [.trap reason])) := by
+  have entry := Transition.giveEntry site linked silent placed prepared entryPath
+  have width : ptrTypeIn site.checked.store (site.destination.context site.inst) = site.destination.width := by
+    have memory := site.destination.check_width site.start.store linked.destination
+    simp only [PayloadRoot.Site.checked, PayloadRoot.Site.withBody, ptrTypeIn, RecordDestination.context,
+      CanonOpts.ptrType, memory, Option.getD_some]
+  let reference := site.reference site.referenceReply
+  have canonAt := site.reference_at linked site.referenceReply
+  rw [field] at canonAt
+  have checkAt : site.checked.ctl = site.cursor.control
+      (Stored.OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none
+        (site.destination.context site.inst) site.destination.width (.data (sig.payload site.tag) payload) 0 route.output >>= site.reply) := by
+    simp only [PayloadRoot.Site.checked, PayloadRoot.Site.withBody, field]
+  obtain ⟨store, result, checkedLabels, canonLabels, checked, canon, seen, outcome⟩ :=
+    PayloadPrefix.local_data_leaf_frame (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+      site.destination site.inst (sig.payload site.tag) data payload 0 route.output site.start.store site.checked reference
+      (Core3.Grows.refl _) width placed rfl site.cursor site.cursor rfl site.reply site.referenceReply checkAt canonAt
+  cases result with
+  | error reason =>
+    obtain ⟨leading, trapped⟩ := outcome
+    exact ⟨_, _, .stop site linked entry checked (.segment canon)
+      (.trapped (check := site.cursor) rfl rfl ⟨leading, trapped⟩) rfl seen,
+      .inr ⟨rfl, leading, reason, seen.trans trapped⟩⟩
+  | ok value =>
+    let reached := localLeafEnd site.checked site.checked.host store site.cursor.thread site.cursor.frames site.cursor.rest
+      (fun result => site.reply (.ok result)) (.ok value)
+    let canonical := localLeafEnd reference reference.host store site.cursor.thread site.cursor.frames site.cursor.rest
+      site.referenceReply (.ok value)
+    let older : ReturnFrame.Substitutions (core3 grow) (HostState sig) := fun _ _ => False
+    have segments : ∀ frames, List.Forall₂ (ReturnFrame.Related.Segment older) frames frames :=
+      fun _ => List.forall₂_same.mpr fun frame _ => .same frame
+    have active : ∀ act, ReturnFrame.Related.Active older act act := fun ⟨_, _, frames⟩ => .mk (segments frames)
+    have saved : ∀ act, ReturnFrame.Related.Saved older act act
+      | none => .none
+      | some act => .some (active act)
+    have frame : LinkedCallback.ChildFrameOver older reached canonical site.cursor site.cursor :=
+      ⟨rfl, rfl, rfl, rfl, List.forall₂_same.mpr fun act _ => saved act, rfl,
+        segments site.cursor.frames, List.forall₂_same.mpr fun act _ => active act⟩
+    obtain ⟨left, right, checkReply, canonReply, storeEq, checkHost, canonHost, paired⟩ :=
+      LinkedCallback.MemorySequence.resume_returned_give site value frame (outcome.2.1 0) rfl rfl
+    refine ⟨_, _, ?_, .inl ⟨value, checkedLabels, reached, checked, rfl, rfl, checkHost⟩⟩
+    rw [← List.append_assoc]
+    exact .give site linked entry checked (.segment (append canon (canonReply _))) value
+      ⟨checkReply, canonReply, storeEq, checkHost, canonHost, paired⟩ seen
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan

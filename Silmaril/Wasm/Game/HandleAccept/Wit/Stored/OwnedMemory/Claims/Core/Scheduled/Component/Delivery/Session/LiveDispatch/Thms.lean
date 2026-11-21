@@ -65,13 +65,22 @@ theorem LiveDispatch.nested_return (site : Site grow sig route) (linked : site.L
 
 variable {start finish : Config (core3 grow) (HostState sig)}
 
-/-- Discover the actual nested installation in a finite growth-certified run.
+/-- Classify the reached scheduler step before installing its next program.
+Only direct calls and Core callouts can install an overlaid give. -/
+theorem LiveDispatch.classify_step {label} (step : Step profile ready (specDispatch ready base) start label finish) :
+    Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) start label finish ∨
+      LiveDispatch.GiveInstall bindings (specDispatch ready base) start label finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.classifyStep step
+
+/-- Discover the actual nested installation in a finite run.
 No blanket exclusion of nested gives is needed. The live replay stops before
-dispatching the give, or at an earlier divergent read or substituted return. -/
+dispatching the give, or at an earlier divergent read or substituted return.
+Growth certificates are needed for the allocator's memory invariants, not
+for classifying an already reached scheduler step. -/
 theorem LiveDispatch.paired_replay {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {incoming : Config (core3 grow) (HostState sig)} {labels}
     (paired : HostFrame.Related.Paired older start incoming)
-    (run : CoreGrowthSteps profile ready (specDispatch ready base) start labels finish) :
+    (run : Steps profile ready (specDispatch ready base) start labels finish) :
     LiveDispatch.PairedReplay bindings profile ready base older start incoming labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedReplay paired run
 
@@ -90,7 +99,7 @@ theorem LiveDispatch.nested_prefix (site : Site grow sig route) (linked : site.L
     {incoming : Config (core3 grow) (HostState sig)} {labels}
     (paired : HostFrame.Related.Paired older site.start incoming)
     (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
-    (body : CoreGrowthSteps profile ready (specDispatch ready base) (site.reference site.referenceReply) labels finish) :
+    (body : Steps profile ready (specDispatch ready base) (site.reference site.referenceReply) labels finish) :
     ∃ installed entered, installed.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming installed entered ∧
       LiveDispatch.PairedReplay bindings profile ready base older (site.reference site.referenceReply) entered labels finish := by

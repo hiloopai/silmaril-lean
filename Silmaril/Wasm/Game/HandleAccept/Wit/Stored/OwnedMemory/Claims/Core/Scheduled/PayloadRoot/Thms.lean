@@ -47,8 +47,9 @@ theorem Site.refusal_resumes (site : Site grow sig route) (issue : Stored.Endpoi
 top identifies the actual caller about to receive a reply, even if other
 instances of the same frame were installed during reentry. -/
 theorem Site.reached_caller (site : Site grow sig route) {reached : Config (core3 grow) (HostState sig)}
+    {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     {labels} {cursor : Cursor (E := core3 grow) (HostState sig)} {body} (control : reached.ctl = cursor.control body)
-    (run : ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings))
+    (run : ReturnFrame.Occurrence.Prefix profile ready dispatch
       site.checked (.active 0 0) labels reached (.active 0 0)) :
     ∃ segments, cursor.frames = .core site.core site.resume :: segments :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadRoot.reachedCaller site control run

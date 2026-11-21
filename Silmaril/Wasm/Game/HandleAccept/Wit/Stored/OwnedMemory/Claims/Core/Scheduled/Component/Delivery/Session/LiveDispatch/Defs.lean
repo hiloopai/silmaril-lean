@@ -118,20 +118,20 @@ inductive PairedReplay (bindings : List (Binding sig)) (profile : ProfileKind) (
       (paired : HostFrame.Related.Paired older finish other)
   | request {leading label trailing beforeLeft beforeRight afterLeft}
       (split : labels = leading ++ label :: trailing)
-      (baseline : CoreGrowthSteps profile ready (specDispatch ready base) start leading beforeLeft)
+      (baseline : Steps profile ready (specDispatch ready base) start leading beforeLeft)
       (replay : Steps profile ready (specDispatch ready (host bindings base)) incoming leading beforeRight)
       (paired : HostFrame.Related.Paired older beforeLeft beforeRight)
       (install : GiveInstall bindings (specDispatch ready base) beforeLeft label afterLeft)
-      (tail : CoreGrowthSteps profile ready (specDispatch ready base) afterLeft trailing finish)
+      (tail : Steps profile ready (specDispatch ready base) afterLeft trailing finish)
   | boundary {leading label trailing beforeLeft beforeRight afterLeft afterRight}
       (split : labels = leading ++ label :: trailing)
-      (baseline : CoreGrowthSteps profile ready (specDispatch ready base) start leading beforeLeft)
+      (baseline : Steps profile ready (specDispatch ready base) start leading beforeLeft)
       (replay : Steps profile ready (specDispatch ready (host bindings base)) incoming leading beforeRight)
       (paired : HostFrame.Related.Paired older beforeLeft beforeRight)
       (boundary : HostFrame.Related.Boundary older beforeLeft beforeRight label afterLeft afterRight)
       (baselineStep : Step profile ready (specDispatch ready base) beforeLeft label afterLeft)
       (replayedStep : Step profile ready (specDispatch ready (host bindings base)) beforeRight label afterRight)
-      (tail : CoreGrowthSteps profile ready (specDispatch ready base) afterLeft trailing finish)
+      (tail : Steps profile ready (specDispatch ready base) afterLeft trailing finish)
 
 /-- A compared nested give either rejoins its local caller with the older
 frames still paired, or reaches an actual read or older-frame pop. In the

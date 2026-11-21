@@ -22,7 +22,7 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
     (base : HostImpl (core3 grow) (HostState sig)) :
     Config (core3 grow) (HostState sig) → Trace grow sig → Config (core3 grow) (HostState sig) → Prop where
   | segment {start labels finish}
-      (run : CoreGrowthSteps profile ready (specDispatch ready base) start labels finish) :
+      (run : Steps profile ready (specDispatch ready base) start labels finish) :
       NestedPlan bindings profile ready base start labels finish
   | commit {start target index} (resolve : ComponentCall.Delivery.LinkedResolution start target index) :
       NestedPlan bindings profile ready base start (List.replicate 17 .tau) resolve.committed

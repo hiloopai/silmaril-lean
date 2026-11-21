@@ -1374,6 +1374,17 @@ own live evidence. Cancel of an already returned event uses the reached record
 and consumes it without invoking a cancel callback. These classified finite
 edges do not cover open cancellation requests or imply scheduler progress.
 
+`LiveDispatch.stackful_worker_plan` joins the reached direct or spilled
+argument lowering, Core entry, classified body, worker return and delivery
+under one linked dispatcher. Finite argument traps and suspensions end before
+Core entry. Dispatch classification works on actual scheduler steps; Core
+growth evidence is still required separately for allocation invariants.
+For a placed public memory or flat give at a nonallocating data root,
+`local_data_give_plan` derives the body comparison and caller reply from the
+compiled field and linked width. The trap branch keeps the reached store and
+does not journal a completion. The worker plan still needs a classified body
+and delivery tail; this does not classify all recursive callback paths.
+
 ## Checking
 
 ```

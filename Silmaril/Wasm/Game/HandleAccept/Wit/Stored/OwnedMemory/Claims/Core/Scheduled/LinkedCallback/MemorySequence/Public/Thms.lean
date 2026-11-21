@@ -107,8 +107,9 @@ identifies the original occurrence; it does not predict allocator return. -/
 theorem resume_returned_give {route : GiveEffectRoute} (call : PayloadRoot.Site grow sig route)
     (value : route.output.Result) {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {reached reference : State grow sig} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     (frame : ChildFrameOver older reached reference check canon) {labels}
-    (tracked : ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host bindings))
+    (tracked : ReturnFrame.Occurrence.Prefix profile ready dispatch
       call.checked (.active 0 0) labels reached (.active 0 0))
     (checked : reached.ctl = check.control (call.reply (.ok value)))
     (canonical : reference.ctl = canon.control (call.referenceReply value)) :

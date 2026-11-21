@@ -169,7 +169,7 @@ theorem dispatchUnchanged {call : Call (core3 grow)} (unmodified : Unchanged bin
 
 variable {start finish : Config (core3 grow) (HostState sig)}
 
-private theorem classifyStep {label} (step : Step profile ready (specDispatch ready base) start label finish) :
+theorem classifyStep {label} (step : Step profile ready (specDispatch ready base) start label finish) :
     Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) start label finish ∨
       GiveInstall bindings (specDispatch ready base) start label finish := by
   classical
@@ -227,20 +227,20 @@ theorem replayStep {label} (step : Step profile ready (specDispatch ready base) 
 
 theorem pairedReplay {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {incoming : State grow sig} {labels}
     (paired : HostFrame.Related.Paired older start incoming)
-    (run : CoreGrowthSteps profile ready (specDispatch ready base) start labels finish) :
+    (run : Steps profile ready (specDispatch ready base) start labels finish) :
     PairedReplay bindings profile ready base older start incoming labels finish := by
   induction run generalizing incoming with
   | refl => exact .complete (.refl _) paired
-  | cons grows step tail ih =>
+  | cons step tail ih =>
     rcases classifyStep (bindings := bindings) step with unchanged | request
     · obtain ⟨_, replayed, aligned | boundary⟩ := HostFrame.Related.paired_step paired unchanged
       · cases ih aligned with
         | complete replay aligned => exact .complete (.cons replayed replay) aligned
         | request split baseline replay aligned install rest =>
-          exact .request (congrArg (List.cons _) split) (.cons grows step baseline) (.cons replayed replay)
+          exact .request (congrArg (List.cons _) split) (.cons step baseline) (.cons replayed replay)
             aligned install rest
         | boundary split baseline replay aligned cut lhs rhs rest =>
-          exact .boundary (congrArg (List.cons _) split) (.cons grows step baseline) (.cons replayed replay)
+          exact .boundary (congrArg (List.cons _) split) (.cons step baseline) (.cons replayed replay)
             aligned cut lhs rhs rest
       · exact .boundary (leading := []) rfl (.refl _) (.refl _) paired boundary step replayed tail
     · exact .request (leading := []) rfl (.refl _) (.refl _) paired request tail
