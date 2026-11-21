@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
+import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 
 public section
 
@@ -40,6 +41,7 @@ theorem neutralStep {action labels} (edge : Transition profile ready impl start 
   case coreInternal focused running steps => exact .coreInternal focused running steps
   case coreReturned focused returned => exact .coreReturned focused returned
   case coreTrap focused trapped => exact .coreTrap focused trapped
+  case coreReply focused => exact .coreReply focused
   case poll poll pending branch =>
     cases branch with
     | unaligned bad => exact .poll (pollOnHost poll other) pending (.unaligned bad)
@@ -107,13 +109,18 @@ private theorem sameMachine {left right : State grow sig}
     subst_vars
     rfl
 
+theorem replyRejoin {route : GiveEffectRoute} {site : PayloadRoot.Site grow sig route} {value : route.output.Result}
+    {reached reference left right : State grow sig}
+    (replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference left right) :
+    right = HostFrame.replace left right.host :=
+  sameMachine replies.2.2.2.2.2
+
 theorem afterGive {route : GiveEffectRoute} {site : PayloadRoot.Site grow sig route} {value : route.output.Result}
     {reached reference left right : State grow sig} {actions labels}
     (replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference left right)
     (tail : Run profile ready impl left actions labels finish) (neutral : ∀ action ∈ actions, JournalNeutralAction action) :
     Run profile ready impl right actions labels (HostFrame.replace finish right.host) := by
-  have aligned := sameMachine replies.2.2.2.2.2
-  exact aligned ▸ neutralRun tail neutral right.host
+  exact replyRejoin replies ▸ neutralRun tail neutral right.host
 
 private theorem appendSteps {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     {start middle finish : State grow sig} {leading trailing : Trace grow sig}
@@ -143,5 +150,90 @@ theorem giveThenDelivery {bindings : List (Binding sig)} {callees : List (Compon
   refine ⟨_, _, _, last, .next checkRun tail, appendSteps canonRun canonical, ?_⟩
   unfold PayloadPrefix.visible at seen ⊢
   simp only [List.filter_append, List.filter_cons, Bool.false_eq_true, ↓reduceIte, List.filter_nil, List.append_nil, seen]
+
+theorem replayJournal {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))} {labels}
+    (path : Steps profile ready dispatch start labels finish) (incoming : HostState sig) :
+    JournalReplay profile ready dispatch start incoming labels finish := by
+  rcases HostFrame.steps incoming path with ⟨_, replayed⟩ | ⟨_, _, _, _, _, _, _, split, baseline, replayed, read, baselineRead, replayedRead, tail⟩
+  · exact .complete replayed
+  · exact .read split baseline replayed read baselineRead replayedRead tail
+
+theorem completeJournal {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))} {incoming labels}
+    (path : JournalReplay profile ready dispatch start incoming labels finish)
+    (agrees : ReachedReadsAgree (profile := profile) (ready := ready) dispatch start incoming labels finish) :
+    ∃ outgoing, Steps profile ready dispatch (HostFrame.replace start incoming) labels (HostFrame.replace finish outgoing) := by
+  cases path with
+  | complete run => exact ⟨_, run⟩
+  | read split baseline replayed read baselineRead _ tail =>
+    cases read with
+    | mk focused different => exact False.elim (different (agrees split baseline replayed baselineRead tail focused))
+
+theorem completeRejoin {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))} {incoming labels}
+    {checked : State grow sig} (path : JournalReplay profile ready dispatch start incoming labels finish)
+    (aligned : finish = HostFrame.replace checked finish.host)
+    (agrees : ReachedReadsAgree (profile := profile) (ready := ready) dispatch start incoming labels finish) :
+    ∃ reached, Steps profile ready dispatch (HostFrame.replace start incoming) labels reached ∧
+      reached = HostFrame.replace checked reached.host := by
+  obtain ⟨outgoing, run⟩ := completeJournal path agrees
+  have rejoined := congrArg (HostFrame.replace · outgoing) aligned
+  exact ⟨_, run, rejoined⟩
+
+theorem readFreeAgreement {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))} {incoming labels}
+    (closed : ReadFreeThrough (profile := profile) (ready := ready) dispatch start labels finish) :
+    ReachedReadsAgree (profile := profile) (ready := ready) dispatch start incoming labels finish := by
+  intro leading label trailing reached reachedHost next split baseline replayed head tail thread read frames rest focused
+  exact False.elim (closed split baseline (.cons head tail) focused)
+
+private theorem entrySilent {route : GiveEffectRoute} {labels}
+    (entry : Transition profile ready impl start (.give route .entered) labels finish) :
+    PayloadPrefix.visible labels = [] := by
+  cases entry with
+  | giveEntry _ _ silent _ _ _ => exact silent
+  | giveStopped _ _ _ _ _ _ stopped => cases stopped
+
+theorem nextReturnedGive {bindings : List (Binding sig)} {callees : List (ComponentCall.Callee sig)}
+    {route : GiveEffectRoute} {left right : State grow sig}
+    (aligned : right = HostFrame.replace left right.host)
+    (site : PayloadRoot.Site grow sig route) {actions labels entryLabels}
+    (between : Run profile ready (ComponentCall.hostWithComponent bindings callees) left actions labels site.start)
+    (neutral : ∀ action ∈ actions, JournalNeutralAction action)
+    (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees) site.start (.give route .entered)
+      entryLabels site.checked)
+    (value : route.output.Result) {reached reference : State grow sig}
+    (comparison : LinkedCallback.MemorySequence.RejoinedGive site value profile ready bindings reached reference)
+    (agreement : GiveBodyAgreement profile ready bindings callees site reached reference) :
+    let parked := HostFrame.replace site.start right.host
+    let dispatch := Dispatch.linked ready bindings callees
+    ∃ checkedLabels canonicalLabels checked baseline,
+      Run profile ready (ComponentCall.hostWithComponent bindings callees) left
+        (actions ++ [.give route .entered, .give route .returned]) checkedLabels checked ∧
+      Steps profile ready dispatch right labels parked ∧
+      Steps profile ready dispatch (site.reference site.referenceReply) canonicalLabels baseline ∧
+      PayloadPrefix.visible checkedLabels = PayloadPrefix.visible (labels ++ canonicalLabels) ∧
+      baseline = HostFrame.replace checked baseline.host ∧
+      JournalReplay profile ready dispatch (site.reference site.referenceReply) parked.host canonicalLabels baseline := by
+  obtain ⟨checkLabels, canonLabels, checked, baseline, returned, canonRun, seen, replies⟩ :=
+    Transition.give_returned site value comparison agreement
+  have noEntry := entrySilent entry
+  have prior : Steps profile ready (Dispatch.linked ready bindings callees) right labels (HostFrame.replace site.start right.host) :=
+    aligned ▸ (neutralRun between neutral right.host).steps
+  have joined := replyRejoin replies
+  have checkedRun := between.append (.next entry (.next returned (.stop _)))
+  refine ⟨_, _, _, _, checkedRun, prior, canonRun, ?_, joined, replayJournal canonRun _⟩
+  simp only [PayloadPrefix.visible, List.filter_append] at noEntry seen ⊢
+  simp [noEntry, seen]
+
+theorem commitOnJournal {target index} (resolve : LinkedResolution start target index) (other : HostState sig)
+    {writer : Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.State sig}
+    (registered : other.writer.register resolve.tree = .ok writer)
+    (sameHandle : writer.accepted.length = resolve.writer.accepted.length) :
+    ∃ reached, Transition profile ready impl (HostFrame.replace start other) (.commit target index) (List.replicate 17 .tau) reached ∧
+      reached = HostFrame.replace resolve.committed reached.host ∧ PendingAt reached.store target index ∧
+      reached.host = (({ other with writer } : HostState sig).record (.published resolve.ticket writer.accepted.length)).record
+        (.returned resolve.ticket writer.accepted.length) := by
+  let replay : LinkedResolution (HostFrame.replace start other) target index :=
+    { resolve with writer, registered, room := sameHandle ▸ resolve.room }
+  refine ⟨replay.committed, .commit replay, ?_, (replay.indexed_steps (profile := profile) (ready := ready) (impl := impl)).2, rfl⟩
+  simp only [LinkedResolution.committed, replay, sameHandle, HostFrame.replace]
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence
