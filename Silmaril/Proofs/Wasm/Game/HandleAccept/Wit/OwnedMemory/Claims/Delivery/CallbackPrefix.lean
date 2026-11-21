@@ -397,4 +397,33 @@ theorem stringReplay (cx : LiftLowerContext (core3 grow)) (pointer : Nat) (steps
               residual.frames, residual.rest⟩)
           ((growth.trans checked.grows).trans callGrowth) rfl rfl rfl
 
+theorem stringReplayMap {cx : LiftLowerContext (core3 grow)}
+    {checkNext canonNext : Nat → Session grow sig (Ret (core3 grow))}
+    {first second : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop}
+    (next : ∀ pointer lhs rhs check canon, first pointer lhs rhs check canon → second pointer lhs rhs check canon)
+    {length : Nat} {left right : Config (core3 grow) (HostState sig)}
+    {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (run : LiveStringReplay profile ready base bindings older cx checkNext canonNext first length left right check canon) :
+    LiveStringReplay profile ready base bindings older cx checkNext canonNext second length left right check canon := by
+  induction length using Nat.strong_induction_on generalizing left right check canon with
+  | ind length ih =>
+    rw [LiveStringReplay] at run ⊢
+    obtain ⟨store, result, labels, observed, checked, canonical, nextCut⟩ := run
+    refine ⟨store, result, labels, observed, checked, canonical, ?_⟩
+    intro front success
+    obtain ⟨tracksLeft, tracksRight, matched⟩ := nextCut front success
+    refine ⟨tracksLeft, tracksRight, ?_⟩
+    cases front with
+    | done pointer => exact next pointer _ _ _ _ matched
+    | call ptr oldSize alignment size rest shorter =>
+      intro seen reached path
+      obtain ⟨checkLabels, canonLabels, reference, mark, lhs, rhs, checkSeen, canonSeen, paired,
+        growth, checkRoots, canonRoots, marked, returning⟩ := matched path
+      refine ⟨checkLabels, canonLabels, reference, mark, lhs, rhs, checkSeen, canonSeen, paired,
+        growth, checkRoots, canonRoots, marked, ?_⟩
+      intro value cursor atMark focus
+      obtain ⟨peer, checked, canonical, tail⟩ := returning value cursor atMark focus
+      exact ⟨peer, checked, canonical, ih rest.length shorter tail⟩
+
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix

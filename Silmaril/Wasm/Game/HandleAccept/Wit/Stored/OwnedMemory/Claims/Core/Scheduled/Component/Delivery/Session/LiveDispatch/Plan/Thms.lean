@@ -316,6 +316,21 @@ theorem string_map_key (destination : RecordDestination) (inst : InstId) (elemen
     destination inst element output key value root layoutRoot fitRoot allocator path origin basePtr bytes count entryIndex issueIndex
     width sized aligned bounds entry checkNext canonNext frame growth embedder
 
+/-- After the real key descriptor, check the nominal value against the
+reached store and writer. A late refusal stops before canonical value
+placement, while a later trap retains the descriptor and earlier effects. -/
+theorem string_key_nominal_value (origin : CStore (core3 grow)) (destination : RecordDestination) (inst : InstId)
+    (element : Stored.TypeOf) (output : Stored.Lower.Output) (key : LinkedCallback.StringField) (value : Field) (address issueIndex : Nat)
+    (nominal : NominalElement element) (matched : value.LayoutMatches element) (emitted : value.Emitted)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {left right : Config (core3 grow) (HostState sig)} {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} :
+    StringKeyNominalValue profile ready base bindings older origin destination inst element output key value address issueIndex
+      left right check canon checkNext canonNext :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.stringKeyNominalValue
+    origin destination inst element output key value address issueIndex nominal matched emitted width checkNext canonNext
+
 /-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys
 remain written if a later value refuses or traps. Flat entries read the

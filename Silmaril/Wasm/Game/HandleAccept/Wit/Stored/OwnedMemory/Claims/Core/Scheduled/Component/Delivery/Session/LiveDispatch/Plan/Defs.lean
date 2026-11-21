@@ -225,17 +225,29 @@ def mapFieldPlacement (cx : LiftLowerContext (core3 grow))
   | .value => ptrType cx >>= next
   | .memoryMap width _ _ => next width
 
+def mapValueProgram (destination : RecordDestination) (inst : InstId)
+    (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)
+    (value : Stored.Endpoints.RecordLower.Field) (afterKey : Nat)
+    (finish : Unit → Session grow sig (Ret (core3 grow))) : Session grow sig (Ret (core3 grow)) :=
+  open Stored.Endpoints.RecordLower ABI in
+  let cx := destination.context inst
+  mapFieldPlacement cx mode fun width =>
+    CanonicalTree.field Limits.spec Quirks.none cx destination.width value
+      (.memory (alignTo afterKey (layout width value.type).alignment)) >>= finish
+
 /-- A reached map key under the live dispatchers, from field placement
-through the recursive string plan and its descriptor. A suspended callback
-does not enter the value continuation. -/
-def StringKeyReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
+through the recursive string plan. Only completed plans reach the supplied
+descriptor continuation. -/
+def StringKeyThen (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
-    (origin : CStore (core3 grow)) (destination : RecordDestination) (inst : InstId)
+    (destination : RecordDestination) (inst : InstId)
     (key : LinkedCallback.StringField) (address : Nat)
     (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
     (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
-    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    (finish : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop) : Prop :=
   let cx := destination.context inst
   let plan := storePlanFor Quirks.none destination.encoding destination.width key.value
   let checked := fun pointer => PayloadPrefix.stringPlanTail cx destination.width (.memory address) plan pointer >>=
@@ -249,11 +261,49 @@ def StringKeyReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
     ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (LiveDispatch.host bindings base))
       right canonLabels canonBody ∧
     LinkedCallback.ChildFrameOver older checkBody canonBody check canon ∧
-    LiveStringReplay profile ready base bindings older cx checked canonical (fun _ lhs rhs cursor peer =>
+    LiveStringReplay profile ready base bindings older cx checked canonical finish plan.steps.length checkBody canonBody check canon
+
+abbrev StringKeyReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (origin : CStore (core3 grow)) (destination : RecordDestination) (inst : InstId)
+    (key : LinkedCallback.StringField) (address : Nat)
+    (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+  StringKeyThen profile ready base bindings older destination inst key address left right check canon checkNext canonNext
+    (fun _ lhs rhs cursor peer =>
       LinkedCallback.ChildFrameOver older lhs rhs cursor peer ∧ Core3.Grows origin.core lhs.store.core ∧
       PayloadPrefix.StringLocalCutBetween profile ready (specDispatch ready base)
         (specDispatch ready (LiveDispatch.host bindings base)) lhs rhs cursor peer
-        (fun result => checkNext (.ok result)) canonNext) plan.steps.length checkBody canonBody check canon
+        (fun result => checkNext (.ok result)) canonNext)
+
+/-- Compare the descriptor and reached nominal value at the end of a
+string-key replay. Late refusal leaves the value program unexecuted, even
+when its first instruction is a flat-map width read. -/
+def StringKeyNominalValue (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (origin : CStore (core3 grow)) (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
+    (output : Stored.Lower.Output) (key : LinkedCallback.StringField) (value : Stored.Endpoints.RecordLower.Field)
+    (address issueIndex : Nat) (left right : Config (core3 grow) (HostState sig))
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+  open Stored.Endpoints.RecordLower ABI in
+  let afterKey := address + (layout destination.width key.field.type).size
+  let mode := CanonicalTree.EntryMode.forOutput destination.width (.map .string element) output
+  let pending := mapValueProgram destination inst mode value afterKey canonNext
+  let place := alignTo afterKey (layout destination.width value.type).alignment
+  let report := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => checkNext (verdict.mapError (.nested issueIndex))
+  let checked := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => (match verdict with
+    | .error issue => pure (.error issue)
+    | .ok () => OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none (destination.context inst)
+        destination.width value 1 (.memory place)) >>= report
+  StringKeyReplay profile ready base bindings older origin destination inst key address left right check canon checked (fun _ => pending) →
+  StringKeyThen profile ready base bindings older destination inst key address left right check canon checked (fun _ => pending)
+    (fun _ lhs rhs cursor _ => CollectionSegment profile ready base bindings older lhs rhs cursor checkNext canonNext 0
+      (· = pending) (fun reached => Core3.Grows origin.core reached.core))
 
 def mapValueSuffix (destination : RecordDestination) (inst : InstId)
     (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)

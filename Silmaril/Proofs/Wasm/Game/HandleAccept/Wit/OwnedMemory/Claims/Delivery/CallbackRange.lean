@@ -117,6 +117,33 @@ private theorem leafTrap {Result : Type} {reason : TrapReason} {labels : Trace g
   rw [appendVisible, silent (fun _ member => List.eq_of_mem_replicate member)]
   rfl
 
+private theorem prependSegment {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {startLeft startRight left right : Config (core3 grow) (HostState sig)} {leftLabels rightLabels : Trace grow sig}
+    {cursor : Cursor (E := core3 grow) (HostState sig)} {Result : Type}
+    {checkNext : Except RecordLower.Issue Result → Session grow sig (Ret (core3 grow))}
+    {canonNext : Result → Session grow sig (Ret (core3 grow))}
+    {stopsAt : Session grow sig (Ret (core3 grow)) → Prop} {keep : CStore (core3 grow) → Prop}
+    (leftTracks : RetainsActiveSlots profile ready (specDispatch ready base) startLeft leftLabels left)
+    (rightTracks : RetainsActiveSlots profile ready (specDispatch ready (LiveDispatch.host bindings base)) startRight rightLabels right)
+    (seen : visible leftLabels = visible rightLabels)
+    (tail : CollectionSegment profile ready base bindings older left right cursor checkNext canonNext 0 stopsAt keep) :
+    CollectionSegment profile ready base bindings older startLeft startRight cursor checkNext canonNext 0 stopsAt keep := by
+  obtain ⟨peer, outcome, checkLabels, canonLabels, lhs, rhs, checkRun, canonRun, same, observations, status⟩ := tail
+  refine ⟨peer, outcome, _, _, lhs, rhs, appendRun (prefix_survives (leftTracks 0)).1 checkRun,
+    appendRun (prefix_survives (rightTracks 0)).1 canonRun, same, by rw [appendVisible, appendVisible, seen, observations], ?_⟩
+  cases outcome with
+  | trapped reason =>
+    obtain ⟨leftTrap, rightTrap, leading, canonTrap⟩ := status
+    exact ⟨leftTrap, rightTrap, visible rightLabels ++ leading, by rw [appendVisible, canonTrap, List.append_assoc]⟩
+  | refused issue =>
+    obtain ⟨stop, actual, checkAt, canonAt, checkTracks, canonTracks⟩ := status
+    exact ⟨stop, actual, checkAt, canonAt, fun depth => (leftTracks depth).append (checkTracks depth),
+      fun depth => (rightTracks depth).append (canonTracks depth)⟩
+  | returned result =>
+    obtain ⟨paired, checkAt, canonAt, checkTracks, canonTracks, kept⟩ := status
+    exact ⟨paired, checkAt, canonAt, fun depth => (leftTracks depth).append (checkTracks depth),
+      fun depth => (rightTracks depth).append (canonTracks depth), kept⟩
+
 private theorem nominalElements (destination : RecordDestination) (inst : InstId) (entries : List Field)
     (nominal : ∀ item ∈ entries, CanonicalHandle item) (stride ptr index : Nat)
     (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
@@ -527,7 +554,7 @@ theorem stringMapKey (destination : RecordDestination) (inst : InstId) (element 
     (dispatch := specDispatch ready base) (reference := specDispatch ready (LiveDispatch.host bindings base)) destination inst
     key.value key.valid 0 keyOutput checkKey canonKey check canon following (afterKey destination.width) frame.store currentWidth
     realloc fit placed rfl rfl
-  unfold StringKeyReplay
+  unfold StringKeyReplay StringKeyThen
   refine ⟨[.tau] ++ List.replicate reads .tau, canonLabels ++ [.tau], ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [appendVisible, silent (fun _ member => List.eq_of_mem_replicate member)]
     rfl
@@ -545,6 +572,94 @@ theorem stringMapKey (destination : RecordDestination) (inst : InstId) (element 
       refine ⟨frame, grew, ?_⟩
       exact string_descriptor_cut_between cx destination.width keyOutput _ pointer lhs rhs cursor peer
         (fun result => following (.ok result)) (afterKey destination.width) frame.store checkAt canonAt
+
+private theorem nominalMapValue (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType)
+    (element : Stored.TypeOf) (output : Stored.Lower.Output) (value : Field) (afterKey issueIndex : Nat)
+    (nominal : NominalElement element) (matched : value.LayoutMatches element) (emitted : value.Emitted)
+    (origin : CStore (core3 grow)) (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core left.store.core) :
+    let cx := destination.context inst
+    let mode := CanonicalTree.EntryMode.forOutput destination.width (.map key element) output
+    let pending := mapValueProgram destination inst mode value afterKey canonNext
+    let valPtr := alignTo afterKey (layout destination.width value.type).alignment
+    let report := fun verdict : Except RecordLower.Issue Unit => checkNext (verdict.mapError (.nested issueIndex))
+    left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width value 1
+      (.memory valPtr) >>= report) → right.ctl = canon.control pending →
+    CollectionSegment profile ready base bindings older left right check checkNext canonNext 0
+      (· = pending) (fun reached => Core3.Grows origin.core reached.core) := by
+  intro cx mode pending valPtr report checkAt canonAt
+  let canonBody := fun reached => CanonicalTree.field Limits.spec Quirks.none cx destination.width value
+    (.memory (alignTo afterKey (layout reached value.type).alignment)) >>= canonNext
+  obtain ⟨placement, quietPlacement, tracksPlacement⟩ := mapPlacement (profile := profile) (ready := ready) (base := base)
+    (bindings := bindings) destination inst key element output right canon canonBody
+    ((frame.store ▸ growth : Core3.Grows origin.core right.store.core).memAddrType width) canonAt
+  let afterPlacement := { right with ctl := canon.control (canonBody destination.width) }
+  have placed : LinkedCallback.ChildFrameOver older left afterPlacement check canon :=
+    ⟨frame.store, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+  have leaf := LinkedCallback.ChildFrameOver.handle_field_then_between
+    (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+    (reference := specDispatch ready (LiveDispatch.host bindings base)) destination inst value (nominalEntry nominal matched emitted)
+    1 (.memory valPtr) report canonNext placed growth checkAt rfl
+    (next := fun _ lhs rhs check canon => LinkedCallback.ChildFrameOver older lhs rhs check canon ∧ Core3.Grows origin.core lhs.store.core)
+    (fun _ _ _ _ _ related grown _ _ => ⟨related, grown⟩)
+  unfold LinkedCallback.HandleFieldThenBetween at leaf
+  cases live : liveLeafPlan left.store left.host.writer 1 value with
+  | error issue =>
+    rw [live] at leaf
+    obtain ⟨labels, quiet, tracks⟩ := leaf
+    exact ⟨canon, .refused (.nested issueIndex issue), labels, [], _, right, (prefix_survives (tracks 0)).1, .refl _, frame.store,
+      silent quiet, pending, rfl, rfl, canonAt, tracks, fun depth => .done _ _⟩
+  | ok plan =>
+    rw [live] at leaf
+    obtain ⟨store, result, guard, checkLabels, canonLabels, quiet, seenLeft, seenRight, runLeft, runRight, success⟩ := leaf
+    have runCanonical := appendRun (prefix_survives (tracksPlacement 0)).1 runRight
+    cases result with
+    | error reason =>
+      refine ⟨canon, .trapped reason, _, _, _, _, runLeft, runCanonical, rfl, ?_, rfl, rfl, [], ?_⟩
+      · simp only [appendVisible, silent quiet, quietPlacement, List.nil_append, leafTrap seenLeft, leafTrap seenRight]
+      · simp only [appendVisible, quietPlacement, List.nil_append, leafTrap seenRight]
+    | ok result =>
+      cases result
+      obtain ⟨leftTracks, rightTracks, paired, kept⟩ := success () rfl
+      refine ⟨canon, .returned (), _, _, _, _, runLeft, runCanonical, rfl, ?_, paired, rfl, rfl, leftTracks,
+        fun depth => (tracksPlacement depth).append (rightTracks depth), kept⟩
+      simp only [appendVisible, silent quiet, quietPlacement, List.nil_append, leafSilent seenLeft, leafSilent seenRight]
+
+theorem stringKeyNominalValue (origin : CStore (core3 grow)) (destination : RecordDestination) (inst : InstId)
+    (element : Stored.TypeOf) (output : Stored.Lower.Output) (key : LinkedCallback.StringField) (value : Field) (address issueIndex : Nat)
+    (nominal : NominalElement element) (matched : value.LayoutMatches element) (emitted : value.Emitted)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)} :
+    StringKeyNominalValue profile ready base bindings older origin destination inst element output key value address issueIndex
+      left right check canon checkNext canonNext := by
+  unfold StringKeyNominalValue
+  intro afterKey mode pending place report following reached
+  unfold StringKeyReplay StringKeyThen at reached
+  unfold StringKeyThen
+  obtain ⟨leftLabels, rightLabels, seenLeft, seenRight, tracksLeft, tracksRight, paired, replay⟩ := reached
+  refine ⟨leftLabels, rightLabels, seenLeft, seenRight, tracksLeft, tracksRight, paired, CallbackPrefix.stringReplayMap ?_ replay⟩
+  intro pointer lhs rhs cursor peer done
+  obtain ⟨frame, growth, store, result, labels, observed, leftRun, rightRun, tracks⟩ := done
+  cases result with
+  | error reason =>
+    exact ⟨peer, .trapped reason, _, _, _, _, leftRun.steps, rightRun.steps, rfl, rfl, rfl, rfl, [], leafTrap observed⟩
+  | ok result =>
+    cases result
+    let checkValue := { lhs with store, ctl := cursor.control (following (.ok ())) }
+    let canonValue := { rhs with store, ctl := peer.control pending }
+    have valueFrame : LinkedCallback.ChildFrameOver older checkValue canonValue cursor peer :=
+      ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+    have tail := nominalMapValue (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+      destination inst .string element output value afterKey issueIndex nominal matched emitted origin width checkNext canonNext
+      valueFrame (growth.trans leftRun.grows) rfl rfl
+    exact prependSegment (fun depth => (tracks () rfl depth).1) (fun depth => (tracks () rfl depth).2) rfl tail
 
 private theorem nominalMapEntry (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
     (output : Stored.Lower.Output)
@@ -606,50 +721,12 @@ private theorem nominalMapEntry (destination : RecordDestination) (inst : InstId
     obtain ⟨grown, trackedLeft, trackedRight⟩ := keyStatus
     let checked := { left with store, ctl := check.control (checkValue >>= onChecked) }
     let valueStart := { right with store, ctl := canon.control (afterKey destination.width ()) }
-    let canonValue : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width value (.memory valPtr)
-    let canonical := { right with store, ctl := canon.control (canonValue >>= canonNext) }
-    obtain ⟨valueLabels, valueQuiet, valueTracks⟩ := mapPlacement (profile := profile) (ready := ready) (base := base)
-      (bindings := bindings) destination inst key element output valueStart canon (fun reached =>
-        CanonicalTree.field Limits.spec Quirks.none cx destination.width value
-          (.memory (alignTo (keyPtr + keyArea.size) (layout reached value.type).alignment)) >>= canonNext)
-      (grown.memAddrType width) rfl
-    have reached : LinkedCallback.ChildFrameOver older checked canonical check canon :=
+    have reached : LinkedCallback.ChildFrameOver older checked valueStart check canon :=
       ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
-    have leaf := LinkedCallback.ChildFrameOver.handle_field_then_between
-      (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
-      (reference := specDispatch ready (LiveDispatch.host bindings base)) destination inst value (nominalEntry nominal matched emitted)
-      1 (.memory valPtr) onChecked canonNext reached grown rfl rfl
-      (next := fun _ lhs rhs check canon => LinkedCallback.ChildFrameOver older lhs rhs check canon ∧ Core3.Grows origin.core lhs.store.core)
-      (fun _ _ _ _ _ related grown _ _ => ⟨related, grown⟩)
-    unfold LinkedCallback.HandleFieldThenBetween at leaf
-    cases live : liveLeafPlan checked.store checked.host.writer 1 value with
-    | error issue =>
-      rw [live] at leaf
-      obtain ⟨labels, quiet, tracks⟩ := leaf
-      exact ⟨canon, .refused (.nested issueIndex issue), _, _, _, valueStart,
-        appendRun runCheckKey (prefix_survives (tracks 0)).1, keyRun, rfl,
-        by rw [appendVisible, silent quiet, List.append_nil, keySeen],
-        _, rfl, rfl, rfl, fun depth => (trackedLeft depth).append (tracks depth),
-        fun depth => (headTracks depth).append (trackedRight depth)⟩
-    | ok plan =>
-      rw [live] at leaf
-      obtain ⟨reachedStore, outcome, guard, checkLabels, canonLabels, quiet, seenLeft, seenRight, runLeft, runRight, success⟩ := leaf
-      have leftRun := appendRun runCheckKey runLeft
-      have rightRun := appendRun keyRun (appendRun (prefix_survives (valueTracks 0)).1 runRight)
-      cases outcome with
-      | error reason =>
-        refine ⟨canon, .trapped reason, _, _, _, _, leftRun, rightRun, rfl, ?_, rfl, rfl, visible (headLabels ++ canonKey), ?_⟩
-        · simp only [appendVisible, silent quiet, headQuiet, valueQuiet, List.nil_append,
-            leafTrap seenLeft, leafTrap seenRight, keyLabels]
-        · simp only [appendVisible, valueQuiet, List.nil_append, leafTrap seenRight]
-      | ok result =>
-        cases result
-        obtain ⟨leftTracks, rightTracks, paired, kept⟩ := success () rfl
-        refine ⟨canon, .returned (), _, _, _, _, leftRun, rightRun, rfl, ?_, paired, rfl, rfl, ?_, ?_, kept⟩
-        · simp only [appendVisible, silent quiet, headQuiet, valueQuiet, leafSilent seenLeft,
-            leafSilent seenRight, List.nil_append, keyLabels]
-        · exact fun depth => (trackedLeft depth).append (leftTracks depth)
-        · exact fun depth => ((headTracks depth).append (trackedRight depth)).append ((valueTracks depth).append (rightTracks depth))
+    have tail := nominalMapValue (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+      destination inst key element output value (keyPtr + keyArea.size) issueIndex nominal matched emitted origin width checkNext canonNext
+      reached grown rfl rfl
+    exact prependSegment trackedLeft (fun depth => (headTracks depth).append (trackedRight depth)) keySeen tail
 
 theorem refusalReply {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (type element : Stored.TypeOf) (entries : List Field) (index pointer bytes : Nat)
