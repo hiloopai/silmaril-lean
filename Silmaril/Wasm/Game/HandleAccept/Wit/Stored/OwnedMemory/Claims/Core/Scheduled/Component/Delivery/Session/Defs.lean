@@ -1232,6 +1232,17 @@ inductive Run (profile : ProfileKind) (ready : HostReady (HostState sig)) (impl 
       (tail : Run profile ready impl middle actions trailing finish) :
       Run profile ready impl start (action :: actions) (leading ++ trailing) finish
 
+/-- The delivery-related edges whose reached configurations do not depend
+on the component host hook. A cancellation request installing an open
+continuation is not such an edge. -/
+def ClosedDeliveryAction : Action → Prop
+  | .commit .. | .poll .. | .wait .. | .waitEnter .. | .waitResume ..
+  | .cancel .. | .cancelReentry .. | .cancelCallbackDone .. | .cancelPark .. | .cancelResume ..
+  | .callbackTake .. | .callbackResolveCancel .. | .callbackBorrowTrap ..
+  | .lowerInstallCancel .. | .lowerEagerDelivery .. | .lowerPending .. | .lowerTableFull ..
+  | .tick .. | .coreStep | .coreReturn | .coreTrap | .coreReply .. => True
+  | _ => False
+
 /-- The return proof already derives paired paths from the compiled body.
 This contract concerns only dispatch at the late-bound calls on those paths;
 it does not assume successful recursive lowering or common endpoints. -/

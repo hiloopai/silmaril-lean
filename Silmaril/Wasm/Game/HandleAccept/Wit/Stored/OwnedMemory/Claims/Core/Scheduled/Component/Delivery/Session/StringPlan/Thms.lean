@@ -133,4 +133,44 @@ theorem CalleeArguments.enter_stackful_after_strings {site : OnStartSite start} 
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.enterStackful
     args words lowered asyncMode callback
 
+/-- Continue actual Core entry along a finite classified body. An observed
+return takes the live worker exit or last-thread unresolved trap, with no
+assumption that the body returns, or preserves bytes, records, or events. -/
+theorem CalleeArguments.finish_stackful_after_arguments {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached first : State grow sig} {returned : LowerArgumentReturn handoff reached}
+    (args : CalleeArguments returned) {Result : Type} (words : Result → List FlatValue)
+    (lowered : StringPlanPair profile ready bindings callees first (fun result => args.enter (words result)))
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none)
+    (select : ∀ (entry : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue),
+      entry.ctl = ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest →
+      StackfulBodyCut profile ready bindings callees args.task entry) :
+    ∃ labels last, Steps profile ready (Dispatch.coreOnly ready bindings) first labels last ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) first labels last ∧
+      StackfulWorkerEnd profile ready bindings first args.task args.callee labels last :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.finishStackful
+    args words lowered asyncMode callback select
+
+/-- Continue from the worker cut into a finite result-delivery path. Poll,
+wait and cancel consume events from their own reached stores, including
+delivery paths that later trap writing the event buffer. The tail can be
+empty, and no open cancellation hook is classified by this theorem. -/
+theorem CalleeArguments.finish_stackful_with_delivery {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached first : State grow sig} {returned : LowerArgumentReturn handoff reached}
+    (args : CalleeArguments returned) {Result : Type} (words : Result → List FlatValue)
+    (lowered : StringPlanPair profile ready bindings callees first (fun result => args.enter (words result)))
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none)
+    (select : ∀ (entry : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue),
+      entry.ctl = ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest →
+      StackfulBodyCut profile ready bindings callees args.task entry)
+    (delivery : ∀ leading cut, StackfulWorkerEnd profile ready bindings first args.task args.callee leading cut →
+      ∃ actions trailing last, Run profile ready (host bindings) cut actions trailing last ∧
+        ∀ action ∈ actions, ClosedDeliveryAction action) :
+    ∃ leading cut actions trailing last,
+      StackfulWorkerEnd profile ready bindings first args.task args.callee leading cut ∧
+      Run profile ready (ComponentCall.hostWithComponent bindings callees) cut actions trailing last ∧
+      Steps profile ready (Dispatch.coreOnly ready bindings) first (leading ++ trailing) last ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) first (leading ++ trailing) last :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.finishWithDelivery
+    args words lowered asyncMode callback select delivery
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession

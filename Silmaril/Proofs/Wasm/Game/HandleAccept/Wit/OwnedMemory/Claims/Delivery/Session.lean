@@ -1576,6 +1576,19 @@ theorem runSteps {actions labels} (path : Run profile ready impl start actions l
   | stop => exact .refl _
   | next edge _ ih => exact appendSteps (transitionSteps edge) ih
 
+private theorem rehostDelivery {reference : HostImpl (core3 grow) (HostState sig)} {action labels}
+    (edge : Transition profile ready impl start action labels finish) (closed : ClosedDeliveryAction action) :
+    Transition profile ready reference start action labels finish := by
+  cases edge <;> simp only [ClosedDeliveryAction] at closed <;> constructor <;> assumption
+
+theorem runRehostDelivery {reference : HostImpl (core3 grow) (HostState sig)} {actions labels}
+    (path : Run profile ready impl start actions labels finish)
+    (closed : ∀ action ∈ actions, ClosedDeliveryAction action) : Run profile ready reference start actions labels finish := by
+  induction path with
+  | stop => exact .stop _
+  | next edge _ ih =>
+    exact .next (rehostDelivery edge (closed _ (List.Mem.head _))) (ih fun action member => closed action (List.Mem.tail _ member))
+
 theorem calleeDirectStringPlan {site : OnStartSite start} {handoff : LowerStartAt site}
     {reached : State grow sig} {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
     {value values types} (schema : args.types = .prim .string :: types) (input : returned.values = .string value :: values)

@@ -742,6 +742,14 @@ theorem StackfulExit.live_records {reached : State grow sig} {site : StackfulRet
     exit.finished.store.subtasks = reached.store.subtasks ∧ exit.finished.store.callers = reached.store.callers :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.stackfulFrames exit
 
+/-- Replay a finite closed delivery tail under another host overlay. Each
+edge still reads its own reached state; nothing requires a pending event to
+survive consumption or be reused by a later edge. -/
+theorem Run.rehost_delivery {reference : HostImpl (core3 grow) (HostState sig)} {actions labels}
+    (path : Run profile ready impl start actions labels finish) (closed : ∀ action ∈ actions, ClosedDeliveryAction action) :
+    Run profile ready reference start actions labels finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runRehostDelivery path closed
+
 /-- Append the closed return, live unregistration and actual worker exit
 after any classified finite interleaving that reaches the callee return. -/
 theorem Run.finish_stackful {reached : State grow sig} {site : StackfulReturn reached} {actions labels}

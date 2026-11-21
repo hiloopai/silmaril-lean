@@ -85,4 +85,64 @@ abbrev StringPlanStopped (profile : ProfileKind) (ready : HostReady (HostState s
     (start : State grow sig) (labels : Trace grow sig) (last : State grow sig) : Prop :=
   StringPlanEnd profile ready bindings start (fun unreachable : Empty => nomatch unreachable) labels last
 
+/-- Pair only the selected finite body. A Core-only body needs no hook
+contract. For other closed paths we check the reached dispatch sites; an
+open path must give the site-level dispatcher classification. -/
+inductive StackfulBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    State grow sig → Trace grow sig → State grow sig → Prop where
+  | core {entry reached count}
+      (path : Steps profile ready (Dispatch.coreOnly ready bindings) entry (List.replicate count .core) reached) :
+      StackfulBody profile ready bindings callees entry (List.replicate count .core) reached
+  | closed {entry reached labels}
+      (path : Steps profile ready (Dispatch.coreOnly ready bindings) entry labels reached)
+      (sites : Dispatch.ClosedThrough profile ready bindings entry labels reached) :
+      StackfulBody profile ready bindings callees entry labels reached
+  | classified {entry reached labels} (sites : Dispatch.Compatible profile ready bindings callees entry labels reached) :
+      StackfulBody profile ready bindings callees entry labels reached
+
+/-- The reached registration is needed only on the successful branch.
+The canonical last-thread guard runs before it reads any thread slot. -/
+structure StackfulReturnSite {reached : State grow sig} (site : StackfulReturn reached) where
+  record : Task (core3 grow)
+  live : reached.store.task? site.taskId = some record
+  implicitThread : record.implicitThread = some site.thread
+  registered : ((record.threads.erase site.thread).isEmpty && !decide (record.state = .resolved)) = false →
+    ∃ (registration : Thread) (slot : Nat) (inst removed : InstState),
+      reached.store.thread? site.thread = some registration ∧ registration.index = some slot ∧
+      reached.store.inst? record.inst = some inst ∧ inst.removeThread? slot = some (site.thread, removed)
+
+/-- Continue an actual body selection, or stop after any finite prefix. -/
+inductive StackfulBodyCut (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) (task : TaskId) (entry : State grow sig) where
+  | prefix {labels reached} (body : StackfulBody profile ready bindings callees entry labels reached)
+  | returned {labels reached} (body : StackfulBody profile ready bindings callees entry labels reached)
+      (site : StackfulReturn reached) (sameTask : site.taskId = task)
+      (records : StackfulReturnSite site) (empty : site.segments = [])
+
+/-- The selected body cut is either left untouched or extended by the
+actual return, unregistration/exit or unresolved-task trap. -/
+inductive StackfulBodyEnd (task : TaskId) : State grow sig → Trace grow sig → State grow sig → Prop where
+  | prefix (state : State grow sig) : StackfulBodyEnd task state [] state
+  | exited {reached} {site : StackfulReturn reached} (sameTask : site.taskId = task) (exit : StackfulExit site) :
+      StackfulBodyEnd task reached (exit.labels ++ [.tau]) exit.finished
+  | unresolved {reached} (site : StackfulReturn reached) (sameTask : site.taskId = task)
+      (records : StackfulReturnSite site) (last : (records.record.threads.erase site.thread).isEmpty = true)
+      (unresolved : records.record.state ≠ .resolved) :
+      StackfulBodyEnd task reached [.tau, .tau, .tau, .trap .taskNotResolved] (StepDefs.trapCfg reached)
+
+/-- Record the entry and body boundaries without merging a suspended
+lowering with a callee that has already entered. -/
+inductive StackfulWorkerEnd (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (first : State grow sig) (task : TaskId) (callee : (core3 grow).FuncAddr) : Trace grow sig → State grow sig → Prop where
+  | stopped {labels last} (stop : StringPlanStopped profile ready bindings first labels last) :
+      StackfulWorkerEnd profile ready bindings first task callee labels last
+  | body {entry reached finish leading labels trailing} (cursor : Cursor (E := core3 grow) (HostState sig))
+      (words : List FlatValue)
+      (entryPath : Steps profile ready (Dispatch.coreOnly ready bindings) first leading entry)
+      (entered : entry.ctl = ⟨cursor.thread, .core ((core3 grow).invoke callee words) (stackfulTail task), cursor.frames⟩ :: cursor.rest)
+      (bodyPath : Steps profile ready (Dispatch.coreOnly ready bindings) entry labels reached)
+      (endAt : StackfulBodyEnd task reached trailing finish) :
+      StackfulWorkerEnd profile ready bindings first task callee (leading ++ (labels ++ trailing)) finish
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession

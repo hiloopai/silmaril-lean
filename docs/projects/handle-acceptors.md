@@ -1292,7 +1292,21 @@ same traversal.
 `enter_stackful_after_strings` starts actual Core execution with the computed
 flat words or the outer spill pointer when lowering completes. A suspension
 or trap does not enter Core. This does not yet cover nested parameter
-schemas, arbitrary component host reentry, or post-callee completion.
+schemas or arbitrary component host reentry.
+
+`finish_stackful_after_arguments` continues the reached Core entry along a
+selected finite body. Guest-only paths classify without a host premise;
+closed paths check the reached dispatch sites, while open paths need site-level
+classification. A finite prefix can stop without returning. At an observed
+return, the live task decides the unresolved-last-thread trap before any
+registration lookup. A valid reached registration takes canonical
+unregistration and worker exit, exposing exactly the reached scheduler tail.
+The proof does not preserve pre-body records. `finish_stackful_with_delivery`
+then composes the reached cut with a finite closed delivery tail. Each poll,
+wait, or cancel edge uses the record or event reached at that step, including
+consumption followed by an event-buffer trap. This transport does not equate
+different open cancellation continuations or compare the full public-give
+session.
 
 ## Checking
 

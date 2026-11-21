@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.StringPlan.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
 import Silmaril.Wasm.Component.Reference.Canon.Prog.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
@@ -244,8 +245,8 @@ theorem spilledSequence (context : LiftLowerContext (core3 grow)) (enter : Sessi
     cases field with
     | scalar arg =>
       let address := arg.address width ptr
-      let remaining (w : AddrType) (_ : Unit) := storeTuple .spec .none context values types
-        (arg.address w ptr + (ABI.layout w arg.type).size) >>= fun _ => enter
+      let remaining (liveWidth : AddrType) (_ : Unit) := storeTuple .spec .none context values types
+        (arg.address liveWidth ptr + (ABI.layout liveWidth arg.type).size) >>= fun _ => enter
       let afterWidth := { start with ctl := cursor.control (writeMem context address arg.bytes >>= remaining width) }
       have readAt : start.ctl = cursor.control (.op .get fun current =>
           writeMem context (arg.address (ptrTypeIn current context) ptr) arg.bytes >>= remaining (ptrTypeIn current context)) := by
@@ -342,5 +343,92 @@ theorem enterStackful {start reached first : State grow sig} {site : OnStartSite
   | trap reason => exact ⟨_, _, left, right, .inr (.trap reason)⟩
   | suspend alloc leading trailing mark atCall path closed =>
     exact ⟨_, _, left, right, .inr (.suspend alloc leading trailing mark atCall path closed)⟩
+
+private theorem compatibleCore {entry reached : State grow sig} {labels}
+    (path : Dispatch.Compatible profile ready bindings callees entry labels reached) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) entry labels reached := by
+  induction path with
+  | done => exact .refl _
+  | next _ step _ tail => exact .cons step tail
+  | liftedLookup focus lookup _ tail =>
+    exact appendSteps (Dispatch.liftedLookup_steps (impl := host bindings) focus lookup) tail
+
+private theorem bodySteps {entry reached : State grow sig} {labels}
+    (body : StackfulBody profile ready bindings callees entry labels reached) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) entry labels reached ∧
+    Steps profile ready (Dispatch.linked ready bindings callees) entry labels reached := by
+  cases body with
+  | core run => exact ⟨run, (Dispatch.Compatible.of_core run).steps⟩
+  | closed run sites => exact ⟨run, (Dispatch.Compatible.of_closed run sites).steps⟩
+  | classified sites => exact ⟨compatibleCore sites, sites.steps⟩
+
+private theorem returnBoth (task : TaskId) {reached : State grow sig} (site : StackfulReturn reached)
+    (sameTask : site.taskId = task) (records : StackfulReturnSite site) (empty : site.segments = []) :
+    ∃ labels finish, Steps profile ready (Dispatch.coreOnly ready bindings) reached labels finish ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) reached labels finish ∧
+      StackfulBodyEnd task reached labels finish := by
+  cases guard : ((records.record.threads.erase site.thread).isEmpty && !decide (records.record.state = .resolved)) with
+  | true =>
+    obtain ⟨last, unresolved⟩ := Bool.and_eq_true_iff.mp guard
+    have unresolved : records.record.state ≠ .resolved := by simpa using unresolved
+    exact ⟨_, _, (Transition.stackfulUnresolved (impl := host bindings) site records.live records.implicitThread last unresolved).steps,
+      (Transition.stackfulUnresolved (impl := ComponentCall.hostWithComponent bindings callees)
+        site records.live records.implicitThread last unresolved).steps, .unresolved site sameTask records last unresolved⟩
+  | false =>
+    obtain ⟨registration, slot, inst, removed, threadLive, index, instanceLive, remove⟩ := records.registered guard
+    let exit : StackfulExit site := ⟨records.record, registration, inst, slot, removed, records.live, records.implicitThread,
+      by simpa only [decide_not] using guard, threadLive, index, instanceLive, remove⟩
+    exact ⟨_, _, appendSteps (Transition.stackfulComplete (impl := host bindings) exit).steps
+        (Transition.stackfulExit (impl := host bindings) exit empty).steps,
+      appendSteps (Transition.stackfulComplete (impl := ComponentCall.hostWithComponent bindings callees) exit).steps
+        (Transition.stackfulExit (impl := ComponentCall.hostWithComponent bindings callees) exit empty).steps,
+      .exited sameTask exit⟩
+
+theorem finishStackful {start reached first : State grow sig} {site : OnStartSite start} {handoff : LowerStartAt site}
+    {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+    {Result : Type} (words : Result → List FlatValue)
+    (lowered : StringPlanPair profile ready bindings callees first (fun result => args.enter (words result)))
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none)
+    (select : ∀ (entry : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue),
+      entry.ctl = ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest →
+      StackfulBodyCut profile ready bindings callees args.task entry) :
+    ∃ labels last, Steps profile ready (Dispatch.coreOnly ready bindings) first labels last ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) first labels last ∧
+      StackfulWorkerEnd profile ready bindings first args.task args.callee labels last := by
+  obtain ⟨leading, entry, left, right, outcome⟩ := enterStackful args words lowered asyncMode callback
+  rcases outcome with ⟨cursor, flat, entered⟩ | stopped
+  · cases select entry cursor flat entered with
+    | «prefix» body =>
+      obtain ⟨bodyLeft, bodyRight⟩ := bodySteps body
+      exact ⟨_, _, appendSteps left (appendSteps bodyLeft (.refl _)), appendSteps right (appendSteps bodyRight (.refl _)),
+        .body cursor flat left entered bodyLeft (.prefix _)⟩
+    | returned body returnAt sameTask records empty =>
+      obtain ⟨bodyLeft, bodyRight⟩ := bodySteps body
+      obtain ⟨_, _, exitLeft, exitRight, endAt⟩ := returnBoth (profile := profile) (ready := ready) (bindings := bindings)
+        (callees := callees) args.task returnAt sameTask records empty
+      exact ⟨_, _, appendSteps left (appendSteps bodyLeft exitLeft), appendSteps right (appendSteps bodyRight exitRight),
+        .body cursor flat left entered bodyLeft endAt⟩
+  · exact ⟨_, _, left, right, .stopped stopped⟩
+
+theorem finishWithDelivery {start reached first : State grow sig} {site : OnStartSite start} {handoff : LowerStartAt site}
+    {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+    {Result : Type} (words : Result → List FlatValue)
+    (lowered : StringPlanPair profile ready bindings callees first (fun result => args.enter (words result)))
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none)
+    (select : ∀ (entry : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue),
+      entry.ctl = ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest →
+      StackfulBodyCut profile ready bindings callees args.task entry)
+    (delivery : ∀ leading cut, StackfulWorkerEnd profile ready bindings first args.task args.callee leading cut →
+      ∃ actions trailing last, Run profile ready (host bindings) cut actions trailing last ∧
+        ∀ action ∈ actions, ClosedDeliveryAction action) :
+    ∃ leading cut actions trailing last,
+      StackfulWorkerEnd profile ready bindings first args.task args.callee leading cut ∧
+      Run profile ready (ComponentCall.hostWithComponent bindings callees) cut actions trailing last ∧
+      Steps profile ready (Dispatch.coreOnly ready bindings) first (leading ++ trailing) last ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) first (leading ++ trailing) last := by
+  obtain ⟨_, _, left, right, endAt⟩ := finishStackful args words lowered asyncMode callback select
+  obtain ⟨_, _, _, run, closed⟩ := delivery _ _ endAt
+  have linked := run.rehost_delivery (reference := ComponentCall.hostWithComponent bindings callees) closed
+  exact ⟨_, _, _, _, _, endAt, linked, appendSteps left run.steps, appendSteps right linked.steps⟩
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan
