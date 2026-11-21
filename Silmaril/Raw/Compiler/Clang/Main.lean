@@ -10,7 +10,13 @@ public import Silmaril.Cerberus.Ail.Codec.Defs
 cfront decode FILE.json   -- decode Clang's JSON AST and print it back (compact JSON), exit 0
 cfront ail FILE.json      -- translate it to typed Ail: a `$document_tail` document, exit 0
 cfront ail --partial FILE.json -- omit failed bodies as declarations, report skips on stderr
+cfront ail --producer TEXT FILE.json -- name the AST's producer in the document header
 ```
+
+The header of a printed document names its producer. A JSON AST does not say which clang wrote
+it, so cfront does not claim one: the header is `cfront (AST producer not recorded)` unless the
+caller, who ran clang, passes `--producer` (for example the first line of `clang --version`).
+The header is metadata taken from the caller, not checked by cfront.
 
 `FILE.json` is the output of the pinned `clang -Xclang -ast-dump=json -fsyntax-only` (see
 `Silmaril.Clang.AST`). `ail` prints the typed Ail in the oracle's S-expression format
@@ -29,12 +35,14 @@ namespace Silmaril.Clang.Main
 
 open Silmaril.Cerberus Ail.Codec
 
-/-- The header of the documents `cfront ail` prints: the frontend and clang version, and the
-implementation the typed Ail assumes (Cerberus's, so the documents are interchangeable). -/
-def commit : String := "cfront-clang 23.1.0 ea7d852a70e8bdfaf601d6626a760f9771b2c4b4"
+/-- The default header of the documents `cfront ail` prints (module docstring): no clang version
+is claimed. The implementation is the one the typed Ail assumes (Cerberus's, so the documents
+are interchangeable). -/
+def commit : String := "cfront (AST producer not recorded)"
 def impl : String := "gcc_4.9.0_x86_64-apple-darwin10.8.0"
 
-def usage : String := "usage: cfront decode FILE.json\n       cfront ail [--partial] FILE.json"
+def usage : String :=
+  "usage: cfront decode FILE.json\n       cfront ail [--partial] [--producer TEXT] FILE.json"
 
 def load (path : String) : IO (Except String Node) := do
   let bytes ← IO.FS.readBinFile path
@@ -42,7 +50,8 @@ def load (path : String) : IO (Except String Node) := do
   return Json.decode text
 
 /-- Emit a document, optionally retaining unsupported function bodies as declarations. -/
-def translateFile (path : String) (partialBodies : Bool) : IO UInt32 := do
+def translateFile (path : String) (partialBodies : Bool) (commit : String := commit) :
+    IO UInt32 := do
   let out ← IO.getStdout
   match ← load path with
   | .error e => IO.eprintln s!"cfront: {path}: {e}"; return 3
@@ -64,8 +73,16 @@ def run (args : List String) : IO UInt32 := do
     match ← load path with
     | .error e => IO.eprintln s!"cfront: {path}: {e}"; return 3
     | .ok n => out.putStrLn (Json.encode n); out.flush; return 0
-  | ["ail", path] => translateFile path false
-  | ["ail", "--partial", path] => translateFile path true
+  | "ail" :: rest =>
+    let rec opts : List String → Bool → Option String → Option (Bool × Option String × String)
+      | ["--partial", path], _, p => some (true, p, path)
+      | "--partial" :: r, _, p => opts r true p
+      | "--producer" :: t :: r, b, _ => opts r b (some t)
+      | [path], b, p => if path.startsWith "--" then none else some (b, p, path)
+      | _, _, _ => none
+    match opts rest false none with
+    | some (b, p, path) => translateFile path b (p.getD commit)
+    | none => IO.eprintln usage; return 2
   | _ => IO.eprintln usage; return 2
 
 def main (args : List String) : IO UInt32 := do
