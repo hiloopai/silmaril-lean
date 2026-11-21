@@ -107,6 +107,7 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
   | cancelFinish cancel record focused live resolved pending => exact cancel.finish_delivers record focused live resolved pending
   | sequence _ _ front back => exact append front back
   | rootStop _ _ stop => cases stop <;> rename_i edge <;> exact edge.steps
+  | compilerStop _ _ checked => exact checked
   | give _ _ entry checkedBody _ _ replies _ _ => exact append (append entry.steps checkedBody) (replies.1 _)
   | stop _ _ entry checkedBody _ _ _ _ _ => exact append entry.steps checkedBody
 
@@ -434,6 +435,14 @@ theorem compilerRefusalAfterInterleaving {route : GiveEffectRoute} {request : Co
     (ComponentCall.hostWithComponent bindings callees) rfl
   exact ⟨count, entryLabels, canonical, silent, append between.runs.1.steps left, right, aligned, accepted⟩
 
+theorem compilerRefusalPlan {route : GiveEffectRoute} {request : CoreGiveRequest bindings start}
+    (selection : request.Selected route) {issue : Stored.Endpoints.RecordLower.Issue}
+    (refused : selection.preflight = .error issue)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    ∃ count, NestedPlan bindings profile ready base start (List.replicate count .tau) (selection.compilerRefused issue) := by
+  obtain ⟨count, checked⟩ := selection.compiler_refusal (profile := profile) (ready := ready) refused base embedder
+  exact ⟨count, .compilerStop selection refused checked⟩
+
 theorem linkedGiveStop {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
     {callees : List (ComponentCall.Callee sig)} {entryLabels checkLabels canonLabels reached reference check phase}
     (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)
@@ -595,6 +604,19 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
       exact ⟨installedLabels, _, installed, by rw [silentVisible installedSilent]; exact ⟨_, rfl⟩,
         .inr (.rootStop site linked stop aligned)⟩
     · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.unselected site linked paired selected)⟩
+  | @compilerStop origin _ _ count request selection refused checked =>
+    by_cases selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted selection.handle = some selection.tree
+    · have reads (handle : BitVec IntType.i32.width) (demanded : request.lookupDemand = some handle) :
+          Stored.Endpoints.Core.childFromHistory origin.host.writer.accepted handle =
+            Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted handle := by
+        rw [selection.lookup_demand] at demanded
+        rw [← Option.some.inj demanded]
+        exact selection.selected.trans selected.symm
+      obtain ⟨entryLabels, entered, silent, entry, installed⟩ := selection.paired_canonical_pending
+        (base := base) (profile := profile) (ready := ready) paired reads
+      have seen := (visibleTaus (grow := grow) (sig := sig) count).trans (silentVisible silent).symm
+      exact ⟨entryLabels, entered, entry, seen ▸ List.prefix_refl _, .inr (.compilerStop selection refused checked installed)⟩
+    · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.compilerLookup selection paired selected)⟩
   | @give _ site linked entryLabels checkLabels referenceLabels _ _ checked baseline entry _ _ _ replies seen replayBody =>
     by_cases selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree
     · obtain ⟨installed, _, silent, install, aligned⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected

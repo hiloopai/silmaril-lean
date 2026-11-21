@@ -111,6 +111,10 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
   | rootStop {route} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings) {labels checked}
       (stop : RootStop profile ready base site labels checked) :
       NestedPlan bindings profile ready base site.start labels checked
+  | compilerStop {start route issue count} {request : CoreGiveRequest bindings start}
+      (selection : request.Selected route) (refused : selection.preflight = .error issue)
+      (checked : Steps profile ready (specDispatch ready base) start (List.replicate count .tau) (selection.compilerRefused issue)) :
+      NestedPlan bindings profile ready base start (List.replicate count .tau) (selection.compilerRefused issue)
   | give {route} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
       {entryLabels checkLabels referenceLabels reached reference checked baseline}
       (entry : Transition profile ready base site.start (.give route .entered) entryLabels site.checked)
@@ -188,6 +192,15 @@ inductive NestedCut (bindings : List (Binding sig)) (profile : ProfileKind) (rea
   | rootStop {route reached labels checked} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
       (stop : RootStop profile ready base site labels checked)
       (installed : HostFrame.Related.Paired older (site.reference site.referenceReply) reached) :
+      NestedCut bindings profile ready base older reached
+  | compilerLookup {start route incoming} {request : CoreGiveRequest bindings start}
+      (selection : request.Selected route) (paired : HostFrame.Related.Paired older start incoming)
+      (different : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted selection.handle ≠ some selection.tree) :
+      NestedCut bindings profile ready base older incoming
+  | compilerStop {start route issue reached count} {request : CoreGiveRequest bindings start}
+      (selection : request.Selected route) (refused : selection.preflight = .error issue)
+      (checked : Steps profile ready (specDispatch ready base) start (List.replicate count .tau) (selection.compilerRefused issue))
+      (installed : HostFrame.Related.Paired older selection.canonicalPending reached) :
       NestedCut bindings profile ready base older reached
   | publication {start target index incoming} (resolve : ComponentCall.Delivery.LinkedResolution start target index)
       (paired : HostFrame.Related.Paired older start incoming)

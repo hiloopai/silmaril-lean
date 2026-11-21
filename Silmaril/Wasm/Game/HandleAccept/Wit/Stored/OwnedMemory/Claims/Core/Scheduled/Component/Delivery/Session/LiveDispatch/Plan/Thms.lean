@@ -222,6 +222,16 @@ theorem CoreGiveRequest.Selected.compiler_refusal_after_interleaving {route : Gi
       canonical.host.writer.accepted = (selection.compilerRefused issue).host.writer.accepted :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.compilerRefusalAfterInterleaving selection between roots refused
 
+/-- The reached compiler refusal is a finite session edge. On the live
+canonical side, replay stops before the emitter, including when the
+checked path continues after its typed Core reply. -/
+theorem CoreGiveRequest.Selected.compiler_refusal_plan {route : GiveEffectRoute} {request : CoreGiveRequest bindings start}
+    (selection : request.Selected route) {issue : Stored.Endpoints.RecordLower.Issue}
+    (refused : selection.preflight = .error issue)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    ∃ count, NestedPlan bindings profile ready base start (List.replicate count .tau) (selection.compilerRefused issue) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.compilerRefusalPlan selection refused embedder
+
 /-- Classify the actual matched body prefix of a typed refusal or canonical
 trap. Reaching a refusal does not pop a canonical caller or emit its checked
 error there. A canonical trap is compared with its reached store, not the
