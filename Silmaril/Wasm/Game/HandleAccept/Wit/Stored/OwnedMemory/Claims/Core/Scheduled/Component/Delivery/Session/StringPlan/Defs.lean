@@ -74,6 +74,7 @@ inductive ArgumentField where
   | record (members : List (String × ArgumentField))
   | optionNone (payloadShape : ArgumentField)
   | optionSome (payload : ArgumentField)
+  | list (elementShape : ArgumentField) (members : List ArgumentField)
 
 private theorem namedArgumentSize {members : List (String × ArgumentField)} {member : String × ArgumentField}
     (present : member ∈ members) : sizeOf member.2 < sizeOf members := by
@@ -89,10 +90,11 @@ def ArgumentField.type : ArgumentField → Stored.TypeOf
   | .record members => .record (members.map fun member => (member.1, type member.2))
   | .optionNone payloadShape => .option (type payloadShape)
   | .optionSome payload => .option (type payload)
+  | .list elementShape _ => .list (type elementShape)
 termination_by field => sizeOf field
 decreasing_by
   all_goals simp_wf
-  all_goals first | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega | have := namedArgumentSize ‹_ ∈ _›; omega
+  all_goals first | omega | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega | have := namedArgumentSize ‹_ ∈ _›; omega
 
 def ArgumentField.value : ArgumentField → Value.Val
   | .scalar arg => arg.value
@@ -101,10 +103,24 @@ def ArgumentField.value : ArgumentField → Value.Val
   | .record members => .record (members.map fun member => value member.2)
   | .optionNone _ => .variant 0 none
   | .optionSome payload => .variant 1 (some (value payload))
+  | .list _ members => .list (members.map value)
 termination_by field => sizeOf field
 decreasing_by
   all_goals simp_wf
   all_goals first | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega | have := namedArgumentSize ‹_ ∈ _›; omega
+
+/-- Structural typing of the witness for a reached argument value. Collection
+members carry the same schema, including when that schema itself allocates.
+An empty collection still needs a supported element shape. -/
+inductive ArgumentField.Valid : ArgumentField → Prop where
+  | scalar (arg : DirectArgument) : Valid (.scalar arg)
+  | string (value : Value.StrVal) : Valid (.string value)
+  | tuple {members : List ArgumentField} (typed : ∀ child ∈ members, Valid child) : Valid (.tuple members)
+  | record {members : List (String × ArgumentField)} (typed : ∀ child ∈ members, Valid child.2) : Valid (.record members)
+  | optionNone {child : ArgumentField} (typed : Valid child) : Valid (.optionNone child)
+  | optionSome {child : ArgumentField} (typed : Valid child) : Valid (.optionSome child)
+  | list {shape : ArgumentField} {members : List ArgumentField} (shapeTyped : Valid shape)
+      (typed : ∀ child ∈ members, Valid child) (schema : ∀ child ∈ members, child.type = shape.type) : Valid (.list shape members)
 
 /-- The actual canonical lowering of a single argument at the selected output. -/
 def ArgumentField.lower (context : LiftLowerContext (core3 grow)) (width : AddrType)

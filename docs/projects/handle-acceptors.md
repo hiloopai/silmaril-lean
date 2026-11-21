@@ -1285,7 +1285,7 @@ do not assume that it returns or preserves memory.
 
 `direct_arguments` and `spilled_arguments` iterate those cuts across a
 parameter list mixing bool, u32, and strings through arbitrarily nested
-tuples, named records, and options. Direct scalars add their
+tuples, named records, options, and dynamic lists. Direct scalars add their
 canonical flat word; spilled scalars do a live width read and bounds-checked
 write. The next field uses the reached cursor; in the spill path it starts at
 the previous field's ABI end offset. Canonical tuple and record programs
@@ -1302,9 +1302,15 @@ or trap does not enter Core. `collection_range_pair` uses the same installed
 allocator occurrence for the canonical dynamic list/map range request. At a
 selected return it checks alignment and reads the reached memory size; it
 neither assumes the callback returns nor restores memory on a later trap.
-This cut ends at entry to the element stores. Traversal of collection
-arguments, general variants, results, resources, and arbitrary component
-host reentry remain outside this worker argument proof.
+The list proof continues that cut through the canonical indexed element
+stores with allocation-time stride, including recursively allocating elements.
+Its structural argument evidence checks the element schema even for an empty
+list and does not assert any child execution agreement. Once all elements
+finish, the direct path passes the pointer/count operands. The spilled path
+reads the reached pointer width and writes the real pointer followed by the
+count; a trap on the second write retains the first. Maps, general variants,
+results, resources, and arbitrary component host reentry remain outside
+this worker argument proof.
 
 `finish_stackful_after_arguments` continues the reached Core entry along a
 selected finite body. Guest-only paths classify without a host premise;
