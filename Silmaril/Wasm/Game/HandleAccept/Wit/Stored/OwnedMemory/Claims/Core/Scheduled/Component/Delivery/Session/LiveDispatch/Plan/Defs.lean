@@ -603,6 +603,59 @@ abbrev LinkedMapListBody (profile : ProfileKind) (ready : HostReady (HostState s
       (liveNominalList profile ready base bindings older site.destination site.inst depth)
       site.reply site.referenceReply (fun _ _ _ _ _ => True))
 
+inductive NominalCollectionType : Stored.TypeOf → Prop where
+  | leaf {type} : NominalElement type → NominalCollectionType type
+  | list {element} : NominalCollectionType element → NominalCollectionType (.list element)
+  | map {key element} : PayloadPrefix.LocalDataType (.prim key.toPrimitive) → NominalCollectionType element →
+      NominalCollectionType (.map key element)
+
+def NominalCollectionRoot : Stored.TypeOf → Prop
+  | .list _ | .map .. => True
+  | _ => False
+
+/-- Recursion follows the declared element type, not the number of reached
+allocator returns. List and map nodes use the same live collection entry. -/
+def liveCollectionField (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) (destination : RecordDestination) (inst : InstId) :
+    Stored.TypeOf → LinkedCallback.MemorySequence.FieldComparison grow sig
+  | .list element => fun item index address left right check canon checkNext canonNext finish =>
+    ∃ entries, item = .dynamic (.list element) element entries ∧
+      LiveCollectionEntry profile ready base bindings older destination inst (.list element) element entries index
+        (.memory address) checkNext canonNext left right check canon
+        (liveListTail profile ready base bindings destination inst element entries index (.memory address)
+          (liveCollectionField profile ready base bindings older destination inst element) checkNext canonNext (fun () => finish))
+  | .map key element => fun item index address left right check canon checkNext canonNext finish =>
+    let entryType : Stored.TypeOf := .record (ABI.mapEntryFields key element)
+    ∃ entries, item = .dynamic (.map key element) entryType entries ∧
+      LiveCollectionEntry profile ready base bindings older destination inst (.map key element) entryType entries index
+        (.memory address) checkNext canonNext left right check canon
+        (liveMapTail profile ready base bindings destination inst key element entries index (.memory address)
+          (liveCollectionField profile ready base bindings older destination inst element) checkNext canonNext (fun () => finish))
+  | _ => fun item index address left right check canon checkNext canonNext finish =>
+    LinkedCallback.HandleFieldThenBetween profile ready (specDispatch ready base)
+      (specDispatch ready (LiveDispatch.host bindings base)) item index (.memory address) left right check canon
+      checkNext canonNext (fun () => finish)
+termination_by structural type => type
+
+/-- Compare the actual public body for either route and arbitrary mixed
+list/map nesting with non-string keys and nominal terminal fields. -/
+def LinkedRecursiveCollectionBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (incoming : Config (core3 grow) (HostState sig)) : Stored.TypeOf → Prop
+  | .list element =>
+    LinkedCollectionBody profile ready base bindings older site (.list element) element incoming (fun entries =>
+      liveListTail profile ready base bindings site.destination site.inst element entries 0 route.output
+        (liveCollectionField profile ready base bindings older site.destination site.inst element)
+        site.reply site.referenceReply (fun _ _ _ _ _ => True))
+  | .map key element =>
+    LinkedCollectionBody profile ready base bindings older site (.map key element) (.record (ABI.mapEntryFields key element)) incoming
+      (fun entries => liveMapTail profile ready base bindings site.destination site.inst key element entries 0 route.output
+        (liveCollectionField profile ready base bindings older site.destination site.inst element)
+        site.reply site.referenceReply (fun _ _ _ _ _ => True))
+  | _ => False
+
 /-- A reached map key under the live dispatchers, from field placement
 through the recursive string plan. Only completed plans reach the supplied
 descriptor continuation. -/
