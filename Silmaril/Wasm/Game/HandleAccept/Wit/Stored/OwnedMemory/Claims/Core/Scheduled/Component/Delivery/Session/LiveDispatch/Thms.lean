@@ -240,6 +240,19 @@ theorem LiveDispatch.CoreGiveRequest.Selected.lookup_demand {request : LiveDispa
 /-- Install the next real canonical program after successful selection,
 without running any of its emitter operations. The same cut exists if the
 checked compiler rejects the payload; it is not a reference refusal. -/
+theorem LiveDispatch.CoreGiveRequest.Selected.paired_canonical_pending_host {request : LiveDispatch.CoreGiveRequest bindings start}
+    (selection : request.Selected route)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle) :
+    ∃ labels entered, labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
+      entered.host = other.host ∧ HostFrame.Related.Paired older selection.canonicalPending entered :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pendingPaired
+    (profile := profile) (ready := ready) (base := base) selection paired reads
+
 theorem LiveDispatch.CoreGiveRequest.Selected.paired_canonical_pending {request : LiveDispatch.CoreGiveRequest bindings start}
     (selection : request.Selected route)
     {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
@@ -250,7 +263,7 @@ theorem LiveDispatch.CoreGiveRequest.Selected.paired_canonical_pending {request 
     ∃ labels entered, labels.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
       HostFrame.Related.Paired older selection.canonicalPending entered :=
-  (Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pendingPaired
+  (LiveDispatch.CoreGiveRequest.Selected.paired_canonical_pending_host
     (profile := profile) (ready := ready) (base := base) selection paired reads).imp fun _ result =>
       result.imp fun _ ⟨silent, path, _, aligned⟩ => ⟨silent, path, aligned⟩
 

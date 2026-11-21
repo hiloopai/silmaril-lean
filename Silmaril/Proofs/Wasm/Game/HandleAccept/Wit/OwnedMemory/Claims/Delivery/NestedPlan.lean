@@ -19,6 +19,7 @@ import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix
 
 public section
 
@@ -449,6 +450,30 @@ theorem linkedAdmissionAfterInterleaving {route : GiveEffectRoute} {request : Co
       ReachedGiveAdmission profile ready callees selection := by
   obtain ⟨entryLabels, canonical, silent, path, aligned, accepted⟩ := selection.pending_after_interleaving between roots
   exact ⟨entryLabels, canonical, silent, path, aligned, accepted, reachedGiveAdmission selection⟩
+
+theorem linkedAdmissionAfterCallback {route : GiveEffectRoute} {request : CoreGiveRequest bindings finish}
+    (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)} {protectedReturn}
+    (path : ClosedCallbackPrefix bindings profile ready (ComponentCall.hostWithComponent bindings callees)
+      protectedReturn start labels finish)
+    (covers : ∀ first second, older first second → protectedReturn first)
+    (paired : HostFrame.Related.Paired older start incoming)
+    (roots : start.host.writer.accepted = incoming.host.writer.accepted) :
+    ∃ checkedLabels canonLabels entryLabels canonical,
+      Steps profile ready (specDispatch ready (ComponentCall.hostWithComponent bindings callees)) start checkedLabels finish ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (ComponentCall.hostWithComponent bindings callees)))
+        incoming (canonLabels ++ entryLabels) canonical ∧
+      PayloadPrefix.visible checkedLabels = labels ∧ PayloadPrefix.visible (canonLabels ++ entryLabels) = labels ∧
+      HostFrame.Related.Paired older selection.canonicalPending canonical ∧
+      canonical.host.writer.accepted = finish.host.writer.accepted ∧ ReachedGiveAdmission profile ready callees selection := by
+  obtain ⟨checkedLabels, canonLabels, reached, checked, prefixRun, aligned, checkSeen, canonSeen, _, checkRoots, canonRoots⟩ :=
+    CallbackPrefix.replay path rfl covers paired
+  have observed := checkRoots.trans (roots.trans canonRoots.symm)
+  obtain ⟨entryLabels, canonical, silent, entry, entryHost, pending⟩ :=
+    selection.paired_canonical_pending_host (profile := profile) (ready := ready)
+      (base := ComponentCall.hostWithComponent bindings callees) aligned (fun _ _ => by rw [observed])
+  exact ⟨checkedLabels, canonLabels, entryLabels, canonical, checked, append prefixRun entry, checkSeen,
+    by rw [visibleAppend, silentVisible silent, List.append_nil, canonSeen], pending,
+    (congrArg (·.writer.accepted) entryHost).trans observed.symm, reachedGiveAdmission selection⟩
 
 theorem compilerRefusalAfterInterleaving {route : GiveEffectRoute} {request : CoreGiveRequest bindings finish}
     (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)} {actions incoming outgoing}

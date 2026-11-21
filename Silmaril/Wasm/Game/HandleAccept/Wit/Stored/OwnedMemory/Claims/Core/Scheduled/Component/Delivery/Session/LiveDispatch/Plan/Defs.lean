@@ -15,6 +15,38 @@ open ComponentCall.Delivery.FiniteSession
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature}
 
+/-- A raw host assignment is not a closed guest step. In particular, the
+absence of a host read does not rule out an assignment installed by an open hook. -/
+def NoHostAssignment (state : Config (core3 grow) (HostState sig)) : Prop :=
+  ∀ thread value next frames rest,
+    state.ctl ≠ ⟨thread, .prog (.op (.hostSet value) next), frames⟩ :: rest
+
+/-- Reached allocator steps before a protected return. Ordinary steps must
+not install an overlaid give or assign the host; confined gives and the
+actual synchronous readiness read have their own rules. The endpoint may
+be suspended, trapped, ready to pop a protected frame, or at an open hook. -/
+inductive ClosedCallbackPrefix (bindings : List (Binding sig)) (profile : ProfileKind)
+    (ready : HostReady (HostState sig)) (base : HostImpl (core3 grow) (HostState sig))
+    (protectedReturn : ReturnFrame.Continuation (core3 grow) (HostState sig) → Prop) :
+    Config (core3 grow) (HostState sig) → Trace grow sig → Config (core3 grow) (HostState sig) → Prop where
+  | done (state : Config (core3 grow) (HostState sig)) : ClosedCallbackPrefix bindings profile ready base protectedReturn state [] state
+  | step {start next finish label seen}
+      (interior : HostFrame.InteriorFor protectedReturn start) (unchanged : UnchangedAt bindings start)
+      (noAssignment : NoHostAssignment start) (grows : CoreUpdateGrows start)
+      (run : Step profile ready (specDispatch ready base) start label next)
+      (tail : ClosedCallbackPrefix bindings profile ready base protectedReturn next seen finish) :
+      ClosedCallbackPrefix bindings profile ready base protectedReturn start (PayloadPrefix.visible [label] ++ seen) finish
+  | confinedGive {start finish seen} (callout : LinkedCallback.ClosedGive bindings start)
+      (tail : ClosedCallbackPrefix bindings profile ready base protectedReturn callout.resume seen finish) :
+      ClosedCallbackPrefix bindings profile ready base protectedReturn start seen finish
+  | syncReady {start finish seen task inst thread frames rest}
+      (focused : start.ctl = ⟨thread, .prog (.op .hostGet (fun current =>
+        syncLiftCandidates task (start.store.instCandidates (ready current) inst))), frames⟩ :: rest)
+      (agrees : LinkedCallback.ReadyAgreement ready start inst)
+      (tail : ClosedCallbackPrefix bindings profile ready base protectedReturn { start with ctl := ⟨thread,
+        .prog (syncLiftCandidates task (start.store.instCandidates (ready start.host) inst)), frames⟩ :: rest } seen finish) :
+      ClosedCallbackPrefix bindings profile ready base protectedReturn start seen finish
+
 /-- Stops before the recursive body. A checked preflight refusal resumes its
 caller; a bad placement traps the checked machine. Neither executes the
 canonical body, whose memory placement is a precondition. -/

@@ -4,20 +4,112 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.StringPlan.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix
 
 public section
 
 namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LiveDispatch
 
-open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
+open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.ABI Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
+open Silmaril.Wasm.Execution.Core
 open ComponentCall.Delivery.FiniteSession
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
+open Stored.Endpoints.RecordLower
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind} {ready : HostReady (HostState sig)}
   {bindings : List (Binding sig)} {base : HostImpl (core3 grow) (HostState sig)}
   {start finish incoming : Config (core3 grow) (HostState sig)} {labels : Trace grow sig}
   {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+
+/-- An actual Core engine step in the callback needs no host-write,
+dispatch or readiness premise. The reached store need not equal the old one. -/
+theorem ClosedCallbackPrefix.core_internal {protectedReturn thread core next frames rest store coreNext}
+    (focused : start.ctl = ⟨thread, .core core next, frames⟩ :: rest)
+    (running : (core3 grow).status start.store.core core = .running ∨ (core3 grow).status start.store.core core = .stuck)
+    (executed : (core3 grow).Internal (start.store.core, core) (store, coreNext))
+    (tail : ClosedCallbackPrefix bindings profile ready base protectedReturn
+      { start with store := { start.store with core := store }, ctl := ⟨thread, .core coreNext next, frames⟩ :: rest } labels finish) :
+    ClosedCallbackPrefix bindings profile ready base protectedReturn start (.core :: labels) finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.coreInternal focused running executed tail
+
+/-- Replay a finite classified callback under the live canonical dispatcher.
+Ordinary steps may change the reached store (including guest writes and
+growth); confined gives take their real status replies. Accepted observations
+are retained on both sides of this prefix, not by arbitrary hooks or later pops. -/
+theorem ClosedCallbackPrefix.replay {protectedReturn}
+    (path : ClosedCallbackPrefix bindings profile ready base protectedReturn start labels finish)
+    (embedder : base.embedder = (Core.Scheduled.host (grow := grow) bindings).embedder)
+    (covers : ∀ first second, older first second → protectedReturn first)
+    (paired : HostFrame.Related.Paired older start incoming) :
+    ∃ checkedLabels canonLabels reached,
+      Steps profile ready (specDispatch ready base) start checkedLabels finish ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming canonLabels reached ∧
+      HostFrame.Related.Paired older finish reached ∧
+      PayloadPrefix.visible checkedLabels = labels ∧ PayloadPrefix.visible canonLabels = labels ∧
+      Core3.Grows start.store.core finish.store.core ∧
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.replay path embedder covers paired
+
+/-- The real string allocation or resize installs the shorter plan on both
+sides. Compare the finite callback under the live overlay, without requiring
+it to return and without losing older active or suspended frames. -/
+theorem ClosedCallbackPrefix.string_realloc (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (oldSize : Option Nat)
+    (alignment : Alignment) (size : Nat) (steps : List StoreStep)
+    (checkNext canonNext : Nat → Session grow sig (Ret (core3 grow)))
+    {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older start incoming check canon)
+    (checkAt : start.ctl = check.control (runStoreSteps cx ptr
+      ((oldSize.elim (.allocate alignment size) (fun old => .reallocate old alignment size)) :: steps) >>= checkNext))
+    (canonAt : incoming.ctl = canon.control (runStoreSteps cx ptr
+      ((oldSize.elim (.allocate alignment size) (fun old => .reallocate old alignment size)) :: steps) >>= canonNext))
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    (path : ClosedCallbackPrefix bindings profile ready base
+      (fun resume => (∃ peer, older resume peer) ∨ resume = PayloadPrefix.stringPlanResume cx steps checkNext)
+      (LinkedCallback.stringReallocEntry ready bindings cx ptr oldSize alignment size steps checkNext start check) labels finish) :
+    ∃ checkedLabels canonLabels reached,
+      Steps profile ready (specDispatch ready base) start (.tau :: checkedLabels) finish ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming (.tau :: canonLabels) reached ∧
+      HostFrame.Related.Paired (ReturnFrame.Extend older (PayloadPrefix.stringPlanResume cx steps checkNext)
+        (PayloadPrefix.stringPlanResume cx steps canonNext)) finish reached ∧
+      PayloadPrefix.visible checkedLabels = labels ∧ PayloadPrefix.visible canonLabels = labels ∧
+      Core3.Grows start.store.core finish.store.core ∧
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.stringReallocPrefix
+    cx ptr oldSize alignment size steps checkNext canonNext frame checkAt canonAt embedder path
+
+/-- Replay a reached dynamic collection allocation under the live dispatcher.
+The saved canonical continuation retains its allocation-time placement mode
+(including indirect maps). The dry run is only for entry: it is not evidence
+that a claim remains live after an allocator return. -/
+theorem ClosedCallbackPrefix.collection_alloc (destination : RecordDestination) (inst : InstId) (type element : Stored.TypeOf)
+    (entries : List Field) (output : Stored.Lower.Output) (index : Nat)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older start incoming check canon)
+    (width : (core3 grow).memAddrType? incoming.store.core destination.memory = some destination.width)
+    (prepared : Stored.OwnedMemory.Claims.Record.prepare start.store start.host.writer (Field.listObjects entries) = .ok ())
+    (checkAt : start.ctl = check.control (Stored.OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) index output >>= checkNext))
+    (canonAt : incoming.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) output >>= canonNext))
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    let area := layout destination.width element
+    let first := PayloadPrefix.checkedCollectionResume destination inst entries area index output checkNext
+    let second := PayloadPrefix.canonicalCollectionResume destination inst entries area output canonNext
+      (CanonicalTree.EntryMode.forOutput destination.width type output)
+    ClosedCallbackPrefix bindings profile ready base (fun resume => (∃ peer, older resume peer) ∨ resume = first)
+      (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready base) start check first) labels finish →
+    ∃ checkedLabels canonLabels reached,
+      Steps profile ready (specDispatch ready base) start ([.tau, .tau, .tau] ++ checkedLabels) finish ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming ([.tau, .tau] ++ canonLabels) reached ∧
+      HostFrame.Related.Paired (ReturnFrame.Extend older first second) finish reached ∧
+      PayloadPrefix.visible checkedLabels = labels ∧ PayloadPrefix.visible canonLabels = labels ∧
+      Core3.Grows start.store.core finish.store.core ∧
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.collectionPrefix
+    destination inst type element entries output index checkNext canonNext frame width prepared checkAt canonAt embedder
 
 theorem NestedPlan.source (plan : NestedPlan bindings profile ready base start labels finish) :
     Steps profile ready (specDispatch ready base) start labels finish :=
@@ -202,6 +294,27 @@ theorem CoreGiveRequest.Selected.linked_admission_after_interleaving {route : Gi
       canonical.host.writer.accepted = finish.host.writer.accepted ∧
       ReachedGiveAdmission profile ready callees selection :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedAdmissionAfterInterleaving selection between roots
+
+/-- A closed allocator prefix that reaches another selected give derives the
+live lookup from the observations at entry to the prefix. The nested canonical
+emitter is installed with all older frames still paired; the reached checked
+compiler determines the next branch. The nested body is not assumed equivalent. -/
+theorem ClosedCallbackPrefix.linked_admission {route : GiveEffectRoute} {request : CoreGiveRequest bindings finish}
+    (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)} {protectedReturn}
+    (path : ClosedCallbackPrefix bindings profile ready (ComponentCall.hostWithComponent bindings callees)
+      protectedReturn start labels finish)
+    (covers : ∀ first second, older first second → protectedReturn first)
+    (paired : HostFrame.Related.Paired older start incoming)
+    (roots : start.host.writer.accepted = incoming.host.writer.accepted) :
+    ∃ checkedLabels canonLabels entryLabels canonical,
+      Steps profile ready (specDispatch ready (ComponentCall.hostWithComponent bindings callees)) start checkedLabels finish ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (ComponentCall.hostWithComponent bindings callees)))
+        incoming (canonLabels ++ entryLabels) canonical ∧
+      PayloadPrefix.visible checkedLabels = labels ∧ PayloadPrefix.visible (canonLabels ++ entryLabels) = labels ∧
+      HostFrame.Related.Paired older selection.canonicalPending canonical ∧
+      canonical.host.writer.accepted = finish.host.writer.accepted ∧ ReachedGiveAdmission profile ready callees selection :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedAdmissionAfterCallback
+    selection path covers paired roots
 
 /-- When the checked compiler refuses, only that side rejoins the caller.
 The canonical run ends before its emitter; neither side undoes the
