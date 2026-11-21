@@ -28,6 +28,15 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
   | localSegment {start labels finish}
       (run : PayloadPrefix.LocalSteps profile ready (specDispatch ready base) start labels finish) :
       NestedPlan bindings profile ready base start labels finish
+  | closedGive {start count} (callout : LinkedCallback.ClosedGive bindings start)
+      (run : Steps profile ready (specDispatch ready base) start (List.replicate count .tau) callout.resume) :
+      NestedPlan bindings profile ready base start (List.replicate count .tau) callout.resume
+  | syncReady {start task inst thread frames rest}
+      (focused : start.ctl = ⟨thread, .prog (.op .hostGet (fun current =>
+        syncLiftCandidates task (start.store.instCandidates (ready current) inst))), frames⟩ :: rest)
+      (agrees : LinkedCallback.ReadyAgreement ready start inst) :
+      NestedPlan bindings profile ready base start [.tau] { start with ctl := ⟨thread,
+        .prog (syncLiftCandidates task (start.store.instCandidates (ready start.host) inst)), frames⟩ :: rest }
   | commit {start target index} (resolve : ComponentCall.Delivery.LinkedResolution start target index) :
       NestedPlan bindings profile ready base start (List.replicate 17 .tau) resolve.committed
   | poll {start target index result suffix} (poll : ComponentCall.Delivery.ParkedPoll start target profile)

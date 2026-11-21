@@ -219,7 +219,7 @@ private theorem confined_read_store {E : CoreEngine} {Host Result : Type}
     Plain.runBody (confine (getStore.bind next)) store host activation =
       Plain.runBody (confine (next store)) store host activation := rfl
 
-private theorem resolve_caller_confined {E : CoreEngine} {Host Result : Type}
+theorem resolve_caller_confined {E : CoreEngine} {Host Result : Type}
     (rest : Option InstId → P E Host Result)
     (reference : CStore E) (host : Host) (thread : Option ThreadId) :
     Plain.runBody (confine (currentInst?.bind rest)) reference host (some thread) =
@@ -798,7 +798,7 @@ theorem embedder_caller_refusal_steps {sig : Signature} {grow : SingleThreaded.G
   · simp [reached, HostState.publications, HostState.transcript, HostState.record, HostState.enter,
       Event.publication]
 
-private theorem closed_thread {E : CoreEngine} {store : CStore E} {thread : Option ThreadId}
+theorem closed_thread {E : CoreEngine} {store : CStore E} {thread : Option ThreadId}
     {inst : InstId} {entry : InstState}
     (caller : Plain.callerInstance store thread = .ok (some inst))
     (live : store.inst? inst = some entry) (closed : entry.mayLeave = false) :
@@ -912,12 +912,14 @@ theorem parked_closed_give_steps {sig : Signature} {grow : SingleThreaded.GrowOr
     (linked : resolveBinding bindings name type = .ok ⟨name, inst,
       schema.elim (.givePayload destination) (.giveFlat destination)⟩)
     (caller : Plain.callerInstance start.store thread = .ok (some inst))
-    (live : start.store.inst? inst = some entry) (closed : entry.mayLeave = false) :
+    (live : start.store.inst? inst = some entry) (closed : entry.mayLeave = false)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
     let reply := schema.elim (completion start.host.nextTicket (.error .wrongContext))
       (fun payload => flatCompletion start.host.nextTicket (ABI.flatten destination.width payload)
         (.error .wrongContext))
     let reached := (start.host.enter name type args).record reply.1
-    ∃ count, Machine.CoreGrowthSteps profile ready (specDispatch ready (host (grow := grow) bindings)) start
+    ∃ count, Machine.CoreGrowthSteps profile ready (specDispatch ready impl) start
       (List.replicate count .tau)
       { start with
         host := reached
@@ -927,20 +929,20 @@ theorem parked_closed_give_steps {sig : Signature} {grow : SingleThreaded.GrowOr
         host := reached
         ctl := ⟨thread, .core ((core3 grow).resume start.store.core core (.values reply.2))
           continuation, segments⟩ :: rest }) ∧
-      (∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready (host (grow := grow) bindings))
+      (∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready impl)
         start place (List.replicate count .tau)
         { start with host := reached, ctl := ⟨thread,
           .core ((core3 grow).resume start.store.core core (.values reply.2)) continuation, segments⟩ :: rest } place) := by
   intro reply reached
-  let impl := host (grow := grow) bindings
   let program := confine (impl.embedder name type args)
   let focused := { start with ctl := ⟨thread, .prog (calloutBody Limits.spec Quirks.none ready impl
     start.store thread (.embedder name type) args), .core core continuation :: segments⟩ :: rest }
   have blocked : (start.store.inst? inst).any (·.mayLeave) = false := by simp [live, closed]
   have evaluated : Plain.runBody program start.store start.host (some thread) =
       (start.store, reached, .ok reply.2) :=
-    confined_give_refusal bindings name type args inst destination schema start.store start.host
-      thread linked caller blocked
+    by simpa only [program, embedder] using
+      confined_give_refusal bindings name type args inst destination schema start.store start.host
+        thread linked caller blocked
   have entered : focused.ctl = ⟨thread, .prog (program >>= fun words => .pure (.flat words)),
       .core core continuation :: segments⟩ :: rest := by
     simp only [focused, calloutBody, closed_thread caller live closed, Bool.false_eq_true, ite_false, program]

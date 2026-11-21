@@ -1405,6 +1405,18 @@ refusal and trap prefixes. `LiveDispatch.linked_allocator_cut` classifies a
 compared allocator path up to its active or saved occurrence; observing this
 prefix neither requires a return nor releases the saved continuation.
 
+`LiveDispatch.closed_give_paired` executes the actual confined memory or
+flat give encountered by allocator reentry. It derives the status words
+from the closed caller before root selection, leaves the canonical journal
+untouched, and preserves the pairing of older active and saved frames.
+`linked_closed_give_plan` derives the checked steps for that edge under the
+worker's component dispatcher. `NestedPlan.of_callback_prefix` keeps such
+edges and the certified synchronous candidate read in the finite Core
+callback plan, even if the allocator remains suspended. Candidate agreement
+is needed only for reached blocked threads that query host readiness. Raw
+steps can still reach open dispatch boundaries; this does not classify all
+admitted nested bodies or require a callback to return.
+
 ## Checking
 
 ```

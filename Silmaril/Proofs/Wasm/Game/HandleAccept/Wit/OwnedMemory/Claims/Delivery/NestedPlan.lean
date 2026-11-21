@@ -12,6 +12,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadCursor.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Plain.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
@@ -62,6 +63,14 @@ private theorem visibleAppend (left right : Trace grow sig) :
     PayloadPrefix.visible (left ++ right) = PayloadPrefix.visible left ++ PayloadPrefix.visible right :=
   List.filter_append left right
 
+private theorem visibleTaus (count : Nat) :
+    PayloadPrefix.visible (List.replicate count (.tau : Label (core3 grow) (HostState sig))) = [] := by
+  induction count with
+  | zero => rfl
+  | succ count ih =>
+    rw [List.replicate_succ]
+    exact (visibleAppend [_] _).trans ih
+
 private theorem visiblePrefix {left right : Trace grow sig} (initial : left <+: right) :
     PayloadPrefix.visible left <+: PayloadPrefix.visible right := by
   obtain ⟨tail, rfl⟩ := initial
@@ -78,6 +87,8 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
   induction plan with
   | segment path => exact path
   | localSegment path => exact path.steps
+  | closedGive _ path => exact path
+  | syncReady focused _ => exact .cons (.hostGet focused) (.refl _)
   | commit resolve => exact (Transition.commit (impl := base) resolve).steps
   | poll poll pending branch => exact (Transition.poll (impl := base) poll pending branch).steps
   | waitBlock wait empty => exact (Transition.waitBlock (impl := base) wait empty).steps
@@ -136,6 +147,31 @@ theorem planOfSteps (run : Steps profile ready (specDispatch ready base) start l
       · exact .localSegment (.cons localFocus step (.refl _))
       · exact .segment (.cons step (.refl _))
     exact .sequence front tail
+
+theorem closedGivePlan (callout : LinkedCallback.ClosedGive bindings start)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    ∃ count, NestedPlan bindings profile ready base start (List.replicate count .tau) callout.resume := by
+  obtain ⟨count, run, _, _⟩ := Plain.parked_closed_give_steps bindings callout.name callout.type callout.args
+    callout.inst callout.destination callout.schema start callout.thread profile ready callout.parked callout.calling
+    callout.linked callout.caller callout.live callout.closed base embedder
+  exact ⟨count, .closedGive callout run.steps⟩
+
+theorem callbackPlan {protectedReturn}
+    (path : LinkedCallback.PrefixFor profile ready bindings protectedReturn start labels finish) :
+    ∃ trace, NestedPlan bindings profile ready (Scheduled.host bindings) start trace finish ∧
+      PayloadPrefix.visible trace = labels := by
+  induction path with
+  | done state => exact ⟨[], .localSegment (.refl state), rfl⟩
+  | step _ _ run _ ih =>
+    obtain ⟨trace, tail, seen⟩ := ih
+    exact ⟨_ ++ trace, .sequence (planOfSteps (.cons run (.refl _))) tail, by rw [visibleAppend, seen]⟩
+  | closedGive callout _ ih =>
+    obtain ⟨trace, tail, seen⟩ := ih
+    obtain ⟨count, head⟩ := closedGivePlan (profile := profile) (ready := ready) callout rfl
+    exact ⟨_, .sequence head tail, by rw [visibleAppend, visibleTaus, List.nil_append, seen]⟩
+  | syncReady focused readyAgreement _ ih =>
+    obtain ⟨trace, tail, seen⟩ := ih
+    exact ⟨_, .sequence (.syncReady focused readyAgreement) tail, (visibleAppend _ _).trans seen⟩
 
 theorem comparedGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
     {entryLabels checkLabels canonLabels reached reference checked baseline} (value : route.output.Result)
@@ -240,6 +276,24 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
   | localSegment path =>
     obtain ⟨_, replay, aligned⟩ := replayLocal (bindings := bindings) path paired
     exact ⟨_, _, replay, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | @closedGive _ count callout _ =>
+    obtain ⟨trace, _, silent, path, aligned, _⟩ := LiveDispatch.closed_give_paired (profile := profile)
+      (ready := ready) (base := base) callout paired
+    have seen := (visibleTaus (grow := grow) (sig := sig) count).trans (silentVisible silent).symm
+    exact ⟨_, _, path, by rw [seen], .inl ⟨seen, aligned⟩⟩
+  | @syncReady start task inst thread frames rest focused agrees =>
+    let residual := syncLiftCandidates (E := core3 grow) (σ := HostState sig) task
+      (start.store.instCandidates (ready start.host) inst)
+    obtain ⟨otherFrames, otherRest, atOther, aligned⟩ := paired.retarget focused (.prog residual) start.host incoming.host
+    have candidates := HostFrame.instCandidates_eq start.store inst (ready start.host) (ready incoming.host)
+      (fun entry live thread member suspended found blocked query condition =>
+        agrees entry live thread member suspended found blocked query condition incoming.host)
+    have replay : Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming .tau
+        { incoming with ctl := ⟨thread, .prog residual, otherFrames⟩ :: otherRest } := by
+      unfold residual
+      rw [candidates]
+      exact .hostGet atOther
+    exact ⟨_, _, .cons replay (.refl _), List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | commit resolve =>
     by_cases compatible : ∃ writer, incoming.host.writer.register resolve.tree = .ok writer ∧
         writer.accepted.length = resolve.writer.accepted.length

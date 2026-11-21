@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Plain.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
@@ -154,6 +155,75 @@ theorem pairedEntry (site : Site grow sig route) (linked : site.Linked bindings)
   obtain ⟨labels, silent, path⟩ := entry (profile := profile) (ready := ready) (base := base) shadow shadowLinked other.host selected
   exact ⟨labels, _, silent, path, residual⟩
 
+theorem append {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {start middle finish : Config (core3 grow) (HostState sig)} {leading trailing}
+    (first : Steps profile ready dispatch start leading middle) (tail : Steps profile ready dispatch middle trailing finish) :
+    Steps profile ready dispatch start (leading ++ trailing) finish := by
+  induction first with
+  | refl => exact tail
+  | cons step _ ih => exact .cons step (ih tail)
+
+private theorem closedWords {start : State grow sig} (callout : LinkedCallback.ClosedGive bindings start) (other : HostState sig) :
+    Plain.runBody (confine ((LiveDispatch.host bindings base).embedder callout.name callout.type callout.args))
+      start.store other (some callout.thread) = (start.store, other, .ok callout.reply.2) := by
+  have blocked : (start.store.inst? callout.inst).any (·.mayLeave) = false := by
+    simp [callout.live, callout.closed]
+  have read : ∀ {Result : Type} (next : CStore (core3 grow) → Session grow sig Result),
+      Plain.runBody (confine (getStore.bind next)) start.store other (some callout.thread) =
+        Plain.runBody (confine (next start.store)) start.store other (some callout.thread) := fun _ => rfl
+  cases schema : callout.schema <;>
+    simp only [LiveDispatch.host, selectBinding, callout.linked, schema, Option.elim, memoryWords, flatWords, admit,
+      Prog.bind_eq, Prog.bind_assoc, Plain.runBody_confined_currentInst, callout.caller,
+      read, blocked, LinkedCallback.ClosedGive.reply, bne_self_eq_false, Bool.false_or, Bool.not_false, ite_true] <;> rfl
+
+private theorem closedPath {start : State grow sig} (callout : LinkedCallback.ClosedGive bindings start) :
+    ∃ labels, labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) start labels
+        (HostFrame.replace callout.resume start.host) := by
+  let impl := LiveDispatch.host bindings base
+  let body := confine (impl.embedder callout.name callout.type callout.args)
+  let active := { start with ctl := ⟨callout.thread, .prog (body >>= fun words => pure (.flat words)),
+    .core callout.core callout.next :: callout.frames⟩ :: callout.rest }
+  obtain ⟨labels, silent, run⟩ := Plain.runBody_thread_steps body active start.store start.host callout.reply.2
+    (fun words => pure (.flat words)) callout.thread _ callout.rest profile ready (specDispatch ready impl) rfl
+    (closedWords (base := base) callout start.host)
+  have tail : Steps profile ready (specDispatch ready impl) active (labels ++ [.tau])
+      (HostFrame.replace callout.resume start.host) := append run (.cons (.popCore rfl) (.refl _))
+  have leaves := Plain.thread_cannot_leave callout.caller callout.live callout.closed
+  have path := Plain.prepend_embedder_callout (impl := impl) callout.parked callout.calling
+    (by simpa only [active, calloutBody, leaves, Bool.false_eq_true, ite_false, body] using tail)
+  refine ⟨.tau :: .tau :: .tau :: (labels ++ [.tau]), ?_, path⟩
+  apply List.all_eq_true.mpr
+  intro label member
+  simp only [List.mem_cons, List.mem_append, List.not_mem_nil, or_false] at member
+  rcases member with rfl | rfl | rfl | inTrace | rfl <;> try rfl
+  have observed := List.all_eq_true.mp silent label inTrace
+  cases label <;> first | rfl | contradiction
+
+theorem pairedClosedGive {start incoming : State grow sig} (callout : LinkedCallback.ClosedGive bindings start)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start incoming) :
+    ∃ labels reached, labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming labels reached ∧
+      HostFrame.Related.Paired older callout.resume reached ∧ reached.host = incoming.host := by
+  let next := Focus.core ((core3 grow).resume start.store.core callout.core (.values callout.reply.2)) callout.next
+  obtain ⟨frames, rest, focused, aligned⟩ := paired.retarget callout.parked next callout.resume.host incoming.host
+  have shared := paired.data.1
+  let shadow : LinkedCallback.ClosedGive bindings incoming :=
+    { name := callout.name, type := callout.type, args := callout.args, inst := callout.inst,
+      destination := callout.destination, schema := callout.schema, thread := callout.thread, core := callout.core,
+      next := callout.next, frames, rest, entry := callout.entry, parked := focused,
+      calling := shared ▸ callout.calling, linked := callout.linked, caller := shared ▸ callout.caller,
+      live := shared ▸ callout.live, closed := callout.closed }
+  obtain ⟨labels, silent, run⟩ := closedPath (profile := profile) (ready := ready) (base := base) shadow
+  have words : shadow.reply.2 = callout.reply.2 := by
+    cases schema : callout.schema <;> simp [LinkedCallback.ClosedGive.reply, shadow, schema, completion, flatCompletion]
+  refine ⟨labels, _, silent, run, ?_, rfl⟩
+  simpa only [HostFrame.replace, LinkedCallback.ClosedGive.resume, next, words, shared,
+    show shadow.thread = callout.thread from rfl, show shadow.core = callout.core from rfl,
+    show shadow.next = callout.next from rfl, show shadow.frames = frames from rfl,
+    show shadow.rest = rest from rfl] using aligned
+
 theorem dispatchUnchanged {call : Call (core3 grow)} (unmodified : Unchanged bindings call) :
     specDispatch ready base call = specDispatch ready (LiveDispatch.host bindings base) call := by
   cases call with
@@ -289,14 +359,6 @@ theorem nestedReturn (site : Site grow sig route) (linked : site.Linked bindings
     exact .rejoined path.steps callerPair
   · obtain ⟨_, _, _, _, _, _, _, split, left, right, related, boundary, lstep, rstep, _⟩ := cut
     exact .boundary split left.steps right.steps related boundary lstep rstep
-
-theorem append {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
-    {middle : Config (core3 grow) (HostState sig)} {leading trailing}
-    (first : Steps profile ready dispatch start leading middle) (tail : Steps profile ready dispatch middle trailing finish) :
-    Steps profile ready dispatch start (leading ++ trailing) finish := by
-  induction first with
-  | refl => exact tail
-  | cons step _ ih => exact .cons step (ih tail)
 
 private theorem neutralRetarget {action labels} {impl : HostImpl (core3 grow) (HostState sig)}
     (edge : Transition profile ready base start action labels finish) (closed : JournalNeutralAction action) :

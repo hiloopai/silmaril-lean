@@ -25,6 +25,14 @@ theorem runBody_currentInst {E : CoreEngine} {Host Result : Type} (next : Option
       | .error issue => (reference, host, .error issue) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.resolve_caller next reference host thread
 
+theorem runBody_confined_currentInst {E : CoreEngine} {Host Result : Type} (next : Option InstId → P E Host Result)
+    (reference : CStore E) (host : Host) (thread : Option ThreadId) :
+    runBody (confine (currentInst?.bind next)) reference host (some thread) =
+      match callerInstance reference thread with
+      | .ok caller => runBody (confine (next caller)) reference host (some thread)
+      | .error issue => (reference, host, .error issue) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.resolve_caller_confined next reference host thread
+
 /-- A successful body evaluation is a silent reference execution, with the actual
 parked Core continuation, resumers, and saved activations left in place. -/
 theorem runBody_steps {E : CoreEngine} {Host Result : Type} (body : P E Host Result)
@@ -405,12 +413,14 @@ theorem parked_closed_give_steps {sig : Signature} {grow : SingleThreaded.GrowOr
     (linked : resolveBinding bindings name type = .ok ⟨name, inst,
       schema.elim (.givePayload destination) (.giveFlat destination)⟩)
     (caller : callerInstance start.store thread = .ok (some inst))
-    (live : start.store.inst? inst = some entry) (closed : entry.mayLeave = false) :
+    (live : start.store.inst? inst = some entry) (closed : entry.mayLeave = false)
+    (impl : HostImpl (core3 grow) (HostState sig) := host bindings)
+    (embedder : impl.embedder = (host (grow := grow) bindings).embedder := by rfl) :
     let reply := schema.elim (completion start.host.nextTicket (.error .wrongContext))
       (fun payload => flatCompletion start.host.nextTicket (ABI.flatten destination.width payload)
         (.error .wrongContext))
     let reached := (start.host.enter name type args).record reply.1
-    ∃ count, Machine.CoreGrowthSteps profile ready (specDispatch ready (host (grow := grow) bindings)) start
+    ∃ count, Machine.CoreGrowthSteps profile ready (specDispatch ready impl) start
       (List.replicate count .tau)
       { start with
         host := reached
@@ -422,8 +432,13 @@ theorem parked_closed_give_steps {sig : Signature} {grow : SingleThreaded.GrowOr
           continuation, segments⟩ :: rest }) := by
   obtain ⟨count, run, writer, growing, _⟩ :=
     Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.parked_closed_give_steps
-      bindings name type args inst destination schema start thread profile ready parked calling linked caller live closed
+      bindings name type args inst destination schema start thread profile ready parked calling linked caller live closed impl embedder
   exact ⟨count, run, writer, growing⟩
+
+theorem thread_cannot_leave {E : CoreEngine} {store : CStore E} {thread : Option ThreadId} {inst : InstId}
+    {entry : InstState} (caller : callerInstance store thread = .ok (some inst))
+    (live : store.inst? inst = some entry) (closed : entry.mayLeave = false) : threadMayLeave store thread = false :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.closed_thread caller live closed
 
 /-- A closed, same-instance reentrant give cannot observe earlier claim
 spends. It records each path's refusal against its own ticket and rejoins

@@ -61,17 +61,20 @@ structure ClosedGive (bindings : List (Binding sig)) (start : State grow sig) wh
   live : start.store.inst? inst = some entry
   closed : entry.mayLeave = false
 
+def ClosedGive.reply {bindings : List (Binding sig)} {start : State grow sig}
+    (callout : ClosedGive bindings start) : Event × List FlatValue :=
+  callout.schema.elim (completion start.host.nextTicket (.error .wrongContext))
+    (fun payload => flatCompletion start.host.nextTicket (ABI.flatten callout.destination.width payload)
+      (.error .wrongContext))
+
 /-- The checked path records its own ticketed refusal and resumes the actual
 Core activation. The allocator's original saved continuation stays parked. -/
 def ClosedGive.resume {bindings : List (Binding sig)} {start : State grow sig}
     (callout : ClosedGive bindings start) : State grow sig :=
-  let reply := callout.schema.elim (completion start.host.nextTicket (.error .wrongContext))
-    (fun payload => flatCompletion start.host.nextTicket (ABI.flatten callout.destination.width payload)
-      (.error .wrongContext))
   { start with
-    host := (start.host.enter callout.name callout.type callout.args).record reply.1
+    host := (start.host.enter callout.name callout.type callout.args).record callout.reply.1
     ctl := ⟨callout.thread,
-      .core ((core3 grow).resume start.store.core callout.core (.values reply.2)) callout.next,
+      .core ((core3 grow).resume start.store.core callout.core (.values callout.reply.2)) callout.next,
       callout.frames⟩ :: callout.rest }
 
 /-- Only host predicates consulted when filtering this reached instance's

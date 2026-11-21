@@ -28,6 +28,24 @@ theorem NestedPlan.of_steps (run : Steps profile ready (specDispatch ready base)
     NestedPlan bindings profile ready base start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.planOfSteps run
 
+/-- Derive a closed reentry edge at the reached caller and binding under the
+same component dispatcher used by the worker. No checked body, padding,
+or older-frame equality is supplied by the caller of the theorem. -/
+theorem linked_closed_give_plan {callees : List (ComponentCall.Callee sig)} (callout : LinkedCallback.ClosedGive bindings start) :
+    ∃ count, NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) start
+      (List.replicate count .tau) callout.resume :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.closedGivePlan callout rfl
+
+/-- Reuse the allocator's finite callback classification rather than
+flattening closed reentries and classified readiness reads into raw steps.
+The endpoint may still be parked. Unclassified steps retain the ordinary
+live replay boundaries. -/
+theorem NestedPlan.of_callback_prefix {protectedReturn}
+    (path : LinkedCallback.PrefixFor profile ready bindings protectedReturn start labels finish) :
+    ∃ trace, NestedPlan bindings profile ready (Scheduled.host bindings) start trace finish ∧
+      PayloadPrefix.visible trace = labels :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.callbackPlan path
+
 /-- Join a recursive public give's reached checked and canonical bodies to
 the actual caller replies. This constructs the replay plan from the compared
 paths; it does not assume that a reached nested callout can be replayed. -/

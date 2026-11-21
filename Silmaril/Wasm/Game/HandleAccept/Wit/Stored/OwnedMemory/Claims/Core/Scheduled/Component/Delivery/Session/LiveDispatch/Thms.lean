@@ -46,6 +46,17 @@ theorem LiveDispatch.entry_paired (site : Site grow sig route) (linked : site.Li
       HostFrame.Related.Paired older (site.reference site.referenceReply) entered :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedEntry site linked paired selected
 
+/-- A same-instance public give reached in a confined allocator callback
+returns boundary refusal words without consulting the canonical host's
+journal. Both active and saved older frames remain paired. -/
+theorem LiveDispatch.closed_give_paired {start incoming : Config (core3 grow) (HostState sig)}
+    (callout : LinkedCallback.ClosedGive bindings start) {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start incoming) :
+    ∃ labels reached, labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming labels reached ∧
+      HostFrame.Related.Paired older callout.resume reached ∧ reached.host = incoming.host :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedClosedGive callout paired
+
 /-- Compose live nested entry, a reached canonical body and its actual
 caller rejoin. A divergent host read or pop of an older substituted frame
 is reported at that step rather than being replayed as the remaining body. -/
