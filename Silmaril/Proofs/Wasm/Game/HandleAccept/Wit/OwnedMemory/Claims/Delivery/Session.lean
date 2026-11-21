@@ -277,11 +277,12 @@ theorem lowerDirectArguments {engine : CoreEngine} {hostState : Type} (cx : Lift
     rw [List.map_cons, List.map_cons, List.map_cons, lowerFlatTypes, ih]
     cases arg <;> rw [DirectArgument.value, DirectArgument.type, lowerFlatAt] <;> rfl
 
-theorem liftDirectCore (site : LiftSite grow sig) (args : List DirectArgument)
+theorem liftDirectCoreAt (site : LiftSite grow sig) (state : State grow sig) (args : List DirectArgument)
+    (focused : state.ctl = (site.withArguments (args.map DirectArgument.value)).ctl)
     (schema : paramTypes site.registeredTask.ft = args.map DirectArgument.type)
     (fits : args.length ≤ ABI.maxFlatParams) :
-    ∃ next, Steps profile ready (specDispatch ready impl) (site.withArguments (args.map DirectArgument.value))
-      [.tau, .tau] (site.coreEntered (args.map DirectArgument.flat) next) := by
+    ∃ next, ∀ (profile : ProfileKind) (ready : HostReady (HostState sig)) (impl : HostImpl (core3 grow) (HostState sig)),
+      Steps profile ready (specDispatch ready impl) state [.tau, .tau] (site.coreEnteredAt state (args.map DirectArgument.flat) next) := by
   let values := args.map DirectArgument.value
   let flat := args.map DirectArgument.flat
   let ctx : LiftLowerContext (core3 grow) :=
@@ -293,10 +294,9 @@ theorem liftDirectCore (site : LiftSite grow sig) (args : List DirectArgument)
       values, flat, lowerDirectArguments]
   suffices path : ∃ (read : CStore (core3 grow) → Session grow sig (Ret (core3 grow))),
       (site.withArguments values).ctl = ⟨some site.storeAndThread.2, .prog (.op .get read), []⟩ :: site.workerTail ∧
-      ∃ next, read site.onStart.store = .op (.callCore site.core flat) next by
+      ∃ next, read state.store = .op (.callCore site.core flat) next by
     obtain ⟨read, focus, next, call⟩ := path
-    have sameStore : (site.withArguments values).store = site.onStart.store := rfl
-    exact ⟨next, .cons (.get focus) (.cons (.callCore (by rw [sameStore, call])) (.refl _))⟩
+    exact ⟨next, fun _ _ _ => .cons (.get (focused.trans focus)) (.cons (.callCore (by rw [call])) (.refl _))⟩
   simp only [LiftSite.withArguments, LiftSite.argumentsTail, liftArgumentsBody]
   rw [show (lowerFlatValues Limits.spec Quirks.none
       { opts := site.registeredTask.opts, inst := site.registeredTask.inst, scope := .task site.storeAndTask.2 }
@@ -305,6 +305,14 @@ theorem liftDirectCore (site : LiftSite grow sig) (args : List DirectArgument)
   refine ⟨_, rfl, ?_⟩
   cases mode : site.registeredTask.opts.async_ <;> cases callback : site.registeredTask.opts.callback <;>
     simp [Prog.bind, pure, liftSyncTail, *] <;> exact ⟨_, rfl⟩
+
+theorem liftDirectCore (site : LiftSite grow sig) (args : List DirectArgument)
+    (schema : paramTypes site.registeredTask.ft = args.map DirectArgument.type)
+    (fits : args.length ≤ ABI.maxFlatParams) :
+    ∃ next, Steps profile ready (specDispatch ready impl) (site.withArguments (args.map DirectArgument.value))
+      [.tau, .tau] (site.coreEntered (args.map DirectArgument.flat) next) := by
+  obtain ⟨next, entered⟩ := liftDirectCoreAt site _ args rfl schema fits
+  exact ⟨next, entered profile ready impl⟩
 
 theorem coreCalloutSteps (site : CoreCallSite start) :
     Steps profile ready (specDispatch ready impl) start [.tau, .tau, .tau] (site.reached ready impl) := by
@@ -414,6 +422,33 @@ theorem lowerStartRecord {site : LiftSite grow sig} (handoff : LowerStart site) 
     simp [LowerSt.startSt, LowerStart.progress, LowerStart.startedRecord, indexed, CStore.setPendingSt,
       CStore.modifyWaitableCommon, ArenaField.get?_modify_self, handoff.subtaskLive]
 
+theorem lowerEmptyArgs {site : LiftSite grow sig} (handoff : LowerStart site) (empty : handoff.fnType.params = []) :
+    Steps profile ready (specDispatch ready impl) handoff.reading [.tau, .tau, .tau]
+      (site.withLowerValues handoff.reading [] handoff.pos) := by
+  have plan : handoff.readArgs = (do
+      let _ ← ptrType handoff.context
+      modifyStore (LowerSt.setCallerPosSt site.registeredTask.caller handoff.pos)
+      pure (.vals [])) := by
+    simp [LowerStart.readArgs, liftFlatValues, empty, ABI.flattenTypes, liftFlatTypesWith, pure]
+    rfl
+  have focused : handoff.reading.ctl = ⟨some site.storeAndThread.2, .prog (do
+      let _ ← ptrType handoff.context
+      modifyStore (LowerSt.setCallerPosSt site.registeredTask.caller handoff.pos)
+      pure (.vals [])), [.prog (LowerStart.resume site)]⟩ :: site.workerTail := by
+    simp only [LowerStart.reading, plan]
+  exact .cons (.get focused) (.cons (.modify rfl) (.cons (.popProg rfl) (.refl _)))
+
+theorem lowerEmptyPair {site : LiftSite grow sig} (handoff : LowerStart site)
+    (bindings : List (Binding sig)) (callees : List (Callee sig))
+    (emptyLower : handoff.fnType.params = []) (emptyLift : paramTypes site.registeredTask.ft = []) :
+    let returned := site.withLowerValues handoff.reading [] handoff.pos
+    let labels := List.replicate handoff.steps (.tau : Label (core3 grow) (HostState sig)) ++ [.tau, .tau, .tau, .tau, .tau]
+    ∃ next, Steps profile ready (Dispatch.coreOnly ready bindings) site.onStart labels (site.coreEnteredAt returned [] next) ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) site.onStart labels (site.coreEnteredAt returned [] next) := by
+  obtain ⟨next, entered⟩ := liftDirectCoreAt site (site.withLowerValues handoff.reading [] handoff.pos) [] rfl emptyLift (Nat.zero_le _)
+  exact ⟨next, appendSteps (lowerStart handoff) (appendSteps (lowerEmptyArgs handoff emptyLower) (entered profile ready (host bindings))),
+    appendSteps (lowerStart handoff) (appendSteps (lowerEmptyArgs handoff emptyLower) (entered profile ready (hostWithComponent bindings callees)))⟩
+
 private def lowerFreshStart {site : CoreCallSite start} (request : LowerRequest site) {core fnType opts inst} :
     LowerStart (request.lifted core fnType opts inst) := by
   let lift := request.lifted core fnType opts inst
@@ -495,6 +530,8 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | coreCallout site => exact coreCalloutSteps site
   | lowerAllocate request live allowed => exact lowerAllocate request live allowed
   | lowerStart handoff => exact lowerStart handoff
+  | lowerEmptyArgs handoff empty => exact lowerEmptyArgs handoff empty
+  | lowerEmptyCore _ entry => exact entry
   | invokeReturn focused => exact invokeReturnSteps focused
   | tick tick => exact tick.selects_thread
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)
@@ -635,6 +672,17 @@ theorem runDirectCore {site : LiftSite grow sig} {actions labels} (args : List D
       (labels ++ [.tau, .tau]) (site.coreEntered (args.map DirectArgument.flat) next) := by
   obtain ⟨next, entry⟩ := liftDirectCore site args schema fits
   exact ⟨next, runAppend run (.next (.directCore entry) (.stop _))⟩
+
+theorem runLowerEmptyCore {site : LiftSite grow sig} {actions labels}
+    (run : Run profile ready impl start actions labels site.onStart) (handoff : LowerStart site)
+    (emptyLower : handoff.fnType.params = []) (emptyLift : paramTypes site.registeredTask.ft = []) :
+    ∃ next, Run profile ready impl start (actions ++ [.lowerStart handoff.subtask handoff.record.index.isSome,
+      .lowerEmptyArgs site.registeredTask.caller, .coreEnter site.storeAndThread.2])
+      (labels ++ (List.replicate handoff.steps .tau ++ [.tau, .tau, .tau, .tau, .tau]))
+      (site.coreEnteredAt (site.withLowerValues handoff.reading [] handoff.pos) [] next) := by
+  obtain ⟨next, entered⟩ := liftDirectCoreAt site (site.withLowerValues handoff.reading [] handoff.pos) [] rfl emptyLift (Nat.zero_le _)
+  exact ⟨next, runAppend run (.next (.lowerStart handoff) (.next (.lowerEmptyArgs handoff emptyLower)
+    (.next (.lowerEmptyCore handoff (entered profile ready impl)) (.stop _))))⟩
 
 theorem closedRecord {target labels} (edge : Transition profile ready impl start (.closedCallback target) labels finish) :
     finish.store.subtask? target = start.store.subtask? target := by

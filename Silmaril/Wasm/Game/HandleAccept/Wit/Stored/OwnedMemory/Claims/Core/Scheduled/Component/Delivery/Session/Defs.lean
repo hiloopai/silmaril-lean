@@ -207,9 +207,13 @@ def LiftSite.onStart (site : LiftSite grow sig) : State grow sig :=
 def LiftSite.withArguments (site : LiftSite grow sig) (args : List Value.Val) : State grow sig :=
   { site.onStart with ctl := ⟨some site.storeAndThread.2, .prog (site.argumentsTail args), []⟩ :: site.workerTail }
 
+def LiftSite.coreEnteredAt (site : LiftSite grow sig) (state : State grow sig) (flat : List FlatValue)
+    (next : List FlatValue → Session grow sig (Ret (core3 grow))) : State grow sig :=
+  { state with ctl := ⟨some site.storeAndThread.2, .core ((core3 grow).invoke site.core flat) next, []⟩ :: site.workerTail }
+
 def LiftSite.coreEntered (site : LiftSite grow sig) (flat : List FlatValue)
     (next : List FlatValue → Session grow sig (Ret (core3 grow))) : State grow sig :=
-  { site.onStart with ctl := ⟨some site.storeAndThread.2, .core ((core3 grow).invoke site.core flat) next, []⟩ :: site.workerTail }
+  site.coreEnteredAt site.onStart flat next
 
 /-- Direct parameters that need neither allocating nor nondeterministic lowering. -/
 inductive DirectArgument where
@@ -338,6 +342,12 @@ def LowerStart.reading (handoff : LowerStart site) : State grow sig :=
     store := LowerSt.startSt handoff.subtask handoff.progress
     ctl := ⟨some site.storeAndThread.2, .prog handoff.readArgs, [.prog (LowerStart.resume site)]⟩ :: site.workerTail }
 
+def LiftSite.withLowerValues (site : LiftSite grow sig) (state : State grow sig) (args : List Value.Val)
+    (pos : Nat) : State grow sig :=
+  { state with
+    store := LowerSt.setCallerPosSt site.registeredTask.caller pos state.store
+    ctl := ⟨some site.storeAndThread.2, .prog (site.argumentsTail args), []⟩ :: site.workerTail }
+
 def LowerStart.startedRecord (handoff : LowerStart site) : Subtask :=
   { handoff.record with
     state := .started
@@ -376,6 +386,7 @@ inductive Action where
   | coreCallout
   | lowerAllocate (subtask : SubtaskId) (caller : CallerId)
   | lowerStart (subtask : SubtaskId) (indexed : Bool)
+  | lowerEmptyArgs (caller : CallerId)
   | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
   | coreStep
@@ -443,6 +454,14 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
   | lowerStart {site : LiftSite grow sig} (handoff : LowerStart site) :
       Transition profile ready impl site.onStart (.lowerStart handoff.subtask handoff.record.index.isSome)
         (List.replicate handoff.steps .tau) handoff.reading
+  | lowerEmptyArgs {site : LiftSite grow sig} (handoff : LowerStart site) (empty : handoff.fnType.params = []) :
+      Transition profile ready impl handoff.reading (.lowerEmptyArgs site.registeredTask.caller) [.tau, .tau, .tau]
+        (site.withLowerValues handoff.reading [] handoff.pos)
+  | lowerEmptyCore {site : LiftSite grow sig} (handoff : LowerStart site) {next}
+      (entry : Steps profile ready (specDispatch ready impl) (site.withLowerValues handoff.reading [] handoff.pos)
+        [.tau, .tau] (site.coreEnteredAt (site.withLowerValues handoff.reading [] handoff.pos) [] next)) :
+      Transition profile ready impl (site.withLowerValues handoff.reading [] handoff.pos)
+        (.coreEnter site.storeAndThread.2) [.tau, .tau] (site.coreEnteredAt (site.withLowerValues handoff.reading [] handoff.pos) [] next)
   | invokeReturn {start cancel} (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
       Transition profile ready impl start (.invokeReturn cancel) [.tau, .tau, .tau]
         (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store })

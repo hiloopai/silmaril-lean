@@ -355,6 +355,28 @@ theorem Run.start_lowered {site : LiftSite grow sig} {actions labels}
       (labels ++ List.replicate handoff.steps .tau) handoff.reading := by
   simpa only [List.append_nil] using run.append (.next (.lowerStart handoff) (.stop _))
 
+/-- A reached empty parameter list still uses the canonical width read, cursor
+update and value return. The subtask update stays in the state entering Core. -/
+theorem Run.enter_empty_lowered_core {site : LiftSite grow sig} {actions labels}
+    (run : Run profile ready impl start actions labels site.onStart) (handoff : LowerStart site)
+    (emptyLower : handoff.fnType.params = []) (emptyLift : paramTypes site.registeredTask.ft = []) :
+    ∃ next, Run profile ready impl start (actions ++ [.lowerStart handoff.subtask handoff.record.index.isSome,
+      .lowerEmptyArgs site.registeredTask.caller, .coreEnter site.storeAndThread.2])
+      (labels ++ (List.replicate handoff.steps .tau ++ [.tau, .tau, .tau, .tau, .tau]))
+      (site.coreEnteredAt (site.withLowerValues handoff.reading [] handoff.pos) [] next) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runLowerEmptyCore run handoff emptyLower emptyLift
+
+/-- The two dispatchers enter the same Core activation from the actual
+arena-backed start request. The post-handoff store, not the lift's entry snapshot, is used. -/
+theorem LowerStart.linked_empty_core {site : LiftSite grow sig} (handoff : LowerStart site)
+    (bindings : List (Binding sig)) (callees : List (Callee sig))
+    (emptyLower : handoff.fnType.params = []) (emptyLift : paramTypes site.registeredTask.ft = []) :
+    let returned := site.withLowerValues handoff.reading [] handoff.pos
+    let labels := List.replicate handoff.steps (.tau : Label (core3 grow) (HostState sig)) ++ [.tau, .tau, .tau, .tau, .tau]
+    ∃ next, Steps profile ready (Dispatch.coreOnly ready bindings) site.onStart labels (site.coreEnteredAt returned [] next) ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) site.onStart labels (site.coreEnteredAt returned [] next) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerEmptyPair handoff bindings callees emptyLower emptyLift
+
 /-- Actual backpressure makes the launched worker park at K1, even after
 incrementing the entry count. The async parent returns the cancellation
 handle while that worker is still saved; this is not result delivery. -/
