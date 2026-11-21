@@ -745,6 +745,34 @@ def LinkedStringMapReturnPaths (profile : ProfileKind) (ready : HostReady (HostS
     LinkedStringMapPaths profile ready base bindings older site element entries 0 pointer checked canonical left right
       check canon seen 1
 
+/-- From the real linked call on the canonical side, compare every classified
+outer allocator prefix after checked admission. A natural-pointer return
+of the installed occurrence feeds the original replies proof. -/
+def LinkedStringMapDispatch (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
+    (incoming : Config (core3 grow) (HostState sig)) : Prop :=
+  open Stored.Endpoints.RecordLower ABI PayloadPrefix in
+  let area := layout site.destination.width (.record (mapEntryFields .string element))
+  let mode := CanonicalTree.EntryMode.forOutput site.destination.width (.map .string element) route.output
+  let first := checkedCollectionResume site.destination site.inst entries area 0 route.output site.reply
+  let second := canonicalCollectionResume site.destination site.inst entries area route.output site.referenceReply mode
+  let leftEntry := collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first
+  let canonical := specDispatch ready (LiveDispatch.host bindings base)
+  ∃ leading entered peer, visible leading = [] ∧ Steps profile ready canonical incoming leading entered ∧
+    entered.host = incoming.host ∧
+    let rightEntry := collectionEntry site.destination site.inst area entries.length canonical entered peer second
+    ∀ {seen checked}, ClosedCallbackPrefix bindings profile ready base
+        (fun resume => (∃ paired, older resume paired) ∨ resume = first) leftEntry seen checked →
+      ∃ checkLabels canonLabels reached mark,
+        AllocatorMark profile ready base bindings older leftEntry rightEntry checkLabels canonLabels checked reached mark ∧
+        HostFrame.Related.Paired (ReturnFrame.Extend older first second) checked reached ∧
+        ComparedPaths profile ready base bindings site.checked incoming seen checked reached ∧
+        ∀ pointer check, mark = some (.active 0 0) →
+          checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
+          LinkedStringMapReturnPaths profile ready base bindings older site element entries pointer checked reached check
+
 abbrev CollectionReplies (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}

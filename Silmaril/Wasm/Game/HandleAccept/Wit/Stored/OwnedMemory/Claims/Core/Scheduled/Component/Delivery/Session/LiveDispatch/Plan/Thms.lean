@@ -503,6 +503,20 @@ theorem AllocatorMark.string_map_paths {route : GiveEffectRoute} (site : Payload
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapReturnPaths
     site linked element entries nominal field fits pointer admitted embedder
 
+/-- Use the real linked admission and canonical entry on either public
+string-key nominal map route. The placed branch compares classified finite
+allocator prefixes; only a marked return can feed the caller rejoins. -/
+theorem linked_string_map_dispatch {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    PayloadRoot.Cut site profile ready bindings (LinkedStringMapDispatch profile ready base bindings older site element entries incoming)
+      base :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapDispatch
+    site linked element entries nominal field paired selected embedder
+
 /-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys
 remain written if a later value refuses or traps. Flat entries read the

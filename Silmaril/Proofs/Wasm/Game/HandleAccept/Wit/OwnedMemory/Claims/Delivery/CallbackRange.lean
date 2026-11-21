@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Plan.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadCollection.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
@@ -1479,7 +1480,8 @@ theorem linkedStringMapReturn {route : GiveEffectRoute} (site : PayloadRoot.Site
     (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
     (pointer : Nat) (admitted : Stored.OwnedMemory.Claims.Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
     {older wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
-    {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace}
+    {canonStart checked canonical : Config (core3 grow) (HostState sig)}
+    {canonEntry check : Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace}
     (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
     let entryType : Stored.TypeOf := .record (mapEntryFields .string element)
     let area := layout site.destination.width entryType
@@ -1490,7 +1492,7 @@ theorem linkedStringMapReturn {route : GiveEffectRoute} (site : PayloadRoot.Site
     AllocatorMark profile ready base bindings older
       (collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
       (collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
-        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+        canonStart canonEntry second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
     HostFrame.Related.Paired wider checked canonical →
     checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
     Core3.Grows site.checked.store.core checked.store.core →
@@ -1516,7 +1518,8 @@ theorem linkedStringMapReturnPaths {route : GiveEffectRoute} (site : PayloadRoot
     (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
     (pointer : Nat) (admitted : Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
     {older wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
-    {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace}
+    {canonStart checked canonical : Config (core3 grow) (HostState sig)}
+    {canonEntry check : Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace}
     (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
     let entryType : Stored.TypeOf := .record (mapEntryFields .string element)
     let area := layout site.destination.width entryType
@@ -1527,7 +1530,7 @@ theorem linkedStringMapReturnPaths {route : GiveEffectRoute} (site : PayloadRoot
     AllocatorMark profile ready base bindings older
       (collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
       (collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
-        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+        canonStart canonEntry second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
     HostFrame.Related.Paired wider checked canonical →
     checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
     Core3.Grows site.checked.store.core checked.store.core →
@@ -1541,6 +1544,82 @@ theorem linkedStringMapReturnPaths {route : GiveEffectRoute} (site : PayloadRoot
   have leading : ComparedSlots profile ready base bindings checked canonical (visible lhs) left right 1 :=
     ⟨lhs, rhs, checkRun, canonRun, rfl, seen.symm⟩
   exact .inr ⟨left, right, canon, visible lhs, leading, linkedStringMapPaths site element entries 0 pointer caller leading body⟩
+
+private theorem referenceFrame {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {entered : Config (core3 grow) (HostState sig)}
+    {body : Session grow sig (Ret (core3 grow))}
+    (focus : (site.reference site.referenceReply).ctl = site.cursor.control body)
+    (paired : HostFrame.Related.Paired older (site.reference site.referenceReply) entered) :
+    ∃ peer : Cursor (E := core3 grow) (HostState sig),
+      LinkedCallback.ChildFrameOver older site.checked entered site.cursor peer ∧ entered.ctl = peer.control body := by
+  change ReturnFrame.Related.Paired older (HostFrame.replace (site.reference site.referenceReply) entered.host) entered at paired
+  generalize entered.host = observer at paired
+  let head : Config (core3 grow) (HostState sig) :=
+    { site.start with host := observer, ctl := site.cursor.control body }
+  have aligned : HostFrame.replace (site.reference site.referenceReply) observer = head := by
+    change (site.reference site.referenceReply).ctl = _ at focus
+    unfold PayloadRoot.Site.reference at focus
+    unfold head HostFrame.replace PayloadRoot.Site.reference
+    rw [show site.cursor.control (site.referenceProgram >>= site.referenceReply) = site.cursor.control body from focus]
+  rw [aligned] at paired
+  cases paired with
+  | @mk rightControl rightSaved control saved =>
+    change List.Forall₂ (ReturnFrame.Related.Active older)
+      (⟨site.cursor.thread, .prog body, site.cursor.frames⟩ :: site.cursor.rest) rightControl at control
+    cases control with
+    | cons entry rest =>
+      rename_i peerHead peerRest
+      cases entry with
+      | mk frames =>
+        rename_i peerFrames
+        exact ⟨⟨site.cursor.thread, peerFrames, peerRest⟩, ⟨rfl, rfl, rfl, rfl, saved, rfl, frames, rest⟩, rfl⟩
+
+theorem linkedStringMapDispatch {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {incoming : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    PayloadRoot.Cut site profile ready bindings (LinkedStringMapDispatch profile ready base bindings older site element entries incoming)
+      base := by
+  refine site.parked_after_admission linked _ (fun fits _ prepared => ?_) base embedder
+  obtain ⟨leading, entered, quiet, installed, framePaired, enteredHost⟩ :=
+    LiveDispatch.entry_paired (profile := profile) (ready := ready) (base := base) site linked paired selected
+  have bodyAt := site.reference_at linked site.referenceReply
+  rw [field] at bodyAt
+  obtain ⟨peer, frame, canonAt⟩ := referenceFrame site bodyAt framePaired
+  have checkAt : site.checked.ctl = site.cursor.control (Record.Effects.field recordClaims Limits.spec Quirks.none
+      (site.destination.context site.inst) site.destination.width
+      (.dynamic (.map .string element) (.record (mapEntryFields .string element)) entries) 0 route.output >>= site.reply) := by
+    simp only [PayloadRoot.Site.checked, PayloadRoot.Site.withBody, field]
+  have width := site.destination.check_width site.start.store linked.destination
+  have preparedAt : Record.prepare site.checked.store site.checked.host.writer (Field.listObjects entries) = .ok () := by
+    change Record.prepare site.start.store site.start.host.writer (Field.listObjects entries) = .ok ()
+    simpa only [field, Field.objects] using prepared
+  have leadingSilent : visible leading = [] := by
+    apply silent
+    intro label member
+    have tau := List.all_eq_true.mp quiet label member
+    cases label <;> simp_all
+  unfold LinkedStringMapDispatch
+  refine ⟨leading, entered, peer, leadingSilent, installed, enteredHost, ?_⟩
+  intro rightEntry seen checked path
+  obtain ⟨lhs, rhs, reached, mark, left, right, live, seenLeft, seenRight, growth, _, _, tracked⟩ :=
+    CallbackPrefix.collectionPrefix (profile := profile) (ready := ready) site.destination site.inst (.map .string element)
+      (.record (mapEntryFields .string element)) entries route.output 0 site.reply site.referenceReply frame
+      (frame.store ▸ width) preparedAt checkAt canonAt embedder path
+  have same : checked.store = reached.store := by
+    change ReturnFrame.Related.Paired _ (HostFrame.replace checked reached.host) reached at live
+    generalize reached.host = observer at live
+    cases live
+    rfl
+  refine ⟨lhs, rhs, reached, mark, tracked, live, ⟨_, _, left, appendRun installed right, ?_, ?_, same⟩, ?_⟩
+  · rw [appendVisible, silent (by simp), List.nil_append, seenLeft]
+  · rw [appendVisible, appendVisible, leadingSilent, silent (by simp), List.nil_append, List.nil_append, seenRight]
+  · intro pointer check top returned
+    subst mark
+    exact linkedStringMapReturnPaths site linked element entries nominal field fits pointer prepared embedder tracked live returned growth
 
 theorem nominalMapReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (key : WIT.KeyType) (element : Stored.TypeOf) (entries : List Field)
