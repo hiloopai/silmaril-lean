@@ -115,9 +115,14 @@ files are stripped).
   `.gnu.version_d`/`_r` bodies: `@@` is the default version, `@` a non-default one. The segment,
   file offset and owning section come from the checked layout. Aliases are other function symbols
   with the same address. Overlaps are function ranges that intersect but differ.
-- **Contract.** A row shows a contract only when a theorem's statement starts with
-  `Silmaril.Elf.CodeAt F v code` at the row's address (`Pinned.ZlibChecksums.Contracts`). Every
-  other row shows **no contract statement**.
+- **Contract.** A row shows a contract only when a theorem of `Pinned.ZlibChecksums.Contracts`
+  meets three conditions; every other row shows **no contract statement**:
+  - its statement starts with `Silmaril.Elf.CodeAt F v code` at the row's address;
+  - the code literal is exactly the symbol's `st_size` bytes;
+  - the statement also says that the contract's entry precondition loads that same literal
+    (`Loaded m.memory e code`), which is the **code identity** between the file's bytes and the
+    contract. For the two wrappers it also states where the callee's code sits relative to the
+    entry, matching the file. `elf-pages` stops if a contract theorem lacks the identity conjunct.
 
 **What a row does not say**
 - A row is not a recovered function, and it says nothing about the System V ABI.

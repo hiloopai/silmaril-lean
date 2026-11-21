@@ -245,7 +245,7 @@ inductive Claim where
   | layout (L : Name)
   | parses (A : Expr)
   /-- `CodeAt F v code ∧ …`: code at `v`, with a contract (`Pinned.*.Contracts`). -/
-  | contract (v : Nat) (code : Name)
+  | contract (v : Nat) (code : Name) (loads : List Name)
 
 def Claim.ofType? (F : Name) (t : Expr) : Except String Claim := do
   let t := t.consumeMData
@@ -274,7 +274,19 @@ def Claim.ofType? (F : Name) (t : Expr) : Except String Claim := do
     fileIs (c.getArg! 0)
     let (some v, some code) := (natLit? (c.getArg! 1), constName? (c.getArg! 2))
       | throw "CodeAt with a non-literal address or code"
-    pure (.contract v code)
+    -- the code constants the statement's identity conjunct requires the contract to load:
+    -- every `Loaded _ _ c` in the rest of the statement
+    let rec collect (e : Expr) (acc : List Name) : List Name :=
+      match e with
+      | .app f a =>
+        let acc := if e.isAppOfArity `Silmaril.X86.Ext.Loaded 3 then
+            (match constName? (e.getArg! 2) with | some c => c :: acc | none => acc) else acc
+        collect a (collect f acc)
+      | .lam _ t b _ | .forallE _ t b _ => collect b (collect t acc)
+      | .letE _ t v b _ => collect b (collect v (collect t acc))
+      | .mdata _ b => collect b acc
+      | _ => acc
+    pure (.contract v code (collect (t.getArg! 1) []))
   else throw s!"unrecognised statement: {t}"
 
 /-- The role of a data constant: its place in the layout `L`, `bodies` or `ld`. -/
@@ -390,6 +402,8 @@ structure Thm where
   module : Name
   /-- The statement, pretty-printed (contract theorems only). -/
   stmt : Option String := none
+  /-- The length of the code literal a contract theorem's `CodeAt` names. -/
+  codeLen : Option Nat := none
 
 def standardAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
 
@@ -468,7 +482,15 @@ def theorems (env : Environment) (P : Pinned) : IO (Array Thm) := do
     let stmt ← match claim with
       | .contract .. => some <$> runCore env (do return toString (← (Lean.Meta.ppExpr ti.type).run'))
       | _ => pure none
-    out := out.push { decl := n, claim, role, axioms, line, module, stmt }
+    let codeLen := match claim with
+      | .contract _ code _ => ((env.find? code).bind (·.value? (allowOpaque := true))).bind
+          fun v => (listLit? v).map (·.length)
+      | _ => none
+    if let .contract _ code loads := claim then
+      unless loads.contains code do
+        throw (IO.userError s!"{n}: the statement does not state that the contract loads {code} (no code identity)")
+      if codeLen.isNone then throw (IO.userError s!"{n}: {code} is not a literal list of bytes")
+    out := out.push { decl := n, claim, role, axioms, line, module, stmt, codeLen }
   pure (out.qsort fun a b => (a.line.getD 0) < (b.line.getD 0))
 
 /-! ## Coverage -/
@@ -600,7 +622,7 @@ def thmJson (P : Pinned) (t : Thm) : Json :=
       | some r => js r.label
       | none => js (match t.claim with
         | .zeros o n => s!"padding: {n} zero bytes at {hex o}" | .parses _ => "the parse of the whole file"
-        | .contract v _ => s!"code at {hex v} and its contract"
+        | .contract v _ _ => s!"code at {hex v} and its contract"
         | _ => kind)),
     ("windows", spansJson ws),
     ("axioms", Json.arr (t.axioms.map (js ·.toString))),
@@ -666,7 +688,7 @@ def functions (P : Pinned) (thms : Array Thm) : Array Json := Id.run do
   let L := P.L
   let symThm : Std.HashMap (Nat × Nat) Thm := thms.foldl (fun m t =>
     match t.role with | some (.symbol k i) => m.insert (k, i) t | _ => m) {}
-  let contracts := thms.filterMap fun t => match t.claim with | .contract v _ => some (v, t) | _ => none
+  let contracts := thms.filterMap fun t => match t.claim with | .contract v _ _ => some (v, t) | _ => none
   let mut rows : Array (Nat × Nat × ObjectSymbol × String) := #[]
   for (sec, k) in L.sections.zipIdx do
     if let some (.symbols tab es) := P.bodies[k]? then
@@ -702,7 +724,9 @@ def functions (P : Pinned) (thms : Array Thm) : Array Json := Id.run do
     let ver := if tab == "dynsym" then versionOf P i else none
     let thm := symThm[(k, i)]?
     let linked := if undef || n == 0 then #[] else
-      (contracts.filter fun (cv, _) => cv == v).map fun (_, t) => js t.decl.toString
+      -- the same address, and a code literal of exactly the symbol's size (code identity is
+      -- checked in `theorems`: the contract loads that literal)
+      (contracts.filter fun (cv, t) => cv == v && t.codeLen == some n).map fun (_, t) => js t.decl.toString
     out := out.push <| Json.mkObj [
       ("table", js tab), ("sec", jn k), ("idx", jn i), ("name", js (nameStr e.name)),
       ("version", match ver with | some x => js x | none => Json.null),
