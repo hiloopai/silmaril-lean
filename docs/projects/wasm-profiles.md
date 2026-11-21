@@ -41,7 +41,42 @@ share Lean types:
 | `Wasm1` | `NumType` (four scalar types). `V1.Instr` excludes sign extension and saturating truncation; block result is an optional scalar. |
 | `Wasm2` | `V2.ValType` adds `v128` and the two enumerated reference types. `V2.Instr` includes indexed block signatures, SIMD and saturating truncation, but no GC `struct.set` or typed `call_ref`. |
 | `Wasm3` | Core `ValType` has nullability and abstract or indexed heap types. Core `Instr` includes the GC, tail-call and exception families. |
-| `Lime` | Scalar `V1.ValType`, but native `Lime1.Instr` supports sign extension, saturating conversion and indexed block types; no reference or vector value types. |
+| `Lime` | Scalar `V1.ValType` (`i32`, `i64`, `f32`, `f64`). Native `Lime1.Instr` includes scalar floating-point operations, sign extension, saturating conversion and indexed block types; no reference or vector value types. |
+
+### Native Lime floating point
+
+Use [`Lime1.Instr`](../../Silmaril/Wasm/Lime1/Instructions.lean) or the
+[Lime WAT frontend](wasm-wat.md) for `f32` and `f64` constants, arithmetic,
+comparisons and conversions. Folded WAT is syntax for the same native AST,
+not a separate Lisp-like dialect. Check bodies with
+[`Lime1.Validation.ExprType`](../../Silmaril/Wasm/Lime1/Validation/Instructions.lean)
+and whole modules with `Lime1.Validation.ModuleValid`. A restricted intrinsic
+instruction set is not the grammar of `Lime1.Instr`.
+
+The [float regression](../../tests/wasm/profiles/LimeFloat.lean) proves native
+module validity, checks the exact `toCore` body, and prepares and invokes a
+named Lime export at both widths. The export returns the sum, float equality
+as `i32`, and signed saturating truncation of the first operand to `i32`.
+The executions check finite values, both signs of zero, and NaN. Only the
+executable test uses a step bound.
+
+For semantics use `Lime1.Execution.Step`/`Steps`. `PureStep` admits the
+specification's [NaN result sets](https://webassembly.github.io/spec/core/exec/numerics.html#nan-propagation);
+the regression shows two allowed arithmetic NaN outputs at each width. The
+host-free executable `step?`/`run` picks a canonical result for those additions;
+this neither fixes all NaN bits in the spec relation nor implies determinism
+for arbitrary Lime programs. The existing `Lime1.Execution.Step.toCore` and
+[`lime1_core_beh`](../../Silmaril/Wasm/Models/Lime1Core/Thms.lean) are forward
+results at `Profile.spec`, under their simulation/store and host premises.
+Neither the regression nor those core-language results prove float marshalling
+or terminal equivalence through a component canonical ABI.
+
+```sh
+lake build --wfail +Silmaril.Wasm.Lime1.Execution.Callout +Silmaril.Wasm.Lime1.Execution.Instantiation +Silmaril.Wasm.Lime1.ToCore
+lake env lean -DwarningAsError=true tests/wasm/profiles/LimeFloat.lean
+```
+
+### Intrinsic and checked translations
 
 Only `Wasm3` has a `HasIntrinsic` instance. The V1/V2/Lime1 native judgments are
 proofs about their raw syntax, not native intrinsic body or module types in

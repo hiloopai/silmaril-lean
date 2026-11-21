@@ -87,6 +87,7 @@ check-runtime:
 	$(MAKE) process-gates
 	$(if $(filter Silmaril,$(CHECK_TARGETS)),$(LAKE) env lean -DwarningAsError=true --run tests/formats/DrislDebug.lean)
 	$(if $(filter Silmaril +Silmaril.Wasm.V1.Intrinsic.Scalar.Thms,$(CHECK_TARGETS)),$(LAKE) env lean -DwarningAsError=true tests/wasm/profiles/V1Intrinsic.lean)
+	$(if $(filter Silmaril +Silmaril.Wasm.Lime1.Execution.Callout +Silmaril.Wasm.Lime1.Execution.Instantiation +Silmaril.Wasm.Lime1.ToCore,$(CHECK_TARGETS)),$(LAKE) build --wfail +Silmaril.Wasm.Lime1.Execution.Callout +Silmaril.Wasm.Lime1.Execution.Instantiation +Silmaril.Wasm.Lime1.ToCore && $(LAKE) env lean -DwarningAsError=true tests/wasm/profiles/LimeFloat.lean)
 	$(if $(filter Silmaril +Silmaril.Wasm.Validation.Generic.Thms,$(CHECK_TARGETS)),$(LAKE) env lean -DwarningAsError=true tests/wasm/inductive-generic/Regression.lean)
 	$(if $(filter Silmaril +Silmaril.Wasm.Validation.Generic.SSA.Thms +Silmaril.Wasm.Validation.Generic.Signature.Lowering,$(CHECK_TARGETS)),$(LAKE) env lean -DwarningAsError=true tests/wasm/inductive-generic/TypeBoundary.lean)
 	$(if $(filter Silmaril +Silmaril.Wasm.Profiles.Thms +Silmaril.Wasm.Profiles.Binary,$(CHECK_TARGETS)),$(LAKE) env lean -DwarningAsError=true tests/wasm/profiles/Regression.lean)
