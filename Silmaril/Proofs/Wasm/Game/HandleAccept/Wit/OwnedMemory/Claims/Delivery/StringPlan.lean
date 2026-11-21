@@ -51,6 +51,20 @@ private theorem prependPair {Result : Type} {next : Result → Session grow sig 
   obtain ⟨_, _, tailLeft, tailRight, endAt⟩ := tail
   exact ⟨_, _, appendSteps left tailLeft, appendSteps right tailRight, prependEnd left endAt⟩
 
+private theorem continuePair {Field Result : Type}
+    {rest : Field → Session grow sig (Ret (core3 grow))} {next : Result → Session grow sig (Ret (core3 grow))}
+    {start : State grow sig} (first : StringPlanPair profile ready bindings callees start rest)
+    (tail : ∀ (last : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig)) value,
+      last.ctl = cursor.control (rest value) →
+      StringPlanPair profile ready bindings callees last next) :
+    StringPlanPair profile ready bindings callees start next := by
+  obtain ⟨labels, last, left, right, endAt⟩ := first
+  cases endAt with
+  | complete cursor value focused => exact prependPair left right (tail last cursor value focused)
+  | trap reason => exact ⟨_, _, left, right, .trap reason⟩
+  | suspend alloc leading trailing mark reached path closed =>
+    exact ⟨_, _, left, right, .suspend alloc leading trailing mark reached path closed⟩
+
 private theorem invalidAnswer {state : State grow sig} (alloc : ArgumentStringAllocation state) (last : State grow sig)
     (reached : Cursor (E := core3 grow) (HostState sig)) (answer : Ret (core3 grow))
     (invalid : ¬ ∃ pointer, answer = .nat pointer) :
@@ -165,5 +179,130 @@ theorem spilledCallee {start reached state : State grow sig} {site : OnStartSite
   exact walk args.context width (.memory address) plan tail choose 0 plan.steps _ cursor
     (congrArg cursor.control (Prog.bind_assoc (runStoreSteps args.context 0 plan.steps)
       (PayloadPrefix.stringPlanTail args.context width (.memory address) plan) tail))
+
+theorem directSequence (context : LiftLowerContext (core3 grow)) (width : AddrType)
+    (enter : List FlatValue → Session grow sig (Ret (core3 grow))) (choose : ArgumentAllocatorSelection grow sig profile ready bindings)
+    (strings : List Value.StrVal) (accumulated : List FlatValue) (start : State grow sig)
+    (cursor : Cursor (E := core3 grow) (HostState sig))
+    (focused : start.ctl = cursor.control (lowerFlatTypes .spec .none context width
+      (stringArgumentValues strings) (stringArgumentTypes strings) >>= fun words => enter (accumulated ++ words))) :
+    StringPlanPair profile ready bindings callees start enter := by
+  induction strings generalizing start cursor accumulated with
+  | nil =>
+    refine ⟨[], start, .refl _, .refl _, .complete cursor accumulated ?_⟩
+    simpa only [stringArgumentValues, stringArgumentTypes, List.map_nil, lowerFlatTypes, Prog.bind_eq,
+      Prog.pure_eq, Prog.pure_bind', List.append_nil] using focused
+  | cons value strings ih =>
+    let values := stringArgumentValues strings
+    let types := stringArgumentTypes strings
+    let applyWords := fun words => enter (accumulated ++ words)
+    let tail := directStringTail context width values types applyWords
+    let plan := storePlanFor .none context.opts.encoding (ptrTypeIn start.store context) value
+    have atHead : start.ctl = cursor.control (lowerFlatTypes .spec .none context width
+        (.string value :: values) (.prim .string :: types) >>= applyWords) := focused
+    have first : StringPlanPair profile ready bindings callees start tail := by
+      apply prependPair (direct_string_plan (dispatch := Dispatch.coreOnly ready bindings)
+        context width value values types cursor applyWords atHead)
+        (direct_string_plan (dispatch := Dispatch.linked ready bindings callees) context width value values types cursor applyWords atHead)
+      exact walk context width .flat plan tail choose 0 plan.steps _ cursor
+        (congrArg cursor.control (Prog.bind_assoc (runStoreSteps context 0 plan.steps)
+          (PayloadPrefix.stringPlanTail context width .flat plan) tail))
+    apply continuePair first
+    intro last reached words nextAt
+    exact ih (accumulated ++ words) last reached (by
+      simpa only [tail, directStringTail, applyWords, List.append_assoc] using nextAt)
+
+theorem spilledSequence (context : LiftLowerContext (core3 grow)) (enter : Session grow sig (Ret (core3 grow)))
+    (choose : ArgumentAllocatorSelection grow sig profile ready bindings) (strings : List Value.StrVal)
+    (ptr : Nat) (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (focused : start.ctl = cursor.control (storeTuple .spec .none context
+      (stringArgumentValues strings) (stringArgumentTypes strings) ptr >>= fun _ => enter)) :
+    StringPlanPair profile ready bindings callees start (fun _ : Unit => enter) := by
+  induction strings generalizing start cursor ptr with
+  | nil =>
+    refine ⟨[], start, .refl _, .refl _, .complete cursor () ?_⟩
+    simpa only [stringArgumentValues, stringArgumentTypes, List.map_nil, storeTuple.eq_def, Prog.bind_eq,
+      Prog.pure_eq, Prog.pure_bind'] using focused
+  | cons value strings ih =>
+    let values := stringArgumentValues strings
+    let types := stringArgumentTypes strings
+    let width := ptrTypeIn start.store context
+    let field := ABI.layout width (.prim .string : Stored.TypeOf)
+    let address := ABI.alignTo ptr field.alignment
+    let plan := storePlanFor .none context.opts.encoding width value
+    let tail := fun _ : Unit => storeTuple .spec .none context values types (address + field.size) >>= fun _ => enter
+    have atHead : start.ctl = cursor.control (storeTuple .spec .none context
+        (.string value :: values) (.prim .string :: types) ptr >>= fun _ => enter) := focused
+    have first : StringPlanPair profile ready bindings callees start tail := by
+      apply prependPair (spilled_string_plan (dispatch := Dispatch.coreOnly ready bindings)
+        context value values types ptr cursor enter atHead)
+        (spilled_string_plan (dispatch := Dispatch.linked ready bindings callees) context value values types ptr cursor enter atHead)
+      exact walk context width (.memory address) plan tail choose 0 plan.steps _ cursor
+        (congrArg cursor.control (Prog.bind_assoc (runStoreSteps context 0 plan.steps)
+          (PayloadPrefix.stringPlanTail context width (.memory address) plan) tail))
+    exact continuePair first (fun last reached _ nextAt => ih (address + field.size) last reached nextAt)
+
+theorem directStringArguments {start reached : State grow sig} {site : OnStartSite start} {handoff : LowerStartAt site}
+    {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned) (strings : List Value.StrVal)
+    (schema : args.types = stringArgumentTypes strings) (input : returned.values = stringArgumentValues strings)
+    (fits : (ABI.flattenTypes args.width args.types).length ≤ ABI.maxFlatParams)
+    (choose : ArgumentAllocatorSelection grow sig profile ready bindings) :
+    StringPlanPair profile ready bindings callees reached args.enter := by
+  apply prependPair (Transition.lowerArgsReturn (impl := host bindings) returned).steps
+    (Transition.lowerArgsReturn (impl := ComponentCall.hostWithComponent bindings callees) returned).steps
+  apply prependPair (Transition.calleeDirect (impl := host bindings) args fits).steps
+    (Transition.calleeDirect (impl := ComponentCall.hostWithComponent bindings callees) args fits).steps
+  apply directSequence args.context args.width args.enter choose strings [] args.direct ⟨some site.thread, site.segments, site.rest⟩
+  rw [CalleeArguments.direct, schema, input]
+  rfl
+
+theorem spilledStringArguments {start reached state : State grow sig} {site : OnStartSite start} {handoff : LowerStartAt site}
+    {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    (result : CalleeSpillReturn args state) (strings : List Value.StrVal) {memory size}
+    (schema : args.types = stringArgumentTypes strings) (input : returned.values = stringArgumentValues strings)
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (fits : result.pointer + args.layout.size ≤ size) (choose : ArgumentAllocatorSelection grow sig profile ready bindings) :
+    StringPlanPair profile ready bindings callees state (fun _ : Unit => args.enter [ptrFlat args.width result.pointer]) := by
+  apply prependPair (Transition.calleePlaced (impl := host bindings) result aligned selected sized fits).steps
+    (Transition.calleePlaced (impl := ComponentCall.hostWithComponent bindings callees) result aligned selected sized fits).steps
+  apply spilledSequence args.context _ choose strings result.pointer result.writing ⟨some site.thread, result.segments, result.rest⟩
+  rw [CalleeSpillReturn.writing, CalleeArguments.write, schema, input, store.eq_def]
+  rfl
+
+theorem stackfulEntryAt {start reached state : State grow sig} {site : OnStartSite start} {handoff : LowerStartAt site}
+    {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+    (cursor : Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue)
+    (focused : state.ctl = cursor.control (args.enter flat))
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none)
+    (dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))) :
+    Steps profile ready dispatch state [.tau]
+      { state with ctl := ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest } := by
+  have call : args.enter flat = .op (.callCore args.callee flat) (stackfulTail args.task) := by
+    simp only [CalleeArguments.enter, liftArgumentsTail, asyncMode, callback, Bool.not_true, Bool.false_eq_true, ite_false]
+    rfl
+  exact .cons (.callCore (focused.trans (congrArg cursor.control call))) (.refl _)
+
+theorem enterStackful {start reached first : State grow sig} {site : OnStartSite start} {handoff : LowerStartAt site}
+    {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+    {Result : Type} (words : Result → List FlatValue)
+    (lowered : StringPlanPair profile ready bindings callees first (fun result => args.enter (words result)))
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none) :
+    ∃ labels last, Steps profile ready (Dispatch.coreOnly ready bindings) first labels last ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) first labels last ∧
+      ((∃ (cursor : Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue),
+        last.ctl = ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest) ∨
+        StringPlanStopped profile ready bindings first labels last) := by
+  obtain ⟨labels, last, left, right, endAt⟩ := lowered
+  cases endAt with
+  | complete cursor result focused =>
+    have enterLeft := stackfulEntryAt (profile := profile) (ready := ready) args cursor (words result) focused asyncMode callback
+      (Dispatch.coreOnly ready bindings)
+    have enterRight := stackfulEntryAt (profile := profile) (ready := ready) args cursor (words result) focused asyncMode callback
+      (Dispatch.linked ready bindings callees)
+    exact ⟨_, _, appendSteps left enterLeft, appendSteps right enterRight, .inl ⟨cursor, words result, rfl⟩⟩
+  | trap reason => exact ⟨_, _, left, right, .inr (.trap reason)⟩
+  | suspend alloc leading trailing mark atCall path closed =>
+    exact ⟨_, _, left, right, .inr (.suspend alloc leading trailing mark atCall path closed)⟩
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan

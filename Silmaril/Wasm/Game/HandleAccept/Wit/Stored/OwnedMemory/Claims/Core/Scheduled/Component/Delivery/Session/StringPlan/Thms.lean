@@ -66,4 +66,45 @@ theorem CalleeSpillReturn.spilled_string_pair {site : OnStartSite start} {handof
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.spilledCallee
     result schema input aligned selected sized fits choose
 
+/-- Compose all direct string siblings, with actual words appended in ABI
+order. Each next argument uses the reached cursor and reads its own plan. -/
+theorem CalleeArguments.direct_string_arguments {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached : State grow sig} {returned : LowerArgumentReturn handoff reached}
+    (args : CalleeArguments returned) (strings : List Value.StrVal)
+    (schema : args.types = stringArgumentTypes strings) (input : returned.values = stringArgumentValues strings)
+    (fits : (ABI.flattenTypes args.width args.types).length ≤ ABI.maxFlatParams)
+    (choose : ArgumentAllocatorSelection grow sig profile ready bindings) :
+    StringPlanPair profile ready bindings callees reached args.enter :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.directStringArguments
+    args strings schema input fits choose
+
+/-- Compose all spilled string descriptor stores from the live outer spill
+return. Each tuple step receives the previous field's ABI end cursor. -/
+theorem CalleeSpillReturn.spilled_string_arguments {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    (result : CalleeSpillReturn args state) (strings : List Value.StrVal) {memory size}
+    (schema : args.types = stringArgumentTypes strings) (input : returned.values = stringArgumentValues strings)
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (fits : result.pointer + args.layout.size ≤ size) (choose : ArgumentAllocatorSelection grow sig profile ready bindings) :
+    StringPlanPair profile ready bindings callees state (fun _ : Unit => args.enter [ptrFlat args.width result.pointer]) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.spilledStringArguments
+    result strings schema input aligned selected sized fits choose
+
+/-- If the selected string lowering finishes, enter the actual stackful
+Core callee with its canonical operands. A trap or suspended path performs
+no entry step. Entry uses the reached activation and does not imply return. -/
+theorem CalleeArguments.enter_stackful_after_strings {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached first : State grow sig} {returned : LowerArgumentReturn handoff reached}
+    (args : CalleeArguments returned) {Result : Type} (words : Result → List FlatValue)
+    (lowered : StringPlanPair profile ready bindings callees first (fun result => args.enter (words result)))
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none) :
+    ∃ labels last, Steps profile ready (Dispatch.coreOnly ready bindings) first labels last ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) first labels last ∧
+      ((∃ (cursor : Cursor (E := core3 grow) (HostState sig)) (flat : List FlatValue),
+        last.ctl = ⟨cursor.thread, .core ((core3 grow).invoke args.callee flat) (stackfulTail args.task), cursor.frames⟩ :: cursor.rest) ∨
+        StringPlanStopped profile ready bindings first labels last) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.enterStackful
+    args words lowered asyncMode callback
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession

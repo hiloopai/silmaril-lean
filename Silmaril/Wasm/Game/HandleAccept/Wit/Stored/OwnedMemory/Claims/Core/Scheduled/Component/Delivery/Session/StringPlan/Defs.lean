@@ -61,4 +61,14 @@ def StringPlanPair (profile : ProfileKind) (ready : HostReady (HostState sig)) (
     Steps profile ready (Dispatch.linked ready bindings callees) start labels last ∧
     StringPlanEnd profile ready bindings start next labels last
 
+def stringArgumentValues (values : List Value.StrVal) : List Value.Val := values.map .string
+
+def stringArgumentTypes (values : List Value.StrVal) : List Stored.TypeOf := values.map (fun _ => .prim .string)
+
+/-- The lowering stopped before Core entry: either a trap or an actual
+suspended callback with its occurrence still live. -/
+abbrev StringPlanStopped (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (start : State grow sig) (labels : Trace grow sig) (last : State grow sig) : Prop :=
+  StringPlanEnd profile ready bindings start (fun unreachable : Empty => nomatch unreachable) labels last
+
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.ComponentCall.Delivery.FiniteSession
