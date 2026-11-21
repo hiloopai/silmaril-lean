@@ -24,6 +24,13 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
   | segment {start labels finish}
       (run : CoreGrowthSteps profile ready (specDispatch ready base) start labels finish) :
       NestedPlan bindings profile ready base start labels finish
+  | commit {start target index} (resolve : ComponentCall.Delivery.LinkedResolution start target index) :
+      NestedPlan bindings profile ready base start (List.replicate 17 .tau) resolve.committed
+  | poll {start target index result suffix} (poll : ComponentCall.Delivery.ParkedPoll start target profile)
+      (pending : ComponentCall.Delivery.PendingAt start.store target index)
+      (branch : BufferBranch start.store poll.memory (flatNat poll.out) result suffix) :
+      NestedPlan bindings profile ready base start (pollLabels poll ++ suffix)
+        (result.finish (pollReply poll index) { start with store := StepDefs.lockdownSt poll.delivered, ctl := [] })
   | sequence {start middle finish leading trailing}
       (front : NestedPlan bindings profile ready base start leading middle)
       (back : NestedPlan bindings profile ready base middle trailing finish) :
@@ -67,6 +74,11 @@ inductive NestedCut (bindings : List (Binding sig)) (profile : ProfileKind) (rea
   | unselected {route incoming} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
       (paired : HostFrame.Related.Paired older site.start incoming)
       (selection : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle ≠ some site.tree) :
+      NestedCut bindings profile ready base older incoming
+  | publication {start target index incoming} (resolve : ComponentCall.Delivery.LinkedResolution start target index)
+      (paired : HostFrame.Related.Paired older start incoming)
+      (different : ¬ ∃ writer, incoming.host.writer.register resolve.tree = .ok writer ∧
+        writer.accepted.length = resolve.writer.accepted.length) :
       NestedCut bindings profile ready base older incoming
   | stopped {route phase checkLabels referenceLabels liveLabels liveStart checked reference reached check}
       (site : PayloadRoot.Site grow sig route) (stop : GiveStop site check phase referenceLabels checked reference)

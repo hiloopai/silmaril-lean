@@ -75,6 +75,16 @@ namespace Related
 
 variable {changes : Substitutions E Host}
 
+theorem Paired.set_store {left right : Config E Host} (paired : Paired changes left right) (store : CStore E) :
+    Paired changes { left with store } { right with store } := by
+  cases paired with
+  | mk control blocked => exact .mk control blocked
+
+theorem Paired.clear_control {left right : Config E Host} (paired : Paired changes left right) :
+    Paired changes { left with ctl := [] } { right with ctl := [] } := by
+  cases paired with
+  | mk _ blocked => exact .mk .nil blocked
+
 theorem Returned.left_input {left right leftAfter rightAfter : Config E Host} {label : Label E Host}
     (popped : Returned changes left right label leftAfter rightAfter) :
     ∃ resume otherResume thread value frames rest, changes resume otherResume ∧

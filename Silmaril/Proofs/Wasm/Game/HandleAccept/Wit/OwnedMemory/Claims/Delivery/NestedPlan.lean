@@ -66,6 +66,8 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
     Steps profile ready (specDispatch ready base) start labels finish := by
   induction plan with
   | segment path => exact path.steps
+  | commit resolve => exact (Transition.commit (impl := base) resolve).steps
+  | poll poll pending branch => exact (Transition.poll (impl := base) poll pending branch).steps
   | sequence _ _ front back => exact append front back
   | give _ _ entry checkedBody _ _ replies _ _ => exact append (append entry.steps checkedBody) (replies.1 _)
   | stop _ _ entry checkedBody _ _ _ _ _ => exact append entry.steps checkedBody
@@ -86,6 +88,19 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     | @boundary _ _ trailing _ _ _ _ split _ replay aligned cut lhs rhs _ =>
       refine ⟨_, _, append replay (.cons rhs (.refl _)), visiblePrefix ⟨trailing, ?_⟩, .inr (.boundary aligned cut lhs rhs)⟩
       simpa only [List.append_assoc, List.singleton_append] using split.symm
+  | commit resolve =>
+    by_cases compatible : ∃ writer, incoming.host.writer.register resolve.tree = .ok writer ∧
+        writer.accepted.length = resolve.writer.accepted.length
+    · obtain ⟨_, registered, handle⟩ := compatible
+      obtain ⟨_, replay, aligned, _, _⟩ :=
+        Transition.commit_paired (profile := profile) (ready := ready) (impl := LiveDispatch.host bindings base)
+          resolve paired registered handle
+      exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+    · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.publication resolve paired compatible)⟩
+  | poll poll pending branch =>
+    obtain ⟨_, replay, aligned, _⟩ :=
+      Transition.poll_paired (ready := ready) (impl := LiveDispatch.host bindings base) poll pending branch paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | sequence _ _ replayFront replayBack =>
     obtain ⟨_, _, front, frontPrefix, ⟨seenFront, aligned⟩ | cut⟩ := replayFront paired
     · obtain ⟨_, _, back, backPrefix, result⟩ := replayBack aligned

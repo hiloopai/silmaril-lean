@@ -10,7 +10,7 @@ public section
 namespace Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence
 
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
-  Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
+  Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.AsyncRef
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open ComponentCall.Delivery ComponentCall.Delivery.FiniteSession
@@ -262,6 +262,77 @@ theorem commitOnJournal {target index} (resolve : LinkedResolution start target 
     { resolve with writer, registered, room := sameHandle ▸ resolve.room }
   refine ⟨replay.committed, .commit replay, ?_, (replay.indexed_steps (profile := profile) (ready := ready) (impl := impl)).2, rfl⟩
   simp only [LinkedResolution.committed, replay, sameHandle, HostFrame.replace]
+
+theorem commitPaired {target index} (resolve : LinkedResolution start target index) {other : State grow sig}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} (paired : HostFrame.Related.Paired older start other)
+    {writer : Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.State sig}
+    (registered : other.host.writer.register resolve.tree = .ok writer)
+    (sameHandle : writer.accepted.length = resolve.writer.accepted.length) :
+    ∃ reached, Transition profile ready impl other (.commit target index) (List.replicate 17 .tau) reached ∧
+      HostFrame.Related.Paired older resolve.committed reached ∧ PendingAt reached.store target index ∧
+      reached.host = (({ other.host with writer } : HostState sig).record (.published resolve.ticket writer.accepted.length)).record
+        (.returned resolve.ticket writer.accepted.length) := by
+  let reachedHost := (({ other.host with writer } : HostState sig).record (.published resolve.ticket writer.accepted.length)).record
+    (.returned resolve.ticket writer.accepted.length)
+  obtain ⟨segments, rest, focused, framed⟩ :=
+    paired.retarget resolve.focused (.prog (.pure (.cancel .none))) resolve.committed.host reachedHost
+  have store := paired.data.1
+  let replay : LinkedResolution other target index :=
+    { resolve with
+      writer, registered, segments, rest, focused
+      room := by rw [sameHandle]; exact resolve.room
+      callerRecord := by rw [← store]; exact resolve.callerRecord
+      live := by rw [← store]; exact resolve.live
+      sized := by rw [← store]; exact resolve.sized }
+  have stillPaired : HostFrame.Related.Paired older resolve.committed replay.committed := by
+    have updated := framed.set_store resolve.committed.store
+    simp only [LinkedResolution.committed, replay, reachedHost] at updated ⊢
+    simpa only [← store, sameHandle] using updated
+  exact ⟨replay.committed, .commit replay, stillPaired,
+    (replay.indexed_steps (profile := profile) (ready := ready) (impl := impl)).2, rfl⟩
+
+theorem pollPaired {target index result suffix} (poll : ParkedPoll start target profile)
+    (pending : PendingAt start.store target index)
+    (branch : BufferBranch start.store poll.memory (flatNat poll.out) result suffix)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.poll target index result) (pollLabels poll ++ suffix) reached ∧
+      HostFrame.Related.Paired older
+        (result.finish (pollReply poll index) { start with store := StepDefs.lockdownSt poll.delivered, ctl := [] }) reached ∧
+      reached.host = other.host := by
+  let written := (pollReply poll index).store
+  let resumed := (core3 grow).resume written.core poll.core (.values [i32Flat EventCode.subtask.toNat])
+  obtain ⟨segments, rest, focused, framed⟩ :=
+    paired.retarget poll.focused (.core resumed poll.next) start.host other.host
+  have store := paired.data.1
+  let replay : ParkedPoll other target profile :=
+    { poll with
+      toPollAdmission :=
+        { poll.toPollAdmission with
+          segments, rest, focused
+          callout := by rw [← store]; exact poll.callout
+          liveThread := by rw [← store]; exact poll.liveThread
+          liveTask := by rw [← store]; exact poll.liveTask
+          liveInst := by rw [← store]; exact poll.liveInst }
+      setLive := by
+        change other.store.wset? poll.ws = some poll.set
+        exact store ▸ poll.setLive
+      selects := by
+        change (applyPerm poll.perm poll.set.elems).find?
+          (other.store.wsetSetElemsSt poll.ws (applyPerm poll.perm poll.set.elems)).waitableHasEvent = some (.subtask target)
+        exact store ▸ poll.selects }
+  have delivered : replay.delivered = poll.delivered := by
+    simp only [ParkedPoll.delivered, replay, ← store]
+  have replayBranch : BufferBranch other.store replay.memory (flatNat replay.out) result suffix := by
+    rw [← store]
+    exact branch
+  refine ⟨_, .poll replay (store ▸ pending) replayBranch, ?_, ?_⟩
+  · cases result with
+    | replied =>
+      simpa only [BufferResult.finish, pollReply, replay, delivered, resumed, written] using framed.set_store written
+    | trapped _ =>
+      simpa only [BufferResult.finish, delivered] using paired.clear_control.set_store (StepDefs.lockdownSt poll.delivered)
+  · cases result <;> rfl
 
 private theorem tickCandidates (other : HostState sig) (agrees : TickReadsAgree ready start other) :
     (StepDefs.enterHostSt start.store).candidates (ready start.host) =

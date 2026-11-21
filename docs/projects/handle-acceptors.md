@@ -1356,6 +1356,17 @@ when a subsequent buffer write traps. This tail does not include another
 give, event publication, open cancel requests or readiness-sensitive tick
 selection. Typed stopped prefixes still have no canonical reply.
 
+`LiveDispatch.NestedPlan` also composes publication and poll with nested
+public gives, including while older allocator continuations are paired.
+Publication rechecks registration against the reached journal and compares
+the actual emitted handle; a failed comparison stops before that transition,
+not at an invented trap. A poll uses the event selected from the reached
+store. On an unaligned or out-of-range buffer it consumes the event and
+locks down the delivered store without resuming the caller. On success it
+writes the event words and rejoins Core with the older frames still paired.
+These are classified finite segments; they do not classify arbitrary wait,
+cancel or open host paths and do not imply scheduler progress.
+
 ## Checking
 
 ```

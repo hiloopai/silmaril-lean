@@ -141,6 +141,14 @@ theorem Paired.retarget {left right : Config E Host} (paired : Paired changes le
         { right with host := rightHost, ctl := ⟨thread, next, otherFrames⟩ :: otherRest } :=
   ReturnFrame.Related.Paired.retarget paired focused next rightHost
 
+theorem Paired.set_store {left right : Config E Host} (paired : Paired changes left right) (store : CStore E) :
+    Paired changes { left with store } { right with store } :=
+  ReturnFrame.Related.Paired.set_store paired store
+
+theorem Paired.clear_control {left right : Config E Host} (paired : Paired changes left right) :
+    Paired changes { left with ctl := [] } { right with ctl := [] } :=
+  ReturnFrame.Related.Paired.clear_control paired
+
 theorem paired_step {left right next : Config E Host} {label : Label E Host}
     (paired : Paired changes left right) (run : Step profile ready dispatch left label next) :
     ∃ other, Step profile ready dispatch right label other ∧

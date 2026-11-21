@@ -126,6 +126,33 @@ theorem Transition.commit_on_journal {target index} (resolve : LinkedResolution 
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.commitOnJournal
     resolve other registered sameHandle
 
+/-- Commit at the reached caller and result cursor while older continuations
+remain paired. The live journal registers afresh; no earlier event or transfer
+authority is assumed to survive. -/
+theorem Transition.commit_paired {target index} (resolve : LinkedResolution start target index) {other : State grow sig}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} (paired : HostFrame.Related.Paired older start other)
+    {writer : OwnedMemory.Claims.State sig} (registered : other.host.writer.register resolve.tree = .ok writer)
+    (sameHandle : writer.accepted.length = resolve.writer.accepted.length) :
+    ∃ reached, Transition profile ready impl other (.commit target index) (List.replicate 17 .tau) reached ∧
+      HostFrame.Related.Paired older resolve.committed reached ∧ PendingAt reached.store target index ∧
+      reached.host = (({ other.host with writer } : HostState sig).record (.published resolve.ticket writer.accepted.length)).record
+        (.returned resolve.ticket writer.accepted.length) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.commitPaired
+    resolve paired registered sameHandle
+
+/-- Re-select and consume the reached event with older return frames paired.
+Both buffer traps retain the consumed event and lock down the delivered store. -/
+theorem Transition.poll_paired {target index result suffix} (poll : ParkedPoll start target profile)
+    (pending : PendingAt start.store target index)
+    (branch : BufferBranch start.store poll.memory (flatNat poll.out) result suffix)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.poll target index result) (pollLabels poll ++ suffix) reached ∧
+      HostFrame.Related.Paired older
+        (result.finish (pollReply poll index) { start with store := StepDefs.lockdownSt poll.delivered, ctl := [] }) reached ∧
+      reached.host = other.host :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.pollPaired poll pending branch paired
+
 /-- Replay the actual selected candidate, not an arbitrary runnable
 thread. No host-read premise is needed for store-only ready conditions. -/
 theorem Transition.tick_on_journal {thread} (tick : SelectedTick thread start ready profile) (other : HostState sig)
