@@ -137,7 +137,7 @@ theorem pairedEntry (site : Site grow sig route) (linked : site.Linked bindings)
     ∃ labels entered,
       labels.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
-      HostFrame.Related.Paired older (site.reference site.referenceReply) entered := by
+      HostFrame.Related.Paired older (site.reference site.referenceReply) entered ∧ entered.host = other.host := by
   have related : ReturnFrame.Related.Paired older (HostFrame.replace site.start other.host) other := paired
   obtain ⟨frames, rest, focused, residual⟩ := related.push_shared linked.parked
     (.prog (site.referenceProgram >>= site.referenceReply)) (.core site.core site.resume)
@@ -154,7 +154,7 @@ theorem pairedEntry (site : Site grow sig route) (linked : site.Linked bindings)
       admitted := linked.admitted
       compiled := linked.compiled }
   obtain ⟨labels, silent, path⟩ := entry (profile := profile) (ready := ready) (base := base) shadow shadowLinked other.host selected
-  exact ⟨labels, _, silent, path, residual⟩
+  exact ⟨labels, _, silent, path, residual, rfl⟩
 
 theorem append {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     {start middle finish : Config (core3 grow) (HostState sig)} {leading trailing}
@@ -1158,7 +1158,7 @@ theorem nestedReturn (site : Site grow sig route) (linked : site.Linked bindings
     ∃ installed entered, installed.all (· matches .tau) = true ∧ Steps profile ready dispatch other installed entered ∧
       NestedReplay profile ready dispatch older (site.reference site.referenceReply) entered labels checked := by
   dsimp only
-  obtain ⟨installed, entered, silent, install, inside⟩ := pairedEntry site linked paired selected
+  obtain ⟨installed, entered, silent, install, inside, _⟩ := pairedEntry site linked paired selected
   refine ⟨installed, entered, silent, install, ?_⟩
   rcases HostFrame.Related.paired_growing_steps inside (replayGrowing (bindings := bindings) body closed) with completed | cut
   · obtain ⟨last, path, related⟩ := completed

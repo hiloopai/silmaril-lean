@@ -278,12 +278,13 @@ theorem linked_allocator_cut {route : GiveEffectRoute} {site : PayloadRoot.Site 
     cut checkEntry canonEntry seenEntry checkInstall canonInstall
 
 /-- A closed local segment replays to the end, even with a different host and
-older paired continuations. Each reached focus rules out a give installation,
-host read, or pop of a substituted program return. -/
+older paired continuations. It leaves both hosts' accepted observations and
+claims unchanged: the reached foci exclude host updates as well as reads and
+callouts. No corresponding frame is implied for a callback. -/
 theorem local_segment_replay (run : PayloadPrefix.LocalSteps profile ready (specDispatch ready base) start labels finish)
     (paired : HostFrame.Related.Paired older start incoming) :
     ∃ reached, Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming labels reached ∧
-      HostFrame.Related.Paired older finish reached :=
+      HostFrame.Related.Paired older finish reached ∧ finish.host = start.host ∧ reached.host = incoming.host :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.replayLocal run paired
 
 /-- Descend through compared nested bodies, then continue from the actual
@@ -340,8 +341,30 @@ theorem local_data_give_plan {route : GiveEffectRoute} (site : PayloadRoot.Site 
         Steps profile ready (specDispatch ready base) site.checked checkedLabels atReply ∧
         atReply.ctl = site.cursor.control (site.reply (.ok value)) ∧ bodyLabels = checkedLabels ++ [.tau, .tau, .tau] ∧
         reached.host = atReply.host.record (route.reply site.destination site.start.host.nextTicket (.ok value)).1) ∨
-      (reached.ctl = [] ∧ ∃ leading reason, PayloadPrefix.visible bodyLabels = leading ++ [.trap reason])) :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.localDataGive
+      (reached.ctl = [] ∧ ∃ leading reason, PayloadPrefix.visible bodyLabels = leading ++ [.trap reason])) := by
+  obtain ⟨labels, reached, plan, outcome, _⟩ := Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.localDataGive
     site linked data payload field entryPath silent placed prepared
+  exact ⟨labels, reached, plan, outcome⟩
+
+/-- Compare the actual checked and live canonical paths of a placed
+nonallocating data give, through caller rejoin or a common canonical trap.
+The closed body maintains accepted observations without requiring equal
+host journals or discarding writes at a trap. -/
+theorem paired_local_data_give {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    (data : PayloadPrefix.LocalDataType (sig.payload site.tag)) (payload : Stored.Payload (sig.payload site.tag))
+    (field : site.field = .data (sig.payload site.tag) payload) {entryLabels}
+    (entryPath : Steps profile ready (specDispatch ready base) site.start entryLabels site.checked)
+    (silent : PayloadPrefix.visible entryLabels = [])
+    (placed : PayloadPrefix.rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok ())
+    (prepared : Stored.OwnedMemory.Claims.Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (roots : site.start.host.writer.accepted = incoming.host.writer.accepted) :
+    ∃ checkLabels canonLabels checked canonical,
+      Steps profile ready (specDispatch ready base) site.start checkLabels checked ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming canonLabels canonical ∧
+      HostFrame.Related.Paired older checked canonical ∧ PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
+      checked.host.writer.accepted = canonical.host.writer.accepted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.pairedLocalDataGive
+    site linked data payload field entryPath silent placed prepared paired roots
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LiveDispatch

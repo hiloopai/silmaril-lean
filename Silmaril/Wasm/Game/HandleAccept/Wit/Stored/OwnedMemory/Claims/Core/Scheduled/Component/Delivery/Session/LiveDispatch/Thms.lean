@@ -43,7 +43,7 @@ theorem LiveDispatch.entry_paired (site : Site grow sig route) (linked : site.Li
     ∃ labels entered,
       labels.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
-      HostFrame.Related.Paired older (site.reference site.referenceReply) entered :=
+      HostFrame.Related.Paired older (site.reference site.referenceReply) entered ∧ entered.host = other.host :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedEntry site linked paired selected
 
 /-- A same-instance public give reached in a confined allocator callback
@@ -277,7 +277,7 @@ theorem LiveDispatch.nested_prefix (site : Site grow sig route) (linked : site.L
     ∃ installed entered, installed.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming installed entered ∧
       LiveDispatch.PairedReplay bindings profile ready base older (site.reference site.referenceReply) entered labels finish := by
-  obtain ⟨installed, entered, silent, entry, aligned⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
+  obtain ⟨installed, entered, silent, entry, aligned, _⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
   exact ⟨installed, entered, silent, entry, LiveDispatch.paired_replay aligned body⟩
 
 /-- Closed steps preserve their actual configurations under the reference overlay.

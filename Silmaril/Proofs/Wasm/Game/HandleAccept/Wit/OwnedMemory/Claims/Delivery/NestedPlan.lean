@@ -111,12 +111,44 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
   | give _ _ entry checkedBody _ _ replies _ _ => exact append (append entry.steps checkedBody) (replies.1 _)
   | stop _ _ entry checkedBody _ _ _ _ _ => exact append entry.steps checkedBody
 
+private theorem localStepHost {before after : Config (core3 grow) (HostState sig)} {label}
+    {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (focus : PayloadPrefix.LocalFocus before) (step : Step profile ready dispatch before label after) :
+    after.host = before.host := by
+  cases step <;> try rfl
+  all_goals first | (rename_i focused; simp [PayloadPrefix.LocalFocus, focused] at focus)
+
+private theorem pairedLocalFocus {left right : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older left right) (localFocus : PayloadPrefix.LocalFocus left) :
+    PayloadPrefix.LocalFocus right := by
+  cases focused : left.ctl with
+  | nil => simp [PayloadPrefix.LocalFocus, focused] at localFocus
+  | cons activation rest =>
+    rcases activation with ⟨thread, focus, frames⟩
+    cases focus with
+    | core => simp [PayloadPrefix.LocalFocus, focused] at localFocus
+    | prog program =>
+      cases program with
+      | op operation next =>
+        obtain ⟨_, _, other, _⟩ := paired.retarget focused (.prog (.op operation next)) left.host right.host
+        simp only [PayloadPrefix.LocalFocus, focused] at localFocus
+        simpa only [PayloadPrefix.LocalFocus, other] using localFocus
+      | pure result =>
+        cases frames with
+        | nil => simp [PayloadPrefix.LocalFocus, focused] at localFocus
+        | cons frame tail =>
+          cases frame with
+          | prog => simp [PayloadPrefix.LocalFocus, focused] at localFocus
+          | core =>
+            obtain ⟨_, _, other, _⟩ := paired.retarget_core_frame focused (.prog (.pure result)) left.host right.host
+            simp [PayloadPrefix.LocalFocus, other]
+
 theorem replayLocal (run : PayloadPrefix.LocalSteps profile ready (specDispatch ready base) start labels finish)
     (paired : HostFrame.Related.Paired older start incoming) :
     ∃ reached, Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming labels reached ∧
-      HostFrame.Related.Paired older finish reached := by
+      HostFrame.Related.Paired older finish reached ∧ finish.host = start.host ∧ reached.host = incoming.host := by
   induction run generalizing incoming with
-  | refl => exact ⟨_, .refl _, paired⟩
+  | refl => exact ⟨_, .refl _, paired, rfl, rfl⟩
   | @cons before next finish label labels localFocus step tail ih =>
     have unchanged : UnchangedAt bindings before := by
       constructor
@@ -127,7 +159,8 @@ theorem replayLocal (run : PayloadPrefix.LocalSteps profile ready (specDispatch 
     rcases LiveDispatch.classify_step (bindings := bindings) step with canonical | install
     · obtain ⟨_, reached, aligned | boundary⟩ := HostFrame.Related.paired_step paired canonical
       · obtain ⟨_, replay, last⟩ := ih aligned
-        exact ⟨_, .cons reached replay, last⟩
+        exact ⟨_, .cons reached replay, last.1, last.2.1.trans (localStepHost localFocus step),
+          last.2.2.trans (localStepHost (pairedLocalFocus paired localFocus) reached)⟩
       · cases boundary with
         | read cut _ =>
           cases cut with
@@ -504,7 +537,7 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
       refine ⟨_, _, append replay (.cons rhs (.refl _)), visiblePrefix ⟨trailing, ?_⟩, .inr (.boundary aligned cut lhs rhs)⟩
       simpa only [List.append_assoc, List.singleton_append] using split.symm
   | localSegment path =>
-    obtain ⟨_, replay, aligned⟩ := replayLocal (bindings := bindings) path paired
+    obtain ⟨_, replay, aligned, _, _⟩ := replayLocal (bindings := bindings) path paired
     exact ⟨_, _, replay, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | @closedGive _ count callout _ =>
     obtain ⟨trace, _, silent, path, aligned, _⟩ := LiveDispatch.closed_give_paired (profile := profile)
@@ -600,7 +633,7 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
       exact frontPrefix.trans (List.prefix_append _ _)
   | rootStop site linked stop =>
     by_cases selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree
-    · obtain ⟨installedLabels, _, installedSilent, installed, aligned⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
+    · obtain ⟨installedLabels, _, installedSilent, installed, aligned, _⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
       exact ⟨installedLabels, _, installed, by rw [silentVisible installedSilent]; exact ⟨_, rfl⟩,
         .inr (.rootStop site linked stop aligned)⟩
     · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.unselected site linked paired selected)⟩
@@ -619,7 +652,7 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.compilerLookup selection paired selected)⟩
   | @give _ site linked entryLabels checkLabels referenceLabels _ _ checked baseline entry _ _ _ replies seen replayBody =>
     by_cases selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree
-    · obtain ⟨installed, _, silent, install, aligned⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
+    · obtain ⟨installed, _, silent, install, aligned, _⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
       obtain ⟨trace, reached, body, bodyPrefix, result⟩ := replayBody aligned
       have checkedSeen : PayloadPrefix.visible (entryLabels ++ checkLabels ++ [.tau, .tau, .tau]) =
           PayloadPrefix.visible (referenceLabels ++ [.tau]) := by
@@ -639,7 +672,7 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.unselected site linked paired selected)⟩
   | stop site linked entry checkedBody _ stopped store seen replayBody =>
     by_cases selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree
-    · obtain ⟨_, _, silent, install, aligned⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
+    · obtain ⟨_, _, silent, install, aligned, _⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
       obtain ⟨_, _, body, bodyPrefix, result⟩ := replayBody aligned
       refine ⟨_, _, append install body, ?_, .inr ?_⟩
       · rw [visibleAppend, visibleAppend, entryVisible entry, silentVisible silent, List.nil_append, List.nil_append, seen]
@@ -699,7 +732,12 @@ theorem localDataGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow si
         Steps profile ready (specDispatch ready base) site.checked checkedLabels reached ∧
         reached.ctl = site.cursor.control (site.reply (.ok value)) ∧ bodyLabels = checkedLabels ++ [.tau, .tau, .tau] ∧
         finish.host = reached.host.record (route.reply site.destination site.start.host.nextTicket (.ok value)).1) ∨
-      (finish.ctl = [] ∧ ∃ leading reason, PayloadPrefix.visible bodyLabels = leading ++ [.trap reason])) := by
+      (finish.ctl = [] ∧ ∃ leading reason, PayloadPrefix.visible bodyLabels = leading ++ [.trap reason])) ∧
+      finish.host.writer.accepted = site.start.host.writer.accepted ∧
+      ∃ canonLabels baseline,
+        PayloadPrefix.LocalSteps profile ready (specDispatch ready base) (site.reference site.referenceReply) canonLabels baseline ∧
+        PayloadPrefix.visible bodyLabels = PayloadPrefix.visible canonLabels ∧
+        baseline = HostFrame.replace finish baseline.host := by
   have entry := Transition.giveEntry site linked silent placed prepared entryPath
   have width : ptrTypeIn site.checked.store (site.destination.context site.inst) = site.destination.width := by
     have memory := site.destination.check_width site.start.store linked.destination
@@ -721,7 +759,7 @@ theorem localDataGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow si
     obtain ⟨leading, trapped⟩ := outcome
     exact ⟨_, _, .stop site linked entry checked (.localSegment canon)
       (.trapped (check := site.cursor) rfl rfl ⟨leading, trapped⟩) rfl seen,
-      .inr ⟨rfl, leading, reason, seen.trans trapped⟩⟩
+      .inr ⟨rfl, leading, reason, seen.trans trapped⟩, rfl, _, _, canon, seen, rfl⟩
   | ok value =>
     let reached := localLeafEnd site.checked site.checked.host store site.cursor.thread site.cursor.frames site.cursor.rest
       (fun result => site.reply (.ok result)) (.ok value)
@@ -739,8 +777,6 @@ theorem localDataGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow si
         segments site.cursor.frames, List.forall₂_same.mpr fun act _ => active act⟩
     obtain ⟨left, right, checkReply, canonReply, storeEq, checkHost, canonHost, paired⟩ :=
       LinkedCallback.MemorySequence.resume_returned_give site value frame (outcome.2.1 0) rfl rfl
-    refine ⟨_, _, ?_, .inl ⟨value, checkedLabels, reached, checked, rfl, rfl, checkHost⟩⟩
-    rw [← List.append_assoc]
     have popFocus : PayloadPrefix.LocalFocus canonical := by
       simp only [canonical, localLeafEnd, PayloadRoot.Site.cursor, PayloadRoot.Site.referenceReply, PayloadPrefix.LocalFocus]
       exact True.intro
@@ -754,7 +790,44 @@ theorem localDataGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow si
         cases traceEq
         cases tail
         exact .cons popFocus step (.refl _)
-    exact .give site linked entry checked (.localSegment (canon.append pop)) value
-      ⟨checkReply, canonReply, storeEq, checkHost, canonHost, paired⟩ seen
+    have replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached canonical left right :=
+      ⟨checkReply, canonReply, storeEq, checkHost, canonHost, paired⟩
+    refine ⟨_, _, ?_, .inl ⟨value, checkedLabels, reached, checked, rfl, rfl, checkHost⟩,
+      ?_, _, _, canon.append pop, ?_, replies.scheduler_rejoin⟩
+    · rw [← List.append_assoc]
+      exact .give site linked entry checked (.localSegment (canon.append pop)) value replies seen
+    · rw [checkHost]
+      rfl
+    · rw [visibleAppend, visibleAppend, seen]
+      rfl
+
+theorem pairedLocalDataGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    (data : PayloadPrefix.LocalDataType (sig.payload site.tag)) (payload : Stored.Payload (sig.payload site.tag))
+    (field : site.field = .data (sig.payload site.tag) payload) {entryLabels}
+    (entryPath : Steps profile ready (specDispatch ready base) site.start entryLabels site.checked)
+    (silent : PayloadPrefix.visible entryLabels = [])
+    (placed : PayloadPrefix.rootPlacement site.destination site.start.store (sig.payload site.tag) route.output = .ok ())
+    (prepared : Stored.OwnedMemory.Claims.Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (roots : site.start.host.writer.accepted = incoming.host.writer.accepted) :
+    ∃ checkLabels canonLabels checked canonical,
+      Steps profile ready (specDispatch ready base) site.start checkLabels checked ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming canonLabels canonical ∧
+      HostFrame.Related.Paired older checked canonical ∧ PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
+      checked.host.writer.accepted = canonical.host.writer.accepted := by
+  have selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree :=
+    roots ▸ linked.selected
+  obtain ⟨leading, entered, silentEntry, installed, aligned, entryHost⟩ :=
+    LiveDispatch.entry_paired (profile := profile) (ready := ready) (base := base) site linked paired selected
+  obtain ⟨bodyLabels, checked, plan, _, checkRoots, canonLabels, baseline, body, seen, rejoined⟩ :=
+    localDataGive site linked data payload field entryPath silent placed prepared
+  obtain ⟨canonical, replay, bodyPair, _, bodyHost⟩ := replayLocal body aligned
+  have shared := congrArg (fun current => HostFrame.replace current canonical.host) rejoined
+  change HostFrame.replace baseline canonical.host = HostFrame.replace checked canonical.host at shared
+  have aligned : HostFrame.Related.Paired older checked canonical :=
+    show ReturnFrame.Related.Paired older (HostFrame.replace checked canonical.host) canonical from shared ▸ bodyPair
+  refine ⟨_, _, checked, canonical, source plan, append installed replay, aligned, ?_, ?_⟩
+  · rw [visibleAppend, visibleAppend, silent, silentVisible silentEntry, List.nil_append, List.nil_append, seen]
+  · rw [checkRoots, bodyHost, entryHost, roots]
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan
