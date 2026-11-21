@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Machine.Region.Defs
-public import Silmaril.X86.Decompile.Edges
+public import Silmaril.Machine.Region.X86.CFG.Defs
 
 /-! # x86 region candidates and the existing Ext machine
 
@@ -25,11 +25,6 @@ def system (returnAddress : Word) : TransitionSystem MState Nat Empty Silmaril.X
   pc s := s.core.rip.toNat
   step s es t := es = [] ∧ Silmaril.X86.Ext.step returnAddress s = .retired t
   halt s k := Silmaril.X86.Ext.step returnAddress s = k ∧ ∀ t, k ≠ .retired t
-
-/-- Data target of an existing decoded edge; calls are not resumptions. -/
-def edgeTarget : Edge → Option Nat
-  | .fallthrough t | .jump t | .branch t | .call t => some t
-  | .ret | .halt => none
 
 /-- Normal successor overapproximation for the supported decoded subset.
 Calls/returns require state-dependent targets or summaries; Top preserves that

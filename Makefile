@@ -33,7 +33,7 @@ CERBERUS_TARGETS := CerberusTests cerb-lean ail-lean core-lean core-elab cfront 
 	ci_cerberus_parameter_call ci_cjson_array_size_context ci_cjson_array_item_context ci_cjson_array_item_machine
 # The C compiler's executables (docs/projects/ccomp.md).
 CCOMP_TARGETS := ccomp ccomp-legacy ccomp-verified csem decompile
-CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject SilmarilLogicGraphData ProjectSelfTest wasm-pages elf-pages wasm-region-map $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples cexplorer-export $(CCOMP_TARGETS)
+CHECK_TARGETS ?= Silmaril SilmarilSpecTec SilmarilSpecTecMeta SilmarilWasiWit SilmarilWasmProject SilmarilLogicGraphData ProjectSelfTest wasm-pages elf-pages wasm-region-map elf-region-inventory $(WASM_TOOLS) wasm-shell-lean $(CERBERUS_TARGETS) SysVTvExample CompilesToExamples cexplorer-export $(CCOMP_TARGETS)
 CHECK_TARGETS += +Silmaril.Wasm.Execution.Core.MemoryProfile.Thms
 
 # Files Lake never reads; only the source gates in `make check` read them.
@@ -175,10 +175,12 @@ logic-graph-check:
 # The ELF reader's pinned files, generated modules and explorer data (docs/projects/elf-reader.md).
 ELF_PINNED := $(foreach n,HelloGcc HelloClang Sha256sum ZlibChecksums ZlibLibz GlibcLibm GlibcLibc,\
 	Silmaril.Elf.Staged.Pinned.$(n).Thms Silmaril.Elf.Staged.Pinned.$(n).Functions)
+ELF_REGION_PROOFS := Silmaril.Elf.Staged.Pinned.HelloGcc.Regions.Examples.Thms \
+	Silmaril.Machine.Region.X86.CFG.Semantic.Thms Silmaril.Machine.Region.X86.CFG.View.Thms
 elf-check:
 	examples/elf/pin.sh --check
 	$(LAKE) build --wfail elf-staged elf-pages Silmaril.Elf.Staged.Reader.Examples \
-		$(ELF_PINNED) Silmaril.Elf.Staged.Pinned.ZlibChecksums.Contracts
+		$(ELF_PINNED) $(ELF_REGION_PROOFS) Silmaril.Elf.Staged.Pinned.ZlibChecksums.Contracts
 	scripts/elf-reader/gen.sh --check
 	scripts/elf-reader/test-pages.sh
 
@@ -326,7 +328,7 @@ pages: project-tool
 	lake build --wfail Silmaril.Containers.Noop.Thms Silmaril.Containers.Fixtures.Thms Silmaril.Containers.Mini.Thms Silmaril.Containers.Http.Thms Silmaril.Containers.HttpServe.Thms
 	lake env lean --run examples/containers/Examples.lean --json _site/containers-examples.json
 	# The ELF pages read the checked theorem modules of the pinned files (tools/elf-pages).
-	lake build --wfail elf-pages $(ELF_PINNED) Silmaril.Elf.Staged.Pinned.ZlibChecksums.Contracts
+	lake build --wfail elf-pages $(ELF_PINNED) $(ELF_REGION_PROOFS) Silmaril.Elf.Staged.Pinned.ZlibChecksums.Contracts
 	lake env .lake/build/bin/elf-pages _site
 
 # The committed runtime report of the acceptor components (tools/wasm-acceptor-harness/report.json):
