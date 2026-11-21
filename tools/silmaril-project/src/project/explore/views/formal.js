@@ -97,7 +97,8 @@
 
   async function table(arg, ctx) {
     style();
-    if (!has("logic_rows")) return missing;
+    const named = '<p><a href="#/named-logic/">Named HOL/MLTT BDASL fixtures</a> (opt-in sidecar).</p>';
+    if (!has("logic_rows")) return missing + named;
     const d = await load(ctx);
     const body = d.rows.map((r) => {
       const ps = list(r.properties).map((n) => d.prop.get(n)).filter(Boolean);
@@ -122,6 +123,7 @@ concrete problems. A ✓ links a theorem whose <b>statement</b> Lean checked aga
 consistency is <code>System.ConsistentWrt S ff Γ</code>, and so on) for the row's registered system; a name alone never counts.
 Every result is relative to Lean's own consistency and to the stated models; none is claimed for arbitrary added axioms.
 See <a href="https://github.com/hiloopai/silmaril-lean/blob/main/docs/projects/formal-rows.md">formal-rows.md</a> for the acceptance matrix.</p>
+${named}
 <div class="tablebox"><table class="lg-grid fr-rows" id="fr-rows"><thead><tr><th>logic</th><th>default presentation</th><th>variant and semantics</th>
 <th>soundness</th><th>consistency</th><th>model / nontriviality</th><th>inclusions</th><th>problems</th><th>proofs</th></tr></thead><tbody>${body}</tbody></table></div>`;
   }

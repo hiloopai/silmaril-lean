@@ -117,6 +117,9 @@ section.ext h3 { font-size:14px; margin:14px 0 6px; }
 .dlg-actions { padding:8px 14px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:flex-end; }
 /* the byte viewer and WAT highlighting (ui.js viewer, highlightWat) */
 .viewer button[aria-pressed="true"] { background:var(--accent); color:#fff; border-color:var(--accent); }
+.named-logic-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap:20px; }
+.named-logic-grid section { min-width:0; overflow-wrap:anywhere; }
+.named-tree { max-height:240px; overflow:auto; }
 .hl-c { color:#6a737d; font-style:italic; } .hl-s { color:#0a7d32; } .hl-n { color:#8a3ffc; } .hl-d { color:#b25000; }
 .ln { color:#9aa0a6; user-select:none; }
 ul.evidence { margin:4px 0 8px; padding-left:20px; }

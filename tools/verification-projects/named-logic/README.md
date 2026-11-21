@@ -40,3 +40,22 @@ source path, and ordered declared steps. A step has an `id`, `rule`,
 `judgment`, `declaration`, and prior step IDs in `premises`. The two
 presentations name the same inline syntax with separate external algorithms;
 they are not the boxed-atom profile or a maximally linked graph.
+
+The Project Explorer opens the sidecar at `#/named-logic/` (linked from
+**Formal**). Place it next to the page and serve the site over HTTP. It
+independently decodes the text/list fragment, shows the original wire bytes,
+and checks the SHA-256 CID when Web Crypto is available. It does not compute
+BLAKE3, authenticate sidecars or replay Lean; the external verifier checks both
+algorithms against the plan. No SQLite table is needed for the sidecar rows.
+
+```sh
+make project-tool
+# SITE holds project.sqlite and the generated named-logic.json.
+build/bin/silmaril-project explore --db "$SITE/project.sqlite" --out "$SITE/index.html"
+node tools/silmaril-project/tests/explore/named_logic.mjs "$SITE" /tmp/named-logic-shots
+```
+
+The Chromium test uses the generated page and real sidecar. For this test only,
+a minimal SQLite database with `meta(key,value)` containing `schema` =
+`silmaril.project-db.v0.1` suffices. A normal project database is created by
+`sil project dump`, `sil project check`, and `sil project sqlite`.

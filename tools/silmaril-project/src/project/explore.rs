@@ -59,6 +59,7 @@ pub const SCRIPTS: &[(&str, &str)] = &[
     script!("views/containers.js"),
     script!("views/logic.js"),
     script!("views/formal.js"),
+    script!("views/named-logic.js"),
     script!("views/sql.js"),
     script!("views/source.js"),
     script!("main.js"),
