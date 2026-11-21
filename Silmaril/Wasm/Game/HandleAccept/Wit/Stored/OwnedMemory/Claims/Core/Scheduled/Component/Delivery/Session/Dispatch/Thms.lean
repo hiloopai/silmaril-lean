@@ -17,6 +17,25 @@ variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : Profile
 theorem ClosedAt.agrees (closed : ClosedAt start) : AgreesAt ready bindings callees start :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.closedAgrees closed
 
+/-- An actual scheduler block cannot reach the component host overlay. -/
+theorem Compatible.block {thread : ThreadId} {next frames rest}
+    (focused : start.ctl = ⟨some thread, .prog (.op (.block none) next), frames⟩ :: rest) :
+    Compatible profile ready bindings callees start [.tau]
+      { (start.setCont thread (some (StepDefs.blockedAct thread next frames))) with
+        store := StepDefs.threadStatusSt thread .blocked start.store, ctl := rest } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.blockPrefix focused
+
+/-- Resume the actual saved activation; no agreement about an open hook or
+the code that will run after resuming is necessary for this transition. -/
+theorem Compatible.resume_thread {thread : Option ThreadId} {target : ThreadId} {next frames rest blocked}
+    (focused : start.ctl = ⟨thread, .prog (.op (.resumeThread target) next), frames⟩ :: rest)
+    (saved : start.cont? target = some blocked) :
+    Compatible profile ready bindings callees start [.tau]
+      { (start.setCont target none) with
+        store := StepDefs.threadStatusSt target .running start.store,
+        ctl := blocked :: ⟨thread, .prog (next ()), frames⟩ :: rest } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.resumePrefix focused saved
+
 theorem Compatible.steps {labels} (run : Compatible profile ready bindings callees start labels finish) :
     Steps profile ready (linked ready bindings callees) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.compatibleSteps run

@@ -14,6 +14,7 @@ namespace Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Sch
 open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmaril.Wasm.Component.Engine
   Silmaril.Wasm.Component.Runtime Silmaril.Wasm.Component.Machine
 open PayloadPrefix (Cursor)
+open Stored.Endpoints.RecordLower
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {impl : HostImpl (core3 grow) (HostState sig)}
@@ -28,6 +29,88 @@ park or a trap. Neither a scheduler choice nor eventual delivery is promised. -/
 theorem Run.steps {actions labels} (path : Run profile ready impl start actions labels finish) :
     Steps profile ready (specDispatch ready impl) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runSteps path
+
+/-- Compare the actual finite callback from a collection's installed allocator.
+The mark may be saved; the return continuation's premise is not used. -/
+theorem AllocatorCut.of_collection_prefix {bindings : List (Binding sig)}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {destination : RecordDestination} {inst : InstId} {type element : Stored.TypeOf}
+    {entries : List Stored.Endpoints.RecordLower.Field} {index : Nat} {output : Stored.Lower.Output}
+    {left right last : State grow sig} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    {checkNext canonNext returned seen protectedReturn}
+    (replay : LinkedCallback.CollectionReplayFor profile ready bindings older destination inst type element
+      entries index output left right check canon checkNext canonNext returned) :
+    let area := ABI.layout destination.width element
+    let mode := Stored.Endpoints.RecordLower.CanonicalTree.EntryMode.forOutput destination.width type output
+    let first := PayloadPrefix.checkedCollectionResume destination inst entries area index output checkNext
+    let second := PayloadPrefix.canonicalCollectionResume destination inst entries area output canonNext mode
+    let entered := PayloadPrefix.collectionEntry destination inst area entries.length (Dispatch.coreOnly ready bindings) left check first
+    let reference := PayloadPrefix.collectionEntry destination inst area entries.length (Dispatch.coreOnly ready bindings) right canon second
+    let changes := ReturnFrame.Extend older first second
+    LinkedCallback.PrefixFor profile ready bindings protectedReturn entered seen last →
+    (∀ first second, changes first second → protectedReturn first) →
+    ∃ other mark checkLabels canonLabels,
+      Steps profile ready (Dispatch.coreOnly ready bindings) entered checkLabels last ∧
+      Steps profile ready (Dispatch.coreOnly ready bindings) reference canonLabels other ∧
+      AllocatorCut profile ready bindings older changes entered reference last other checkLabels canonLabels mark :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.collectionAllocatorPrefix replay
+
+/-- The collection installation itself needs no host-hook agreement: the
+actual reads and realloc request reach the same allocator under the overlay. -/
+theorem AllocatorCut.collection_install {bindings : List (Binding sig)} {callees : List (Callee sig)}
+    {destination : RecordDestination} {inst : InstId} {type element : Stored.TypeOf}
+    {entries : List Field} {index : Nat} {output : Stored.Lower.Output}
+    {left right : State grow sig} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    {checkNext canonNext}
+    (width : (core3 grow).memAddrType? right.store.core destination.memory = some destination.width)
+    (prepared : Stored.OwnedMemory.Claims.Record.prepare left.store left.host.writer (Field.listObjects entries) = .ok ())
+    (checkAt : left.ctl = check.control (Stored.OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) index output >>= checkNext))
+    (canonAt : right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) output >>= canonNext)) :
+    let area := ABI.layout destination.width element
+    let mode := CanonicalTree.EntryMode.forOutput destination.width type output
+    let first := PayloadPrefix.checkedCollectionResume destination inst entries area index output checkNext
+    let second := PayloadPrefix.canonicalCollectionResume destination inst entries area output canonNext mode
+    let entered := PayloadPrefix.collectionEntry destination inst area entries.length (Dispatch.coreOnly ready bindings) left check first
+    let reference := PayloadPrefix.collectionEntry destination inst area entries.length (Dispatch.coreOnly ready bindings) right canon second
+    Steps profile ready (Dispatch.linked ready bindings callees) left [.tau, .tau, .tau] entered ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) right [.tau, .tau] reference :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.collectionInstallLinked
+    width prepared checkAt canonAt
+
+/-- A saved mark identifies the original installed segments, not merely
+two syntactically equal return programs elsewhere in the stacks. -/
+theorem AllocatorCut.saved_segments {bindings : List (Binding sig)} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right reached reference : State grow sig} {checkLabels canonLabels slot depth}
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels (some (.saved slot depth))) :
+    ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage reached) (.saved slot depth) =
+      ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage left) (.active 0 0) ∧
+    ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage reference) (.saved slot depth) =
+      ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage right) (.active 0 0) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.allocatorSaved cut
+
+/-- Enter the finite session relation at an observed allocator cut. Keep the
+actual canonical prefix and its visible labels even when no result returned. -/
+theorem AllocatorCut.session {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
+    {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {beforeCheck beforeCanon left right reached reference : State grow sig}
+    {checkEntryLabels canonEntryLabels checkLabels canonLabels mark}
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels mark)
+    (checkEntry : Dispatch.Compatible profile ready bindings callees site.checked checkEntryLabels beforeCheck)
+    (canonEntry : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonEntryLabels beforeCanon)
+    (seenEntry : PayloadPrefix.visible checkEntryLabels = PayloadPrefix.visible canonEntryLabels)
+    (checkInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCheck [.tau, .tau, .tau] left)
+    (canonInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCanon [.tau, .tau] right)
+    (checked : Dispatch.Compatible profile ready bindings callees left checkLabels reached)
+    (canonical : Dispatch.Compatible profile ready bindings callees right canonLabels reference) :
+    let checkTrace := checkEntryLabels ++ [.tau, .tau, .tau] ++ checkLabels
+    let canonTrace := canonEntryLabels ++ [.tau, .tau] ++ canonLabels
+    Transition profile ready (hostWithComponent bindings callees) site.checked (.give route (.allocatorPrefix mark)) checkTrace reached ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) (site.reference site.referenceReply) canonTrace reference ∧
+      PayloadPrefix.visible checkTrace = PayloadPrefix.visible canonTrace :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.allocatorSession
+    checkEntry canonEntry seenEntry checkInstall canonInstall checked canonical cut
 
 /-- Use an actual paired compiler-body cut, including a natural allocator
 return from the collection visit theorem. A live typed refusal

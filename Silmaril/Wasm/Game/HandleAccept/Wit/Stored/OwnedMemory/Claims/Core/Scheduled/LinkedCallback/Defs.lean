@@ -650,6 +650,8 @@ def CollectionReplayFor (profile : ProfileKind) (ready : HostReady (HostState si
       CoreGrowthSteps profile ready dispatch canonical rightLabels other ∧
       visible leftLabels = seen ∧ visible rightLabels = seen ∧
       HostFrame.Related.Paired changes last other ∧
+      ReturnFrame.Occurrence.Outside older (ReturnFrame.Occurrence.segmentStorage last)
+        (ReturnFrame.Occurrence.segmentStorage other) mark ∧
       ReturnFrame.Occurrence.Trail profile ready dispatch checked (some (.active 0 0)) leftLabels last mark ∧
       ReturnFrame.Occurrence.Trail profile ready dispatch canonical (some (.active 0 0)) rightLabels other mark ∧
       ∀ pointer cursor, mark = some (ReturnFrame.Occurrence.Location.active 0 0) →

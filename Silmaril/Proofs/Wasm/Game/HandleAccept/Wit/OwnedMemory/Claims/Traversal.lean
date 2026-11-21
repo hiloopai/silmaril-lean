@@ -158,9 +158,9 @@ theorem collectionTrackEntries {older : ReturnFrame.Substitutions (core3 grow) (
   obtain ⟨leftInstall, rightInstall, replay⟩ := run
   refine ⟨leftInstall, rightInstall, ?_⟩
   intro last seen protectedReturn path covers
-  obtain ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, leftTrail, rightTrail, returns⟩ :=
+  obtain ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, outside, leftTrail, rightTrail, returns⟩ :=
     replay path covers
-  refine ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, leftTrail, rightTrail, ?_⟩
+  refine ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, outside, leftTrail, rightTrail, ?_⟩
   intro pointer cursor atMark atReturn
   cases returns pointer cursor atMark atReturn with
   | admitted region checked canonical checkedSeen canonSeen tail =>

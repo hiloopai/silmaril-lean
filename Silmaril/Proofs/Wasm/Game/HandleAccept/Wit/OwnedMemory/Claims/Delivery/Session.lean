@@ -19,13 +19,78 @@ open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmari
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
-open ComponentCall (Callee)
+open ComponentCall (Callee hostWithComponent)
 open ComponentCall.Delivery ComponentCall.Delivery.FiniteSession
 open PayloadPrefix (Cursor)
+open Stored.Endpoints.RecordLower
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {impl : HostImpl (core3 grow) (HostState sig)}
   {start middle finish : State grow sig}
+
+theorem collectionAllocatorPrefix {bindings : List (Binding sig)}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {destination : RecordDestination} {inst : InstId} {type element : Stored.TypeOf}
+    {entries : List Stored.Endpoints.RecordLower.Field} {index : Nat} {output : Stored.Lower.Output}
+    {left right last : State grow sig} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    {checkNext canonNext returned seen protectedReturn}
+    (replay : LinkedCallback.CollectionReplayFor profile ready bindings older destination inst type element
+      entries index output left right check canon checkNext canonNext returned) :
+    let area := ABI.layout destination.width element
+    let mode := Stored.Endpoints.RecordLower.CanonicalTree.EntryMode.forOutput destination.width type output
+    let first := PayloadPrefix.checkedCollectionResume destination inst entries area index output checkNext
+    let second := PayloadPrefix.canonicalCollectionResume destination inst entries area output canonNext mode
+    let entered := PayloadPrefix.collectionEntry destination inst area entries.length (Dispatch.coreOnly ready bindings) left check first
+    let reference := PayloadPrefix.collectionEntry destination inst area entries.length (Dispatch.coreOnly ready bindings) right canon second
+    let changes := ReturnFrame.Extend older first second
+    LinkedCallback.PrefixFor profile ready bindings protectedReturn entered seen last →
+    (∀ first second, changes first second → protectedReturn first) →
+    ∃ other mark checkLabels canonLabels,
+      Steps profile ready (Dispatch.coreOnly ready bindings) entered checkLabels last ∧
+      Steps profile ready (Dispatch.coreOnly ready bindings) reference canonLabels other ∧
+      AllocatorCut profile ready bindings older changes entered reference last other checkLabels canonLabels mark := by
+  dsimp only
+  intro path covers
+  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, seenCheck, seenCanon, paired, outside, checkTrack, canonTrack, _⟩ :=
+    replay.2.2 path covers
+  exact ⟨other, mark, checkLabels, canonLabels, checked.steps, canonical.steps,
+    ⟨checkTrack, canonTrack, paired, outside, seenCheck.trans seenCanon.symm⟩⟩
+
+theorem collectionInstallLinked {bindings : List (Binding sig)} {callees : List (Callee sig)}
+    {destination : RecordDestination} {inst : InstId} {type element : Stored.TypeOf}
+    {entries : List Field} {index : Nat} {output : Stored.Lower.Output}
+    {left right : State grow sig} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    {checkNext canonNext}
+    (width : (core3 grow).memAddrType? right.store.core destination.memory = some destination.width)
+    (prepared : Stored.OwnedMemory.Claims.Record.prepare left.store left.host.writer (Field.listObjects entries) = .ok ())
+    (checkAt : left.ctl = check.control (Stored.OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) index output >>= checkNext))
+    (canonAt : right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) output >>= canonNext)) :
+    let area := ABI.layout destination.width element
+    let mode := CanonicalTree.EntryMode.forOutput destination.width type output
+    let first := PayloadPrefix.checkedCollectionResume destination inst entries area index output checkNext
+    let second := PayloadPrefix.canonicalCollectionResume destination inst entries area output canonNext mode
+    let entered := PayloadPrefix.collectionEntry destination inst area entries.length (Dispatch.coreOnly ready bindings) left check first
+    let reference := PayloadPrefix.collectionEntry destination inst area entries.length (Dispatch.coreOnly ready bindings) right canon second
+    Steps profile ready (Dispatch.linked ready bindings callees) left [.tau, .tau, .tau] entered ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) right [.tau, .tau] reference := by
+  obtain ⟨checked, canonical⟩ := PayloadPrefix.collection_install_tracks
+    (profile := profile) (ready := ready) (dispatch := Dispatch.linked ready bindings callees)
+    destination inst type element entries output index left right check canon checkNext canonNext width prepared checkAt canonAt 0
+  exact ⟨(ReturnFrame.Occurrence.prefix_survives checked).1, (ReturnFrame.Occurrence.prefix_survives canonical).1⟩
+
+theorem allocatorSaved {bindings : List (Binding sig)} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right reached reference : State grow sig} {checkLabels canonLabels slot depth}
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels (some (.saved slot depth))) :
+    ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage reached) (.saved slot depth) =
+      ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage left) (.active 0 0) ∧
+    ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage reference) (.saved slot depth) =
+      ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage right) (.active 0 0) := by
+  obtain ⟨_, checkedAt, checked⟩ := cut.checked.survives
+  obtain ⟨_, canonicalAt, canonical⟩ := cut.canonical.survives
+  exact ⟨(ReturnFrame.Occurrence.prefix_survives checked).2.trans (congrArg _ (Option.some.inj checkedAt).symm),
+    (ReturnFrame.Occurrence.prefix_survives canonical).2.trans (congrArg _ (Option.some.inj canonicalAt).symm)⟩
 
 private theorem appendSteps {leading trailing}
     (left : Steps profile ready (specDispatch ready impl) start leading middle)
@@ -34,6 +99,33 @@ private theorem appendSteps {leading trailing}
   induction left with
   | refl => exact right
   | cons step _ ih => exact .cons step (ih right)
+
+theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
+    {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {beforeCheck beforeCanon left right reached reference : State grow sig}
+    {checkEntryLabels canonEntryLabels checkLabels canonLabels mark}
+    (checkEntry : Dispatch.Compatible profile ready bindings callees site.checked checkEntryLabels beforeCheck)
+    (canonEntry : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonEntryLabels beforeCanon)
+    (seenEntry : PayloadPrefix.visible checkEntryLabels = PayloadPrefix.visible canonEntryLabels)
+    (checkInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCheck [.tau, .tau, .tau] left)
+    (canonInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCanon [.tau, .tau] right)
+    (checked : Dispatch.Compatible profile ready bindings callees left checkLabels reached)
+    (canonical : Dispatch.Compatible profile ready bindings callees right canonLabels reference)
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels mark) :
+    let checkTrace := checkEntryLabels ++ [.tau, .tau, .tau] ++ checkLabels
+    let canonTrace := canonEntryLabels ++ [.tau, .tau] ++ canonLabels
+    Transition profile ready (hostWithComponent bindings callees) site.checked (.give route (.allocatorPrefix mark)) checkTrace reached ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) (site.reference site.referenceReply) canonTrace reference ∧
+      PayloadPrefix.visible checkTrace = PayloadPrefix.visible canonTrace := by
+  refine ⟨.giveAllocatorPrefix site rfl checkEntry canonEntry seenEntry checkInstall canonInstall checked canonical cut,
+    appendSteps (appendSteps canonEntry.steps canonInstall) canonical.steps, ?_⟩
+  have visibleAppend (front back : Trace grow sig) :
+      PayloadPrefix.visible (front ++ back) = PayloadPrefix.visible front ++ PayloadPrefix.visible back :=
+    List.filter_append ..
+  simp only [visibleAppend]
+  change (PayloadPrefix.visible checkEntryLabels ++ [] ++ PayloadPrefix.visible checkLabels) =
+    (PayloadPrefix.visible canonEntryLabels ++ [] ++ PayloadPrefix.visible canonLabels)
+  rw [seenEntry, cut.seen]
 
 private theorem invokePrologueSteps {call func args}
     (focused : start.ctl = [.ofProg none (StepDefs.invokeProg call func args)]) :
@@ -113,6 +205,9 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
     exact checked.steps
   | giveRefusalReply site control caller =>
     exact Plain.give_completion_steps _ (by simpa [PayloadRoot.Site.reply, Cursor.control, caller] using control)
+  | giveAllocatorPrefix _ overlay checkEntry _ _ checkInstall _ checked _ _ =>
+    subst impl
+    exact appendSteps (appendSteps checkEntry.steps checkInstall) checked.steps
 
 theorem runSteps {actions labels} (path : Run profile ready impl start actions labels finish) :
     Steps profile ready (specDispatch ready impl) start labels finish := by

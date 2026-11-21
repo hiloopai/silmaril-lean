@@ -28,6 +28,28 @@ theorem closedDispatch {call : Call (core3 grow)} (closed : ¬ UsesComponent cal
 theorem closedAgrees (closed : ClosedAt start) : AgreesAt ready bindings callees start :=
   fun focus => closedDispatch (closed focus)
 
+theorem blockPrefix {thread : ThreadId} {next frames rest}
+    (focused : start.ctl = ⟨some thread, .prog (.op (.block none) next), frames⟩ :: rest) :
+    Compatible profile ready bindings callees start [.tau]
+      { (start.setCont thread (some (StepDefs.blockedAct thread next frames))) with
+        store := StepDefs.threadStatusSt thread .blocked start.store, ctl := rest } := by
+  refine .next (closedAgrees ?_) (.block focused) (.done _)
+  intro _ _ _ _ _ callAt
+  rw [focused] at callAt
+  cases callAt
+
+theorem resumePrefix {thread : Option ThreadId} {target : ThreadId} {next frames rest blocked}
+    (focused : start.ctl = ⟨thread, .prog (.op (.resumeThread target) next), frames⟩ :: rest)
+    (saved : start.cont? target = some blocked) :
+    Compatible profile ready bindings callees start [.tau]
+      { (start.setCont target none) with
+        store := StepDefs.threadStatusSt target .running start.store,
+        ctl := blocked :: ⟨thread, .prog (next ()), frames⟩ :: rest } := by
+  refine .next (closedAgrees ?_) (.resumeThread focused saved) (.done _)
+  intro _ _ _ _ _ callAt
+  rw [focused] at callAt
+  cases callAt
+
 theorem overlayStep {label} (agrees : AgreesAt ready bindings callees start)
     (step : Step profile ready (coreOnly ready bindings) start label finish) :
     Step profile ready (linked ready bindings callees) start label finish := by

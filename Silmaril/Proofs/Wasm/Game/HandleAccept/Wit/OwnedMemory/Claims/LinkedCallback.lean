@@ -1075,7 +1075,7 @@ theorem collectionReplay {older : ReturnFrame.Substitutions (core3 grow) (HostSt
     (dispatch (.reallocate (destination.context inst) 0 0 area.alignment.bytes (entries.length * area.size))) first second
   obtain ⟨leftLabels, rightLabels, other, mark, lhs, rhs, matched, leftSeen, rightSeen, remaining, leftTrail, rightTrail⟩ :=
     replayMarked path covers paired outside
-  refine ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, matched, leftTrail, rightTrail, ?_⟩
+  refine ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, matched, remaining, leftTrail, rightTrail, ?_⟩
   intro pointer cursor atMark leftAt
   obtain ⟨original, same, track⟩ := Occurrence.Trail.survives (atMark ▸ rightTrail)
   cases same

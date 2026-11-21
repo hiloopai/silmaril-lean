@@ -29,6 +29,7 @@ inductive GivePhase where
   | bodyRefused (issue : Stored.Endpoints.RecordLower.Issue)
   | bodyTrap (reason : TrapReason)
   | refusalReplied (issue : Stored.Endpoints.RecordLower.Issue)
+  | allocatorPrefix (mark : Option ReturnFrame.Occurrence.Location)
 
 def BufferResult.finish {α : Type} (result : BufferResult) (resumed trapped : α) : α :=
   match result with
@@ -69,6 +70,21 @@ def GiveCutDispatch (profile : ProfileKind) (ready : HostReady (HostState sig)) 
     Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels reference →
     Dispatch.Compatible profile ready bindings callees site.checked checkLabels reached ∧
     Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonLabels reference
+
+/-- Both allocator traces follow the same installed occurrence. A saved
+mark denotes suspension; an absent mark is not a return or a suspension. -/
+structure AllocatorCut (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (left right reached reference : State grow sig) (checkLabels canonLabels : Trace grow sig)
+    (mark : Option ReturnFrame.Occurrence.Location) : Prop where
+  checked : ReturnFrame.Occurrence.Trail profile ready (Dispatch.coreOnly ready bindings)
+    left (some (.active 0 0)) checkLabels reached mark
+  canonical : ReturnFrame.Occurrence.Trail profile ready (Dispatch.coreOnly ready bindings)
+    right (some (.active 0 0)) canonLabels reference mark
+  paired : HostFrame.Related.Paired changes reached reference
+  outside : ReturnFrame.Occurrence.Outside older (ReturnFrame.Occurrence.segmentStorage reached)
+    (ReturnFrame.Occurrence.segmentStorage reference) mark
+  seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels
 
 def refusedBodyReply {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (reached : State grow sig)
     (check : Cursor (E := core3 grow) (HostState sig)) (segments : List (Seg (core3 grow) (HostState sig)))
@@ -307,6 +323,18 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       (caller : check.frames = .core site.core site.resume :: segments) :
       Transition profile ready impl reached (.give route (.refusalReplied issue)) [.tau, .tau, .tau]
         (refusedBodyReply site reached check segments issue)
+  | giveAllocatorPrefix {route bindings callees older changes beforeCheck beforeCanon left right reached reference mark
+      checkEntryLabels canonEntryLabels checkLabels canonLabels}
+      (site : PayloadRoot.Site grow sig route) (overlay : impl = hostWithComponent bindings callees)
+      (checkEntry : Dispatch.Compatible profile ready bindings callees site.checked checkEntryLabels beforeCheck)
+      (canonEntry : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonEntryLabels beforeCanon)
+      (seenEntry : PayloadPrefix.visible checkEntryLabels = PayloadPrefix.visible canonEntryLabels)
+      (checkInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCheck [.tau, .tau, .tau] left)
+      (canonInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCanon [.tau, .tau] right)
+      (checked : Dispatch.Compatible profile ready bindings callees left checkLabels reached)
+      (canonical : Dispatch.Compatible profile ready bindings callees right canonLabels reference)
+      (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels mark) :
+      Transition profile ready impl site.checked (.give route (.allocatorPrefix mark)) (checkEntryLabels ++ [.tau, .tau, .tau] ++ checkLabels) reached
 
 /-- Keep the original compared traces at a returning cut. A stopped cut
 already induces a checked session edge and has no canonical reply step. -/
