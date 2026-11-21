@@ -9,6 +9,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Plain.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Record.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.Allocation.Thms
 import Silmaril.Wasm.Component.Reference.Engine.Core3.Store.Defs
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
@@ -466,6 +467,73 @@ private theorem mapPlacement (destination : RecordDestination) (inst : InstId) (
     change before.ctl = canon.control (.op .get (fun store => next (ptrTypeIn store (destination.context inst)))) at atPlacement
     simpa only [reached, Cursor.control] using (ReturnFrame.Occurrence.Prefix.read (profile := profile)
       (ready := ready) (dispatch := specDispatch ready (LiveDispatch.host bindings base)) depth atPlacement)
+
+theorem stringMapKey (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
+    (output : Stored.Lower.Output) (key : LinkedCallback.StringField) (value root : Field) {schema : Stored.TypeOf}
+    (layoutRoot : root.LayoutMatches schema)
+    (fitRoot : Stored.Lower.fits Quirks.none destination.encoding destination.width schema root.value = true)
+    (allocator : Field.AllocatorFor destination.realloc root)
+    (path : Field.Descendant root (.aggregate (.record (mapEntryFields .string element)) [key.field, value]))
+    (origin : CStore (core3 grow)) (basePtr bytes count entryIndex issueIndex : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout destination.width (.record (mapEntryFields .string element))).alignment)
+    (bounds : basePtr + count * (layout destination.width (.record (mapEntryFields .string element))).size ≤ bytes)
+    (entry : entryIndex < count)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core) :
+    let cx := destination.context inst
+    let type : Stored.TypeOf := .record (mapEntryFields .string element)
+    let ptr := basePtr + entryIndex * (layout destination.width type).size
+    let keySlot := fun reached => alignTo ptr (layout reached key.field.type).alignment
+    let valueSlot := fun keyWidth reached => alignTo
+      (keySlot keyWidth + (layout keyWidth key.field.type).size) (layout reached value.type).alignment
+    let mode := CanonicalTree.EntryMode.forOutput destination.width (.map .string element) output
+    let afterKey := fun keyWidth (_ : Unit) => mapFieldPlacement cx mode fun reached =>
+      CanonicalTree.field Limits.spec Quirks.none cx destination.width value (.memory (valueSlot keyWidth reached)) >>= canonNext
+    let following := fun verdict : Except RecordLower.Issue Unit => (match verdict with
+      | .error issue => pure (.error issue)
+      | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width value 1
+          (.memory (valueSlot destination.width destination.width))) >>= fun result => checkNext (result.mapError (.nested issueIndex))
+    left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+      (.aggregate type [key.field, value]) issueIndex (.memory ptr) >>= checkNext) →
+    right.ctl = canon.control (mapFieldPlacement cx mode fun reached =>
+      CanonicalTree.field Limits.spec Quirks.none cx destination.width key.field (.memory (keySlot reached)) >>= afterKey reached) →
+    StringKeyFront profile ready base bindings older destination inst key (keySlot destination.width) left right check canon
+      following (afterKey destination.width) := by
+  intro cx type ptr keySlot valueSlot mode afterKey following checkAt canonAt
+  let keyPayload : Stored.Payload (.prim .string) := ⟨.string key.value, .string key.valid⟩
+  let keyOutput := Stored.Lower.Output.memory (keySlot destination.width)
+  have keyPath : Field.Descendant root key.field := path.trans (.aggregate (by simp) (.self _))
+  have fit := Field.Descendant.string_pre keyPayload rfl keyPath layoutRoot Quirks.none destination.encoding destination.width fitRoot
+  obtain ⟨address, realloc⟩ := allocator key.field keyPath rfl
+  have currentWidth := growth.memAddrType width
+  obtain ⟨placed, checkTracks⟩ := map_key_placement (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+    destination inst .string element keyPayload value origin basePtr bytes count entryIndex width sized aligned bounds entry issueIndex
+    left (frame.store ▸ growth) check checkNext checkAt
+  obtain ⟨canonLabels, canonQuiet, canonTracks⟩ := mapPlacement (profile := profile) (ready := ready) (base := base)
+    (bindings := bindings) destination inst .string element output right canon _ currentWidth canonAt
+  let checkKey := { left with ctl := check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+    key.field 0 keyOutput >>= following) }
+  let canonKey := { right with ctl := canon.control (CanonicalTree.field Limits.spec Quirks.none cx destination.width
+    key.field keyOutput >>= afterKey destination.width) }
+  obtain ⟨reads, keyLeft, keyRight⟩ := string_plan_entry_between (profile := profile) (ready := ready)
+    (dispatch := specDispatch ready base) (reference := specDispatch ready (LiveDispatch.host bindings base)) destination inst
+    key.value key.valid 0 keyOutput checkKey canonKey check canon following (afterKey destination.width) frame.store currentWidth
+    realloc fit placed rfl rfl
+  unfold StringKeyFront
+  refine ⟨[.tau] ++ List.replicate reads .tau, canonLabels ++ [.tau], ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [appendVisible, silent (fun _ member => List.eq_of_mem_replicate member)]
+    rfl
+  · rw [appendVisible, canonQuiet]
+    rfl
+  · exact fun depth => (checkTracks depth).append (keyLeft depth)
+  · exact fun depth => (canonTracks depth).append (keyRight depth)
+  · exact ⟨frame.store, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+  · exact string_front_cut_between _ _ _ _ _ _ _ _ _ frame.store rfl rfl
 
 private theorem nominalMapEntry (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
     (output : Stored.Lower.Output)

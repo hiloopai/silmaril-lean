@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Plan.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.StringPlan.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.Record.Allocation.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange
@@ -250,6 +251,48 @@ theorem AllocatorMark.local_map_replies {outputPointer : FlatValue} (site : Payl
       (PayloadPrefix.canonicalCollectionTail site.destination site.inst entries area output pointer mode >>= site.referenceReply) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.localMapReplies
     site linked key element entries keyData valueData field pointer
+
+/-- Enter the actual string-key plan in either map placement mode. Static
+fit and allocator availability follow the compiled descendant path. Live
+range and width reads precede the string effects; the value has not run. -/
+theorem string_map_key (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
+    (output : Stored.Lower.Output) (key : LinkedCallback.StringField) (value root : Field) {schema : Stored.TypeOf}
+    (layoutRoot : root.LayoutMatches schema)
+    (fitRoot : Stored.Lower.fits Quirks.none destination.encoding destination.width schema root.value = true)
+    (allocator : Field.AllocatorFor destination.realloc root)
+    (path : Field.Descendant root (.aggregate (.record (mapEntryFields .string element)) [key.field, value]))
+    (origin : CStore (core3 grow)) (basePtr bytes count entryIndex issueIndex : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout destination.width (.record (mapEntryFields .string element))).alignment)
+    (bounds : basePtr + count * (layout destination.width (.record (mapEntryFields .string element))).size ≤ bytes)
+    (entry : entryIndex < count)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {left right : Config (core3 grow) (HostState sig)} {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core) :
+    let cx := destination.context inst
+    let type : Stored.TypeOf := .record (mapEntryFields .string element)
+    let ptr := basePtr + entryIndex * (layout destination.width type).size
+    let keySlot := fun reached => alignTo ptr (layout reached key.field.type).alignment
+    let valueSlot := fun keyWidth reached => alignTo
+      (keySlot keyWidth + (layout keyWidth key.field.type).size) (layout reached value.type).alignment
+    let mode := CanonicalTree.EntryMode.forOutput destination.width (.map .string element) output
+    let afterKey := fun keyWidth (_ : Unit) => mapFieldPlacement cx mode fun reached =>
+      CanonicalTree.field Limits.spec Quirks.none cx destination.width value (.memory (valueSlot keyWidth reached)) >>= canonNext
+    let following := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => (match verdict with
+      | .error issue => pure (.error issue)
+      | .ok () => OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width value 1
+          (.memory (valueSlot destination.width destination.width))) >>= fun result => checkNext (result.mapError (.nested issueIndex))
+    left.ctl = check.control (OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+      (.aggregate type [key.field, value]) issueIndex (.memory ptr) >>= checkNext) →
+    right.ctl = canon.control (mapFieldPlacement cx mode fun reached =>
+      CanonicalTree.field Limits.spec Quirks.none cx destination.width key.field (.memory (keySlot reached)) >>= afterKey reached) →
+    StringKeyFront profile ready base bindings older destination inst key (keySlot destination.width) left right check canon
+      following (afterKey destination.width) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.stringMapKey
+    destination inst element output key value root layoutRoot fitRoot allocator path origin basePtr bytes count entryIndex issueIndex
+    width sized aligned bounds entry checkNext canonNext frame growth
 
 /-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys

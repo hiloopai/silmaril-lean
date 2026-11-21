@@ -373,6 +373,35 @@ theorem string_plan_entry {grow : SingleThreaded.GrowOracle} {sig : Signature} {
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.stringPlanEntry
     destination inst str valid index output left right checkCursor canonCursor checkNext canonNext same present realloc fit placed checkAt canonAt
 
+/-- Enter a string plan when the same local reads run under two different
+dispatchers. The first allocator call has not yet executed. -/
+theorem string_plan_entry_between {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
+    {ready : HostReady (HostState sig)} {dispatch reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (str : Value.StrVal) (valid : str.Valid)
+    (index : Nat) (output : Lower.Output) (left right : Config (core3 grow) (HostState sig))
+    (checkCursor canonCursor : Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    (same : left.store = right.store)
+    (present : (core3 grow).memAddrType? right.store.core destination.memory = some destination.width)
+    {addr : Nat} (realloc : destination.realloc = some addr)
+    (fit : StoreStringPre Quirks.none destination.encoding destination.width str)
+    (placed : rootPlacement destination left.store (.prim .string) output = .ok ())
+    (checkAt : left.ctl = checkCursor.control (Record.Effects.field recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width (.data (.prim .string) ⟨.string str, .string valid⟩) index output >>= checkNext))
+    (canonAt : right.ctl = canonCursor.control (CanonicalTree.field Limits.spec Quirks.none
+      (destination.context inst) destination.width (.data (.prim .string) ⟨.string str, .string valid⟩) output >>= canonNext)) :
+    let cx := destination.context inst
+    let plan := storePlanFor Quirks.none destination.encoding destination.width str
+    let body := runStoreSteps cx 0 plan.steps
+    ∃ reads, ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left (List.replicate reads .tau)
+      { left with ctl := checkCursor.control (body >>= fun ptr => stringPlanTail cx destination.width output plan ptr >>=
+          fun value => checkNext (.ok value)) } ∧
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready reference right [.tau]
+        { right with ctl := canonCursor.control (body >>= fun ptr => stringPlanTail cx destination.width output plan ptr >>= canonNext) } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.stringPlanEntry
+    destination inst str valid index output left right checkCursor canonCursor checkNext canonNext same present realloc fit placed checkAt canonAt
+
 /-- At a reached allocating string action, the actual call saves the remaining plan. -/
 theorem string_realloc_focus {E : CoreEngine} {Host : Type} (cx : LiftLowerContext E)
     (ptr : Nat) (oldSize : Option Nat) (alignment : Alignment) (size : Nat) (steps : List StoreStep)
@@ -524,6 +553,39 @@ theorem local_data_collection_tail
       left right check canon (fun value => checkNext (.ok value)) canonNext :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localDataCollectionTail destination inst element data
     entries matched pointer bytes index output left right width sized aligned bounds same check canon thread checkNext canonNext checkAt canonAt
+
+/-- The checked entry validates its reached record range before either child.
+Expose the actual key program and its placement without evaluating the key. -/
+theorem map_key_placement
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
+    (keyPayload : Stored.Payload (.prim key.toPrimitive)) (valField : Field)
+    (origin : CStore (core3 grow)) (base bytes count index : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : base = alignTo base (layout destination.width (.record (mapEntryFields key element))).alignment)
+    (bounds : base + count * (layout destination.width (.record (mapEntryFields key element))).size ≤ bytes)
+    (entry : index < count) (issueIndex : Nat) (left : Config (core3 grow) (HostState sig))
+    (growth : Core3.Grows origin.core left.store.core) (check : Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow))) :
+    let cx := destination.context inst
+    let type : TypeOf := .record (mapEntryFields key element)
+    let addr := base + index * (layout destination.width type).size
+    let keyArea := layout destination.width (.prim key.toPrimitive : TypeOf)
+    let keyPtr := alignTo addr keyArea.alignment
+    let valPtr := alignTo (keyPtr + keyArea.size) (layout destination.width valField.type).alignment
+    let keyField := Field.data (.prim key.toPrimitive) keyPayload
+    let following := fun verdict : Except RecordLower.Issue Unit => (match verdict with
+      | .error issue => pure (.error issue)
+      | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr))
+        >>= fun result => checkNext (result.mapError (.nested issueIndex))
+    left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+      (.aggregate type [keyField, valField]) issueIndex (.memory addr) >>= checkNext) →
+    placement destination left.store keyArea keyPtr = .ok () ∧
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch left [.tau]
+      { left with ctl := check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+          keyField 0 (.memory keyPtr) >>= following) } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.mapKeyPlacement
+    destination inst key element keyPayload valField origin base bytes count index width sized aligned bounds entry issueIndex left growth check checkNext
 
 /-- Validate the checked record slot and execute the actual scalar map key
 under either dispatcher, stopping at the value's effect program. The value

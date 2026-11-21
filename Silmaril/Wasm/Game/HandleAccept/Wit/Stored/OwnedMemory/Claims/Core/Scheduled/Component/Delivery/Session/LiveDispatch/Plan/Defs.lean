@@ -172,6 +172,34 @@ def mapFieldPlacement (cx : LiftLowerContext (core3 grow))
   | .value => ptrType cx >>= next
   | .memoryMap width _ _ => next width
 
+/-- The actual local guard/read prefix of a string-key entry. The reached
+programs use paired frames and the same residual string plan, but different
+value continuations. This certificate does not execute an allocator. -/
+def StringKeyFront (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (destination : RecordDestination) (inst : InstId) (key : LinkedCallback.StringField) (address : Nat)
+    (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+  let cx := destination.context inst
+  let plan := storePlanFor Quirks.none destination.encoding destination.width key.value
+  let checked := fun pointer => PayloadPrefix.stringPlanTail cx destination.width (.memory address) plan pointer >>=
+    fun result => checkNext (.ok result)
+  let canonical := fun pointer => PayloadPrefix.stringPlanTail cx destination.width (.memory address) plan pointer >>= canonNext
+  let checkBody := { left with ctl := check.control (runStoreSteps cx 0 plan.steps >>= checked) }
+  let canonBody := { right with ctl := canon.control (runStoreSteps cx 0 plan.steps >>= canonical) }
+  ∃ checkLabels canonLabels,
+    PayloadPrefix.visible checkLabels = [] ∧ PayloadPrefix.visible canonLabels = [] ∧
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready base) left checkLabels checkBody ∧
+    ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (LiveDispatch.host bindings base))
+      right canonLabels canonBody ∧
+    LinkedCallback.ChildFrameOver older checkBody canonBody check canon ∧
+    PayloadPrefix.StringLocalCutBetween profile ready (specDispatch ready base)
+      (specDispatch ready (LiveDispatch.host bindings base)) checkBody canonBody check canon
+      (fun front : PayloadPrefix.StringFront plan.steps.length => front.remaining cx >>= checked)
+      (fun front : PayloadPrefix.StringFront plan.steps.length => front.remaining cx >>= canonical)
+
 def mapValueSuffix (destination : RecordDestination) (inst : InstId)
     (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)
     (keyField value : Stored.Endpoints.RecordLower.Field) (rest : List Stored.Endpoints.RecordLower.Field) (stride address : Nat)

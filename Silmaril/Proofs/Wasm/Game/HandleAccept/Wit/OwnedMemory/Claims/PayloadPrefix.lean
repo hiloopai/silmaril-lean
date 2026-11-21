@@ -1560,7 +1560,8 @@ private theorem dataEntry (destination : RecordDestination) (inst : InstId) (typ
     rw [placedHere] at bounds
     exact ⟨2, fun depth => (read depth).append (bounds depth)⟩
 
-theorem stringPlanEntry (destination : RecordDestination) (inst : InstId) (str : Value.StrVal) (valid : str.Valid)
+theorem stringPlanEntry {refDispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (str : Value.StrVal) (valid : str.Valid)
     (index : Nat) (output : Lower.Output) (left right : Config (core3 grow) (HostState sig))
     (checkCursor canonCursor : Cursor (E := core3 grow) (HostState sig))
     (checkNext : Except RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
@@ -1580,7 +1581,7 @@ theorem stringPlanEntry (destination : RecordDestination) (inst : InstId) (str :
     ∃ reads, ReturnFrame.Occurrence.RetainsActiveSlots profile scheduledReady scheduledDispatch left (List.replicate reads .tau)
       { left with ctl := checkCursor.control (body >>= fun ptr => stringPlanTail cx destination.width output plan ptr >>=
           fun value => checkNext (.ok value)) } ∧
-      ReturnFrame.Occurrence.RetainsActiveSlots profile scheduledReady scheduledDispatch right [.tau]
+      ReturnFrame.Occurrence.RetainsActiveSlots profile scheduledReady refDispatch right [.tau]
         { right with ctl := canonCursor.control (body >>= fun ptr => stringPlanTail cx destination.width output plan ptr >>= canonNext) } := by
   let cx := destination.context (grow := grow) inst
   let payload : Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Payload (.prim .string) := ⟨.string str, .string valid⟩
@@ -1609,10 +1610,10 @@ theorem stringPlanEntry (destination : RecordDestination) (inst : InstId) (str :
       rfl
   change right.ctl = canonCursor.control (enteredBody >>= canonNext) at canonAt
   rw [program] at canonAt
-  have reference (depth : Nat) : ReturnFrame.Occurrence.Prefix profile scheduledReady scheduledDispatch right (.active 0 depth)
+  have reference (depth : Nat) : ReturnFrame.Occurrence.Prefix profile scheduledReady refDispatch right (.active 0 depth)
       [.tau] { right with ctl := canonCursor.control (rest destination.width >>= canonNext) } (.active 0 depth) := by
     simpa only [width, Cursor.control, Prog.bind_eq] using (ReturnFrame.Occurrence.Prefix.read (profile := profile)
-      (ready := scheduledReady) (dispatch := scheduledDispatch) depth canonAt)
+      (ready := scheduledReady) (dispatch := refDispatch) depth canonAt)
   change ReturnFrame.Occurrence.RetainsActiveSlots profile scheduledReady scheduledDispatch left (List.replicate reads .tau)
     { left with ctl := checkCursor.control (enteredBody >>= fun value => checkNext (.ok value)) } at entered
   rw [program] at entered
@@ -2145,19 +2146,17 @@ private theorem localDataAt {reference : Call (core3 grow) → Session grow sig 
   exact localDataLeafFrameBetween destination inst type data payload index (.memory pointer) origin left right growth
     (same ▸ placed.1) (same ▸ placed.2) same
 
-theorem localMapKeyThen {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+theorem mapKeyPlacement
     (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
-    (keyData : LocalDataType (.prim key.toPrimitive)) (keyPayload : Payload (.prim key.toPrimitive)) (valField : Field)
+    (keyPayload : Payload (.prim key.toPrimitive)) (valField : Field)
     (origin : CStore (core3 grow)) (base bytes count index : Nat)
     (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
     (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
     (aligned : base = alignTo base (layout destination.width (.record (mapEntryFields key element))).alignment)
     (bounds : base + count * (layout destination.width (.record (mapEntryFields key element))).size ≤ bytes)
-    (entry : index < count) (issueIndex : Nat) (left right : Config (core3 grow) (HostState sig))
-    (growth : Core3.Grows origin.core right.store.core) (same : left.store = right.store)
-    (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
-    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
-    (refFollowing : Unit → Session grow sig (Ret (core3 grow))) :
+    (entry : index < count) (issueIndex : Nat) (left : Config (core3 grow) (HostState sig))
+    (growth : Core3.Grows origin.core left.store.core) (check : Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow))) :
     let cx := destination.context inst
     let type : TypeOf := .record (mapEntryFields key element)
     let addr := base + index * (layout destination.width type).size
@@ -2165,30 +2164,27 @@ theorem localMapKeyThen {reference : Call (core3 grow) → Session grow sig (Ret
     let keyPtr := alignTo addr keyArea.alignment
     let valPtr := alignTo (keyPtr + keyArea.size) (layout destination.width valField.type).alignment
     let keyField := Field.data (.prim key.toPrimitive) keyPayload
+    let following := fun verdict : Except RecordLower.Issue Unit => (match verdict with
+      | .error issue => pure (.error issue)
+      | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr))
+        >>= fun result => checkNext (result.mapError (.nested issueIndex))
     left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
       (.aggregate type [keyField, valField]) issueIndex (.memory addr) >>= checkNext) →
-    right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr) >>= refFollowing) →
-    LocalCutKeepingBetween profile scheduledReady scheduledDispatch reference
-      (fun store => Core3.Grows origin.core store.core) left right check canon
-      (fun (_ : Unit) => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr) >>=
-        fun result => checkNext (result.mapError (.nested issueIndex)))
-      refFollowing := by
-  intro cx type addr keyArea keyPtr valPtr keyField checkAt canonAt
+    placement destination left.store keyArea keyPtr = .ok () ∧
+    ReturnFrame.Occurrence.RetainsActiveSlots profile scheduledReady scheduledDispatch left [.tau]
+      { left with ctl := check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+          keyField 0 (.memory keyPtr) >>= following) } := by
+  intro cx type addr keyArea keyPtr valPtr keyField following checkAt
   let area := layout destination.width type
-  let following := fun verdict : Except RecordLower.Issue Unit => (match verdict with
-    | .error issue => pure (.error issue)
-    | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr))
-      >>= fun result => checkNext (result.mapError (.nested issueIndex))
   let keyBody : Session grow sig (Except RecordLower.Issue Unit) :=
     Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width keyField 0 (.memory keyPtr)
-  let entered := { left with ctl := check.control (keyBody >>= following) }
   obtain ⟨modulo, within⟩ := listEntryBounds area aligned bounds entry
   change addr % area.alignment.bytes = 0 at modulo
   change addr + area.size ≤ bytes at within
   obtain ⟨reachedBytes, reachedSize, widened⟩ := growth.memSize sized
-  have sizeAt : (core3 grow).memSize? left.store.core destination.memory = some reachedBytes := same ▸ reachedSize
+  change (core3 grow).memSize? left.store.core destination.memory = some reachedBytes at reachedSize
   have placed : placement destination left.store area addr = .ok () := by
-    simp [placement, modulo, sizeAt, Nat.not_lt.mpr (within.trans widened)]
+    simp [placement, modulo, reachedSize, Nat.not_lt.mpr (within.trans widened)]
     rfl
   have guardAt : left.ctl = check.control (do
       checkAligned addr area.alignment.bytes
@@ -2223,6 +2219,47 @@ theorem localMapKeyThen {reference : Call (core3 grow) → Session grow sig (Ret
   have guard := checkPlacementRun (profile := profile) (ready := scheduledReady) (placementDispatch := scheduledDispatch)
     destination inst left area addr check (keyBody >>= following) guardAt
   rw [placed] at guard
+  obtain ⟨_, keyPlaced, _⟩ := mapEntryPlacement destination inst key element growth width sized aligned bounds entry
+  exact ⟨keyPlaced, guard⟩
+
+theorem localMapKeyThen {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
+    (keyData : LocalDataType (.prim key.toPrimitive)) (keyPayload : Payload (.prim key.toPrimitive)) (valField : Field)
+    (origin : CStore (core3 grow)) (base bytes count index : Nat)
+    (width : (core3 grow).memAddrType? origin.core destination.memory = some destination.width)
+    (sized : (core3 grow).memSize? origin.core destination.memory = some bytes)
+    (aligned : base = alignTo base (layout destination.width (.record (mapEntryFields key element))).alignment)
+    (bounds : base + count * (layout destination.width (.record (mapEntryFields key element))).size ≤ bytes)
+    (entry : index < count) (issueIndex : Nat) (left right : Config (core3 grow) (HostState sig))
+    (growth : Core3.Grows origin.core right.store.core) (same : left.store = right.store)
+    (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (refFollowing : Unit → Session grow sig (Ret (core3 grow))) :
+    let cx := destination.context inst
+    let type : TypeOf := .record (mapEntryFields key element)
+    let addr := base + index * (layout destination.width type).size
+    let keyArea := layout destination.width (.prim key.toPrimitive : TypeOf)
+    let keyPtr := alignTo addr keyArea.alignment
+    let valPtr := alignTo (keyPtr + keyArea.size) (layout destination.width valField.type).alignment
+    let keyField := Field.data (.prim key.toPrimitive) keyPayload
+    left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+      (.aggregate type [keyField, valField]) issueIndex (.memory addr) >>= checkNext) →
+    right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr) >>= refFollowing) →
+    LocalCutKeepingBetween profile scheduledReady scheduledDispatch reference
+      (fun store => Core3.Grows origin.core store.core) left right check canon
+      (fun (_ : Unit) => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr) >>=
+        fun result => checkNext (result.mapError (.nested issueIndex)))
+      refFollowing := by
+  intro cx type addr keyArea keyPtr valPtr keyField checkAt canonAt
+  let following := fun verdict : Except RecordLower.Issue Unit => (match verdict with
+    | .error issue => pure (.error issue)
+    | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr))
+      >>= fun result => checkNext (result.mapError (.nested issueIndex))
+  let entered := { left with ctl := check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+    keyField 0 (.memory keyPtr) >>= following) }
+  obtain ⟨_, guard⟩ := mapKeyPlacement (profile := profile) (scheduledReady := scheduledReady)
+    (scheduledDispatch := scheduledDispatch) destination inst key element keyPayload valField origin base bytes count index
+    width sized aligned bounds entry issueIndex left (same ▸ growth) check checkNext checkAt
   obtain ⟨typed, keyPlaced, _⟩ := mapEntryPlacement destination inst key element growth width sized aligned bounds entry
   have first := localDataAt (reference := reference) (profile := profile) (scheduledReady := scheduledReady)
     (scheduledDispatch := scheduledDispatch) destination inst (.prim key.toPrimitive) keyData keyPayload 0 keyPtr origin entered
