@@ -141,6 +141,21 @@ theorem collection_paths (destination : RecordDestination) (inst : InstId) (type
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.collectionEntryPaths
     destination inst type element entries index output checkNext canonNext frame checkAt canonAt embedder
 
+/-- For either actual public give route, the successful admission branch
+compares lists of arbitrary depth ending in nominal leaves. The compiler
+supplies each child; siblings and descriptors run only after common success.
+The comparison retains the reached effects and stops at the actual reply
+programs, without requiring allocator return or comparing later delivery. -/
+theorem linked_nominal_list_body {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (depth : Nat) (element : Stored.TypeOf) (family : NominalListType depth element)
+    (schema : sig.payload site.tag = .list element)
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    PayloadRoot.Cut site profile ready bindings (LinkedNominalListBody profile ready base bindings older site depth element incoming) base :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedNominalListBody
+    site linked depth element family schema paired selected embedder
+
 /-- Consume the installed allocator frame only at its actual top return.
 The canonical continuation is recovered by following its occurrence from the
 install, not by comparing continuation code at the reached position. -/

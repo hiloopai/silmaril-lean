@@ -233,7 +233,8 @@ def LiveCollectionChildren (profile : ProfileKind) (ready : HostReady (HostState
     (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
     (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
     (start incoming : Config (core3 grow) (HostState sig)) (pointer bytes : Nat)
-    (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (observed : Trace grow sig) : Prop :=
+    (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (observed : Trace grow sig)
+    (visit : LinkedCallback.MemorySequence.Finish grow sig := fun _ _ _ _ => True) : Prop :=
   open Stored.Endpoints.RecordLower ABI PayloadPrefix in
   let area := layout destination.width element
   let mode := CanonicalTree.EntryMode.forOutput destination.width type output
@@ -245,7 +246,8 @@ def LiveCollectionChildren (profile : ProfileKind) (ready : HostReady (HostState
     pointer = alignTo pointer area.alignment ∧ pointer + entries.length * area.size ≤ bytes ∧
     Core3.Grows start.store.core left.store.core ∧
     left.ctl = check.control (checkedCollectionTail destination inst entries area index output pointer (.ok ()) >>= checkNext) ∧
-    right.ctl = canon.control (canonicalCollectionTail destination inst entries area output pointer mode >>= canonNext)
+    right.ctl = canon.control (canonicalCollectionTail destination inst entries area output pointer mode >>= canonNext) ∧
+    visit left right check canon
 
 /-- Finite callback paths for an actual dynamic child. A live mark at the
 natural-pointer return is required to inspect the range. Failed range checks
@@ -258,7 +260,8 @@ def LiveCollectionPaths (profile : ProfileKind) (ready : HostReady (HostState si
     (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
     (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
     (start incoming : Config (core3 grow) (HostState sig))
-    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (visit : Nat → Nat → LinkedCallback.MemorySequence.Finish grow sig := fun _ _ _ _ _ _ => True) : Prop :=
   open Stored.Endpoints.RecordLower ABI PayloadPrefix in
   let area := layout destination.width element
   let mode := CanonicalTree.EntryMode.forOutput destination.width type output
@@ -283,7 +286,7 @@ def LiveCollectionPaths (profile : ProfileKind) (ready : HostReady (HostState si
           pointer = alignTo pointer area.alignment → pointer + entries.length * area.size ≤ bytes →
           OwnedMemory.Claims.Record.prepare finish.store finish.host.writer (Field.listObjects entries) = .ok () →
           LiveCollectionChildren profile ready base bindings older destination inst type element entries index output checkNext
-            canonNext start incoming pointer bytes cursor seen
+            canonNext start incoming pointer bytes cursor seen (visit pointer bytes)
 
 /-- The live dry run before a nested allocation either reaches the typed
 checked continuation alone or admits the finite allocator comparison. The
@@ -296,7 +299,8 @@ def LiveCollectionEntry (profile : ProfileKind) (ready : HostReady (HostState si
     (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
     (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
     (start incoming : Config (core3 grow) (HostState sig))
-    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (visit : Nat → Nat → LinkedCallback.MemorySequence.Finish grow sig := fun _ _ _ _ _ _ => True) : Prop :=
   open Stored.Endpoints.RecordLower in
   match OwnedMemory.Claims.Record.prepare start.store start.host.writer (Field.listObjects entries) with
   | .error issue =>
@@ -307,7 +311,7 @@ def LiveCollectionEntry (profile : ProfileKind) (ready : HostReady (HostState si
       { start with ctl := check.control (checkNext (.error refusal)) } incoming
   | .ok () => (core3 grow).memAddrType? incoming.store.core destination.memory = some destination.width →
     LiveCollectionPaths profile ready base bindings older destination inst type element entries index output checkNext canonNext
-      start incoming check canon
+      start incoming check canon visit
 
 /-- A reached collection segment. The slot offset counts removed frames.
 On checked refusal, the canonical program is the actual unexecuted suffix
@@ -379,6 +383,98 @@ inductive NominalElement : Stored.TypeOf → Prop where
   | future (element : Async.Element) : NominalElement (.future element)
   | stream (element : Async.Element) : NominalElement (.stream element)
   | context : NominalElement .errorContext
+
+/-- The list depth is a property of the declared type, including empty
+lists. It is independent of scheduler or allocator fuel. -/
+inductive NominalListType : Nat → Stored.TypeOf → Prop where
+  | leaf {type} : NominalElement type → NominalListType 0 type
+  | list {depth element} : NominalListType depth element → NominalListType (depth + 1) (.list element)
+
+/-- Visit an allocated list's actual element programs in order. The
+continuation for a child admits the next sibling only on common success. -/
+def liveElements (destination : RecordDestination) (inst : InstId) (stride : Nat)
+    (child : LinkedCallback.MemorySequence.FieldComparison grow sig)
+    (checkNext : LinkedCallback.MemorySequence.CheckNext grow sig) (canonNext : LinkedCallback.MemorySequence.CanonNext grow sig)
+    (finish : LinkedCallback.MemorySequence.Finish grow sig) :
+    List Stored.Endpoints.RecordLower.Field → Nat → Nat → LinkedCallback.MemorySequence.Finish grow sig
+  | [], _, _, left, right, check, canon => finish left right check canon
+  | item :: rest, index, pointer, left, right, check, canon =>
+    open LinkedCallback.MemorySequence in
+    child item index pointer left right check canon
+      (checkTail (.elements stride) destination inst rest (index + 1) (pointer + stride) checkNext)
+      (canonTail (.elements stride) destination inst rest (pointer + stride) canonNext)
+      (liveElements destination inst stride child checkNext canonNext finish rest (index + 1) (pointer + stride))
+
+/-- The real descriptor program executes only after every element returns.
+The two paths share the descriptor result or canonical trap, not an assumed
+rollback of either descriptor write. -/
+def LiveListPublish (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig)) (output : Stored.Lower.Output)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    (finish : output.Result → LinkedCallback.MemorySequence.Finish grow sig) : LinkedCallback.MemorySequence.Finish grow sig :=
+  fun left right check canon =>
+  open PayloadPrefix in
+  ∃ (store : CStore (core3 grow)) (result : Except TrapReason output.Result) (labels : Trace grow sig),
+    let lhs := localLeafEnd left left.host store check.thread check.frames check.rest (fun value => checkNext (.ok value)) result
+    let rhs := localLeafEnd right right.host store canon.thread canon.frames canon.rest canonNext result
+    LocalLeafLabels result labels ∧
+    CoreGrowthSteps profile ready (specDispatch ready base) left labels lhs ∧
+    CoreGrowthSteps profile ready (specDispatch ready (LiveDispatch.host bindings base)) right labels rhs ∧
+    ∀ value, result = .ok value →
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready base) left labels lhs ∧
+      ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (LiveDispatch.host bindings base)) right labels rhs ∧
+      finish value lhs rhs check canon
+
+def liveListTail (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
+    (index : Nat) (output : Stored.Lower.Output) (compare : LinkedCallback.MemorySequence.FieldComparison grow sig)
+    (checkNext : LinkedCallback.MemorySequence.ValueCheckNext grow sig output)
+    (canonNext : LinkedCallback.MemorySequence.ValueCanonNext grow sig output)
+    (finish : LinkedCallback.MemorySequence.ValueFinish grow sig output) : Nat → Nat → LinkedCallback.MemorySequence.Finish grow sig :=
+  open ABI LinkedCallback.MemorySequence in
+  fun pointer _ => liveElements destination inst (layout destination.width element).size compare
+    (publishChecked destination inst pointer entries.length index output checkNext)
+    (publishCanonical destination inst pointer entries.length output canonNext)
+    (LiveListPublish profile ready base bindings output checkNext canonNext finish) entries 0 pointer
+
+/-- A decreasing comparison for nested list elements under the two live
+dispatchers. Each allocation uses its own occurrence trail and rechecks
+the actual reached writer before taking the child branch. -/
+def liveNominalList (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) (destination : RecordDestination) (inst : InstId) :
+    Nat → LinkedCallback.MemorySequence.FieldComparison grow sig
+  | 0 => fun item index address left right check canon checkNext canonNext finish =>
+    LinkedCallback.HandleFieldThenBetween profile ready (specDispatch ready base)
+      (specDispatch ready (LiveDispatch.host bindings base)) item index (.memory address) left right check canon
+      checkNext canonNext (fun () => finish)
+  | depth + 1 => fun item index address left right check canon checkNext canonNext finish =>
+    open Stored.Endpoints.RecordLower in
+    ∃ element entries, item = .dynamic (.list element) element entries ∧
+      LiveCollectionEntry profile ready base bindings older destination inst (.list element) element entries index
+        (.memory address) checkNext canonNext left right check canon
+        (liveListTail profile ready base bindings destination inst element entries index (.memory address)
+          (liveNominalList profile ready base bindings older destination inst depth) checkNext canonNext (fun () => finish))
+
+/-- Enter both actual public give bodies and compare their nested lists
+under the live overlay, up to the reached reply programs. A callback may
+remain parked and a typed late refusal never starts its canonical suffix. -/
+def LinkedNominalListBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (depth : Nat) (element : Stored.TypeOf)
+    (incoming : Config (core3 grow) (HostState sig)) : Prop :=
+  ∃ entries leading entered peer,
+    site.field = .dynamic (.list element) element entries ∧ PayloadPrefix.visible leading = [] ∧
+    Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming leading entered ∧
+    entered.host = incoming.host ∧
+    LiveCollectionPaths profile ready base bindings older site.destination site.inst (.list element) element entries 0
+      route.output site.reply site.referenceReply site.checked entered site.cursor peer
+      (liveListTail profile ready base bindings site.destination site.inst element entries 0 route.output
+        (liveNominalList profile ready base bindings older site.destination site.inst depth)
+        site.reply site.referenceReply (fun _ _ _ _ _ => True))
 
 /-- Stop at fresh preparation or at a reached element; neither executes the
 remaining canonical elements or publishes a descriptor. -/
