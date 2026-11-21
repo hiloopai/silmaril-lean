@@ -392,18 +392,37 @@ def LinkedStringMapTraversal (profile : ProfileKind) (ready : HostReady (HostSta
     (index : Nat) (origin : CStore (core3 grow)) (basePtr : Nat)
     (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
     (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
-    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    (finish : Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop :=
+        fun _ _ _ _ => True) : Prop :=
   LinkedStringMapAt site element entries index basePtr left right check canon checkNext canonNext ∧
     if present : index < entries.length then
       LinkedStringMapEntry profile ready base bindings older site element entries ⟨index, present⟩ origin basePtr
         left right check canon checkNext canonNext (fun lhs rhs cursor peer =>
           LinkedStringMapTraversal profile ready base bindings older site element entries (index + 1) origin basePtr
-            lhs rhs cursor peer checkNext canonNext)
+            lhs rhs cursor peer checkNext canonNext finish)
     else
       LinkedCallback.ChildFrameOver older left right check canon ∧
         left.ctl = check.control (checkNext (.ok ())) ∧ right.ctl = canon.control (canonNext ()) ∧
-        Core3.Grows origin.core left.store.core
+        Core3.Grows origin.core left.store.core ∧ finish left right check canon
 termination_by entries.length - index
+
+/-- The actual post-prepare map body for either public give. Only a complete
+entry traversal executes the outer descriptor, which can itself trap. -/
+def LinkedStringMapBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
+    (basePtr : Nat) (left right : Config (core3 grow) (HostState sig))
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+  let publish : Session grow sig route.output.Result := Stored.Endpoints.ListLower.publish
+    (site.destination.context site.inst) site.destination.width basePtr entries.length route.output
+  let checkTail := PayloadPrefix.checkedSequenceNext (.nested 0) (fun (_ : Unit) => publish >>= fun value => pure (.ok value)) site.reply
+  let canonTail := fun (_ : Unit) => publish >>= site.referenceReply
+  LinkedStringMapTraversal profile ready base bindings older site element entries 0 left.store basePtr left right check canon
+    checkTail canonTail (fun lhs rhs cursor _ =>
+      CollectionSegment profile ready base bindings older lhs rhs cursor site.reply site.referenceReply 0 (fun _ => False))
 
 def mapValueSuffix (destination : RecordDestination) (inst : InstId)
     (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)

@@ -378,6 +378,31 @@ theorem linked_string_map_traversal {route : GiveEffectRoute} (site : PayloadRoo
       checkNext canonNext :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapTraversal
     site linked element entries index nominal field fits origin basePtr bytes width sized aligned bounds checkNext canonNext frame growth embedder atSuffix
+      _ (fun _ _ _ _ _ _ _ => trivial)
+
+/-- After the outer range and fresh preparation succeed, compare the actual
+recursive map body through descriptor publication. Refused or suspended
+children cannot enter the descriptor; a descriptor trap retains reached writes. -/
+theorem linked_string_map_body {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field)
+    (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
+    (basePtr bytes : Nat)
+    {left right : Config (core3 grow) (HostState sig)} {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (width : (core3 grow).memAddrType? left.store.core site.destination.memory = some site.destination.width)
+    (sized : (core3 grow).memSize? left.store.core site.destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout site.destination.width (.record (mapEntryFields .string element))).alignment)
+    (bounds : basePtr + entries.length * (layout site.destination.width (.record (mapEntryFields .string element))).size ≤ bytes)
+    (frame : LinkedCallback.ChildFrameOver older left right check canon)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    let area := layout site.destination.width (.record (mapEntryFields .string element))
+    let mode := CanonicalTree.EntryMode.forOutput site.destination.width (.map .string element) route.output
+    left.ctl = check.control (PayloadPrefix.checkedCollectionTail site.destination site.inst entries area 0 route.output basePtr (.ok ()) >>= site.reply) →
+    right.ctl = canon.control (PayloadPrefix.canonicalCollectionTail site.destination site.inst entries area route.output basePtr mode >>= site.referenceReply) →
+    LinkedStringMapBody profile ready base bindings older site element entries basePtr left right check canon :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapBody
+    site linked element entries nominal field fits basePtr bytes width sized aligned bounds frame embedder
 
 /-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys

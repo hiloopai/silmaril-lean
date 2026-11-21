@@ -1184,9 +1184,13 @@ theorem linkedStringMapTraversal {route : GiveEffectRoute} (site : PayloadRoot.S
     {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
     (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
     (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
-    (atSuffix : LinkedStringMapAt site element entries index basePtr left right check canon checkNext canonNext) :
+    (atSuffix : LinkedStringMapAt site element entries index basePtr left right check canon checkNext canonNext)
+    (finish : Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      Cursor (E := core3 grow) (HostState sig) → Cursor (E := core3 grow) (HostState sig) → Prop)
+    (atFinish : ∀ lhs rhs cursor peer, LinkedCallback.ChildFrameOver older lhs rhs cursor peer →
+      lhs.ctl = cursor.control (checkNext (.ok ())) → rhs.ctl = peer.control (canonNext ()) → finish lhs rhs cursor peer) :
     LinkedStringMapTraversal profile ready base bindings older site element entries index origin basePtr left right check canon
-      checkNext canonNext := by
+      checkNext canonNext finish := by
   rw [LinkedStringMapTraversal]
   refine ⟨atSuffix, ?_⟩
   split
@@ -1195,7 +1199,7 @@ theorem linkedStringMapTraversal {route : GiveEffectRoute} (site : PayloadRoot.S
       aligned bounds checkNext canonNext frame growth embedder _ ?_
     intro lhs rhs cursor peer paired grown stride addr cx mode checkAt canonAt
     refine linkedStringMapTraversal site linked element entries (index + 1) nominal field fits origin basePtr bytes width sized
-      aligned bounds checkNext canonNext paired (paired.store ▸ grown) embedder ?_
+      aligned bounds checkNext canonNext paired (paired.store ▸ grown) embedder ?_ finish atFinish
     unfold LinkedStringMapAt
     dsimp only [addr] at checkAt canonAt
     simpa only [Nat.add_mul, Nat.one_mul, Nat.add_assoc] using And.intro checkAt canonAt
@@ -1203,8 +1207,64 @@ theorem linkedStringMapTraversal {route : GiveEffectRoute} (site : PayloadRoot.S
     obtain ⟨checkAt, canonAt⟩ := atSuffix
     rw [List.drop_eq_nil_of_le (Nat.le_of_not_gt absent)] at checkAt canonAt
     simp only [Record.Effects.elements, CanonicalTree.elements, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind'] at checkAt canonAt
-    exact ⟨frame, checkAt, canonAt, frame.store.symm ▸ growth⟩
+    exact ⟨frame, checkAt, canonAt, frame.store.symm ▸ growth, atFinish left right check canon frame checkAt canonAt⟩
 termination_by entries.length - index
+
+theorem linkedStringMapBody {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field)
+    (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
+    (basePtr bytes : Nat)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (width : (core3 grow).memAddrType? left.store.core site.destination.memory = some site.destination.width)
+    (sized : (core3 grow).memSize? left.store.core site.destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout site.destination.width (.record (mapEntryFields .string element))).alignment)
+    (bounds : basePtr + entries.length * (layout site.destination.width (.record (mapEntryFields .string element))).size ≤ bytes)
+    (frame : LinkedCallback.ChildFrameOver older left right check canon)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    let area := layout site.destination.width (.record (mapEntryFields .string element))
+    let mode := CanonicalTree.EntryMode.forOutput site.destination.width (.map .string element) route.output
+    left.ctl = check.control (checkedCollectionTail site.destination site.inst entries area 0 route.output basePtr (.ok ()) >>= site.reply) →
+    right.ctl = canon.control (canonicalCollectionTail site.destination site.inst entries area route.output basePtr mode >>= site.referenceReply) →
+    LinkedStringMapBody profile ready base bindings older site element entries basePtr left right check canon := by
+  intro area mode checkAt canonAt
+  unfold LinkedStringMapBody
+  intro publish checkTail canonTail
+  refine linkedStringMapTraversal site linked element entries 0 nominal field fits left.store basePtr bytes width sized
+    aligned bounds checkTail canonTail frame (frame.store ▸ Core3.Grows.refl _) embedder ?_ _ ?_
+  · unfold LinkedStringMapAt
+    simp only [List.drop_zero, Nat.zero_mul, Nat.add_zero]
+    constructor
+    · rw [checkAt]
+      congr 1
+      simp only [checkedCollectionTail, Prog.bind_eq, Prog.bind_assoc, checkTail, publish]
+      congr 1
+      funext verdict
+      cases verdict with
+      | error _ => rfl
+      | ok value => cases value; rfl
+    · rw [canonAt]
+      congr 1
+      change Prog.bind (Prog.bind _ (fun _ => publish)) site.referenceReply = Prog.bind _ canonTail
+      exact Prog.bind_assoc _ _ _
+  · intro lhs rhs cursor peer paired lhsAt rhsAt
+    let onChecked : route.output.Result → Session grow sig (Ret (core3 grow)) := fun result => site.reply (.ok result)
+    have leftPublish : lhs.ctl = cursor.control (publish >>= onChecked) := by
+      rw [lhsAt]
+      simp only [checkTail, checkedSequenceNext, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind', onChecked]
+    obtain ⟨store, result, labels, observed, leftWrites, rightWrites, tracks⟩ :=
+      collection_descriptor_cut_between (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+        (reference := specDispatch ready (LiveDispatch.host bindings base)) (site.destination.context site.inst)
+        site.destination.width route.output basePtr entries.length lhs rhs cursor peer onChecked site.referenceReply paired.store leftPublish rhsAt
+    cases result with
+    | error reason =>
+      exact ⟨peer, .trapped reason, labels, labels, _, _, leftWrites.steps, rightWrites.steps, rfl, rfl, rfl, rfl, [], leafTrap observed⟩
+    | ok descriptor =>
+      exact ⟨peer, .returned descriptor, labels, labels, _, _, leftWrites.steps, rightWrites.steps, rfl, rfl,
+        ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread, paired.frames, paired.rest⟩,
+        rfl, rfl, fun depth => (tracks descriptor rfl depth).1, fun depth => (tracks descriptor rfl depth).2, trivial⟩
 
 theorem nominalMapReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (key : WIT.KeyType) (element : Stored.TypeOf) (entries : List Field)
