@@ -69,6 +69,59 @@ def stringAllocatorEntry (dispatch : Call (core3 grow) → Session grow sig (Ret
   let request := Call.reallocate cx (oldSize.elim 0 (fun _ => ptr)) (oldSize.getD 0) alignment.bytes size
   { state with ctl := { cursor with frames := .prog resume :: cursor.frames }.control (dispatch request) }
 
+/-- Compare an actual residual string program under the fixed live give
+dispatcher. Each local segment may trap; each entered allocator can expose
+any finite classified prefix. Only a pop of its marked occurrence enters a
+smaller program. The terminal consumer can compare the real descriptor. -/
+def LiveStringReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) (cx : LiftLowerContext (core3 grow))
+    (checkNext canonNext : Nat → Session grow sig (Ret (core3 grow)))
+    (finish : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop)
+    (length : Nat) (left right : Config (core3 grow) (HostState sig))
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+  open PayloadPrefix ReturnFrame.Occurrence in
+  let checkDispatch := specDispatch ready base
+  let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
+  ∃ (store : CStore (core3 grow)) (result : Except TrapReason (StringFront length)) (labels : Trace grow sig),
+    let lhs := localLeafEnd left left.host store check.thread check.frames check.rest
+      (fun front : StringFront length => front.remaining cx >>= checkNext) result
+    let rhs := localLeafEnd right right.host store canon.thread canon.frames canon.rest
+      (fun front : StringFront length => front.remaining cx >>= canonNext) result
+    LocalLeafLabels result labels ∧ CoreGrowthSteps profile ready checkDispatch left labels lhs ∧
+    CoreGrowthSteps profile ready canonDispatch right labels rhs ∧
+    ∀ front, result = .ok front →
+      RetainsActiveSlots profile ready checkDispatch left labels lhs ∧
+      RetainsActiveSlots profile ready canonDispatch right labels rhs ∧
+      match front with
+      | .done pointer => finish pointer lhs rhs check canon
+      | .call pointer oldSize alignment size rest _ =>
+        let first := stringPlanResume cx rest checkNext
+        let second := stringPlanResume cx rest canonNext
+        let firstEntry := LinkedCallback.stringReallocEntry ready bindings cx pointer oldSize alignment size rest checkNext lhs check
+        let secondEntry := stringAllocatorEntry canonDispatch cx pointer oldSize alignment size rhs canon second
+        ∀ {seen reached}, ClosedCallbackPrefix bindings profile ready base
+          (fun resume => (∃ peer, older resume peer) ∨ resume = first) firstEntry seen reached →
+          ∃ checkLabels canonLabels reference mark,
+            Steps profile ready checkDispatch lhs (.tau :: checkLabels) reached ∧
+            Steps profile ready canonDispatch rhs (.tau :: canonLabels) reference ∧
+            visible checkLabels = seen ∧ visible canonLabels = seen ∧
+            HostFrame.Related.Paired (ReturnFrame.Extend older first second) reached reference ∧
+            Core3.Grows lhs.store.core reached.store.core ∧
+            reached.host.writer.accepted = lhs.host.writer.accepted ∧
+            reference.host.writer.accepted = rhs.host.writer.accepted ∧
+            AllocatorMark profile ready base bindings older firstEntry secondEntry checkLabels canonLabels reached reference mark ∧
+            ∀ (value : Nat) (cursor : Cursor (E := core3 grow) (HostState sig)), mark = some (.active 0 0) →
+              reached.ctl = { cursor with frames := .prog first :: cursor.frames }.control (.pure (.nat value)) →
+              ∃ peer : Cursor (E := core3 grow) (HostState sig),
+                let after := { reached with ctl := cursor.control (first (.nat value)) }
+                let referenceAfter := { reference with ctl := peer.control (second (.nat value)) }
+                RetainsActiveSlots profile ready checkDispatch lhs (.tau :: checkLabels ++ [.tau]) after ∧
+                RetainsActiveSlots profile ready canonDispatch rhs (.tau :: canonLabels ++ [.tau]) referenceAfter ∧
+                LiveStringReplay profile ready base bindings older cx checkNext canonNext finish rest.length after referenceAfter cursor peer
+termination_by length
+
 /-- Validate the pointer from an actual marked return. The invalid branches
 trap at the reached stores. The valid branch exposes the real checked live
 verdict and the canonical child-entry program, before either executes children. -/
@@ -172,13 +225,14 @@ def mapFieldPlacement (cx : LiftLowerContext (core3 grow))
   | .value => ptrType cx >>= next
   | .memoryMap width _ _ => next width
 
-/-- The actual local guard/read prefix of a string-key entry. The reached
-programs use paired frames and the same residual string plan, but different
-value continuations. This certificate does not execute an allocator. -/
-def StringKeyFront (profile : ProfileKind) (ready : HostReady (HostState sig))
+/-- A reached map key under the live dispatchers, from field placement
+through the recursive string plan and its descriptor. A suspended callback
+does not enter the value continuation. -/
+def StringKeyReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
-    (destination : RecordDestination) (inst : InstId) (key : LinkedCallback.StringField) (address : Nat)
+    (origin : CStore (core3 grow)) (destination : RecordDestination) (inst : InstId)
+    (key : LinkedCallback.StringField) (address : Nat)
     (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
     (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
     (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
@@ -195,10 +249,11 @@ def StringKeyFront (profile : ProfileKind) (ready : HostReady (HostState sig))
     ReturnFrame.Occurrence.RetainsActiveSlots profile ready (specDispatch ready (LiveDispatch.host bindings base))
       right canonLabels canonBody ∧
     LinkedCallback.ChildFrameOver older checkBody canonBody check canon ∧
-    PayloadPrefix.StringLocalCutBetween profile ready (specDispatch ready base)
-      (specDispatch ready (LiveDispatch.host bindings base)) checkBody canonBody check canon
-      (fun front : PayloadPrefix.StringFront plan.steps.length => front.remaining cx >>= checked)
-      (fun front : PayloadPrefix.StringFront plan.steps.length => front.remaining cx >>= canonical)
+    LiveStringReplay profile ready base bindings older cx checked canonical (fun _ lhs rhs cursor peer =>
+      LinkedCallback.ChildFrameOver older lhs rhs cursor peer ∧ Core3.Grows origin.core lhs.store.core ∧
+      PayloadPrefix.StringLocalCutBetween profile ready (specDispatch ready base)
+        (specDispatch ready (LiveDispatch.host bindings base)) lhs rhs cursor peer
+        (fun result => checkNext (.ok result)) canonNext) plan.steps.length checkBody canonBody check canon
 
 def mapValueSuffix (destination : RecordDestination) (inst : InstId)
     (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)

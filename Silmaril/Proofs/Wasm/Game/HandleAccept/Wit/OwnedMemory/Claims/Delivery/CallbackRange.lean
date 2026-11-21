@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Plan.Defs
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadCollection.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
@@ -27,6 +28,7 @@ open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.RecordLower
+open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LiveDispatch
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix
@@ -484,7 +486,8 @@ theorem stringMapKey (destination : RecordDestination) (inst : InstId) (element 
     (canonNext : Unit → Session grow sig (Ret (core3 grow)))
     {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
-    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core) :
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
     let cx := destination.context inst
     let type : Stored.TypeOf := .record (mapEntryFields .string element)
     let ptr := basePtr + entryIndex * (layout destination.width type).size
@@ -502,7 +505,7 @@ theorem stringMapKey (destination : RecordDestination) (inst : InstId) (element 
       (.aggregate type [key.field, value]) issueIndex (.memory ptr) >>= checkNext) →
     right.ctl = canon.control (mapFieldPlacement cx mode fun reached =>
       CanonicalTree.field Limits.spec Quirks.none cx destination.width key.field (.memory (keySlot reached)) >>= afterKey reached) →
-    StringKeyFront profile ready base bindings older destination inst key (keySlot destination.width) left right check canon
+    StringKeyReplay profile ready base bindings older origin destination inst key (keySlot destination.width) left right check canon
       following (afterKey destination.width) := by
   intro cx type ptr keySlot valueSlot mode afterKey following checkAt canonAt
   let keyPayload : Stored.Payload (.prim .string) := ⟨.string key.value, .string key.valid⟩
@@ -524,7 +527,7 @@ theorem stringMapKey (destination : RecordDestination) (inst : InstId) (element 
     (dispatch := specDispatch ready base) (reference := specDispatch ready (LiveDispatch.host bindings base)) destination inst
     key.value key.valid 0 keyOutput checkKey canonKey check canon following (afterKey destination.width) frame.store currentWidth
     realloc fit placed rfl rfl
-  unfold StringKeyFront
+  unfold StringKeyReplay
   refine ⟨[.tau] ++ List.replicate reads .tau, canonLabels ++ [.tau], ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [appendVisible, silent (fun _ member => List.eq_of_mem_replicate member)]
     rfl
@@ -533,7 +536,15 @@ theorem stringMapKey (destination : RecordDestination) (inst : InstId) (element 
   · exact fun depth => (checkTracks depth).append (keyLeft depth)
   · exact fun depth => (canonTracks depth).append (keyRight depth)
   · exact ⟨frame.store, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
-  · exact string_front_cut_between _ _ _ _ _ _ _ _ _ frame.store rfl rfl
+  · refine CallbackPrefix.stringReplay (origin := origin) _ 0 _ _ _ ?_ ?_ ?_ ?_ embedder ?_
+    · exact ⟨frame.store, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+    · exact frame.store ▸ growth
+    · rfl
+    · rfl
+    · intro pointer lhs rhs cursor peer frame grew checkAt canonAt
+      refine ⟨frame, grew, ?_⟩
+      exact string_descriptor_cut_between cx destination.width keyOutput _ pointer lhs rhs cursor peer
+        (fun result => following (.ok result)) (afterKey destination.width) frame.store checkAt canonAt
 
 private theorem nominalMapEntry (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
     (output : Stored.Lower.Output)

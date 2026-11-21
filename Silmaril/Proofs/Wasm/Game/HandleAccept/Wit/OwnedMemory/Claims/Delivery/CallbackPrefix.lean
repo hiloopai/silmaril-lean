@@ -325,4 +325,76 @@ theorem pop {checkEntry canonEntry : Config (core3 grow) (HostState sig)} {check
     exact Prefix.append (by simpa only [Location.below, Nat.zero_add] using trail.under (depth + 1))
       (Prefix.pop_return canonAt depth)
 
+private theorem stringInstallTracks (dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow)))
+    (cx : LiftLowerContext (core3 grow)) (pointer : Nat) (oldSize : Option Nat) (alignment : Alignment) (size : Nat)
+    (rest : List StoreStep) (next : Nat → Session grow sig (Ret (core3 grow)))
+    (state : Config (core3 grow) (HostState sig)) (cursor : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (focused : state.ctl = cursor.control (runStoreSteps cx pointer
+      ((oldSize.elim (.allocate alignment size) (fun old => .reallocate old alignment size)) :: rest) >>= next))
+    (depth : Nat) : Prefix profile ready dispatch state (.active 0 depth) [.tau]
+      (stringAllocatorEntry dispatch cx pointer oldSize alignment size state cursor (PayloadPrefix.stringPlanResume cx rest next))
+      (.active 0 (depth + 1)) :=
+  .step (PayloadPrefix.string_realloc_install cx pointer oldSize alignment size rest next state cursor focused)
+    (by rw [transitionEdit, focused, PayloadPrefix.string_realloc_focus]; rfl) (.done _ _)
+
+theorem stringReplay (cx : LiftLowerContext (core3 grow)) (pointer : Nat) (steps : List StoreStep)
+    (checkNext canonNext : Nat → Session grow sig (Ret (core3 grow)))
+    {left right : Config (core3 grow) (HostState sig)} {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    {origin : CStore (core3 grow)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core left.store.core)
+    (checkAt : left.ctl = check.control (runStoreSteps cx pointer steps >>= checkNext))
+    (canonAt : right.ctl = canon.control (runStoreSteps cx pointer steps >>= canonNext))
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    {ends : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop}
+    (finish : ∀ pointer lhs rhs check canon, LinkedCallback.ChildFrameOver older lhs rhs check canon →
+      Core3.Grows origin.core lhs.store.core → lhs.ctl = check.control (checkNext pointer) →
+      rhs.ctl = canon.control (canonNext pointer) → ends pointer lhs rhs check canon) :
+    LiveStringReplay profile ready base bindings older cx checkNext canonNext ends steps.length left right check canon := by
+  induction measured : steps.length using Nat.strong_induction_on generalizing pointer steps left right check canon with
+  | ind length ih =>
+    have cut := PayloadPrefix.string_front_cut_between (profile := profile) (ready := ready)
+      (dispatch := specDispatch ready base) (reference := specDispatch ready (LiveDispatch.host bindings base))
+      cx pointer steps left right check canon checkNext canonNext frame.store checkAt canonAt
+    rw [measured] at cut
+    obtain ⟨store, result, labels, observed, checked, canonical, tracked⟩ := cut
+    rw [LiveStringReplay]
+    refine ⟨store, result, labels, observed, checked, canonical, ?_⟩
+    intro front success
+    subst result
+    refine ⟨fun depth => (tracked front rfl depth).1, fun depth => (tracked front rfl depth).2, ?_⟩
+    cases front with
+    | done value =>
+      exact finish value _ _ check canon
+        ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+        (growth.trans checked.grows) rfl rfl
+    | call ptr oldSize alignment size rest shorter =>
+      dsimp only
+      intro seen reached path
+      let action : StoreStep := oldSize.elim (.allocate alignment size) (fun old => .reallocate old alignment size)
+      let lhs := { left with store, ctl := check.control (runStoreSteps cx ptr (action :: rest) >>= checkNext) }
+      let rhs := { right with store, ctl := canon.control (runStoreSteps cx ptr (action :: rest) >>= canonNext) }
+      have middle : LinkedCallback.ChildFrameOver older lhs rhs check canon :=
+        ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+      obtain ⟨checkLabels, canonLabels, reference, mark, leftRun, rightRun, paired, checkSeen, canonSeen,
+        callGrowth, checkedRoots, canonRoots, marked⟩ := stringReallocPrefix (profile := profile) (ready := ready)
+        cx ptr oldSize alignment size rest checkNext canonNext middle rfl rfl embedder path
+      refine ⟨checkLabels, canonLabels, reference, mark, leftRun, rightRun, checkSeen, canonSeen, paired,
+        callGrowth, checkedRoots, canonRoots, marked, ?_⟩
+      intro value cursor atMark returning
+      cases atMark
+      obtain ⟨peer, residual, _, _, leftPop, rightPop⟩ := pop marked paired returning rfl
+      refine ⟨peer, ?_, ?_, ?_⟩
+      · exact fun depth => (stringInstallTracks _ cx ptr oldSize alignment size rest checkNext lhs check rfl depth).append
+          (leftPop depth)
+      · exact fun depth => (stringInstallTracks _ cx ptr oldSize alignment size rest canonNext rhs canon rfl depth).append
+          (rightPop depth)
+      · exact ih rest.length shorter value rest
+          (show LinkedCallback.ChildFrameOver older
+            { reached with ctl := cursor.control (runStoreSteps cx value rest >>= checkNext) }
+            { reference with ctl := peer.control (runStoreSteps cx value rest >>= canonNext) } cursor peer from
+            ⟨residual.store, residual.pending, residual.results, residual.cancels, residual.blocked, residual.thread,
+              residual.frames, residual.rest⟩)
+          ((growth.trans checked.grows).trans callGrowth) rfl rfl rfl
+
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix

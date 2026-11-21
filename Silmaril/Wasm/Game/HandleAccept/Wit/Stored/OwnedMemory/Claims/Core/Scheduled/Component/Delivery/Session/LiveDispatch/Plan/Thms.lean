@@ -252,9 +252,30 @@ theorem AllocatorMark.local_map_replies {outputPointer : FlatValue} (site : Payl
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.localMapReplies
     site linked key element entries keyData valueData field pointer
 
-/-- Enter the actual string-key plan in either map placement mode. Static
-fit and allocator availability follow the compiled descendant path. Live
-range and width reads precede the string effects; the value has not run. -/
+/-- Replay local string effects and finite classified allocator prefixes at
+both reached stores. Only a pop of the marked natural-pointer return enters
+the smaller plan, with older frame substitutions and Core growth retained. -/
+theorem string_plan_replay (cx : LiftLowerContext (core3 grow)) (pointer : Nat) (steps : List StoreStep)
+    (checkNext canonNext : Nat → Session grow sig (Ret (core3 grow)))
+    {left right : Config (core3 grow) (HostState sig)} {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    {origin : CStore (core3 grow)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core left.store.core)
+    (checkAt : left.ctl = check.control (runStoreSteps cx pointer steps >>= checkNext))
+    (canonAt : right.ctl = canon.control (runStoreSteps cx pointer steps >>= canonNext))
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    {ends : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop}
+    (finish : ∀ pointer lhs rhs check canon, LinkedCallback.ChildFrameOver older lhs rhs check canon →
+      Core3.Grows origin.core lhs.store.core → lhs.ctl = check.control (checkNext pointer) →
+      rhs.ctl = canon.control (canonNext pointer) → ends pointer lhs rhs check canon) :
+    LiveStringReplay profile ready base bindings older cx checkNext canonNext ends steps.length left right check canon :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.stringReplay
+    cx pointer steps checkNext canonNext frame growth checkAt canonAt embedder finish
+
+/-- Compare the actual string-key plan in either map placement mode. Static
+fit and allocator availability follow the compiled descendant path. Compare
+finite classified callback prefixes; only the reached marked return resumes
+the residual plan. The live descriptor precedes the value continuation. -/
 theorem string_map_key (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
     (output : Stored.Lower.Output) (key : LinkedCallback.StringField) (value root : Field) {schema : Stored.TypeOf}
     (layoutRoot : root.LayoutMatches schema)
@@ -270,7 +291,8 @@ theorem string_map_key (destination : RecordDestination) (inst : InstId) (elemen
     (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
     (canonNext : Unit → Session grow sig (Ret (core3 grow)))
     {left right : Config (core3 grow) (HostState sig)} {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
-    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core) :
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
     let cx := destination.context inst
     let type : Stored.TypeOf := .record (mapEntryFields .string element)
     let ptr := basePtr + entryIndex * (layout destination.width type).size
@@ -288,11 +310,11 @@ theorem string_map_key (destination : RecordDestination) (inst : InstId) (elemen
       (.aggregate type [key.field, value]) issueIndex (.memory ptr) >>= checkNext) →
     right.ctl = canon.control (mapFieldPlacement cx mode fun reached =>
       CanonicalTree.field Limits.spec Quirks.none cx destination.width key.field (.memory (keySlot reached)) >>= afterKey reached) →
-    StringKeyFront profile ready base bindings older destination inst key (keySlot destination.width) left right check canon
+    StringKeyReplay profile ready base bindings older origin destination inst key (keySlot destination.width) left right check canon
       following (afterKey destination.width) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.stringMapKey
     destination inst element output key value root layoutRoot fitRoot allocator path origin basePtr bytes count entryIndex issueIndex
-    width sized aligned bounds entry checkNext canonNext frame growth
+    width sized aligned bounds entry checkNext canonNext frame growth embedder
 
 /-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys
