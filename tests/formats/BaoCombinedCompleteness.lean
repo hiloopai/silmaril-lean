@@ -1,6 +1,7 @@
 module
 
 import Silmaril.Formats.Blake3Cas.RangeFacts.Combined.Thms
+import Silmaril.Formats.Blake3Cas.RangeFacts.Projection.Thms
 meta import Silmaril.Formats.Blake3Cas.RangeFacts.Combined.Defs
 meta import Silmaril.Formats.Blake3Cas.RangeFacts.Thms
 meta import Silmaril.Formats.Iroh.Vectors
@@ -33,3 +34,30 @@ set_option maxRecDepth 8192
 
 #print axioms Combined.fullPlan_geometry
 #print axioms Combined.complete
+
+#eval do
+  let original := (List.range 5123).map (fun index => UInt8.ofNat (index % 251))
+  let size := original.length
+  let some root := hash? (some ∘ compress32) original | throw (IO.userError "subrange fixture hash")
+  let some combined := Combined.encode? original | throw (IO.userError "subrange combined encode")
+  let interior := Request.bounded 1041 2100
+  let requests : List Request := [interior, .bounded 100 23, .bounded 1024 0, .bounded size 0, .toEnd 4089, .toEnd size]
+  for request in requests do
+    let window := Request.window request size
+    let expected := (original.drop window.start).take window.count
+    let some response := decodeCombined? size root request combined | throw (IO.userError "combined subrange decode")
+    let some eof := response.eof | throw (IO.userError "combined frame did not verify the right edge")
+    require "combined subrange is exact and can seal at the same extent"
+      (response.claim == size && response.done.bytes == expected && (response.done.seal eof).bytes == expected)
+  let window := interior.window size
+  let some slice := Bao.encode (.slice window) size (Combined.source original) |
+    throw (IO.userError "official interior slice encode")
+  let some staged := decodeSlice? size root interior slice | throw (IO.userError "interior slice decode")
+  require "proper slice crossing chunk boundaries completes without EOF"
+    (staged.claim == size && staged.done.bytes == (original.drop window.start).take window.count && staged.eof.isNone)
+  require "an interior slice must satisfy the cap on full object size"
+    (decodeSlice? (size - 1) root interior slice).isNone
+
+#print axioms Projection.project
+#print axioms Projection.range
+#print axioms Combined.completeWindow
