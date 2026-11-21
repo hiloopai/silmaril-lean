@@ -480,18 +480,22 @@ theorem write_cut_between {grow : SingleThreaded.GrowOracle} {Host : Type} {prof
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.write
     cx ptr data left right check canon checkNext canonNext same checkAt canonAt
 
-/-- Replay the actual pointer/count descriptor from the reached store. A
-late trap in memory output keeps the write to the first word, if it ran. -/
-theorem collection_descriptor_cut {grow : SingleThreaded.GrowOracle} {Host : Type} {profile : ProfileKind} {ready : HostReady Host}
-    {dispatch : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
+/-- Replay the actual pointer/count descriptor from the reached store, without
+consulting either dispatcher. A late trap keeps the first write, if it ran. -/
+theorem collection_descriptor_cut_between {grow : SingleThreaded.GrowOracle} {Host : Type} {profile : ProfileKind} {ready : HostReady Host}
+    {dispatch reference : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))}
     (cx : LiftLowerContext (core3 grow)) (width : AddrType) (output : Lower.Output) (ptr count : Nat)
     (left right : Config (core3 grow) Host) (check canon : Cursor (E := core3 grow) Host)
     (checkNext canonNext : output.Result → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)
     (checkAt : left.ctl = check.control (ListLower.publish cx width ptr count output >>= checkNext))
     (canonAt : right.ctl = canon.control (ListLower.publish cx width ptr count output >>= canonNext)) :
-    StringLocalCut profile ready dispatch left right check canon checkNext canonNext :=
+    StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.StringFront.collectionDescriptor
     cx width output ptr count left right check canon checkNext canonNext same checkAt canonAt
+
+abbrev collection_descriptor_cut {grow : SingleThreaded.GrowOracle} {Host : Type} {profile : ProfileKind} {ready : HostReady Host}
+    {dispatch : Call (core3 grow) → P (core3 grow) Host (Ret (core3 grow))} :=
+  @collection_descriptor_cut_between grow Host profile ready dispatch dispatch
 
 theorem local_data_objects {element : TypeOf} {entries : List Field} (data : LocalDataType element)
     (matched : Field.EntriesMatch entries element) : Field.listObjects entries = [] :=

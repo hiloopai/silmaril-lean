@@ -98,16 +98,17 @@ def CollectionRangeCut (profile : ProfileKind) (ready : HostReady (HostState sig
         { canonical with ctl := canonCursor.control (canonNext pointer) })
     else traps .outOfBounds
 
-/-- Continuations reached after consuming a marked allocator return. A
-typed refusal only enters the checked continuation; the canonical cursor
-has not executed the children. The retained slots exclude the popped frame. -/
-def CollectionReturn (profile : ProfileKind) (ready : HostReady (HostState sig))
+/-- A reached collection segment. The slot offset counts removed frames.
+On checked refusal, the canonical program is the actual unexecuted suffix
+at the reached stop, not necessarily the initial child-entry program. -/
+def CollectionSegment (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
     (checked canonical : Config (core3 grow) (HostState sig))
     (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) {Result : Type}
     (checkNext : Except Stored.Endpoints.RecordLower.Issue Result → Session grow sig (Ret (core3 grow)))
-    (canonNext : Result → Session grow sig (Ret (core3 grow))) (childEntry : Session grow sig (Ret (core3 grow))) : Prop :=
+    (canonNext : Result → Session grow sig (Ret (core3 grow))) (offset : Nat)
+    (stopsAt : Session grow sig (Ret (core3 grow)) → Prop) : Prop :=
   let checkedDispatch := specDispatch ready base
   let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
   ∃ (canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (outcome : PayloadPrefix.Outcome Result)
@@ -118,36 +119,92 @@ def CollectionReturn (profile : ProfileKind) (ready : HostReady (HostState sig))
     | .trapped reason => left.ctl = [] ∧ right.ctl = [] ∧ ∃ leading, PayloadPrefix.visible canonLabels = leading ++ [.trap reason]
     | .returned value => LinkedCallback.ChildFrameOver older left right check canon ∧
         left.ctl = check.control (checkNext (.ok value)) ∧ right.ctl = canon.control (canonNext value) ∧
-        ReturnFrame.Occurrence.RetainsBelowTop profile ready checkedDispatch checked checkLabels left ∧
-        ReturnFrame.Occurrence.RetainsBelowTop profile ready canonDispatch canonical canonLabels right
-    | .refused issue => left.ctl = check.control (checkNext (.error issue)) ∧ right.ctl = canon.control childEntry ∧
-        ReturnFrame.Occurrence.RetainsBelowTop profile ready checkedDispatch checked checkLabels left ∧
-        ReturnFrame.Occurrence.RetainsBelowTop profile ready canonDispatch canonical canonLabels right
+        (∀ depth, ReturnFrame.Occurrence.Prefix profile ready checkedDispatch checked (.active 0 (depth + offset))
+          checkLabels left (.active 0 depth)) ∧
+        (∀ depth, ReturnFrame.Occurrence.Prefix profile ready canonDispatch canonical (.active 0 (depth + offset))
+          canonLabels right (.active 0 depth))
+    | .refused issue => ∃ stop, stopsAt stop ∧
+        left.ctl = check.control (checkNext (.error issue)) ∧ right.ctl = canon.control stop ∧
+        (∀ depth, ReturnFrame.Occurrence.Prefix profile ready checkedDispatch checked (.active 0 (depth + offset))
+          checkLabels left (.active 0 depth)) ∧
+        (∀ depth, ReturnFrame.Occurrence.Prefix profile ready canonDispatch canonical (.active 0 (depth + offset))
+          canonLabels right (.active 0 depth))
+
+/-- The specialization in which a failed fresh preparation stops before
+any child executes. -/
+abbrev CollectionReturn (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (checked canonical : Config (core3 grow) (HostState sig))
+    (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) {Result : Type}
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : Result → Session grow sig (Ret (core3 grow))) (childEntry : Session grow sig (Ret (core3 grow))) : Prop :=
+  CollectionSegment profile ready base bindings older checked canonical check checkNext canonNext 1 (· = childEntry)
+
+/-- The unexecuted canonical list suffix at a reached nominal guard. The
+address advances by the actual element stride, not by the number of writes. -/
+def ElementStop (destination : RecordDestination) (inst : InstId) (entries : List Stored.Endpoints.RecordLower.Field)
+    (stride ptr : Nat) (finish : Unit → Session grow sig (Ret (core3 grow))) (stop : Session grow sig (Ret (core3 grow))) : Prop :=
+  ∃ leading remaining, entries = leading ++ remaining ∧ remaining ≠ [] ∧
+    stop = (Stored.Endpoints.RecordLower.CanonicalTree.elements Limits.spec Quirks.none (destination.context inst)
+      destination.width remaining .value stride (ptr + leading.length * stride) >>= finish)
+
+/-- The nominal leaf schemas currently compared by the local collection rule. -/
+inductive NominalElement : Stored.TypeOf → Prop where
+  | own (resource : RtId) : NominalElement (.own resource)
+  | future (element : Async.Element) : NominalElement (.future element)
+  | stream (element : Async.Element) : NominalElement (.stream element)
+  | context : NominalElement .errorContext
+
+/-- Stop at fresh preparation or at a reached element; neither executes the
+remaining canonical elements or publishes a descriptor. -/
+def ListReturnStop (destination : RecordDestination) (inst : InstId) (entries : List Stored.Endpoints.RecordLower.Field)
+    (area : ABI.Layout) (output : Stored.Lower.Output) (ptr : Nat)
+    (finish : output.Result → Session grow sig (Ret (core3 grow))) (stop : Session grow sig (Ret (core3 grow))) : Prop :=
+  stop = (PayloadPrefix.canonicalCollectionTail destination inst entries area output ptr >>= finish) ∨
+  ElementStop destination inst entries area.size ptr
+    (fun _ => Stored.Endpoints.ListLower.publish (destination.context inst) destination.width ptr entries.length output >>= finish) stop
 
 /-- Complete the actual public replies from a reached allocator return.
 Only a returned descriptor rejoins both machines. A typed refusal records
 the checked completion and rejoins its caller, leaving canonical suspended
-at the child-entry program. A canonical trap executes no reply. -/
-def CollectionReplies (profile : ProfileKind) (ready : HostReady (HostState sig))
+at the actually reached program. A canonical trap executes no reply. -/
+def CollectionSegmentReplies (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
     (site : PayloadRoot.Site grow sig route) (checked canonical : Config (core3 grow) (HostState sig))
-    (childEntry : Session grow sig (Ret (core3 grow))) : Prop :=
+    (stopsAt : Session grow sig (Ret (core3 grow)) → Prop) : Prop :=
   ∃ (outcome : PayloadPrefix.Outcome route.output.Result) (checkLabels canonLabels : Trace grow sig)
     (left right : Config (core3 grow) (HostState sig)),
     Steps profile ready (specDispatch ready base) checked checkLabels left ∧
     Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) canonical canonLabels right ∧
     left.store = right.store ∧ PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels ∧
     match outcome with
-    | .returned value => ∃ before canonBefore,
+    | .returned value => ∃ before canonBefore checkBody canonBody,
+        checkLabels = checkBody ++ [.tau, .tau, .tau] ∧ canonLabels = canonBody ++ [.tau] ∧
+        Steps profile ready (specDispatch ready base) checked checkBody before ∧
+        Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) canonical canonBody canonBefore ∧
         (∀ dispatch, Steps profile ready dispatch before [.tau, .tau, .tau] left) ∧
         (∀ dispatch, Steps profile ready dispatch canonBefore [.tau] right) ∧
         left.host = before.host.record (route.reply site.destination site.start.host.nextTicket (.ok value)).1 ∧
         right.host = canonBefore.host ∧ HostFrame.Related.Paired older left right
-    | .refused issue => ∃ (before : Config (core3 grow) (HostState sig)) (canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)),
+    | .refused issue => ∃ (before : Config (core3 grow) (HostState sig)) (checkBody : Trace grow sig)
+        (canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+        (stop : Session grow sig (Ret (core3 grow))), stopsAt stop ∧
+        checkLabels = checkBody ++ [.tau, .tau, .tau] ∧
+        Steps profile ready (specDispatch ready base) checked checkBody before ∧
+        ReturnFrame.Occurrence.RetainsBelowTop profile ready (specDispatch ready (LiveDispatch.host bindings base))
+          canonical canonLabels right ∧
         left.host = before.host.record (route.reply site.destination site.start.host.nextTicket (.error issue)).1 ∧
-        (∀ dispatch, Steps profile ready dispatch before [.tau, .tau, .tau] left) ∧ right.ctl = canon.control childEntry
+        (∀ dispatch, Steps profile ready dispatch before [.tau, .tau, .tau] left) ∧ right.ctl = canon.control stop
     | .trapped reason => left.ctl = [] ∧ right.ctl = [] ∧ ∃ leading, PayloadPrefix.visible canonLabels = leading ++ [.trap reason]
+
+abbrev CollectionReplies (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (checked canonical : Config (core3 grow) (HostState sig))
+    (childEntry : Session grow sig (Ret (core3 grow))) : Prop :=
+  CollectionSegmentReplies profile ready base bindings older site checked canonical (· = childEntry)
 
 /-- Stops before the recursive body. A checked preflight refusal resumes its
 caller; a bad placement traps the checked machine. Neither executes the

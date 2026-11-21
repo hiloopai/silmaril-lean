@@ -220,7 +220,7 @@ theorem collectionDescriptor (cx : LiftLowerContext (core3 grow)) (width : AddrT
     (checkNext canonNext : output.Result → P (core3 grow) Host (Ret (core3 grow))) (same : left.store = right.store)
     (checkAt : left.ctl = check.control (ListLower.publish cx width ptr count output >>= checkNext))
     (canonAt : right.ctl = canon.control (ListLower.publish cx width ptr count output >>= canonNext)) :
-    StringLocalCut profile ready dispatch left right check canon checkNext canonNext := by
+    StringLocalCutBetween profile ready dispatch reference left right check canon checkNext canonNext := by
   have localProgram : Closed (ListLower.publish cx width ptr count output : P (core3 grow) Host output.Result) := by
     cases output with
     | flat => exact .pure _

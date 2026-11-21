@@ -198,6 +198,32 @@ theorem AllocatorMark.local_list_replies {route : GiveEffectRoute} (site : Paylo
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.localListReplies
     site linked element entries data field pointer
 
+/-- Compare every compiled nominal list element after the actual allocator
+return on either public give route. Live guards run in sequence against the
+reached writer and store. The descriptor is published only after all children
+return; a refusal rejoins only the checked caller at the reached stop. -/
+theorem AllocatorMark.nominal_list_replies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field)
+    (nominal : NominalElement element) (field : site.field = .dynamic (.list element) element entries) (pointer : Nat)
+    (admitted : OwnedMemory.Claims.Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
+    {wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {checked canonical : Config (core3 grow) (HostState sig)}
+    {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace} :
+    let area := layout site.destination.width element
+    let first := PayloadPrefix.checkedCollectionResume site.destination site.inst entries area 0 route.output site.reply
+    let second := PayloadPrefix.canonicalCollectionResume site.destination site.inst entries area route.output site.referenceReply
+    AllocatorMark profile ready base bindings older
+      (PayloadPrefix.collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
+      (PayloadPrefix.collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+    HostFrame.Related.Paired wider checked canonical →
+    checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
+    Core3.Grows site.checked.store.core checked.store.core →
+    CollectionSegmentReplies profile ready base bindings older site checked canonical
+      (ListReturnStop site.destination site.inst entries area route.output pointer site.referenceReply) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.nominalListReplies
+    site linked element entries nominal field pointer admitted
+
 /-- Replay a reached memory-map return through every compiled data entry,
 descriptor writes, and the original public `givePayload` caller reply.
 The canonical offsets are those selected when the allocation was installed. -/

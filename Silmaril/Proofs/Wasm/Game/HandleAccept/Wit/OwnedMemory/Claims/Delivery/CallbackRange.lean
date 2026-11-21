@@ -11,6 +11,8 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Record.Thms
 import Silmaril.Wasm.Component.Reference.Engine.Core3.Store.Defs
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
+import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
+import Silmaril.Wasm.Component.Reference.Canon.Prog.Thms
 
 public section
 
@@ -21,6 +23,8 @@ open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.ABI Silmaril.
 open Silmaril.Wasm.Component.Machine.ReturnFrame.Occurrence
 open Silmaril.Wasm.Game.HandleAccept.Wit
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
+open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints
+open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.RecordLower
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LiveDispatch
@@ -94,35 +98,205 @@ private theorem appendRun {dispatch : Call (core3 grow) → Session grow sig (Re
   | refl => exact back
   | cons step _ ih => exact .cons step (ih back)
 
-private theorem localTail (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
+private theorem appendVisible (first second : Trace grow sig) :
+    visible (first ++ second) = visible first ++ visible second := List.filter_append ..
+
+private theorem leafSilent {Result : Type} {value : Result} {labels : Trace grow sig}
+    (quiet : LocalLeafLabels (.ok value) labels) : visible labels = [] := by
+  apply silent
+  intro label member
+  have tau := List.all_eq_true.mp quiet label member
+  cases label <;> simp_all
+
+private theorem leafTrap {Result : Type} {reason : TrapReason} {labels : Trace grow sig}
+    (traps : LocalLeafLabels (Result := Result) (.error reason) labels) : visible labels = [.trap reason] := by
+  obtain ⟨count, rfl⟩ := traps
+  rw [appendVisible, silent (fun _ member => List.eq_of_mem_replicate member)]
+  rfl
+
+private theorem nominalElements (destination : RecordDestination) (inst : InstId) (entries : List Field)
+    (nominal : ∀ item ∈ entries, CanonicalHandle item) (stride ptr index : Nat)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon)
+    (checkAt : left.ctl = check.control (Record.Effects.elements recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width entries stride ptr index >>= checkNext))
+    (canonAt : right.ctl = canon.control (CanonicalTree.elements Limits.spec Quirks.none
+      (destination.context inst) destination.width entries .value stride ptr >>= canonNext)) :
+    CollectionSegment profile ready base bindings older left right check checkNext canonNext 0
+      (ElementStop destination inst entries stride ptr canonNext) := by
+  induction entries generalizing ptr index left right check canon with
+  | nil =>
+    simp only [Record.Effects.elements, CanonicalTree.elements, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind'] at checkAt canonAt
+    exact ⟨canon, .returned (), [], [], left, right, .refl _, .refl _, frame.store, rfl,
+      frame, checkAt, canonAt, fun depth => .done _ _, fun depth => .done _ _⟩
+  | cons item rest ih =>
+    let checkTail : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)) := fun verdict =>
+      (match verdict with
+        | .error issue => pure (.error issue)
+        | .ok () => Record.Effects.elements recordClaims Limits.spec Quirks.none (destination.context inst)
+          destination.width rest stride (ptr + stride) (index + 1)) >>= checkNext
+    let canonTail : Unit → Session grow sig (Ret (core3 grow)) := fun _ =>
+      CanonicalTree.elements Limits.spec Quirks.none (destination.context inst) destination.width rest .value stride (ptr + stride) >>= canonNext
+    have atHead : left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none
+        (destination.context inst) destination.width item index (.memory ptr) >>= checkTail) := by
+      rw [checkAt, Record.Effects.elements]
+      congr 1
+      simp only [Prog.bind_eq, Prog.bind_assoc, checkTail]
+      congr 1
+      funext verdict
+      cases verdict with
+      | error _ => rfl
+      | ok value => cases value; rfl
+    have atCanonHead : right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none
+        (destination.context inst) destination.width item (.memory ptr) >>= canonTail) := by
+      rw [canonAt, CanonicalTree.elements]
+      congr 1
+      change Prog.bind (Prog.bind _ (fun _ => _)) canonNext = Prog.bind _ canonTail
+      exact Prog.bind_assoc _ _ _
+    have leaf := LinkedCallback.ChildFrameOver.handle_field_then_between
+      (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+      (reference := specDispatch ready (LiveDispatch.host bindings base)) destination inst item (nominal item (by simp))
+      index (.memory ptr) checkTail canonTail frame (Core3.Grows.refl _) atHead atCanonHead
+      (next := fun _ lhs rhs check canon => CollectionSegment profile ready base bindings older lhs rhs check checkNext canonNext 0
+        (ElementStop destination inst rest stride (ptr + stride) canonNext))
+      (fun _ reached reference _ _ related _ lhs rhs => ih (fun child member => nominal child (List.mem_cons_of_mem _ member))
+        (ptr + stride) (index + 1) related (by exact lhs) (by exact rhs))
+    unfold LinkedCallback.HandleFieldThenBetween at leaf
+    cases live : liveLeafPlan left.store left.host.writer index item with
+    | error issue =>
+      rw [live] at leaf
+      obtain ⟨labels, tau, tracks⟩ := leaf
+      exact ⟨canon, .refused issue, labels, [], _, right, (prefix_survives (tracks 0)).1, .refl _,
+        frame.store, silent tau, _, ⟨[], item :: rest, rfl, by simp, by simp⟩, rfl, canonAt, tracks, fun depth => .done _ _⟩
+    | ok plan =>
+      rw [live] at leaf
+      obtain ⟨store, result, initial, leftLabels, rightLabels, quiet, seenLeft, seenRight, runLeft, runRight, success⟩ := leaf
+      cases result with
+      | error reason =>
+        have seen := leafTrap seenRight
+        exact ⟨canon, .trapped reason, _, _, _, _, runLeft, runRight, rfl,
+          by rw [appendVisible, silent quiet, List.nil_append, leafTrap seenLeft, seen], rfl, rfl, [], seen⟩
+      | ok value =>
+        cases value
+        obtain ⟨leftTracks, rightTracks, next⟩ := success () rfl
+        obtain ⟨reached, outcome, lhs, rhs, finalLeft, finalRight, tailLeft, tailRight, same, seen, status⟩ := next
+        have leftRun := appendRun runLeft tailLeft
+        have rightRun := appendRun runRight tailRight
+        have observed : visible ((initial ++ leftLabels) ++ lhs) = visible (rightLabels ++ rhs) := by
+          rw [appendVisible, appendVisible, appendVisible, silent quiet, leafSilent seenLeft, leafSilent seenRight,
+            List.nil_append, List.nil_append, List.nil_append, seen]
+        refine ⟨reached, outcome, _, _, finalLeft, finalRight, leftRun, rightRun, same, observed, ?_⟩
+        cases outcome with
+        | returned value =>
+          obtain ⟨paired, leftAt, rightAt, leftTail, rightTail⟩ := status
+          exact ⟨paired, leftAt, rightAt, fun depth => (leftTracks depth).append (leftTail depth),
+            fun depth => (rightTracks depth).append (rightTail depth)⟩
+        | refused issue =>
+          obtain ⟨stop, ⟨leading, remaining, split, nonempty, stopAt⟩, leftAt, rightAt, leftTail, rightTail⟩ := status
+          refine ⟨stop, ⟨item :: leading, remaining, congrArg (item :: ·) split, nonempty, ?_⟩, leftAt, rightAt,
+            fun depth => (leftTracks depth).append (leftTail depth), fun depth => (rightTracks depth).append (rightTail depth)⟩
+          simpa only [List.length_cons, Nat.succ_mul, Nat.add_assoc, Nat.add_comm stride] using stopAt
+        | trapped reason =>
+          obtain ⟨leftEmpty, rightEmpty, before, trapped⟩ := status
+          exact ⟨leftEmpty, rightEmpty, before, by rw [appendVisible, leafSilent seenRight, List.nil_append, trapped]⟩
+
+private theorem nominalTail (destination : RecordDestination) (inst : InstId) (entries : List Field)
+    (nominal : ∀ item ∈ entries, CanonicalHandle item) (area : Layout) (output : Stored.Lower.Output) (index ptr : Nat)
+    (checkNext : Except RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon)
+    (checkAt : left.ctl = check.control (checkedCollectionTail destination inst entries area index output ptr (.ok ()) >>= checkNext))
+    (canonAt : right.ctl = canon.control (canonicalCollectionTail destination inst entries area output ptr >>= canonNext)) :
+    let publish := (ListLower.publish (destination.context inst) destination.width ptr entries.length output : Session grow sig output.Result)
+    CollectionSegment profile ready base bindings older left right check checkNext canonNext 0
+      (ElementStop destination inst entries area.size ptr (fun _ => publish >>= canonNext)) := by
+  intro publish
+  let onChecked : output.Result → Session grow sig (Ret (core3 grow)) := fun result => checkNext (.ok result)
+  let checkTail := checkedSequenceNext (.nested index) (fun (_ : Unit) => publish >>= fun result => pure (.ok result)) checkNext
+  let canonTail : Unit → Session grow sig (Ret (core3 grow)) := fun _ => publish >>= canonNext
+  have checkElements : left.ctl = check.control (Record.Effects.elements recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width entries area.size ptr 0 >>= checkTail) := by
+    rw [checkAt]
+    congr 1
+    simp only [checkedCollectionTail, Prog.bind_eq, Prog.bind_assoc, checkTail, publish]
+    congr 1
+    funext verdict
+    cases verdict with
+    | error _ => rfl
+    | ok value => cases value; rfl
+  have canonElements : right.ctl = canon.control (CanonicalTree.elements Limits.spec Quirks.none
+      (destination.context inst) destination.width entries .value area.size ptr >>= canonTail) := by
+    rw [canonAt]
+    congr 1
+    change Prog.bind (Prog.bind _ (fun _ => publish)) canonNext = Prog.bind _ canonTail
+    exact Prog.bind_assoc _ _ _
+  obtain ⟨reached, outcome, lhs, rhs, middleLeft, middleRight, runLeft, runRight, same, seen, status⟩ :=
+    nominalElements (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+      destination inst entries nominal area.size ptr 0 checkTail canonTail frame checkElements canonElements
+  cases outcome with
+  | trapped reason => exact ⟨reached, .trapped reason, lhs, rhs, _, _, runLeft, runRight, same, seen, status⟩
+  | refused issue =>
+    obtain ⟨stop, witness, leftAt, rightAt, tracksLeft, tracksRight⟩ := status
+    exact ⟨reached, .refused (.nested index issue), lhs, rhs, _, _, runLeft, runRight, same, seen,
+      stop, witness, leftAt, rightAt, tracksLeft, tracksRight⟩
+  | returned value =>
+    cases value
+    obtain ⟨paired, leftAt, rightAt, tracksLeft, tracksRight⟩ := status
+    have leftPublish : middleLeft.ctl = check.control (publish >>= onChecked) := by
+      rw [leftAt]
+      simp only [checkTail, checkedSequenceNext, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind', onChecked]
+    obtain ⟨store, result, labels, observed, leftWrites, rightWrites, tracks⟩ :=
+      collection_descriptor_cut_between (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
+        (reference := specDispatch ready (LiveDispatch.host bindings base)) (destination.context inst) destination.width
+        output ptr entries.length middleLeft middleRight check reached onChecked canonNext same leftPublish rightAt
+    have labelMatch : visible (lhs ++ labels) = visible (rhs ++ labels) := by rw [appendVisible, appendVisible, seen]
+    have leftRun := appendRun runLeft leftWrites.steps
+    have rightRun := appendRun runRight rightWrites.steps
+    cases result with
+    | error reason =>
+      exact ⟨reached, .trapped reason, _, _, _, _, leftRun, rightRun, rfl, labelMatch, rfl, rfl, visible rhs,
+        by rw [appendVisible, leafTrap observed]⟩
+    | ok descriptor =>
+      exact ⟨reached, .returned descriptor, _, _, _, _, leftRun, rightRun, rfl, labelMatch,
+        ⟨rfl, paired.pending, paired.results, paired.cancels, paired.blocked, paired.thread, paired.frames, paired.rest⟩,
+        rfl, rfl, fun depth => (tracksLeft depth).append (tracks descriptor rfl depth).1,
+        fun depth => (tracksRight depth).append (tracks descriptor rfl depth).2⟩
+
+private theorem rangeThen (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
     (entries : List Field) (mode : CanonicalTree.EntryMode)
     (output : Stored.Lower.Output) (index pointer : Nat)
     (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
     (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
     {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
-    {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)} :
+    {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)}
+    (stopsAt : Session grow sig (Ret (core3 grow)) → Prop) :
     let area := layout destination.width element
     let lhs := fun addr verdict => checkedCollectionTail destination inst entries area index output addr verdict >>= checkNext
     let rhs := fun addr => canonicalCollectionTail destination inst entries area output addr mode >>= canonNext
+    stopsAt (rhs pointer) →
     (∀ bytes (left right : Config (core3 grow) (HostState sig)) (canon : Cursor (E := core3 grow) (HostState sig)),
       (core3 grow).memAddrType? left.store.core destination.memory = some destination.width →
       (core3 grow).memSize? left.store.core destination.memory = some bytes →
       pointer = alignTo pointer area.alignment → pointer + entries.length * area.size ≤ bytes →
-      left.store = right.store → check.thread = canon.thread →
+      LinkedCallback.ChildFrameOver older left right check canon →
       left.ctl = check.control (lhs pointer (.ok ())) → right.ctl = canon.control (rhs pointer) →
-      LocalCutKeepingBetween profile ready (specDispatch ready base) (specDispatch ready (LiveDispatch.host bindings base))
-        (fun store => Core3.Grows left.store.core store.core) left right check canon (fun value => checkNext (.ok value)) canonNext) →
+      CollectionSegment profile ready base bindings older left right check checkNext canonNext 0 stopsAt) →
     CollectionRangeCut profile ready base bindings older checked canonical check destination area entries.length pointer
       (Field.listObjects entries) lhs rhs →
-    CollectionReturn profile ready base bindings older checked canonical check checkNext canonNext (rhs pointer) := by
-  intro area lhs rhs visit cut
+    CollectionSegment profile ready base bindings older checked canonical check checkNext canonNext 1 stopsAt := by
+  intro area lhs rhs acceptsInitial visit cut
   obtain ⟨canon, bytes, width, sized, frame, range⟩ := cut
   have trapped (reason : TrapReason)
       (checkRun : ∃ steps, Steps profile ready (specDispatch ready base) checked
         (List.replicate steps .tau ++ [.trap reason]) (StepDefs.trapCfg checked))
       (canonRun : ∃ steps, Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) canonical
         (List.replicate steps .tau ++ [.trap reason]) (StepDefs.trapCfg canonical)) :
-      CollectionReturn profile ready base bindings older checked canonical check checkNext canonNext (rhs pointer) := by
+      CollectionSegment profile ready base bindings older checked canonical check checkNext canonNext 1 stopsAt := by
     obtain ⟨leftCount, left⟩ := checkRun
     obtain ⟨rightCount, right⟩ := canonRun
     have seen (count : Nat) : visible (List.replicate count (.tau : Label (core3 grow) (HostState sig)) ++ [.trap reason]) =
@@ -148,40 +322,79 @@ private theorem localTail (destination : RecordDestination) (inst : InstId) (ele
         have stop : lhs pointer (.error issue) = checkNext (.error refused) := by cases issue <;> rfl
         rw [stop] at checkRun
         exact ⟨canon, .refused refused, _, _, _, other, (prefix_survives (checkRun 0)).1,
-          (prefix_survives (canonRun 0)).1, frame.store, prefixSeen, rfl, rfl, checkRun, canonRun⟩
+          (prefix_survives (canonRun 0)).1, frame.store, prefixSeen, rhs pointer, acceptsInitial, rfl, rfl, checkRun, canonRun⟩
       | ok result =>
         cases result
         rw [prepared] at checkRun
         let entered := { checked with ctl := check.control (lhs pointer (.ok ())) }
-        obtain ⟨store, outcome, checkedTail, canonTail, checkedRun, canonicalRun, seen, result⟩ :=
-          visit bytes entered other canon width sized aligned bounds frame.store frame.thread rfl rfl
+        have child : LinkedCallback.ChildFrameOver older entered other check canon :=
+          ⟨frame.store, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩
+        obtain ⟨reached, outcome, checkedTail, canonTail, leftEnd, rightEnd, checkedRun, canonicalRun, same, seen, result⟩ :=
+          visit bytes entered other canon width sized aligned bounds child rfl rfl
         have left := appendRun (prefix_survives (checkRun 0)).1 checkedRun
-        have right := appendRun (prefix_survives (canonRun 0)).1 canonicalRun.steps
+        have right := appendRun (prefix_survives (canonRun 0)).1 canonicalRun
         have labels : visible (leading ++ checkedTail) = visible (referenceLabels ++ canonTail) := by
           simp only [visible, List.filter_append] at prefixSeen seen ⊢
           rw [prefixSeen, seen]
+        refine ⟨reached, outcome, _, _, leftEnd, rightEnd, left, right, same, labels, ?_⟩
         cases outcome with
-        | ok value =>
-          exact ⟨canon, .returned value, _, _, _, _, left, right, rfl, labels,
-            ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩,
-            rfl, rfl, fun depth => (checkRun depth).append (result.2.1 depth),
-            fun depth => (canonRun depth).append (result.2.2 depth)⟩
-        | error reason =>
-          obtain ⟨before, tail⟩ := result
-          exact ⟨canon, .trapped reason, _, _, _, _, left, right, rfl, labels, rfl, rfl, visible referenceLabels ++ before,
+        | returned value =>
+          obtain ⟨paired, leftAt, rightAt, leftTail, rightTail⟩ := result
+          exact ⟨paired, leftAt, rightAt, fun depth => (checkRun depth).append (leftTail depth),
+            fun depth => (canonRun depth).append (rightTail depth)⟩
+        | refused issue =>
+          obtain ⟨stop, accepted, leftAt, rightAt, leftTail, rightTail⟩ := result
+          exact ⟨stop, accepted, leftAt, rightAt, fun depth => (checkRun depth).append (leftTail depth),
+            fun depth => (canonRun depth).append (rightTail depth)⟩
+        | trapped reason =>
+          obtain ⟨leftDone, rightDone, before, tail⟩ := result
+          exact ⟨leftDone, rightDone, visible referenceLabels ++ before,
             by simp only [visible, List.filter_append] at tail ⊢; rw [tail, List.append_assoc]⟩
     · simp only [ite_eq_right bounds] at range
       exact trapped .outOfBounds range.1 range.2
   · simp only [ite_eq_left aligned] at range
     exact trapped .unalignedPointer range.1 range.2
 
+private theorem localTail (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
+    (entries : List Field) (mode : CanonicalTree.EntryMode) (output : Stored.Lower.Output) (index pointer : Nat)
+    (checkNext : Except RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)} :
+    let area := layout destination.width element
+    let lhs := fun addr verdict => checkedCollectionTail destination inst entries area index output addr verdict >>= checkNext
+    let rhs := fun addr => canonicalCollectionTail destination inst entries area output addr mode >>= canonNext
+    (∀ bytes (left right : Config (core3 grow) (HostState sig)) (canon : Cursor (E := core3 grow) (HostState sig)),
+      (core3 grow).memAddrType? left.store.core destination.memory = some destination.width →
+      (core3 grow).memSize? left.store.core destination.memory = some bytes →
+      pointer = alignTo pointer area.alignment → pointer + entries.length * area.size ≤ bytes →
+      left.store = right.store → check.thread = canon.thread → left.ctl = check.control (lhs pointer (.ok ())) →
+      right.ctl = canon.control (rhs pointer) →
+      LocalCutKeepingBetween profile ready (specDispatch ready base) (specDispatch ready (LiveDispatch.host bindings base))
+        (fun store => Core3.Grows left.store.core store.core) left right check canon (fun value => checkNext (.ok value)) canonNext) →
+    CollectionRangeCut profile ready base bindings older checked canonical check destination area entries.length pointer
+      (Field.listObjects entries) lhs rhs →
+    CollectionReturn profile ready base bindings older checked canonical check checkNext canonNext (rhs pointer) := by
+  intro area lhs rhs visit cut
+  refine rangeThen destination inst element entries mode output index pointer checkNext canonNext _ rfl ?_ cut
+  intro bytes left right canon width sized aligned bounds frame checkAt canonAt
+  obtain ⟨store, outcome, checkedTail, canonTail, checkedRun, canonicalRun, seen, result⟩ :=
+    visit bytes left right canon width sized aligned bounds frame.store frame.thread checkAt canonAt
+  cases outcome with
+  | ok value =>
+    exact ⟨canon, .returned value, _, _, _, _, checkedRun, canonicalRun.steps, rfl, seen,
+      ⟨rfl, frame.pending, frame.results, frame.cancels, frame.blocked, frame.thread, frame.frames, frame.rest⟩,
+      rfl, rfl, result.2.1, result.2.2⟩
+  | error reason =>
+    exact ⟨canon, .trapped reason, _, _, _, _, checkedRun, canonicalRun.steps, rfl, seen, rfl, rfl, result⟩
+
 theorem replies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {checked canonical : Config (core3 grow) (HostState sig)} {check : Cursor (E := core3 grow) (HostState sig)}
-    {callerLabels childEntry}
+    {callerLabels stopsAt}
     (caller : Prefix profile ready (specDispatch ready base) site.checked (.active 0 0) callerLabels checked (.active 0 1))
-    (cut : CollectionReturn profile ready base bindings older checked canonical check site.reply site.referenceReply childEntry) :
-    CollectionReplies profile ready base bindings older site checked canonical childEntry := by
+    (cut : CollectionSegment profile ready base bindings older checked canonical check site.reply site.referenceReply 1 stopsAt) :
+    CollectionSegmentReplies profile ready base bindings older site checked canonical stopsAt := by
   obtain ⟨canon, outcome, lhs, rhs, left, right, checkedRun, canonRun, same, seen, result⟩ := cut
   have silentTail (trace suffix : Trace grow sig) (tau : visible suffix = []) : visible (trace ++ suffix) = visible trace := by
     change List.filter _ (trace ++ suffix) = _
@@ -195,9 +408,10 @@ theorem replies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig rout
     obtain ⟨checkEnd, canonEnd, checkReply, canonReply, stores, checkHost, canonHost, paired⟩ :=
       LinkedCallback.MemorySequence.resume_returned_give site value frame (caller.append (tracks 0)) checkAt canonAt
     exact ⟨.returned value, _, _, checkEnd, canonEnd, appendRun checkedRun (checkReply _), appendRun canonRun (canonReply _),
-      stores, by rw [silentTail _ _ rfl, silentTail _ _ rfl, seen], left, right, checkReply, canonReply, checkHost, canonHost, paired⟩
+      stores, by rw [silentTail _ _ rfl, silentTail _ _ rfl, seen], left, right, lhs, rhs, rfl, rfl,
+      checkedRun, canonRun, checkReply, canonReply, checkHost, canonHost, paired⟩
   | refused issue =>
-    obtain ⟨checkAt, canonAt, tracks, _⟩ := result
+    obtain ⟨stop, stopped, checkAt, canonAt, tracks, canonTracks⟩ := result
     obtain ⟨segments, callerAt⟩ := site.reached_caller checkAt (caller.append (tracks 0))
     let reply := route.reply site.destination site.start.host.nextTicket (.error issue)
     have atReply : left.ctl = ⟨check.thread, .prog (do return .flat (← writeCompletion reply)),
@@ -209,12 +423,19 @@ theorem replies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig rout
     have resumes (dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))) :
         Steps profile ready dispatch left [.tau, .tau, .tau] finished := Plain.give_completion_steps reply atReply
     exact ⟨.refused issue, _, rhs, finished, right, appendRun checkedRun (resumes _), canonRun, same,
-      by rw [silentTail _ _ rfl, seen], left, canon, rfl, resumes, canonAt⟩
+      by rw [silentTail _ _ rfl, seen], left, lhs, canon, stop, stopped, rfl, checkedRun, canonTracks, rfl, resumes, canonAt⟩
 
 private theorem listEntries {entries : List Field} {element schema : Stored.TypeOf}
     (matched : Field.LayoutMatches (.dynamic (.list element) element entries) schema) : Field.EntriesMatch entries element := by
   cases matched with
   | list children => exact children
+
+private theorem nominalEntry {item : Field} {element : Stored.TypeOf}
+    (nominal : NominalElement element) (shape : item.LayoutMatches element) (emitted : item.Emitted) : CanonicalHandle item := by
+  cases item with
+  | owner | endpoint | context => trivial
+  | data => cases nominal <;> cases shape <;> cases emitted
+  | aggregate | fixed | dynamic | sum => cases nominal <;> cases shape
 
 theorem refusalReply {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (type element : Stored.TypeOf) (entries : List Field) (index pointer bytes : Nat)
@@ -323,6 +544,52 @@ theorem localListReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow
     site.reply site.referenceReply (fun bytes left right canon reachedWidth sized aligned bounds same thread checkAt rightAt =>
       local_data_collection_tail site.destination site.inst element data entries children pointer bytes 0 route.output left right
         reachedWidth sized aligned bounds same check canon thread site.reply site.referenceReply checkAt rightAt) cut)
+
+theorem nominalListReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field)
+    (nominal : NominalElement element) (field : site.field = .dynamic (.list element) element entries) (pointer : Nat)
+    (admitted : Record.prepare site.start.store site.start.host.writer site.field.objects = .ok ())
+    {older wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {checked canonical : Config (core3 grow) (HostState sig)}
+    {check : Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace} :
+    let area := layout site.destination.width element
+    let first := checkedCollectionResume site.destination site.inst entries area 0 route.output site.reply
+    let second := canonicalCollectionResume site.destination site.inst entries area route.output site.referenceReply
+    AllocatorMark profile ready base bindings older
+      (collectionEntry site.destination site.inst area entries.length (specDispatch ready base) site.checked site.cursor first)
+      (collectionEntry site.destination site.inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+        (site.reference site.referenceReply) site.cursor second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+    HostFrame.Related.Paired wider checked canonical →
+    checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
+    Core3.Grows site.checked.store.core checked.store.core →
+    CollectionSegmentReplies profile ready base bindings older site checked canonical
+      (ListReturnStop site.destination site.inst entries area route.output pointer site.referenceReply) := by
+  intro area first second mark paired returned growth
+  obtain ⟨objects, compiled⟩ := linked.compiled
+  have matched := Record.preflightValue_layout _ _ _ _ _ objects compiled
+  have emitted := Record.preflightValue_emitted _ _ _ _ _ objects compiled
+  rw [field] at matched emitted admitted
+  have entriesMatch := listEntries matched
+  cases emitted with
+  | list children =>
+    have handles : ∀ item ∈ entries, CanonicalHandle item := fun item member =>
+      nominalEntry nominal (entries_match_of_mem entriesMatch member) (children item member)
+    obtain ⟨_, caller⟩ := collectionCaller site linked (.list element) element entries field admitted mark.checkedTrail
+    have width := site.destination.check_width site.start.store linked.destination
+    have cut := collectionRange (profile := profile) (ready := ready) site.destination site.inst (.list element) element
+      entries route.output 0 pointer site.reply site.referenceReply mark paired returned width growth
+    refine replies site caller (rangeThen site.destination site.inst element entries .value route.output 0 pointer
+      site.reply site.referenceReply (ListReturnStop site.destination site.inst entries area route.output pointer site.referenceReply)
+      (.inl rfl) ?_ cut)
+    intro _ left right canon _ _ _ _ frame checkAt canonAt
+    obtain ⟨reached, outcome, lhs, rhs, finalLeft, finalRight, leftRun, rightRun, same, seen, status⟩ :=
+      nominalTail site.destination site.inst entries handles area route.output 0 pointer site.reply site.referenceReply frame checkAt canonAt
+    refine ⟨reached, outcome, lhs, rhs, finalLeft, finalRight, leftRun, rightRun, same, seen, ?_⟩
+    cases outcome with
+    | returned _ | trapped _ => exact status
+    | refused _ =>
+      obtain ⟨stop, witness, rest⟩ := status
+      exact ⟨stop, .inr witness, rest⟩
 
 private theorem mapEntries {entries : List Field} {key : WIT.KeyType} {element schema : Stored.TypeOf}
     (matched : Field.LayoutMatches (.dynamic (.map key element) (.record (mapEntryFields key element)) entries) schema) :
