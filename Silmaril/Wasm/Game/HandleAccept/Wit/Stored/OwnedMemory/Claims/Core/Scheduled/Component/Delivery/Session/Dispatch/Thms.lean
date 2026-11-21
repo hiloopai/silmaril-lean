@@ -21,6 +21,23 @@ theorem Compatible.steps {labels} (run : Compatible profile ready bindings calle
     Steps profile ready (linked ready bindings callees) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.compatibleSteps run
 
+/-- Dispatch and read the reached function slot. Only the selected lifted
+branch is compared; no assumption on the unused host function is needed. -/
+theorem liftedLookup_steps {impl : HostImpl (core3 grow) (HostState sig)}
+    {thread func caller next frames rest core fnType opts inst}
+    (focus : start.ctl = ⟨thread, .prog (.op (.call (.funcInst func caller)) next), frames⟩ :: rest)
+    (lookup : start.store.func? func = some (.lifted core fnType opts inst)) :
+    Steps profile ready (specDispatch ready impl) start [.tau, .tau]
+      { start with ctl := ⟨thread, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller),
+        .prog next :: frames⟩ :: rest } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.liftedLookupSteps focus lookup
+
+theorem Compatible.append {middle : Config (core3 grow) (HostState sig)} {leading trailing}
+    (before : Compatible profile ready bindings callees start leading middle)
+    (after : Compatible profile ready bindings callees middle trailing finish) :
+    Compatible profile ready bindings callees start (leading ++ trailing) finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.compatibleAppend before after
+
 theorem Compatible.of_closed {labels} (run : Steps profile ready (coreOnly ready bindings) start labels finish)
     (closed : ClosedThrough profile ready bindings start labels finish) : Compatible profile ready bindings callees start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.closedPrefix run closed

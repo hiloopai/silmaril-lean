@@ -55,10 +55,36 @@ def pollLabels {start : State grow sig} {target : SubtaskId} (poll : ParkedPoll 
 
 def eventFor (record : Subtask) : EventTuple := ⟨.subtask, record.index.getD 0, record.state.toNat⟩
 
+def invokeCaller (start : State grow sig) : CallerId :=
+  (ArenaField.callers (E := core3 grow)).mkId (ArenaField.callers.size start.store)
+
+def invokeReturn (reply : Ret (core3 grow)) : P (core3 grow) (HostState sig) (Ret (core3 grow)) := do
+  modifyStore StepDefs.leaveHostSt
+  pure reply
+
+def invokeStart (start : State grow sig) (call : CallId) (func : FuncId) (args : List Value.Val) : State grow sig :=
+  { start with pending := start.pending ++ [(call, func, args)], ctl := [.ofProg none (StepDefs.invokeProg call func args)] }
+
+def invokeCall (start : State grow sig) (call : CallId) (func : FuncId) (args : List Value.Val) : State grow sig :=
+  { start with
+    store := StepDefs.enterHostSt (ArenaOps.allocSt ArenaField.callers (.host call args 0) start.store)
+    ctl := [.ofProg none (.op (.call (.funcInst func (invokeCaller start))) invokeReturn)] }
+
+/-- The first canonical lift instruction, with the original host continuation
+still waiting for its cancel handle. The arguments are in the fresh caller. -/
+def invokeLift (start : State grow sig) (call : CallId) (func : FuncId) (args : List Value.Val)
+    (core : (core3 grow).FuncAddr) (fnType : WIT.FuncType Empty RtId) (opts : CanonOpts (core3 grow))
+    (inst : InstId) : State grow sig :=
+  { invokeCall (invokeStart start call func args) call func args with
+    ctl := [⟨none, .prog (canonLift Limits.spec Quirks.none core fnType opts inst (invokeCaller start)), [.prog invokeReturn]⟩] }
+
 /-- A semantic action is not a machine label: one action can emit several
 machine labels, including choices, and a callback take need not reply to Core. -/
 inductive Action where
   | invoke (call : CallId) (func : FuncId)
+  | invokePrologue (call : CallId) (func : FuncId)
+  | liftedLookup (func : FuncId) (caller : CallerId)
+  | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
   | coreStep
   | coreReturn
@@ -92,7 +118,18 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
   | invoke {start call func args} (hostReady : StepDefs.HostReadyCfg start)
       (fresh : ∀ entry ∈ start.pending, entry.1 ≠ call) :
       Transition profile ready impl start (.invoke call func) [.host (.invoke call func args)]
-        { start with pending := start.pending ++ [(call, func, args)], ctl := [.ofProg none (StepDefs.invokeProg call func args)] }
+        (invokeStart start call func args)
+  | invokePrologue {start call func args} (focused : start.ctl = [.ofProg none (StepDefs.invokeProg call func args)]) :
+      Transition profile ready impl start (.invokePrologue call func) [.tau, .tau, .tau] (invokeCall start call func args)
+  | liftedLookup {start thread func caller next frames rest core fnType opts inst}
+      (focused : start.ctl = ⟨thread, .prog (.op (.call (.funcInst func caller)) next), frames⟩ :: rest)
+      (lookup : start.store.func? func = some (.lifted core fnType opts inst)) :
+      Transition profile ready impl start (.liftedLookup func caller) [.tau, .tau]
+        { start with ctl := ⟨thread, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller),
+          .prog next :: frames⟩ :: rest }
+  | invokeReturn {start cancel} (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
+      Transition profile ready impl start (.invokeReturn cancel) [.tau, .tau, .tau]
+        (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store })
   | tick {start thread} (tick : SelectedTick thread start ready profile) :
       Transition profile ready impl start (.tick thread) tick.selectionLabels tick.atResume
   | coreInternal {start thread core next segments rest coreStore advanced}

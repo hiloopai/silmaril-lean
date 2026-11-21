@@ -28,6 +28,17 @@ theorem Run.steps {actions labels} (path : Run profile ready impl start actions 
     Steps profile ready (specDispatch ready impl) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runSteps path
 
+/-- A host invocation of a reached lifted export enters the real canonical
+lift with its freshly allocated caller and original host return frame. Caller
+allocation and host nesting updates do not change the selected function slot. -/
+theorem Run.invoke_lifted {call func args core fnType opts inst}
+    (hostReady : StepDefs.HostReadyCfg start) (fresh : ∀ entry ∈ start.pending, entry.1 ≠ call)
+    (lookup : start.store.func? func = some (.lifted core fnType opts inst)) :
+    Run profile ready impl start [.invoke call func, .invokePrologue call func, .liftedLookup func (invokeCaller start)]
+      [.host (.invoke call func args), .tau, .tau, .tau, .tau, .tau]
+      (invokeLift start call func args core fnType opts inst) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.invokeLifted hostReady fresh lookup
+
 theorem Run.append {first second leading trailing} (left : Run profile ready impl start first leading middle)
     (right : Run profile ready impl middle second trailing finish) :
     Run profile ready impl start (first ++ second) (leading ++ trailing) finish :=

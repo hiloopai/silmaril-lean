@@ -67,11 +67,65 @@ theorem overlayStep {label} (agrees : AgreesAt ready bindings callees start)
   | hostCancel hostReady cancel unresolved => exact .hostCancel hostReady cancel unresolved
   | hostRun hostReady => exact .hostRun hostReady
 
+theorem liftedLookupSteps {impl : HostImpl (core3 grow) (HostState sig)}
+    {thread func caller next frames rest core fnType opts inst}
+    (focus : start.ctl = ⟨thread, .prog (.op (.call (.funcInst func caller)) next), frames⟩ :: rest)
+    (lookup : start.store.func? func = some (.lifted core fnType opts inst)) :
+    Steps profile ready (specDispatch ready impl) start [.tau, .tau]
+      { start with ctl := ⟨thread, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller),
+        .prog next :: frames⟩ :: rest } := by
+  refine .cons (.call focus) ?_
+  let read : CStore (core3 grow) → P (core3 grow) (HostState sig) (Ret (core3 grow)) := fun store =>
+    (match store.func? func with
+      | some entry => pure entry
+      | none => internal "dangling arena id") >>= fun
+    | .lifted liftedCore liftedType liftedOpts liftedInst =>
+      canonLift Limits.spec Quirks.none liftedCore liftedType liftedOpts liftedInst caller
+    | .host _ hostFn => impl.funcs hostFn caller
+  have readReached : read start.store = canonLift Limits.spec Quirks.none core fnType opts inst caller := by
+    simp [read, lookup]
+  have installed : specDispatch ready impl (.funcInst func caller) = .op .get read := by
+    simp only [dispatch, funcInstProg, getObj, getStore, perform, Prog.lift, bind, Prog.bind, pure, read, CStore.func?]
+    apply congrArg (Prog.op (S := Eff (core3 grow) (HostState sig)) .get)
+    funext store
+    cases ArenaField.funcs.get? store func with
+    | none =>
+      simp only [internal, trap, Prog.bind]
+      apply congrArg (Prog.op (S := Eff (core3 grow) (HostState sig)) (.trap (.internal "dangling arena id")))
+      funext response
+      cases response
+    | some entry => cases entry <;> rfl
+  have step := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl)
+    (m := { start with ctl := ⟨thread, .prog (specDispatch ready impl (.funcInst func caller)),
+      .prog next :: frames⟩ :: rest }) (th := thread) (segs := .prog next :: frames)
+    (rest := rest) (k := read) (by simp only [installed])
+  rw [readReached] at step
+  exact .cons step (.refl _)
+
+private theorem appendSteps {middle : Config (core3 grow) (HostState sig)} {leading trailing}
+    {dispatch : Call (core3 grow) → P (core3 grow) (HostState sig) (Ret (core3 grow))}
+    (before : Steps profile ready dispatch start leading middle)
+    (after : Steps profile ready dispatch middle trailing finish) :
+    Steps profile ready dispatch start (leading ++ trailing) finish := by
+  induction before with
+  | refl => exact after
+  | cons step _ ih => exact .cons step (ih after)
+
 theorem compatibleSteps {labels} (run : Compatible profile ready bindings callees start labels finish) :
     Steps profile ready (linked ready bindings callees) start labels finish := by
   induction run with
   | done => exact .refl _
   | next agrees step _ ih => exact .cons (overlayStep agrees step) ih
+  | liftedLookup focus lookup _ ih => exact appendSteps (liftedLookupSteps focus lookup) ih
+
+theorem compatibleAppend {middle : Config (core3 grow) (HostState sig)} {leading trailing}
+    (before : Compatible profile ready bindings callees start leading middle)
+    (after : Compatible profile ready bindings callees middle trailing finish) :
+    Compatible profile ready bindings callees start (leading ++ trailing) finish := by
+  induction before with
+  | done => exact after
+  | next agrees step _ ih => exact .next agrees step (ih after)
+  | liftedLookup focus lookup _ ih => exact .liftedLookup focus lookup (ih after)
 
 theorem closedPrefix {labels} (run : Steps profile ready (coreOnly ready bindings) start labels finish)
     (closed : ClosedThrough profile ready bindings start labels finish) : Compatible profile ready bindings callees start labels finish := by

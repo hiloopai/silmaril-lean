@@ -26,8 +26,10 @@ def AgreesAt (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
   ∀ {thread call next frames rest}, start.ctl = ⟨thread, .prog (.op (.call call) next), frames⟩ :: rest →
     coreOnly ready bindings call = linked ready bindings callees call
 
-/-- A reached trace with a dispatcher certificate at exactly its source
-cuts. No equality of writers, guest bytes, or callback return is imposed. -/
+/-- A reached trace at common cuts of both dispatchers. A lifted function
+lookup can cross two steps at once: the installed programs may differ, but
+the actual arena read selects the same continuation. No equality of writers,
+guest bytes, or callback return is imposed. -/
 inductive Compatible (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
     (callees : List (Callee sig)) :
     Config (core3 grow) (HostState sig) → List (Label (core3 grow) (HostState sig)) → Config (core3 grow) (HostState sig) → Prop where
@@ -37,6 +39,13 @@ inductive Compatible (profile : ProfileKind) (ready : HostReady (HostState sig))
       (step : Step profile ready (coreOnly ready bindings) start label middle)
       (tail : Compatible profile ready bindings callees middle labels finish) :
       Compatible profile ready bindings callees start (label :: labels) finish
+  | liftedLookup {start finish labels thread func caller next frames rest core fnType opts inst}
+      (focus : start.ctl = ⟨thread, .prog (.op (.call (.funcInst func caller)) next), frames⟩ :: rest)
+      (lookup : start.store.func? func = some (.lifted core fnType opts inst))
+      (tail : Compatible profile ready bindings callees
+        { start with ctl := ⟨thread, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller),
+          .prog next :: frames⟩ :: rest } labels finish) :
+      Compatible profile ready bindings callees start (.tau :: .tau :: labels) finish
 
 /-- The only direct requests that can see the component function overlay. -/
 def UsesComponent (call : Call (core3 grow)) : Prop :=

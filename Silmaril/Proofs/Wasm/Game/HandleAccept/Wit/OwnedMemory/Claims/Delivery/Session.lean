@@ -29,10 +29,31 @@ private theorem appendSteps {leading trailing}
   | refl => exact right
   | cons step _ ih => exact .cons step (ih right)
 
+private theorem invokePrologueSteps {call func args}
+    (focused : start.ctl = [.ofProg none (StepDefs.invokeProg call func args)]) :
+    Steps profile ready (specDispatch ready impl) start [.tau, .tau, .tau] (invokeCall start call func args) := by
+  let read : CStore (core3 grow) → P (core3 grow) (HostState sig) (Ret (core3 grow)) := fun store =>
+    .op (.modify (ArenaOps.allocSt ArenaField.callers (.host call args 0))) fun _ =>
+      .op (.modify StepDefs.enterHostSt) fun _ =>
+        .op (.call (.funcInst func (invokeCaller { start with store }))) invokeReturn
+  refine .cons (.get (th := none) (segs := []) (rest := []) (k := read) ?_) ?_
+  · rw [focused]
+    rfl
+  exact .cons (.modify rfl) (.cons (.modify rfl) (.refl _))
+
+private theorem invokeReturnSteps {cancel}
+    (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
+    Steps profile ready (specDispatch ready impl) start [.tau, .tau, .tau]
+      (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store }) := by
+  exact .cons (.popProg focused) (.cons (.modify rfl) (.cons (.hostDone rfl) (.refl _)))
+
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by
   cases edge with
   | invoke hostReady fresh => exact .cons (.hostInvoke hostReady fresh) (.refl _)
+  | invokePrologue focused => exact invokePrologueSteps focused
+  | liftedLookup focused lookup => exact Dispatch.liftedLookup_steps focused lookup
+  | invokeReturn focused => exact invokeReturnSteps focused
   | tick tick => exact tick.selects_thread
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)
   | coreReturned focused returned => exact .cons (.coreReturned focused returned) (.refl _)
@@ -87,6 +108,16 @@ theorem runSteps {actions labels} (path : Run profile ready impl start actions l
   induction path with
   | stop => exact .refl _
   | next edge _ ih => exact appendSteps (transitionSteps edge) ih
+
+theorem invokeLifted {call func args core fnType opts inst}
+    (hostReady : StepDefs.HostReadyCfg start) (fresh : ∀ entry ∈ start.pending, entry.1 ≠ call)
+    (lookup : start.store.func? func = some (.lifted core fnType opts inst)) :
+    Run profile ready impl start [.invoke call func, .invokePrologue call func, .liftedLookup func (invokeCaller start)]
+      [.host (.invoke call func args), .tau, .tau, .tau, .tau, .tau]
+      (invokeLift start call func args core fnType opts inst) := by
+  let reached := invokeCall (invokeStart start call func args) call func args
+  have selected : reached.store.func? func = some (.lifted core fnType opts inst) := lookup
+  exact .next (.invoke hostReady fresh) (.next (.invokePrologue rfl) (.next (.liftedLookup rfl selected) (.stop _)))
 
 theorem runAppend {first second leading trailing} (left : Run profile ready impl start first leading middle)
     (right : Run profile ready impl middle second trailing finish) :
