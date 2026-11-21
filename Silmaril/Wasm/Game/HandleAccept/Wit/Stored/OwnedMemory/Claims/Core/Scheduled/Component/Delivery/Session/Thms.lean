@@ -464,20 +464,39 @@ theorem Run.enter_lowered_lift {site : CoreCallSite middle} {actions labels}
 /-- Dispatch the actual lower caller's start request. An unindexed record
 does not touch its event; an indexed one replaces the pending event before
 marking the subtask started. The remaining program lifts the original cursor. -/
-theorem LowerStart.handoff_steps {site : LiftSite grow sig} (handoff : LowerStart site) :
-    Steps profile ready (specDispatch ready impl) site.onStart (List.replicate handoff.steps .tau) handoff.reading :=
+theorem LowerStartAt.handoff_steps {site : OnStartSite start} (handoff : LowerStartAt site) :
+    Steps profile ready (specDispatch ready impl) start (List.replicate handoff.steps .tau) handoff.reading :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerStart handoff
 
-theorem LowerStart.started_record {site : LiftSite grow sig} (handoff : LowerStart site) :
+theorem LowerStartAt.started_record {site : OnStartSite start} (handoff : LowerStartAt site) :
     handoff.reading.store.subtask? handoff.subtask = some handoff.startedRecord :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerStartRecord handoff
 
 /-- The reached start request uses only the arena-backed canonical caller program. -/
-theorem LowerStart.linked_handoff {site : LiftSite grow sig} (handoff : LowerStart site)
+theorem LowerStartAt.linked_handoff {site : OnStartSite start} (handoff : LowerStartAt site)
     (bindings : List (Binding sig)) (callees : List (Callee sig)) :
-    Steps profile ready (Dispatch.coreOnly ready bindings) site.onStart (List.replicate handoff.steps .tau) handoff.reading ∧
-      Steps profile ready (Dispatch.linked ready bindings callees) site.onStart (List.replicate handoff.steps .tau) handoff.reading :=
+    Steps profile ready (Dispatch.coreOnly ready bindings) start (List.replicate handoff.steps .tau) handoff.reading ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) start (List.replicate handoff.steps .tau) handoff.reading :=
   ⟨handoff.handoff_steps, handoff.handoff_steps⟩
+
+/-- Registration frames the live lower caller and subtask on the selected K1
+path. `onStart` replaces the pending slot only when the live subtask is indexed. -/
+theorem K1LiftStart.linked_lower_handoff {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
+    (handoff : K1LiftStart resume) (notPending : handoff.record.state ≠ .pendingCancel)
+    {subtask context flat pos fnType maxParams maxResults subtaskRecord}
+    (caller : ArenaField.callers.get? atHost.store handoff.record.caller =
+      some (.lower subtask context flat pos fnType maxParams maxResults))
+    (live : atHost.store.subtask? subtask = some subtaskRecord)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    ∃ cursor : LowerStartAt handoff.startCursor,
+      let labels := ((resume.labels ++ [.tau, .tau]) ++ handoff.labels) ++ List.replicate cursor.steps .tau
+      cursor.subtask = subtask ∧ cursor.record = subtaskRecord ∧ cursor.flat = flat ∧ cursor.pos = pos ∧
+        Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels cursor.reading ∧
+        Steps profile ready (Dispatch.linked ready bindings callees) atHost labels cursor.reading ∧
+        cursor.reading.store.subtask? subtask = some cursor.startedRecord :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.k1LowerHandoff
+    handoff notPending caller live bindings callees
 
 /-- No independent live-caller or progress-record premise is needed on the
 fresh, directly admitted lifted path: lift launch and registration leave both arenas alone. -/
@@ -487,8 +506,8 @@ theorem LowerRequest.fresh_start {site : CoreCallSite start} (request : LowerReq
         handoff.flat = site.args :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerFresh request
 
-theorem Run.start_lowered {site : LiftSite grow sig} {actions labels}
-    (run : Run profile ready impl start actions labels site.onStart) (handoff : LowerStart site) :
+theorem Run.start_lowered {site : OnStartSite middle} {actions labels}
+    (run : Run profile ready impl start actions labels middle) (handoff : LowerStartAt site) :
     Run profile ready impl start (actions ++ [.lowerStart handoff.subtask handoff.record.index.isSome])
       (labels ++ List.replicate handoff.steps .tau) handoff.reading := by
   simpa only [List.append_nil] using run.append (.next (.lowerStart handoff) (.stop _))

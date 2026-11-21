@@ -386,19 +386,19 @@ theorem lowerLinkedLift {site : CoreCallSite start} (request : LowerRequest site
   rw [coreCalloutOverlay site bindings callees] at linked
   exact appendSteps linked (appendSteps (lowerAllocate request live allowed) (Dispatch.liftedLookup_steps rfl actual))
 
-theorem lowerStart {site : LiftSite grow sig} (handoff : LowerStart site) :
-    Steps profile ready (specDispatch ready impl) site.onStart (List.replicate handoff.steps .tau) handoff.reading := by
-  have unroll : (callVals (.onStart site.registeredTask.caller) >>= site.argumentsTail) =
-      .op (.call (.onStart site.registeredTask.caller)) (LowerStart.resume site) := by
+theorem lowerStart {site : OnStartSite start} (handoff : LowerStartAt site) :
+    Steps profile ready (specDispatch ready impl) start (List.replicate handoff.steps .tau) handoff.reading := by
+  have unroll : (callVals (.onStart site.caller) >>= site.next) =
+      .op (.call (.onStart site.caller)) site.resume := by
     simp [callVals, callRet, perform, Prog.lift]
     dsimp [Bind.bind, Prog.bind]
     congr 1
     funext result
     cases result <;> rfl
-  have focused : site.onStart.ctl = ⟨some site.storeAndThread.2,
-      .prog (.op (.call (.onStart site.registeredTask.caller)) (LowerStart.resume site)), []⟩ :: site.workerTail := by
-    simp only [LiftSite.onStart, unroll]
-  cases indexed : handoff.record.index <;> simp only [LowerStart.steps, indexed, Option.isSome, Bool.false_eq_true, ite_false, ite_true]
+  have focused : start.ctl = ⟨some site.thread,
+      .prog (.op (.call (.onStart site.caller)) site.resume), site.segments⟩ :: site.rest := by
+    rw [site.focused, unroll]
+  cases indexed : handoff.record.index <;> simp only [LowerStartAt.steps, indexed, Option.isSome, Bool.false_eq_true, ite_false, ite_true]
   all_goals
     refine .cons (.call focused) (.cons (.get rfl) ?_)
     simp [Prog.bind, pure, handoff.callerLive]
@@ -408,18 +408,18 @@ theorem lowerStart {site : LiftSite grow sig} (handoff : LowerStart site) :
     simp [Prog.bind, pure, handoff.subtaskLive, indexed, Waitable.setPendingEvent]
   · refine .cons (.modify rfl) ?_
     convert (Steps.refl (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) handoff.reading) using 1
-    simp [LowerStart.reading, LowerStart.progress, LowerStart.readArgs, indexed]
+    simp [LowerStartAt.reading, LowerStartAt.progress, LowerStartAt.readArgs, indexed]
     dsimp [Prog.bind]
   · refine .cons (.modify rfl) (.cons (.modify rfl) ?_)
     convert (Steps.refl (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) handoff.reading) using 1
-    simp [LowerStart.reading, LowerStart.progress, LowerStart.readArgs, indexed]
+    simp [LowerStartAt.reading, LowerStartAt.progress, LowerStartAt.readArgs, indexed]
     dsimp [Prog.bind]
 
-theorem lowerStartRecord {site : LiftSite grow sig} (handoff : LowerStart site) :
+theorem lowerStartRecord {site : OnStartSite start} (handoff : LowerStartAt site) :
     handoff.reading.store.subtask? handoff.subtask = some handoff.startedRecord := by
   change ArenaField.subtasks.get? (LowerSt.startSt handoff.subtask handoff.progress) handoff.subtask = _
   cases indexed : handoff.record.index <;>
-    simp [LowerSt.startSt, LowerStart.progress, LowerStart.startedRecord, indexed, CStore.setPendingSt,
+    simp [LowerSt.startSt, LowerStartAt.progress, LowerStartAt.startedRecord, indexed, CStore.setPendingSt,
       CStore.modifyWaitableCommon, ArenaField.get?_modify_self, handoff.subtaskLive]
 
 theorem lowerEmptyArgs {site : LiftSite grow sig} (handoff : LowerStart site) (empty : handoff.fnType.params = []) :
@@ -429,13 +429,14 @@ theorem lowerEmptyArgs {site : LiftSite grow sig} (handoff : LowerStart site) (e
       let _ ← ptrType handoff.context
       modifyStore (LowerSt.setCallerPosSt site.registeredTask.caller handoff.pos)
       pure (.vals [])) := by
-    simp [LowerStart.readArgs, liftFlatValues, empty, ABI.flattenTypes, liftFlatTypesWith, pure]
+    simp [LowerStartAt.readArgs, liftFlatValues, empty, ABI.flattenTypes, liftFlatTypesWith, pure]
     rfl
   have focused : handoff.reading.ctl = ⟨some site.storeAndThread.2, .prog (do
       let _ ← ptrType handoff.context
       modifyStore (LowerSt.setCallerPosSt site.registeredTask.caller handoff.pos)
-      pure (.vals [])), [.prog (LowerStart.resume site)]⟩ :: site.workerTail := by
-    simp only [LowerStart.reading, plan]
+      pure (.vals [])), [.prog site.startCursor.resume]⟩ :: site.workerTail := by
+    rw [LowerStartAt.reading, plan]
+    rfl
   exact .cons (.get focused) (.cons (.modify rfl) (.cons (.popProg rfl) (.refl _)))
 
 theorem lowerEmptyPair {site : LiftSite grow sig} (handoff : LowerStart site)
@@ -839,6 +840,36 @@ theorem k1LiftStartPair {atGate atHost : State grow sig} {thread : ThreadId} {ta
       Steps profile ready (Dispatch.linked ready bindings callees) atHost labels handoff.onStart :=
   let paths := k1ResumePair resume handoff.live notPending bindings callees
   ⟨appendSteps paths.1 (k1StartLift handoff), appendSteps paths.2 (k1StartLift handoff)⟩
+
+theorem k1LowerHandoff {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {resume : K1Resume entry.wait atHost ready profile}
+    (handoff : K1LiftStart resume) (notPending : handoff.record.state ≠ .pendingCancel)
+    {subtask context flat pos fnType maxParams maxResults subtaskRecord}
+    (caller : ArenaField.callers.get? atHost.store handoff.record.caller =
+      some (.lower subtask context flat pos fnType maxParams maxResults))
+    (live : atHost.store.subtask? subtask = some subtaskRecord)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    ∃ cursor : LowerStartAt handoff.startCursor,
+      let labels := ((resume.labels ++ [.tau, .tau]) ++ handoff.labels) ++ List.replicate cursor.steps .tau
+      cursor.subtask = subtask ∧ cursor.record = subtaskRecord ∧ cursor.flat = flat ∧ cursor.pos = pos ∧
+        Steps profile ready (Dispatch.coreOnly ready bindings) atHost labels cursor.reading ∧
+        Steps profile ready (Dispatch.linked ready bindings callees) atHost labels cursor.reading ∧
+        cursor.reading.store.subtask? subtask = some cursor.startedRecord := by
+  obtain ⟨_, _, subtaskFrame, _, _, _, _, _, _, _, _, callerFrame⟩ :=
+    CStore.registerThreadSt_frame task thread (resume.entryStore (entry := entry))
+  let cursor : LowerStartAt handoff.startCursor := by
+    refine ⟨subtask, context, flat, pos, fnType, maxParams, maxResults, subtaskRecord, ?_, ?_⟩
+    · change ((resume.entryStore (entry := entry)).registerThreadSt task thread).callers.get? handoff.record.caller.idx = _
+      rw [callerFrame]
+      unfold K1Resume.entryStore
+      split <;> exact caller
+    · change ((resume.entryStore (entry := entry)).registerThreadSt task thread).subtasks.get? subtask.idx = _
+      rw [subtaskFrame]
+      unfold K1Resume.entryStore
+      split <;> exact live
+  obtain ⟨checked, canonical⟩ := k1LiftStartPair handoff notPending bindings callees
+  exact ⟨cursor, rfl, rfl, rfl, rfl, appendSteps checked (lowerStart cursor),
+    appendSteps canonical (lowerStart cursor), lowerStartRecord cursor⟩
 
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by

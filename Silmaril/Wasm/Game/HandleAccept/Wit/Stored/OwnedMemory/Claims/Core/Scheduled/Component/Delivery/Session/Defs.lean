@@ -416,9 +416,28 @@ def LowerReturn.tableFull (returned : LowerReturn request reached) : State grow 
 
 end
 
+/-- The reached `onStart` call and its saved worker continuation, independent
+of whether admission was immediate or resumed from a K1 park. -/
+structure OnStartSite (state : State grow sig) where
+  thread : ThreadId
+  caller : CallerId
+  next : List Value.Val → Session grow sig (Ret (core3 grow))
+  segments : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : state.ctl = ⟨some thread, .prog (callVals (.onStart caller) >>= next), segments⟩ :: rest
+
+def LiftSite.startCursor (site : LiftSite grow sig) : OnStartSite site.onStart :=
+  ⟨site.storeAndThread.2, site.registeredTask.caller, site.argumentsTail, [], site.workerTail, rfl⟩
+
+def K1LiftStart.startCursor {atGate atHost : State grow sig} {thread : ThreadId} {task : TaskId}
+    {entry : K1GateEntry atGate thread task} {ready : HostReady (HostState sig)}
+    {resume : K1Resume entry.wait atHost ready profile} (handoff : K1LiftStart resume) : OnStartSite handoff.onStart :=
+  ⟨thread, handoff.registered.caller, liftArgumentsBody .spec .none task handoff.callee handoff.registered,
+    entry.segments, resume.admitted.ctl.drop 1, rfl⟩
+
 /-- The lower caller read by the admitted lift, including the live progress
 record. Re-reading it distinguishes eager start from a pending event replacement. -/
-structure LowerStart (site : LiftSite grow sig) where
+structure LowerStartAt {state : State grow sig} (site : OnStartSite state) where
   subtask : SubtaskId
   context : LiftLowerContext (core3 grow)
   flat : List FlatValue
@@ -427,34 +446,36 @@ structure LowerStart (site : LiftSite grow sig) where
   maxParams : Nat
   maxResults : Nat
   record : Subtask
-  callerLive : ArenaField.callers.get? site.onStart.store site.registeredTask.caller =
+  callerLive : ArenaField.callers.get? state.store site.caller =
     some (.lower subtask context flat pos fnType maxParams maxResults)
-  subtaskLive : ArenaField.subtasks.get? site.onStart.store subtask = some record
+  subtaskLive : ArenaField.subtasks.get? state.store subtask = some record
+
+abbrev LowerStart (site : LiftSite grow sig) := LowerStartAt site.startCursor
 
 section
 
-variable {site : LiftSite grow sig}
+variable {state : State grow sig} {site : OnStartSite state}
 
-def LowerStart.readArgs (handoff : LowerStart site) : Session grow sig (Ret (core3 grow)) :=
+def LowerStartAt.readArgs (handoff : LowerStartAt site) : Session grow sig (Ret (core3 grow)) :=
   (do
     let (values, cursor) ← liftFlatValues Limits.spec Quirks.none handoff.context handoff.maxParams
       ⟨handoff.flat, handoff.pos⟩ (handoff.fnType.params.map (·.2))
-    modifyStore (LowerSt.setCallerPosSt site.registeredTask.caller cursor.pos)
+    modifyStore (LowerSt.setCallerPosSt site.caller cursor.pos)
     pure values) >>= fun values => pure (.vals values)
 
-def LowerStart.resume (site : LiftSite grow sig) (result : Ret (core3 grow)) : Session grow sig (Ret (core3 grow)) :=
+def OnStartSite.resume (site : OnStartSite state) (result : Ret (core3 grow)) : Session grow sig (Ret (core3 grow)) :=
   (match result with
   | .vals values => pure values
-  | _ => internal "late-bound call: expected Ret.vals") >>= site.argumentsTail
+  | _ => internal "late-bound call: expected Ret.vals") >>= site.next
 
-def LowerStart.progress (handoff : LowerStart site) : CStore (core3 grow) :=
-  let store := site.onStart.store
+def LowerStartAt.progress (handoff : LowerStartAt site) : CStore (core3 grow) :=
+  let store := state.store
   if handoff.record.index.isSome then CStore.setPendingSt (.subtask handoff.subtask) (.subtask handoff.subtask) store else store
 
-def LowerStart.reading (handoff : LowerStart site) : State grow sig :=
-  { site.onStart with
+def LowerStartAt.reading (handoff : LowerStartAt site) : State grow sig :=
+  { state with
     store := LowerSt.startSt handoff.subtask handoff.progress
-    ctl := ⟨some site.storeAndThread.2, .prog handoff.readArgs, [.prog (LowerStart.resume site)]⟩ :: site.workerTail }
+    ctl := ⟨some site.thread, .prog handoff.readArgs, .prog site.resume :: site.segments⟩ :: site.rest }
 
 def LiftSite.withLowerValues (site : LiftSite grow sig) (state : State grow sig) (args : List Value.Val)
     (pos : Nat) : State grow sig :=
@@ -462,13 +483,13 @@ def LiftSite.withLowerValues (site : LiftSite grow sig) (state : State grow sig)
     store := LowerSt.setCallerPosSt site.registeredTask.caller pos state.store
     ctl := ⟨some site.storeAndThread.2, .prog (site.argumentsTail args), []⟩ :: site.workerTail }
 
-def LowerStart.startedRecord (handoff : LowerStart site) : Subtask :=
+def LowerStartAt.startedRecord (handoff : LowerStartAt site) : Subtask :=
   { handoff.record with
     state := .started
     common := if handoff.record.index.isSome then { handoff.record.common with pending := some (.subtask handoff.subtask) }
       else handoff.record.common }
 
-def LowerStart.steps (handoff : LowerStart site) : Nat :=
+def LowerStartAt.steps (handoff : LowerStartAt site) : Nat :=
   if handoff.record.index.isSome then 6 else 5
 
 end
@@ -573,8 +594,8 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       {instance_ : InstState} (live : start.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true) :
       Transition profile ready impl (site.reached ready impl) (.lowerAllocate request.storeAndSubtask.2 request.storeAndCaller.2)
         [.tau, .tau, .tau, .tau, .tau] request.allocated
-  | lowerStart {site : LiftSite grow sig} (handoff : LowerStart site) :
-      Transition profile ready impl site.onStart (.lowerStart handoff.subtask handoff.record.index.isSome)
+  | lowerStart {start} {site : OnStartSite start} (handoff : LowerStartAt site) :
+      Transition profile ready impl start (.lowerStart handoff.subtask handoff.record.index.isSome)
         (List.replicate handoff.steps .tau) handoff.reading
   | lowerEmptyArgs {site : LiftSite grow sig} (handoff : LowerStart site) (empty : handoff.fnType.params = []) :
       Transition profile ready impl handoff.reading (.lowerEmptyArgs site.registeredTask.caller) [.tau, .tau, .tau]
