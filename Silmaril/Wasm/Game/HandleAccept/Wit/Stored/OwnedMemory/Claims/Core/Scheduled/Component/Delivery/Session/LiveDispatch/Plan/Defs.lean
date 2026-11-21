@@ -69,6 +69,35 @@ def stringAllocatorEntry (dispatch : Call (core3 grow) → Session grow sig (Ret
   let request := Call.reallocate cx (oldSize.elim 0 (fun _ => ptr)) (oldSize.getD 0) alignment.bytes size
   { state with ctl := { cursor with frames := .prog resume :: cursor.frames }.control (dispatch request) }
 
+/-- Validate the pointer from an actual marked return. The invalid branches
+trap at the reached stores. The valid branch exposes the real checked live
+verdict and the canonical child-entry program, before either executes children. -/
+def CollectionRangeCut (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (checked canonical : Config (core3 grow) (HostState sig))
+    (cursor : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (destination : RecordDestination) (area : ABI.Layout) (count pointer : Nat)
+    (plan : List Stored.Endpoints.RecordLower.Object)
+    (checkNext : Nat → Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Nat → Session grow sig (Ret (core3 grow))) : Prop :=
+  let checkedDispatch := specDispatch ready base
+  let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
+  let traps := fun reason =>
+    (∃ steps, Steps profile ready checkedDispatch checked (List.replicate steps .tau ++ [.trap reason]) (StepDefs.trapCfg checked)) ∧
+    (∃ steps, Steps profile ready canonDispatch canonical (List.replicate steps .tau ++ [.trap reason]) (StepDefs.trapCfg canonical))
+  ∃ canonCursor : PayloadPrefix.Cursor (E := core3 grow) (HostState sig), ∃ bytes,
+    (core3 grow).memAddrType? checked.store.core destination.memory = some destination.width ∧
+    (core3 grow).memSize? checked.store.core destination.memory = some bytes ∧
+    LinkedCallback.ChildFrameOver older checked canonical cursor canonCursor ∧
+    if pointer ≠ ABI.alignTo pointer area.alignment then traps .unalignedPointer
+    else if pointer + count * area.size ≤ bytes then
+      (∃ trace, (∀ label ∈ trace, label = .tau) ∧ ReturnFrame.Occurrence.RetainsBelowTop profile ready checkedDispatch checked trace
+        { checked with ctl := cursor.control (checkNext pointer (OwnedMemory.Claims.Record.prepare checked.store checked.host.writer plan)) }) ∧
+      (∃ trace, (∀ label ∈ trace, label = .tau) ∧ ReturnFrame.Occurrence.RetainsBelowTop profile ready canonDispatch canonical trace
+        { canonical with ctl := canonCursor.control (canonNext pointer) })
+    else traps .outOfBounds
+
 /-- Stops before the recursive body. A checked preflight refusal resumes its
 caller; a bad placement traps the checked machine. Neither executes the
 canonical body, whose memory placement is a precondition. -/

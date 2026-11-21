@@ -140,22 +140,23 @@ theorem RecordDestination.paired_range_recheck {sig : Stored.Signature} {ready :
     {thread checkedFrames canonicalFrames checkedRest canonicalRest}
     (checkedAt : checked.ctl = ⟨thread, .prog (.pure (.nat pointer)), .prog checkedResume :: checkedFrames⟩ :: checkedRest)
     (canonicalAt : canonical.ctl = ⟨thread, .prog (.pure (.nat pointer)), .prog canonicalResume :: canonicalFrames⟩ :: canonicalRest)
-    {bytes : Nat} (sized : (core3 grow).memSize? checked.store.core destination.memory = some bytes) :
+    {bytes : Nat} (sized : (core3 grow).memSize? checked.store.core destination.memory = some bytes)
+    (canonicalDispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow)) := dispatch) :
     let trapped := fun reason =>
       (∃ steps, Machine.Steps profile ready dispatch checked (List.replicate steps .tau ++ [.trap reason])
         (Machine.StepDefs.trapCfg checked)) ∧
-      (∃ steps, Machine.Steps profile ready dispatch canonical (List.replicate steps .tau ++ [.trap reason])
+      (∃ steps, Machine.Steps profile ready canonicalDispatch canonical (List.replicate steps .tau ++ [.trap reason])
         (Machine.StepDefs.trapCfg canonical))
     if pointer ≠ alignTo pointer area.alignment then trapped .unalignedPointer
     else if pointer + count * area.size ≤ bytes then
       (∃ labels, (∀ label ∈ labels, label = .tau) ∧ ReturnFrame.Occurrence.RetainsBelowTop profile ready dispatch checked labels
         { checked with ctl := ⟨thread, .prog (checkNext pointer (Record.prepare checked.store checked.host.writer plan)),
           checkedFrames⟩ :: checkedRest }) ∧
-      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ ReturnFrame.Occurrence.RetainsBelowTop profile ready dispatch canonical labels
+      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ ReturnFrame.Occurrence.RetainsBelowTop profile ready canonicalDispatch canonical labels
         { canonical with ctl := ⟨thread, .prog (canonNext pointer), canonicalFrames⟩ :: canonicalRest })
     else trapped .outOfBounds :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadCollection.paired_range_recheck
-    paired destination inst area count pointer plan checkNext canonNext checkedBody canonicalBody checkedAt canonicalAt sized
+    paired destination inst area count pointer plan checkNext canonNext checkedBody canonicalBody checkedAt canonicalAt sized canonicalDispatch
 
 /-- A checked return from realloc validates range and the live plan before
 entering element traversal. Both branches retain the reached store and

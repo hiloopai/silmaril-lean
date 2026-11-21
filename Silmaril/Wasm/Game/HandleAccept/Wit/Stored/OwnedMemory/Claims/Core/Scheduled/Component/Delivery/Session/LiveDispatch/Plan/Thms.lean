@@ -5,6 +5,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix
+import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange
 
 public section
 
@@ -140,6 +141,36 @@ theorem AllocatorMark.pop {checkEntry canonEntry : Config (core3 grow) (HostStat
       ReturnFrame.Occurrence.RetainsBelowTop profile ready (specDispatch ready (LiveDispatch.host bindings base))
         canonEntry (canonTrace ++ [.tau]) { incoming with ctl := canon.control (second value) } :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.pop marked paired returning installed
+
+/-- A reached marked collection return uses the live memory and claim table.
+Both paths take the actual range checks under their respective dispatchers.
+Invalid range traps both; valid range hands the checked suffix its fresh
+verdict without running any children, and keeps the canonical entry mode. -/
+theorem AllocatorMark.collection_range (destination : RecordDestination) (inst : InstId) (type element : Stored.TypeOf)
+    (entries : List Field) (output : Stored.Lower.Output) (index pointer : Nat)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    {wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {canonStart checked canonical : Config (core3 grow) (HostState sig)}
+    {checkEntry canonEntry cursor : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace} :
+    let area := layout destination.width element
+    let mode := CanonicalTree.EntryMode.forOutput destination.width type output
+    let first := PayloadPrefix.checkedCollectionResume destination inst entries area index output checkNext
+    let second := PayloadPrefix.canonicalCollectionResume destination inst entries area output canonNext mode
+    AllocatorMark profile ready base bindings older
+      (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready base) start checkEntry first)
+      (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+        canonStart canonEntry second) checkTrace canonTrace checked canonical (some (.active 0 0)) →
+    HostFrame.Related.Paired wider checked canonical →
+    checked.ctl = { cursor with frames := .prog first :: cursor.frames }.control (.pure (.nat pointer)) →
+    (core3 grow).memAddrType? start.store.core destination.memory = some destination.width →
+    Core3.Grows start.store.core checked.store.core →
+    CollectionRangeCut profile ready base bindings older checked canonical cursor destination area entries.length pointer
+      (Field.listObjects entries)
+      (fun addr verdict => PayloadPrefix.checkedCollectionTail destination inst entries area index output addr verdict >>= checkNext)
+      (fun addr => PayloadPrefix.canonicalCollectionTail destination inst entries area output addr mode >>= canonNext) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.collectionRange
+    destination inst type element entries output index pointer checkNext canonNext
 
 theorem NestedPlan.source (plan : NestedPlan bindings profile ready base start labels finish) :
     Steps profile ready (specDispatch ready base) start labels finish :=

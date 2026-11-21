@@ -196,18 +196,19 @@ theorem paired_range_recheck {sig : Stored.Signature} {ready : HostReady (HostSt
     {thread checkedFrames canonicalFrames checkedRest canonicalRest}
     (checkedAt : checked.ctl = ⟨thread, .prog (.pure (.nat pointer)), .prog checkedResume :: checkedFrames⟩ :: checkedRest)
     (canonicalAt : canonical.ctl = ⟨thread, .prog (.pure (.nat pointer)), .prog canonicalResume :: canonicalFrames⟩ :: canonicalRest)
-    {bytes : Nat} (sized : (core3 grow).memSize? checked.store.core destination.memory = some bytes) :
+    {bytes : Nat} (sized : (core3 grow).memSize? checked.store.core destination.memory = some bytes)
+    (canonicalDispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))) :
     let trapped := fun reason =>
       (∃ steps, Machine.Steps profile ready dispatch checked (List.replicate steps .tau ++ [.trap reason])
         (Machine.StepDefs.trapCfg checked)) ∧
-      (∃ steps, Machine.Steps profile ready dispatch canonical (List.replicate steps .tau ++ [.trap reason])
+      (∃ steps, Machine.Steps profile ready canonicalDispatch canonical (List.replicate steps .tau ++ [.trap reason])
         (Machine.StepDefs.trapCfg canonical))
     if pointer ≠ alignTo pointer area.alignment then trapped .unalignedPointer
     else if pointer + count * area.size ≤ bytes then
       (∃ labels, (∀ label ∈ labels, label = .tau) ∧ RetainsBelowTop profile ready dispatch checked labels
         { checked with ctl := ⟨thread, .prog (checkNext pointer (Record.prepare checked.store checked.host.writer plan)),
           checkedFrames⟩ :: checkedRest }) ∧
-      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ RetainsBelowTop profile ready dispatch canonical labels
+      (∃ labels, (∀ label ∈ labels, label = .tau) ∧ RetainsBelowTop profile ready canonicalDispatch canonical labels
         { canonical with ctl := ⟨thread, .prog (canonNext pointer), canonicalFrames⟩ :: canonicalRest })
     else trapped .outOfBounds := by
   have canonSize : (core3 grow).memSize? canonical.store.core destination.memory = some bytes := by
@@ -218,7 +219,7 @@ theorem paired_range_recheck {sig : Stored.Signature} {ready : HostReady (HostSt
       let verdict ← (Record.authority recordClaims Limits.spec (destination.context inst)).prepare plan
       checkNext ptr verdict) checkedResume checkedBody checkedAt
   have canonPrefix := destination.listRange_resume (after := canonical) (profile := profile) (ready := ready)
-    (dispatch := dispatch) inst area count pointer canonNext canonicalResume canonicalBody canonicalAt
+    (dispatch := canonicalDispatch) inst area count pointer canonNext canonicalResume canonicalBody canonicalAt
   dsimp only at checkPrefix canonPrefix
   rw [destination.listRange_body, sized] at checkPrefix
   rw [destination.listRange_body, canonSize] at canonPrefix

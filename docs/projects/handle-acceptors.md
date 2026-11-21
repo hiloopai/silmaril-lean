@@ -1429,6 +1429,15 @@ continuations. This cut stops before their bodies: it does not establish that
 the reached address passes range checks, that the current claims are still
 live, or that a recursive give or its caller delivers a result.
 
+For a marked collection return, `AllocatorMark.collection_range` also runs
+the range checks under the checked and live canonical dispatchers. It derives
+the reached memory width and size from the admitted memory and callback
+growth. A bad range traps each machine from its reached state. A good range
+reads the fresh checked claim verdict and preserves the actual canonical map
+entry mode. A refusal here has no canonical error counterpart: the canonical
+path has only reached its child-entry program and has not run it. The valid
+range cut keeps older return slots and the callback's reached store.
+
 `LiveDispatch.linked_memory_admission` and `linked_flat_admission` join the
 actual linked root cut to the corresponding recursive body certificate. A
 checked preflight refusal resumes the checked Core caller, but the canonical
