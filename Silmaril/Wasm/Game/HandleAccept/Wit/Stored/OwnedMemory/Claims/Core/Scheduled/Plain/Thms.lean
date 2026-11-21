@@ -270,6 +270,12 @@ theorem embedder_binding_trap_steps {sig : Signature} {grow : SingleThreaded.Gro
   runBody_trap_steps _ start start.store _ _ (fun words => .pure (.flat words)) thread segments rest
     profile ready _ focused (embedder_unresolved bindings name type args start.store start.host thread issue unresolved)
 
+/-- Admission of the reached instance discharges the embedder confinement test. -/
+theorem thread_may_leave {E : CoreEngine} {store : CStore E} {thread : Option ThreadId} {inst : InstId}
+    (caller : callerInstance store thread = .ok (some inst)) (mayLeave : (store.inst? inst).any (·.mayLeave) = true) :
+    threadMayLeave store thread = true :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.threadMayLeave_of_caller caller mayLeave
+
 /-- Enter the actual dispatched embedder callout from parked Core. The prefix
 reads the caller and store and leaves the confinement choice to `calloutBody`. -/
 theorem prepend_embedder_callout {E : CoreEngine} {Host : Type}

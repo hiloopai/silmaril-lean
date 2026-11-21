@@ -62,14 +62,16 @@ checked host's completion journal. A typed refusal has no reference reply. -/
 def Site.referenceReply (site : Site grow sig route) : site.ReferenceNext := fun value =>
   pure (.flat (route.reply site.destination site.start.host.nextTicket (.ok value)).2)
 
-noncomputable def Site.reference (site : Site grow sig route) (next : site.ReferenceNext) : Config (core3 grow) (HostState sig) :=
+noncomputable abbrev Site.referenceProgram (site : Site grow sig route) : Session grow sig route.output.Result :=
   let context := site.destination.context site.inst
   let schema := sig.payload site.tag
   let value := site.payload.val.value
-  let program := Lower.Output.rec (motive := fun output => Session grow sig output.Result)
+  Lower.Output.rec (motive := fun output => Session grow sig output.Result)
     (fun ptr => store Limits.spec Quirks.none context value schema ptr)
     (lowerFlatAt Limits.spec Quirks.none context site.destination.width value schema) route.output
-  { site.start with ctl := site.cursor.control (program >>= next) }
+
+noncomputable def Site.reference (site : Site grow sig route) (next : site.ReferenceNext) : Config (core3 grow) (HostState sig) :=
+  { site.start with ctl := site.cursor.control (site.referenceProgram >>= next) }
 
 /-- Facts about the actual caller, binding and selected root. Preparation,
 allocation fit and placement are executed rather than assumed. -/
