@@ -185,6 +185,19 @@ theorem linked_recursive_collection_body {route : GiveEffectRoute} (site : Paylo
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedRecursiveCollectionBody
     site linked family collection schema paired selected embedder
 
+/-- Both public routes finish the actual allocating string key before
+entering its recursively allocating map/list value. The same compiler
+evidence discharges both the key plan and the value recursion. -/
+theorem linked_string_recursive_map_body {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (family : NominalCollectionType element)
+    (schema : sig.payload site.tag = .map .string element)
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    PayloadRoot.Cut site profile ready bindings (LinkedStringRecursiveMapBody profile ready base bindings older site element incoming) base :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringRecursiveMapBody
+    site linked element family schema paired selected embedder
+
 /-- Consume the installed allocator frame only at its actual top return.
 The canonical continuation is recovered by following its occurrence from the
 install, not by comparing continuation code at the reached position. -/

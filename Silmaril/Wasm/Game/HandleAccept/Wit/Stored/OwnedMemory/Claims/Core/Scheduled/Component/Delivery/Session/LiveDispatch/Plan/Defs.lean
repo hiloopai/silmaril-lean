@@ -556,8 +556,13 @@ def LiveMapEntryThen (profile : ProfileKind) (ready : HostReady (HostState sig))
         ∃ valueRead, visible valueRead = [] ∧ RetainsActiveSlots profile ready canonical rhs valueRead atValue ∧
           compare value 1 valPtr lhs atValue check canon report canonNext finish
 
-def liveMapElements (profile : ProfileKind) (ready : HostReady (HostState sig))
-    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+abbrev MapEntryComparison (grow : SingleThreaded.GrowOracle) (sig : Signature) :=
+  Stored.Endpoints.RecordLower.Field → Stored.Endpoints.RecordLower.Field → Nat → Nat →
+    LinkedCallback.MemorySequence.FieldComparison grow sig → LinkedCallback.MemorySequence.CheckNext grow sig →
+    LinkedCallback.MemorySequence.CanonNext grow sig → LinkedCallback.MemorySequence.Finish grow sig →
+    LinkedCallback.MemorySequence.Finish grow sig
+
+def liveMapElementsWith (entry : MapEntryComparison grow sig)
     (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
     (output : Stored.Lower.Output) (compare : LinkedCallback.MemorySequence.FieldComparison grow sig)
     (checkNext : LinkedCallback.MemorySequence.CheckNext grow sig) (canonNext : LinkedCallback.MemorySequence.CanonNext grow sig)
@@ -572,15 +577,16 @@ def liveMapElements (profile : ProfileKind) (ready : HostReady (HostState sig))
     ∃ (payload : Stored.Payload (.prim key.toPrimitive)) (value : Field),
       let keyField := Field.data (.prim key.toPrimitive) payload
       item = .aggregate entryType [keyField, value] ∧
-      LiveMapEntryThen profile ready base bindings destination inst mode keyField value index pointer compare
+      entry keyField value index pointer compare
         (checkTail (.elements stride) destination inst rest (index + 1) (pointer + stride) checkNext)
         (fun () => CanonicalTree.elements Limits.spec Quirks.none (destination.context inst) destination.width
           rest mode stride (pointer + stride) >>= canonNext)
-        (liveMapElements profile ready base bindings destination inst key element output compare checkNext canonNext finish
+        (liveMapElementsWith entry destination inst key element output compare checkNext canonNext finish
           rest (index + 1) (pointer + stride)) left right check canon
 
-def liveMapTail (profile : ProfileKind) (ready : HostReady (HostState sig))
+def liveMapTailWith (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (entry : MapEntryComparison grow sig)
     (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
     (entries : List Stored.Endpoints.RecordLower.Field) (index : Nat) (output : Stored.Lower.Output)
     (compare : LinkedCallback.MemorySequence.FieldComparison grow sig)
@@ -588,10 +594,19 @@ def liveMapTail (profile : ProfileKind) (ready : HostReady (HostState sig))
     (canonNext : LinkedCallback.MemorySequence.ValueCanonNext grow sig output)
     (finish : LinkedCallback.MemorySequence.ValueFinish grow sig output) : Nat → Nat → LinkedCallback.MemorySequence.Finish grow sig :=
   open LinkedCallback.MemorySequence in
-  fun pointer _ => liveMapElements profile ready base bindings destination inst key element output compare
+  fun pointer _ => liveMapElementsWith entry destination inst key element output compare
     (publishChecked destination inst pointer entries.length index output checkNext)
     (publishCanonical destination inst pointer entries.length output canonNext)
     (LiveListPublish profile ready base bindings output checkNext canonNext finish) entries 0 pointer
+
+abbrev liveMapTail (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
+    (entries : List Stored.Endpoints.RecordLower.Field) (index : Nat) (output : Stored.Lower.Output) :=
+  liveMapTailWith profile ready base bindings
+    (LiveMapEntryThen profile ready base bindings destination inst
+      (Stored.Endpoints.RecordLower.CanonicalTree.EntryMode.forOutput destination.width (.map key element) output))
+    destination inst key element entries index output
 
 abbrev LinkedMapListBody (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
@@ -698,6 +713,57 @@ abbrev StringKeyReplay (profile : ProfileKind) (ready : HostReady (HostState sig
       PayloadPrefix.StringLocalCutBetween profile ready (specDispatch ready base)
         (specDispatch ready (LiveDispatch.host bindings base)) lhs rhs cursor peer
         (fun result => checkNext (.ok result)) canonNext)
+
+/-- A string-key plan may suspend. Its actual descriptor writes must finish
+before entering the value at the reached map slot. -/
+def LiveStringMapEntryThen (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (destination : RecordDestination) (inst : InstId) (element : Stored.TypeOf)
+    (output : Stored.Lower.Output) : MapEntryComparison grow sig :=
+  open Stored.Endpoints.RecordLower ABI LinkedCallback.MemorySequence PayloadPrefix ReturnFrame.Occurrence in
+  fun field value index slot compare checkNext canonNext finish left right check canon =>
+    ∃ key : LinkedCallback.StringField, field = key.field ∧
+      let cx := destination.context inst
+      let mode := CanonicalTree.EntryMode.forOutput destination.width (.map .string element) output
+      let keyArea := layout destination.width key.field.type
+      let address := alignTo slot keyArea.alignment
+      let afterKey := address + keyArea.size
+      let valuePtr := alignTo afterKey (layout destination.width value.type).alignment
+      let report := aggregateNext index checkNext
+      let checked := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => (match verdict with
+        | .error issue => pure (.error issue)
+        | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width value 1 (.memory valuePtr)) >>= report
+      let canonical := fun () => mapValueProgram destination inst mode value afterKey canonNext
+      StringKeyThen profile ready base bindings older destination inst key address left right check canon checked canonical
+        (fun _ lhs rhs cursor peer =>
+          let checkDispatch := specDispatch ready base
+          let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
+          ∃ (store : CStore (core3 grow)) (result : Except TrapReason Unit) (labels : Trace grow sig),
+            let checkEnd := localLeafEnd lhs lhs.host store cursor.thread cursor.frames cursor.rest (fun res => checked (.ok res)) result
+            let canonEnd := localLeafEnd rhs rhs.host store peer.thread peer.frames peer.rest canonical result
+            LocalLeafLabels result labels ∧ CoreGrowthSteps profile ready checkDispatch lhs labels checkEnd ∧
+            CoreGrowthSteps profile ready canonDispatch rhs labels canonEnd ∧
+            match result with
+            | .error _ => True
+            | .ok () =>
+              RetainsActiveSlots profile ready checkDispatch lhs labels checkEnd ∧
+              RetainsActiveSlots profile ready canonDispatch rhs labels canonEnd ∧
+              let atValue := { canonEnd with ctl := peer.control (CanonicalTree.field Limits.spec Quirks.none cx
+                destination.width value (.memory valuePtr) >>= canonNext) }
+              ∃ widthRead, visible widthRead = [] ∧ RetainsActiveSlots profile ready canonDispatch canonEnd widthRead atValue ∧
+                compare value 1 valuePtr checkEnd atValue cursor peer report canonNext finish)
+
+abbrev LinkedStringRecursiveMapBody (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (incoming : Config (core3 grow) (HostState sig)) : Prop :=
+  LinkedCollectionBody profile ready base bindings older site (.map .string element) (.record (ABI.mapEntryFields .string element)) incoming
+    (fun entries => liveMapTailWith profile ready base bindings
+      (LiveStringMapEntryThen profile ready base bindings older site.destination site.inst element route.output)
+      site.destination site.inst .string element entries 0 route.output
+      (liveCollectionField profile ready base bindings older site.destination site.inst element)
+      site.reply site.referenceReply (fun _ _ _ _ _ => True))
 
 /-- Compare the descriptor and reached nominal value at the end of a
 string-key replay. Late refusal leaves the value program unexecuted, even
