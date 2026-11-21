@@ -35,10 +35,36 @@ private def cancelResumeOnHost {initial atResume : State grow sig} {target : Sub
     SyncCancelResume cancel (HostFrame.replace atResume other) :=
   { resume with focused := resume.focused }
 
+private def liftOnHost (site : LiftSite grow sig) (other : HostState sig) : LiftSite grow sig :=
+  { site with start := HostFrame.replace site.start other, focused := site.focused }
+
+private def returnOnHost (site : StackfulReturn start) (other : HostState sig) : StackfulReturn (HostFrame.replace start other) :=
+  { site with focused := site.focused, returned := site.returned }
+
+private def exitOnHost {site : StackfulReturn start} (exit : StackfulExit site) (other : HostState sig) :
+    StackfulExit (returnOnHost site other) :=
+  { exit with taskLive := exit.taskLive, remove := exit.remove }
+
 theorem neutralStep {action labels} (edge : Transition profile ready impl start action labels finish)
     (neutral : JournalNeutralAction action) (other : HostState sig) :
     Transition profile ready impl (HostFrame.replace start other) action labels (HostFrame.replace finish other) := by
   cases edge <;> try contradiction
+  case invoke available fresh => exact .invoke available fresh
+  case invokePrologue focused => exact .invokePrologue focused
+  case liftedLookup focused lookup => exact .liftedLookup focused lookup
+  case liftLaunch site => exact .liftLaunch (liftOnHost site other)
+  case liftAdmit site admission =>
+    exact .liftAdmit (liftOnHost site other) { admission with live := admission.live }
+  case liftArguments site live => exact .liftArguments (liftOnHost site other) live
+  case invokeReturn focused =>
+    have replay := Transition.invokeReturn (profile := profile) (ready := ready) (impl := impl)
+      (start := HostFrame.replace start other) focused
+    cases call : start.pending.getLast?.map (·.1) <;>
+      simpa [StepDefs.hostFinish, StepDefs.lastCall?, HostFrame.replace, call, Config.setCancel] using replay
+  case stackfulComplete exit => exact .stackfulComplete (exitOnHost exit other)
+  case stackfulUnresolved =>
+    exact .stackfulUnresolved (returnOnHost (by assumption) other) (by assumption) (by assumption) (by assumption) (by assumption)
+  case stackfulExit exit empty => exact .stackfulExit (exitOnHost exit other) empty
   case coreInternal focused running steps => exact .coreInternal focused running steps
   case coreReturned focused returned => exact .coreReturned focused returned
   case coreTrap focused trapped => exact .coreTrap focused trapped
@@ -301,6 +327,36 @@ theorem interleavedCut {bindings : List (Binding sig)} {callees : List (Componen
   refine ⟨_, checkedPath.append (.next entry (.next checked (.stop _))), canonicalPath.steps, ?_, replayJournal canonical outgoing⟩
   simp only [PayloadPrefix.visible, List.filter_append] at noEntry seen ⊢
   simp [noEntry, seen]
+
+theorem interleavingAppend {middle : State grow sig} {incoming middleHost outgoing first rest leading trailing}
+    (firstPath : JournalInterleaving profile ready impl start incoming first leading middle middleHost)
+    (restPath : JournalInterleaving profile ready impl middle middleHost rest trailing finish outgoing) :
+    JournalInterleaving profile ready impl start incoming (first ++ rest) (leading ++ trailing) finish outgoing := by
+  induction firstPath with
+  | stop => exact restPath
+  | neutral edge closed _ ih =>
+    simpa only [List.cons_append, List.append_assoc] using JournalInterleaving.neutral edge closed (ih restPath)
+  | commit resolve registered sameHandle _ ih =>
+    simpa only [List.cons_append, List.append_assoc] using JournalInterleaving.commit resolve registered sameHandle (ih restPath)
+  | tick tick agrees _ ih =>
+    simpa only [List.cons_append, List.append_assoc] using JournalInterleaving.tick tick agrees (ih restPath)
+
+theorem ofNeutralRun {actions labels} (run : Run profile ready impl start actions labels finish)
+    (closed : ∀ action ∈ actions, JournalNeutralAction action) (other : HostState sig) :
+    JournalInterleaving profile ready impl start other actions labels finish other := by
+  induction run with
+  | stop state => exact .stop state other
+  | next edge _ ih => exact .neutral edge (closed _ (.head _)) (ih fun _ member => closed _ (.tail _ member))
+
+theorem stackfulCompletion {reached : State grow sig} {site : StackfulReturn reached} {incoming outgoing actions labels}
+    (run : JournalInterleaving profile ready impl start incoming actions labels reached outgoing)
+    (exit : StackfulExit site) (empty : site.segments = []) :
+    JournalInterleaving profile ready impl start incoming (actions ++ [.stackfulComplete site.taskId, .workerExit site.thread])
+      (labels ++ (exit.labels ++ [.tau])) exit.finished outgoing := by
+  have tail : JournalInterleaving profile ready impl reached outgoing [.stackfulComplete site.taskId, .workerExit site.thread]
+      (exit.labels ++ [.tau]) exit.finished outgoing :=
+    .neutral (.stackfulComplete exit) trivial (.neutral (.stackfulExit exit empty) trivial (.stop _ _))
+  exact interleavingAppend run tail
 
 theorem interleavedGive {bindings : List (Binding sig)} {callees : List (ComponentCall.Callee sig)}
     {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) {actions labels incoming outgoing entryLabels}

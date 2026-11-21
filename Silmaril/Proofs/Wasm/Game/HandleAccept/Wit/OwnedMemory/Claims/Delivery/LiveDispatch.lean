@@ -197,6 +197,16 @@ private theorem neutralRetarget {action labels} {impl : HostImpl (core3 grow) (H
     (edge : Transition profile ready base start action labels finish) (closed : JournalNeutralAction action) :
     Transition profile ready impl start action labels finish := by
   cases edge <;> try contradiction
+  case invoke available fresh => exact .invoke available fresh
+  case invokePrologue focused => exact .invokePrologue focused
+  case liftedLookup focused lookup => exact .liftedLookup focused lookup
+  case liftLaunch site => exact .liftLaunch site
+  case liftAdmit site admission => exact .liftAdmit site admission
+  case liftArguments site live => exact .liftArguments site live
+  case invokeReturn focused => exact .invokeReturn focused
+  case stackfulComplete exit => exact .stackfulComplete exit
+  case stackfulUnresolved => exact .stackfulUnresolved (by assumption) (by assumption) (by assumption) (by assumption) (by assumption)
+  case stackfulExit exit empty => exact .stackfulExit exit empty
   case coreInternal focused running steps => exact .coreInternal focused running steps
   case coreReturned focused returned => exact .coreReturned focused returned
   case coreTrap focused trapped => exact .coreTrap focused trapped
@@ -224,6 +234,8 @@ theorem interleavingRetarget {actions labels incoming outgoing} {impl : HostImpl
 private theorem neutralHost {action labels} (edge : Transition profile ready base start action labels finish)
     (closed : JournalNeutralAction action) : finish.host = start.host := by
   cases edge <;> try contradiction
+  case invokeReturn =>
+    cases call : start.pending.getLast?.map (·.1) <;> simp [StepDefs.hostFinish, StepDefs.lastCall?, call, Config.setCancel]
   case poll poll pending branch => cases branch <;> rfl
   case waitReady early allowed wait available => cases early <;> rfl
   case waitTake delivery focused pending branch => cases branch <;> rfl

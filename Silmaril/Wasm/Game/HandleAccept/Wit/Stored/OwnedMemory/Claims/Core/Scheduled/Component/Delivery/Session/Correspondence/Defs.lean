@@ -13,6 +13,8 @@ open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmari
 acceptor journal. `ClosedDeliveryAction` instead compares dispatcher
 overlays at an identical state. -/
 def JournalNeutralAction : Action → Prop
+  | .invoke .. | .invokePrologue .. | .liftedLookup .. | .liftLaunch .. | .liftAdmit .. | .liftArguments ..
+  | .invokeReturn .. | .stackfulComplete .. | .stackfulUnresolved .. | .workerExit .. => True
   | .coreStep | .coreReturn | .coreTrap | .coreReply .. | .poll .. | .wait .. | .waitEnter .. | .waitResume ..
   | .cancel .. | .cancelPark .. | .cancelResume .. => True
   | _ => False

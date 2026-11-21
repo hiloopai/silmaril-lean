@@ -149,6 +149,27 @@ theorem JournalInterleaving.runs {actions labels incoming outgoing}
       Run profile ready impl (HostFrame.replace start incoming) actions labels (HostFrame.replace finish outgoing) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.interleavingRuns path
 
+theorem JournalInterleaving.append {middle : State grow sig} {incoming middleHost outgoing first rest leading trailing}
+    (firstPath : JournalInterleaving profile ready impl start incoming first leading middle middleHost)
+    (restPath : JournalInterleaving profile ready impl middle middleHost rest trailing finish outgoing) :
+    JournalInterleaving profile ready impl start incoming (first ++ rest) (leading ++ trailing) finish outgoing :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.interleavingAppend firstPath restPath
+
+theorem JournalInterleaving.of_neutral_run {actions labels} (run : Run profile ready impl start actions labels finish)
+    (closed : ∀ action ∈ actions, JournalNeutralAction action) (other : HostState sig) :
+    JournalInterleaving profile ready impl start other actions labels finish other :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.ofNeutralRun run closed other
+
+/-- Complete and exit the reached stackful worker. Unregistration and its
+exclusive-mode update use the live task and thread record, without reading
+the two journals or requiring an earlier event to remain pending. -/
+theorem JournalInterleaving.finish_stackful {reached : State grow sig} {site : StackfulReturn reached}
+    {incoming outgoing actions labels} (run : JournalInterleaving profile ready impl start incoming actions labels reached outgoing)
+    (exit : StackfulExit site) (empty : site.segments = []) :
+    JournalInterleaving profile ready impl start incoming (actions ++ [.stackfulComplete site.taskId, .workerExit site.thread])
+      (labels ++ (exit.labels ++ [.tau])) exit.finished outgoing :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.stackfulCompletion run exit empty
+
 /-- The next returning give starts from the journals reached after any
 finite classified interleaving. An observation mismatch stops at its
 actual host read; it is not a checked refusal or a canonical trap. -/
