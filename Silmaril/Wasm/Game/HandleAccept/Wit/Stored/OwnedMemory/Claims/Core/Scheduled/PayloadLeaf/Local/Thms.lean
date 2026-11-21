@@ -25,6 +25,13 @@ theorem canonical_handle_local {E : CoreEngine} {Host : Type} (limits : Componen
       (Endpoints.RecordLower.CanonicalTree.leaf limits quirks cx width item output) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LocalLeaf.localHandle limits quirks cx width item output handle
 
+/-- An actual nominal owner lift uses only local effects, including the
+early slot removal that survives the later type, lending or ownership traps. -/
+theorem canonical_owner_take_local {E : CoreEngine} {Host : Type} (limits : Component.Limits)
+    (cx : LiftLowerContext E) (resource : RtId) (slot : Nat) :
+    Prog.Every (S := Eff E Host) LocalStoreOp (Resources.take (World := Host) limits cx resource slot) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LocalLeaf.localTake limits cx resource slot
+
 /-- Compare the checked and canonical programs at a reached handle cursor.
 A typed refusal runs just the checked guard; the canonical side stays before
 the leaf. After successful admission, both sides execute the real canonical

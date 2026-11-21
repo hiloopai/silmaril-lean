@@ -65,6 +65,14 @@ def stringArgumentValues (values : List Value.StrVal) : List Value.Val := values
 
 def stringArgumentTypes (values : List Value.StrVal) : List Stored.TypeOf := values.map (fun _ => .prim .string)
 
+/-- The actual caller argument read resumes after a nominal owner lift.
+Only the ABI representation goes in the canonical value list. -/
+def LowerStartAt.afterOwnHead {start : State grow sig} {site : OnStartSite start} (handoff : LowerStartAt site)
+    (resource : RtId) (types : List Stored.TypeOf) (cursor : FlatCursor) (owner : Resources.Owned resource) :
+    Session grow sig (Ret (core3 grow)) := do
+  let (values, reached) ← liftFlatTypes .spec .none handoff.context handoff.readWidth types cursor
+  handoff.finishRead (.own owner.representation :: values, reached)
+
 /-- A selected sum arm. Inactive arms keep their schemas, not fabricated
 values. The selected schema comes from the actual payload witness. -/
 inductive ArgumentSum where
@@ -100,11 +108,13 @@ def ArgumentSum.joined (shape : ArgumentSum) (payload : Option Stored.TypeOf) (w
   | .resultOk err => joinFlat (flattenOption width payload) (flattenOption width err)
   | .resultErr ok => joinFlat (flattenOption width ok) (flattenOption width payload)
 
-/-- The supported canonical argument trees. The same tree names the checked
-shape and supplies the actual canonical value, including tuple arity. -/
+/-- A witness for a reached canonical argument. The tree names its schema
+and supplies its canonical value, including tuple arity. An owner identity
+in this witness is not an authorization to run a checked transfer. -/
 inductive ArgumentField where
   | scalar (arg : DirectArgument)
   | string (value : Value.StrVal)
+  | owner (receipt : Stored.OwnedMemory.Receipt)
   | tuple (members : List ArgumentField)
   | record (members : List (String × ArgumentField))
   | optionNone (payloadShape : ArgumentField)
@@ -130,6 +140,7 @@ private theorem mapArgumentSizes {members : List (ArgumentField × ArgumentField
 def ArgumentField.type : ArgumentField → Stored.TypeOf
   | .scalar arg => arg.type
   | .string _ => .prim .string
+  | .owner receipt => .own receipt.1
   | .tuple members => .tuple (members.map type)
   | .record members => .record (members.map fun member => (member.1, type member.2))
   | .optionNone payloadShape => .option (type payloadShape)
@@ -146,6 +157,7 @@ decreasing_by
 def ArgumentField.value : ArgumentField → Value.Val
   | .scalar arg => arg.value
   | .string value => .string value
+  | .owner receipt => .own receipt.2.representation
   | .tuple members => .record (members.map value)
   | .record members => .record (members.map fun member => value member.2)
   | .optionNone _ => .variant 0 none
@@ -169,6 +181,7 @@ An empty collection still needs a supported element shape. -/
 inductive ArgumentField.Valid : ArgumentField → Prop where
   | scalar (arg : DirectArgument) : Valid (.scalar arg)
   | string (value : Value.StrVal) : Valid (.string value)
+  | owner (receipt : Stored.OwnedMemory.Receipt) : Valid (.owner receipt)
   | tuple {members : List ArgumentField} (typed : ∀ child ∈ members, Valid child) : Valid (.tuple members)
   | record {members : List (String × ArgumentField)} (typed : ∀ child ∈ members, Valid child.2) : Valid (.record members)
   | optionNone {child : ArgumentField} (typed : Valid child) : Valid (.optionNone child)

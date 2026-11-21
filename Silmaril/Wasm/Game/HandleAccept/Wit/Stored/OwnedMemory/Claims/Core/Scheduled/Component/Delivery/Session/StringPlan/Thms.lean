@@ -16,6 +16,18 @@ variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : Profile
   {ready : HostReady (HostState sig)} {bindings : List (Binding sig)} {callees : List (Callee sig)}
   {start : State grow sig}
 
+/-- Lift a direct owning operand at the actual reached caller cursor. The
+cut returns its nominal identity or traps in the reached store; it does
+not treat an old numeric slot or an immutable observation as authority. -/
+theorem LowerStartAt.direct_owner_read {site : OnStartSite start} (handoff : LowerStartAt site)
+    (resource : RtId) (types : List Stored.TypeOf) (operand : FlatValue) (cursor : FlatCursor)
+    (schema : handoff.types = .own resource :: types)
+    (fits : (flattenTypes handoff.readWidth handoff.types).length ≤ handoff.maxParams)
+    (read : (handoff.cursor.next (.int .i32) : Session grow sig (FlatValue × FlatCursor)) = pure (operand, cursor)) :
+    StringPlanPair profile ready bindings callees handoff.selectedRead (handoff.afterOwnHead resource types cursor) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.readOwnHead
+    handoff resource types operand cursor schema fits read
+
 /-- No allocator progress is required to classify a cut at installation. -/
 def ArgumentAllocatorCut.atInstall (alloc : ArgumentStringAllocation start) : ArgumentAllocatorCut profile ready bindings alloc :=
   .suspend (alloc.installed ready bindings) [] (.active 0 0) (.done _ _) (by

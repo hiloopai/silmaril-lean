@@ -1320,8 +1320,15 @@ do not execute. The memory tag is written before the payload can suspend
 or trap. The flat path runs canonical coercion (including admissible NaN
 choices) and padding only after the payload completes. This is a paired
 canonical worker path, not checked schema admission or a proof of agreement
-between distinct checked and canonical states. Resources and arbitrary
-component host reentry remain outside this worker argument proof.
+between distinct checked and canonical states. A direct owner-head read
+follows the actual caller operand and `Resources.take`, retaining the
+nominal identity on success and the slot removal on a later lift trap.
+Already reached canonical values can include owner descendants anywhere in
+the traversal: the actual handle arena insertion and flat slot or memory
+write run against the reached store. A later failure retains earlier
+effects. The structural witness does not itself grant transfer permission;
+recursive source provenance across the whole argument lift remains separate.
+This worker proof does not classify arbitrary component host reentry.
 
 `finish_stackful_after_arguments` continues the reached Core entry along a
 selected finite body. Guest-only paths classify without a host premise;

@@ -72,6 +72,39 @@ private theorem localAdd (inst : InstId) (entry : HandleEntry) :
   · exact localTrap _
   · exact (localModify _).bind (fun _ => .pure _)
 
+private theorem localRemove (inst : InstId) (slot : Nat) : LocalProg (handlesRemove inst slot : P E Host HandleEntry) := by
+  unfold handlesRemove
+  refine (localInst inst).bind fun state => ?_
+  cases state.removeHandle? slot with
+  | none => exact localTrap _
+  | some removed => cases removed; exact (localModify _).bind fun _ => .pure _
+
+private theorem localTrapIf (guard : Bool) (reason : TrapReason) : LocalProg (trapIf guard reason : P E Host Unit) := by
+  cases guard
+  · exact .pure ()
+  · exact localTrap reason
+
+theorem localTake (limits : Component.Limits) (cx : LiftLowerContext E) (rt : RtId) (slot : Nat) :
+    LocalProg (Resources.take (World := Host) limits cx rt slot) := by
+  unfold Resources.take Resources.takeWith
+  refine (localRemove cx.inst slot).bind fun entry => ?_
+  cases entry with
+  | resource identity =>
+    simp only [expectResource, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind']
+    have fetched : LocalProg (getResHandle identity : P E Host ResourceHandle) := by
+      unfold getResHandle getObj
+      refine localGet.bind fun store => ?_
+      cases ArenaField.resHandles.get? store identity
+      · exact localTrap _
+      · exact .pure _
+    exact fetched.bind (fun handle =>
+      (localTrapIf (handle.rt != rt) .resourceTypeMismatch).bind fun _ =>
+      (localTrapIf (handle.numLends != 0) .ownLent).bind fun _ =>
+      (localTrapIf (!handle.own) .notOwnHandle).bind fun _ => .pure (Resources.Owned.mk identity handle.rep))
+  | waitable _ | wset _ | errCtx _ =>
+    simp only [expectResource, Prog.bind_eq, trap]
+    exact .op trivial (fun answer => nomatch answer)
+
 private theorem localOwn (limits : Component.Limits) (cx : LiftLowerContext E) (rt : RtId) (rep : Nat) :
     LocalProg (lowerOwn limits cx rt rep : P E Host Nat) :=
   localGet.bind fun _ => (localModify _).bind fun _ => localAdd cx.inst _

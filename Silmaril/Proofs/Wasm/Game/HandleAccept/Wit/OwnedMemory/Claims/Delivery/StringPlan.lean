@@ -4,6 +4,8 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadLeaf.Local.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Resources.Thms
 import Silmaril.Wasm.Component.Reference.Canon.Prog.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.Oracle.Defs
@@ -477,32 +479,31 @@ private theorem sumTag (context : LiftLowerContext (core3 grow)) (payloadAlign :
   exact mapPair next (fun _ : Unit => (width, address width))
     (argumentWrite context ptr bytes _ afterWidth cursor rfl)
 
-private inductive SlotOp : (Eff (core3 grow) (HostState sig)).Op → Prop where
-  | nan (kind : FloatType) (bits : BitVec kind.width) : SlotOp (.choose (.nan kind bits))
-  | trap (reason : TrapReason) : SlotOp (.trap reason)
+private inductive ArgumentOp : (Eff (core3 grow) (HostState sig)).Op → Prop where
+  | nan (kind : FloatType) (bits : BitVec kind.width) : ArgumentOp (.choose (.nan kind bits))
+  | storeOp {op : (Eff (core3 grow) (HostState sig)).Op} (allowed : LocalStoreOp op) : ArgumentOp op
 
-private theorem slotBind {Input Result : Type} {program : Session grow sig Input}
-    {next : Input → Session grow sig Result} (localOps : Prog.Every SlotOp program)
-    (tail : ∀ value, Prog.Every SlotOp (next value)) : Prog.Every SlotOp (program >>= next) := by
+private theorem argumentLocal {Result : Type} {program : Session grow sig Result}
+    (localOps : Prog.Every LocalStoreOp program) : Prog.Every ArgumentOp program := by
   induction localOps with
-  | pure value => exact tail value
-  | op allowed _ ih => exact .op allowed ih
+  | pure value => exact .pure value
+  | op allowed _ ih => exact .op (.storeOp allowed) ih
 
 private theorem slotEncode (kind : FloatType) (bits : BitVec kind.width) :
-    Prog.Every (S := Eff (core3 grow) (HostState sig)) SlotOp (encodeFloat kind bits) := by
-  apply slotBind _ (fun _ => .pure _)
+    Prog.Every (S := Eff (core3 grow) (HostState sig)) ArgumentOp (encodeFloat kind bits) := by
+  apply Prog.Every.bind _ (fun _ => .pure _)
   unfold lowerFloat
   split
   · exact .op (.nan kind bits) (fun _ => .pure _)
   · exact .pure _
 
 private theorem slotCoerce (haveType wantType : CoreType) (word : FlatValue) :
-    Prog.Every (S := Eff (core3 grow) (HostState sig)) SlotOp (coerceLower haveType wantType word) := by
+    Prog.Every (S := Eff (core3 grow) (HostState sig)) ArgumentOp (coerceLower haveType wantType word) := by
   unfold coerceLower
-  split <;> first | exact .pure _ | exact slotBind (slotEncode _ _) (fun _ => .pure _)
+  split <;> first | exact .pure _ | exact (slotEncode _ _).bind (fun _ => .pure _)
 
 private theorem slotList (haveTypes wantTypes : List CoreType) (words : List FlatValue) :
-    Prog.Every (S := Eff (core3 grow) (HostState sig)) SlotOp (coerceLowerSlots haveTypes wantTypes words) := by
+    Prog.Every (S := Eff (core3 grow) (HostState sig)) ArgumentOp (coerceLowerSlots haveTypes wantTypes words) := by
   induction haveTypes generalizing wantTypes words with
   | nil => exact .pure _
   | cons haveType haveTypes ih =>
@@ -510,28 +511,58 @@ private theorem slotList (haveTypes wantTypes : List CoreType) (words : List Fla
     | nil => cases wantTypes <;> exact .pure _
     | cons word words =>
       cases wantTypes with
-      | nil => exact .op (.trap _) (fun answer => nomatch answer)
+      | nil => exact .op (.storeOp trivial) (fun answer => nomatch answer)
       | cons wantType wantTypes =>
-        exact slotBind (slotCoerce haveType wantType word) (fun _ =>
-          slotBind (ih wantTypes words) (fun _ => .pure _))
+        exact (slotCoerce haveType wantType word).bind (fun _ =>
+          (ih wantTypes words).bind (fun _ => .pure _))
 
-private theorem runSlots {Result : Type} {program : Session grow sig Result}
-    (localOps : Prog.Every SlotOp program) (next : Result → Session grow sig (Ret (core3 grow)))
+private theorem runArgumentOps {Result : Type} {program : Session grow sig Result}
+    (localOps : Prog.Every ArgumentOp program) (next : Result → Session grow sig (Ret (core3 grow)))
     (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig))
     (focused : start.ctl = cursor.control (program >>= next)) :
     StringPlanPair profile ready bindings callees start next := by
   induction localOps generalizing start with
   | pure result => exact ⟨[], start, .refl _, .refl _, .complete cursor result focused⟩
-  | op allowed _ ih =>
+  | @op op _ allowed _ ih =>
     cases allowed with
-    | trap reason =>
-      exact ⟨[.trap reason], _, .cons (.trap focused) (.refl _), .cons (.trap focused) (.refl _), .trap (leading := []) reason⟩
+    | storeOp localOp =>
+      cases op with
+      | get => exact prependPair (.cons (.get focused) (.refl _)) (.cons (.get focused) (.refl _)) (ih start.store _ rfl)
+      | modify _ => exact prependPair (.cons (.modify focused) (.refl _)) (.cons (.modify focused) (.refl _)) (ih () _ rfl)
+      | trap reason =>
+        exact ⟨[.trap reason], _, .cons (.trap focused) (.refl _), .cons (.trap focused) (.refl _), .trap (leading := []) reason⟩
+      | currentThread =>
+        exact prependPair (.cons (.currentThread focused) (.refl _)) (.cons (.currentThread focused) (.refl _))
+          (ih cursor.thread _ rfl)
+      | _ => contradiction
     | nan kind bits =>
       let answer := firstNan profile kind bits
       have admissible : Allowed profile (.nan kind bits) answer := firstNan_allowed profile kind bits
       apply prependPair (.cons (.choose answer focused admissible) (.refl _))
         (.cons (.choose answer focused admissible) (.refl _))
       exact ih answer _ rfl
+
+theorem readOwnHead {start : State grow sig} {site : OnStartSite start} (handoff : LowerStartAt site)
+    (resource : RtId) (types : List Stored.TypeOf) (operand : FlatValue) (cursor : FlatCursor)
+    (schema : handoff.types = .own resource :: types)
+    (fits : (flattenTypes handoff.readWidth handoff.types).length ≤ handoff.maxParams)
+    (read : (handoff.cursor.next (.int .i32) : Session grow sig (FlatValue × FlatCursor)) = pure (operand, cursor)) :
+    StringPlanPair profile ready bindings callees handoff.selectedRead (handoff.afterOwnHead resource types cursor) := by
+  let atRead : Cursor (E := core3 grow) (HostState sig) := ⟨some site.thread, .prog site.resume :: site.segments, site.rest⟩
+  apply runArgumentOps (argumentLocal (canonical_owner_take_local .spec handoff.context resource (flatNat operand)))
+    (handoff.afterOwnHead resource types cursor) handoff.selectedRead atRead
+  change handoff.readControl (handoff.readAt handoff.readWidth >>= handoff.finishRead) = _
+  rw [LowerStartAt.readAt, ite_eq_right (Nat.not_lt_of_ge fits), schema]
+  unfold liftFlatTypes
+  rw [liftFlatTypesWith.eq_def]
+  dsimp only
+  rw [liftFlatAtWith.eq_def]
+  dsimp only
+  rw [read]
+  simp only [FlatLoadCarrier.reference, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind']
+  rw [← Resources.take_representation]
+  simp only [Functor.map, Prog.bind_assoc, Prog.pure_bind']
+  rfl
 
 private theorem storeSelectedCase (context : LiftLowerContext (core3 grow))
     (before after : List (String × Option Stored.TypeOf)) (label : String)
@@ -646,6 +677,12 @@ private theorem lowerArgument (context : LiftLowerContext (core3 grow)) (width :
       exact argumentStringRead context width (.memory address) value next choose start cursor (by
         simpa only [Stored.Lower.Output.Result, ArgumentField.lower, ArgumentField.value, ArgumentField.type,
           memory_argument_string context width, Prog.bind_eq] using focused)
+  | owner receipt =>
+    have localOps := canonical_handle_local (Host := HostState sig) .spec .none context width (.owner receipt) output trivial
+    apply runArgumentOps (argumentLocal localOps) next start cursor
+    cases output <;>
+      simpa [ArgumentField.lower, ArgumentField.type, ArgumentField.value, Stored.Endpoints.RecordLower.CanonicalTree.leaf,
+        Stored.Endpoints.RecordLower.Field.type, Stored.Endpoints.RecordLower.Field.value] using focused
   | @tuple members typed =>
     cases output with
     | flat =>
@@ -734,7 +771,7 @@ private theorem lowerArgument (context : LiftLowerContext (core3 grow)) (width :
         intro last reached words atFinish
         exact mapPair next (fun result : List FlatValue × List CoreType =>
           i32Flat shape.tag :: (result.1 ++ result.2.map Execution.Runtime.Value.zero))
-          (runSlots (slotList haveTypes joined words) _ last reached atFinish)
+          (runArgumentOps (slotList haveTypes joined words) _ last reached atFinish)
       cases payload with
       | none =>
         apply finishPair start cursor []
