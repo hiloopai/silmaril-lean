@@ -100,6 +100,87 @@ private theorem appendSteps {leading trailing}
   | refl => exact right
   | cons step _ ih => exact .cons step (ih right)
 
+theorem liftLaunchSteps (site : LiftSite grow sig) :
+    Steps profile ready (specDispatch ready impl) site.start [.tau, .tau, .tau, .tau, .tau] site.launched := by
+  let taskData := liftTaskData site.fnType site.opts site.inst site.caller
+  let task := site.storeAndTask.2
+  let thread := site.storeAndThread.2
+  let body := ThreadBody.liftImplicit task site.core
+  let finish := fun _ : Unit => liftAfterThread (grow := grow) (sig := sig) task site.fnType.async_
+  let install := fun target => Thread.resume target >>= finish
+  let installProg : Session grow sig (Ret (core3 grow)) := .op (.newThread body) install
+  let update := ArenaOps.allocSt ArenaField.tasks taskData
+  let taskAt := fun (store : CStore (core3 grow)) => (ArenaField.tasks.alloc store taskData).2
+  let readProg : CStore (core3 grow) → Session grow sig (Ret (core3 grow)) := fun store => .op (.modify update) fun _ =>
+    .op (.newThread (.liftImplicit (taskAt store) site.core)) fun (target : ThreadId) =>
+      Thread.resume target >>= fun _ => liftAfterThread (grow := grow) (sig := sig) (taskAt store) site.fnType.async_
+  have readAt : site.start.ctl = ⟨site.parent, .prog (.op .get readProg), site.frames⟩ :: site.rest := site.focused
+  let read := { site.start with ctl := ⟨site.parent, .prog (readProg site.start.store), site.frames⟩ :: site.rest }
+  let allocated := { read with
+    store := site.storeAndTask.1
+    ctl := ⟨site.parent, .prog installProg, site.frames⟩ :: site.rest }
+  let saved := { (allocated.setCont thread (some site.activation)) with
+    store := site.storeAndThread.1
+    ctl := ⟨site.parent, .prog (install thread), site.frames⟩ :: site.rest }
+  have savedRun : Step profile ready (specDispatch ready impl) allocated .tau saved :=
+    .newThread (m := allocated) (b := body) (k := install) (t := thread) rfl rfl
+  have notWaiting : saved.store.threadIs Thread.waiting thread = false := by
+    change site.storeAndThread.1.threadIs Thread.waiting site.storeAndThread.2 = false
+    rw [CStore.threadIs, CStore.thread?, LiftSite.storeAndThread, ArenaField.get?_alloc_self]
+    rfl
+  let afterRead := fun store : CStore (core3 grow) =>
+    ((if store.threadIs Thread.waiting thread then Thread.stopWaiting thread else pure ()) >>= fun _ => resumeThread thread) >>= finish
+  let activating := { saved with ctl := ⟨site.parent, .prog (afterRead saved.store), site.frames⟩ :: site.rest }
+  have readRun : Step profile ready (specDispatch ready impl) saved .tau activating := .get rfl
+  have resumeAt : activating.ctl = ⟨site.parent, .prog (.op (.resumeThread thread) finish), site.frames⟩ :: site.rest := by
+    simp only [activating, afterRead, notWaiting, Bool.false_eq_true, ite_false]
+    rfl
+  have savedAt : activating.cont? thread = some site.activation := Config.cont?_setCont_self ..
+  exact .cons (.get readAt) (.cons (.modify rfl) (.cons savedRun (.cons readRun
+    (.cons (.resumeThread resumeAt savedAt) (.refl _)))))
+
+theorem invokeBackpressure {call func args core fnType opts inst instance_}
+    (live : start.store.inst? inst = some instance_) (asyncMode : fnType.async_ = true)
+    (pressure : instance_.hasBackpressure (liftTaskData (grow := grow) fnType opts inst (invokeCaller start)).needsExclusive = true) :
+    let site := LiftSite.ofInvoke start call func args core fnType opts inst
+    ∃ (entry : K1GateEntry site.launched site.storeAndThread.2 site.storeAndTask.2) (after : State grow sig),
+      Steps profile ready (specDispatch ready impl) site.launched (List.replicate 9 .tau) entry.wait.blocked ∧
+      Transition profile ready impl entry.wait.blocked (.invokeReturn (.task site.storeAndTask.2)) [.tau, .tau, .tau] after ∧
+      after.cont? site.storeAndThread.2 = some entry.wait.saved := by
+  let site := LiftSite.ofInvoke start call func args core fnType opts inst
+  let task := liftTaskData fnType opts inst (invokeCaller start)
+  have taskLive : site.launched.store.task? site.storeAndTask.2 = some task :=
+    ArenaField.get?_alloc_self ArenaField.tasks site.start.store task
+  have pressured : instance_.hasBackpressure task.needsExclusive = true := pressure
+  obtain ⟨entry, gateSteps, _, _⟩ := lift_k1_gate (profile := profile) (ready := ready) (impl := impl)
+    core task instance_ _ (atGate := site.launched) (thread := site.storeAndThread.2) rfl taskLive asyncMode live (by simp [pressured])
+  have sameTask : entry.task = task := Option.some.inj (entry.liveTask.symm.trans taskLive)
+  have reachedInstance : entry.waitingEntry.store.inst? entry.task.inst = some instance_ := by
+    change site.launched.store.inst? entry.task.inst = some instance_
+    rw [sameTask]
+    exact live
+  have reachedPressure : instance_.hasBackpressure entry.task.needsExclusive = true := by
+    simpa only [sameTask] using pressure
+  have unready : entry.wait.condition.eval (fun _ => false) entry.wait.incremented = false := by
+    unfold K1Wait.condition K1Wait.incremented ReadyCond.eval
+    change (match ArenaField.insts.get? (ArenaField.insts.modify entry.waitingEntry.store entry.task.inst
+      InstState.incWaitingToEnter) entry.task.inst with
+      | some reached => !reached.hasBackpressure entry.task.needsExclusive
+      | none => false) = false
+    rw [ArenaField.get?_modify_self, show ArenaField.insts.get? entry.waitingEntry.store entry.task.inst = _ from reachedInstance]
+    change (!instance_.hasBackpressure entry.task.needsExclusive) = false
+    rw [reachedPressure]
+    rfl
+  have outer : entry.rest = [⟨none, .prog (liftAfterThread site.storeAndTask.2 fnType.async_), [.prog invokeReturn]⟩] :=
+    (congrArg List.tail entry.focused).symm
+  have returned : entry.wait.blocked.ctl = [⟨none, .prog (.pure (.cancel (.task site.storeAndTask.2))), [.prog invokeReturn]⟩] := by
+    change entry.rest = _
+    rw [outer, asyncMode]
+    rfl
+  refine ⟨entry, _, appendSteps gateSteps (entry.wait.blocks unready), .invokeReturn returned, ?_⟩
+  unfold StepDefs.hostFinish
+  split <;> exact Config.cont?_setCont_self entry.waitingEntry site.storeAndThread.2 (some entry.wait.saved)
+
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {beforeCheck beforeCanon left right reached reference : State grow sig}
@@ -151,6 +232,7 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | invoke hostReady fresh => exact .cons (.hostInvoke hostReady fresh) (.refl _)
   | invokePrologue focused => exact invokePrologueSteps focused
   | liftedLookup focused lookup => exact Dispatch.liftedLookup_steps focused lookup
+  | liftLaunch site => exact liftLaunchSteps site
   | invokeReturn focused => exact invokeReturnSteps focused
   | tick tick => exact tick.selects_thread
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)

@@ -183,6 +183,53 @@ theorem Run.append {first second leading trailing} (left : Run profile ready imp
     Run profile ready impl start (first ++ second) (leading ++ trailing) finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runAppend left right
 
+/-- The actual implicit-thread install and forced resume take five silent
+steps under either dispatcher. The fresh thread has no waiting condition. -/
+theorem LiftSite.launch_steps (site : LiftSite grow sig) :
+    Steps profile ready (specDispatch ready impl) site.start [.tau, .tau, .tau, .tau, .tau] site.launched :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.liftLaunchSteps site
+
+theorem LiftSite.live_task (site : LiftSite grow sig) :
+    site.launched.store.task? site.storeAndTask.2 = some (liftTaskData site.fnType site.opts site.inst site.caller) :=
+  ArenaField.get?_alloc_self ArenaField.tasks site.start.store (liftTaskData site.fnType site.opts site.inst site.caller)
+
+/-- The launch supplies the active worker and its fresh live task to the
+actual K1 gate. The backpressure and instance are read, not assumed away. -/
+theorem LiftSite.k1_gate (site : LiftSite grow sig) {instance_ : InstState}
+    (live : site.start.store.inst? site.inst = some instance_) (asyncMode : site.fnType.async_ = true)
+    (gated : (instance_.hasBackpressure (liftTaskData site.fnType site.opts site.inst site.caller).needsExclusive ||
+      decide (instance_.numWaitingToEnter > 0)) = true) :
+    ∃ entry : K1GateEntry site.launched site.storeAndThread.2 site.storeAndTask.2,
+      Steps profile ready (specDispatch ready impl) site.launched (List.replicate 4 .tau) entry.waitingEntry ∧
+      entry.wait.next false = .pure .unit ∧ entry.wait.segments = [] :=
+  lift_k1_gate site.core _ instance_ _ rfl site.live_task asyncMode live gated
+
+/-- A host invocation starts the actual lift body and leaves the parent
+continuation pending. It does not assume the body returns or delivers. -/
+theorem Run.invoke_launched {call func args core fnType opts inst}
+    (hostReady : StepDefs.HostReadyCfg start) (fresh : ∀ entry ∈ start.pending, entry.1 ≠ call)
+    (lookup : start.store.func? func = some (.lifted core fnType opts inst)) :
+    let site := LiftSite.ofInvoke start call func args core fnType opts inst
+    Run profile ready impl start
+      [.invoke call func, .invokePrologue call func, .liftedLookup func (invokeCaller start),
+        .liftLaunch site.storeAndTask.2 site.storeAndThread.2]
+      (.host (.invoke call func args) :: List.replicate 10 .tau) site.launched :=
+  (Run.invoke_lifted hostReady fresh lookup).append
+    (.next (.liftLaunch (LiftSite.ofInvoke start call func args core fnType opts inst)) (.stop _))
+
+/-- Actual backpressure makes the launched worker park at K1, even after
+incrementing the entry count. The async parent returns the cancellation
+handle while that worker is still saved; this is not result delivery. -/
+theorem LiftSite.invoke_backpressure {call func args core fnType opts inst instance_}
+    (live : start.store.inst? inst = some instance_) (asyncMode : fnType.async_ = true)
+    (pressure : instance_.hasBackpressure (liftTaskData (grow := grow) fnType opts inst (invokeCaller start)).needsExclusive = true) :
+    let site := LiftSite.ofInvoke start call func args core fnType opts inst
+    ∃ (entry : K1GateEntry site.launched site.storeAndThread.2 site.storeAndTask.2) (after : State grow sig),
+      Steps profile ready (specDispatch ready impl) site.launched (List.replicate 9 .tau) entry.wait.blocked ∧
+      Transition profile ready impl entry.wait.blocked (.invokeReturn (.task site.storeAndTask.2)) [.tau, .tau, .tau] after ∧
+      after.cont? site.storeAndThread.2 = some entry.wait.saved :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.invokeBackpressure live asyncMode pressure
+
 /-- The exact record frame is a property only of the classified closed path. -/
 theorem Transition.closed_record {target labels}
     (edge : Transition profile ready impl start (.closedCallback target) labels finish) :

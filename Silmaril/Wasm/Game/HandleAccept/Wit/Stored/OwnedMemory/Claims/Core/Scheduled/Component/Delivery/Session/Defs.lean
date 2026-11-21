@@ -132,12 +132,55 @@ def invokeLift (start : State grow sig) (call : CallId) (func : FuncId) (args : 
   { invokeCall (invokeStart start call func args) call func args with
     ctl := [⟨none, .prog (canonLift Limits.spec Quirks.none core fnType opts inst (invokeCaller start)), [.prog invokeReturn]⟩] }
 
+/-- The reached canonical lift retains the activation that invoked it. -/
+structure LiftSite (grow : SingleThreaded.GrowOracle) (sig : Signature) where
+  start : State grow sig
+  core : (core3 grow).FuncAddr
+  fnType : WIT.FuncType Empty RtId
+  opts : CanonOpts (core3 grow)
+  inst : InstId
+  caller : CallerId
+  parent : Option ThreadId
+  frames : List (Seg (core3 grow) (HostState sig))
+  rest : List (Activation (core3 grow) (HostState sig))
+  focused : start.ctl = ⟨parent, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller), frames⟩ :: rest
+
+def LiftSite.ofInvoke (start : State grow sig) (call : CallId) (func : FuncId) (args : List Value.Val)
+    (core : (core3 grow).FuncAddr) (fnType : WIT.FuncType Empty RtId) (opts : CanonOpts (core3 grow))
+    (inst : InstId) : LiftSite grow sig :=
+  ⟨invokeLift start call func args core fnType opts inst, core, fnType, opts, inst, invokeCaller start,
+    none, [.prog invokeReturn], [], rfl⟩
+
+def liftTaskData (fnType : WIT.FuncType Empty RtId) (opts : CanonOpts (core3 grow)) (inst : InstId) (caller : CallerId) :
+    Task (core3 grow) :=
+  { ft := fnType, opts, inst, caller }
+
+def liftAfterThread (task : TaskId) (asyncMode : Bool) : Session grow sig (Ret (core3 grow)) := do
+  (if !asyncMode then callUnit (.loop (.syncLiftLoop task)) else pure () : Session grow sig Unit)
+  return .cancel (.task task)
+
+def LiftSite.storeAndTask (site : LiftSite grow sig) : CStore (core3 grow) × TaskId :=
+  ArenaField.tasks.alloc site.start.store (liftTaskData site.fnType site.opts site.inst site.caller)
+
+def LiftSite.storeAndThread (site : LiftSite grow sig) : CStore (core3 grow) × ThreadId :=
+  ArenaField.threads.alloc site.storeAndTask.1 { task := site.storeAndTask.2 }
+
+def LiftSite.activation (site : LiftSite grow sig) : Activation (core3 grow) (HostState sig) :=
+  .ofProg (some site.storeAndThread.2) (liftThreadBody Limits.spec Quirks.none site.storeAndTask.2 site.core)
+
+def LiftSite.launched (site : LiftSite grow sig) : State grow sig :=
+  let thread := site.storeAndThread.2
+  { ((site.start.setCont thread (some site.activation)).setCont thread none) with
+    store := StepDefs.threadStatusSt thread .running site.storeAndThread.1
+    ctl := site.activation :: ⟨site.parent, .prog (liftAfterThread site.storeAndTask.2 site.fnType.async_), site.frames⟩ :: site.rest }
+
 /-- A semantic action is not a machine label: one action can emit several
 machine labels, including choices, and a callback take need not reply to Core. -/
 inductive Action where
   | invoke (call : CallId) (func : FuncId)
   | invokePrologue (call : CallId) (func : FuncId)
   | liftedLookup (func : FuncId) (caller : CallerId)
+  | liftLaunch (task : TaskId) (thread : ThreadId)
   | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
   | coreStep
@@ -181,6 +224,9 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       Transition profile ready impl start (.liftedLookup func caller) [.tau, .tau]
         { start with ctl := ⟨thread, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller),
           .prog next :: frames⟩ :: rest }
+  | liftLaunch (site : LiftSite grow sig) :
+      Transition profile ready impl site.start (.liftLaunch site.storeAndTask.2 site.storeAndThread.2)
+        [.tau, .tau, .tau, .tau, .tau] site.launched
   | invokeReturn {start cancel} (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
       Transition profile ready impl start (.invokeReturn cancel) [.tau, .tau, .tau]
         (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store })
