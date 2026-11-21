@@ -90,6 +90,28 @@ private theorem invalidAnswer {state : State grow sig} (alloc : ArgumentStringAl
     funext impossible
     exact nomatch impossible
 
+private theorem followAllocation {Result : Type} {start : State grow sig}
+    {next : Result → Session grow sig (Ret (core3 grow))} (alloc : ArgumentStringAllocation start)
+    (choose : ArgumentAllocatorSelection grow sig profile ready bindings)
+    (after : ∀ last reached pointer,
+      StringPlanPair profile ready bindings callees (alloc.resumed last reached (.nat pointer)) next) :
+    StringPlanPair profile ready bindings callees start next := by
+  cases choose alloc with
+  | suspend last trailing mark path closed =>
+    obtain ⟨left, right, _⟩ := alloc.linked_prefix (callees := callees) path closed
+    exact ⟨_, _, left, right, .suspend alloc [] trailing mark (.refl _) path closed⟩
+  | returned last trailing path closed reached answer resume pop =>
+    obtain ⟨left, right⟩ := alloc.linked_return (callees := callees) path closed reached answer pop
+    by_cases valid : ∃ pointer, answer = .nat pointer
+    · obtain ⟨pointer, rfl⟩ := valid
+      exact prependPair left right (after last reached pointer)
+    · have focused := invalidAnswer alloc last reached answer valid
+      exact ⟨_, _, appendSteps left (.cons (.trap focused) (.refl _)),
+        appendSteps right (.cons (.trap focused) (.refl _)), .trap _⟩
+  | trapped last trailing reason path closed =>
+    obtain ⟨left, right⟩ := alloc.linked_steps (callees := callees) path closed
+    exact ⟨_, _, left, right, StringPlanEnd.trap (leading := .tau :: trailing) reason⟩
+
 theorem walk (context : LiftLowerContext (core3 grow)) (width : AddrType) (output : Stored.Lower.Output)
     (plan : StorePlan) (next : output.Result → Session grow sig (Ret (core3 grow)))
     (choose : ArgumentAllocatorSelection grow sig profile ready bindings)
@@ -130,27 +152,72 @@ theorem walk (context : LiftLowerContext (core3 grow)) (width : AddrType) (outpu
             (fun front : StringFront steps.length => front.remaining context >>= finish)
             (.ok (.call pointer oldSize alignment size residual shorter))) :=
         ⟨context, pointer, oldSize, alignment, size, residual, finish, cursor, rfl⟩
-      cases choose alloc with
-      | suspend last trailing mark path closed =>
-        obtain ⟨callLeft, callRight, _⟩ := alloc.linked_prefix (callees := callees) path closed
-        exact ⟨_, _, appendSteps left.steps callLeft, appendSteps right.steps callRight,
-          .suspend alloc labels trailing mark left.steps path closed⟩
-      | returned last trailing path closed reached answer resume pop =>
-        obtain ⟨popLeft, popRight⟩ := alloc.linked_return (callees := callees) path closed reached answer pop
-        by_cases valid : ∃ pointer, answer = .nat pointer
-        · obtain ⟨pointer, rfl⟩ := valid
-          exact prependPair (appendSteps left.steps popLeft) (appendSteps right.steps popRight)
-            (walk context width output plan next choose pointer residual (alloc.resumed last reached (.nat pointer)) reached rfl)
-        · have focused := invalidAnswer alloc last reached answer valid
-          exact ⟨_, _, appendSteps (appendSteps left.steps popLeft) (.cons (.trap focused) (.refl _)),
-            appendSteps (appendSteps right.steps popRight) (.cons (.trap focused) (.refl _)), .trap _⟩
-      | trapped last trailing reason path closed =>
-        obtain ⟨callLeft, callRight⟩ := alloc.linked_steps (callees := callees) path closed
-        refine ⟨_, _, appendSteps left.steps callLeft, appendSteps right.steps callRight, ?_⟩
-        simpa only [List.append_assoc, List.cons_append] using
-          (StringPlanEnd.trap (profile := profile) (ready := ready) (bindings := bindings) (start := start) (next := next)
-            (last := last) (leading := labels ++ .tau :: trailing) reason)
+      exact prependPair left.steps right.steps (followAllocation alloc choose (fun last reached pointer =>
+        walk context width output plan next choose pointer residual (alloc.resumed last reached (.nat pointer)) reached rfl))
 termination_by steps.length
+
+private theorem argumentTrap {Result : Type} {next : Result → Session grow sig (Ret (core3 grow))}
+    (reason : TrapReason) (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (focused : start.ctl = cursor.control (trap reason)) :
+    StringPlanPair profile ready bindings callees start next :=
+  ⟨[.trap reason], _, .cons (.trap focused) (.refl _), .cons (.trap focused) (.refl _), .trap (leading := []) reason⟩
+
+private theorem bindTrap {Input Result : Type} (reason : TrapReason) (next : Input → Session grow sig Result) :
+    (trap reason).bind next = trap reason := by
+  apply congrArg (Prog.op (S := Eff (core3 grow) (HostState sig)) (.trap reason))
+  funext answer
+  exact nomatch answer
+
+private theorem validateRange (context : LiftLowerContext (core3 grow)) (layout : ABI.Layout) (count ptr : Nat)
+    (next : Nat → Session grow sig (Ret (core3 grow))) (start : State grow sig)
+    (cursor : Cursor (E := core3 grow) (HostState sig))
+    (focused : start.ctl = cursor.control (validateListRange context layout count ptr >>= next)) :
+    StringPlanPair profile ready bindings callees start next := by
+  by_cases aligned : ptr = ABI.alignTo ptr layout.alignment
+  · have notMisaligned : ¬ ptr ≠ ABI.alignTo ptr layout.alignment := fun misaligned => misaligned aligned
+    cases selected : context.opts.memory with
+    | none =>
+      apply argumentTrap .noMemory start cursor
+      rw [focused]
+      simp [validateListRange, notMisaligned, trapIf, checkInBounds, memLen, memAddr, selected, orTrap, bindTrap]
+    | some memory =>
+      let body := fun (live : CStore (core3 grow)) =>
+        (orTrap (.internal "dangling memory address") ((core3 grow).memSize? live.core memory)).bind
+          fun size => (trapIf (decide (ptr + count * layout.size > size)) .outOfBounds).bind fun _ => next ptr
+      let afterRead := { start with ctl := cursor.control (body start.store) }
+      have readAt : start.ctl = cursor.control (.op .get body) := by
+        rw [focused]
+        simp [validateListRange, notMisaligned, trapIf, checkInBounds, memLen, memAddr, selected, orTrap, getStore,
+          body, Prog.bind_assoc]
+        rfl
+      apply prependPair (middle := afterRead) (.cons (.get readAt) (.refl _)) (.cons (.get readAt) (.refl _))
+      cases sized : (core3 grow).memSize? start.store.core memory with
+      | none =>
+        apply argumentTrap (.internal "dangling memory address") afterRead cursor
+        simp [afterRead, body, sized, orTrap, bindTrap]
+      | some size =>
+        by_cases fits : ptr + count * layout.size ≤ size
+        · exact ⟨[], afterRead, .refl _, .refl _, .complete cursor ptr (by
+            simp [afterRead, body, sized, orTrap, trapIf, Nat.not_lt.mpr fits])⟩
+        · apply argumentTrap .outOfBounds afterRead cursor
+          simp [afterRead, body, sized, orTrap, trapIf, Nat.lt_of_not_ge fits, bindTrap]
+  · apply argumentTrap .unalignedPointer start cursor
+    rw [focused]
+    simp [validateListRange, aligned, trapIf, bindTrap]
+
+theorem listRange (context : LiftLowerContext (core3 grow)) (layout : ABI.Layout) (count : Nat)
+    (next : Nat → Session grow sig (Ret (core3 grow))) (choose : ArgumentAllocatorSelection grow sig profile ready bindings)
+    (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (focused : start.ctl = cursor.control (allocateListRange context layout count >>= next)) :
+    StringPlanPair profile ready bindings callees start next := by
+  let finish := fun ptr => validateListRange context layout count ptr >>= next
+  let alloc : ArgumentStringAllocation start := ⟨context, 0, none, layout.alignment, count * layout.size,
+    [], finish, cursor, by
+      rw [focused]
+      simp only [allocateListRange, runStoreSteps, Option.elim, Prog.foldlM, runStoreStep, Prog.bind_eq,
+        Prog.bind_assoc, Prog.pure_bind', finish]⟩
+  exact followAllocation alloc choose (fun last reached pointer =>
+    validateRange context layout count pointer next (alloc.resumed last reached (.nat pointer)) reached rfl)
 
 theorem directCallee {start reached : State grow sig} {site : OnStartSite start} {handoff : LowerStartAt site}
     {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned) {value values types}

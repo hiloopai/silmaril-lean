@@ -1298,8 +1298,13 @@ executes its payload; its shape still determines padding and layout. The
 string-only theorems specialize the same traversal.
 `enter_stackful_after_strings` starts actual Core execution with the computed
 flat words or the outer spill pointer when lowering completes. A suspension
-or trap does not enter Core. This does not yet cover general variants, results, collections,
-resource parameters, or arbitrary component host reentry.
+or trap does not enter Core. `collection_range_pair` uses the same installed
+allocator occurrence for the canonical dynamic list/map range request. At a
+selected return it checks alignment and reads the reached memory size; it
+neither assumes the callback returns nor restores memory on a later trap.
+This cut ends at entry to the element stores. Traversal of collection
+arguments, general variants, results, resources, and arbitrary component
+host reentry remain outside this worker argument proof.
 
 `finish_stackful_after_arguments` continues the reached Core entry along a
 selected finite body. Guest-only paths classify without a host premise;

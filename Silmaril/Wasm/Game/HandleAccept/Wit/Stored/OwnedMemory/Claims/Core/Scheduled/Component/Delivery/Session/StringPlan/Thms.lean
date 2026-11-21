@@ -22,6 +22,18 @@ def ArgumentAllocatorCut.atInstall (alloc : ArgumentStringAllocation start) : Ar
     intro leading cut label trailing labels _ _
     simp at labels)
 
+/-- Execute the allocation and live range check shared by canonical flat
+and memory list/map lowering. A successful cut passes the reached pointer
+to `next`; a trap retains callback effects, and a finite suspension need
+not return. This cut ends before the element stores or descriptor writes. -/
+theorem collection_range_pair (context : LiftLowerContext (core3 grow)) (layout : ABI.Layout) (count : Nat)
+    (next : Nat → Session grow sig (Ret (core3 grow))) (choose : ArgumentAllocatorSelection grow sig profile ready bindings)
+    (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (focused : start.ctl = cursor.control (allocateListRange context layout count >>= next)) :
+    StringPlanPair profile ready bindings callees start next :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.StringPlan.listRange
+    context layout count next choose start cursor focused
+
 /-- Execute the local canonical plan, and resume at each actual marked
 allocator return. The plan decreases only after a successful pointer return.
 The reached memory and scheduler tail, including callback effects, are used
