@@ -1394,11 +1394,16 @@ from a reached recursive `givePayload` or `giveFlat` rejoin. Data and sum
 cuts keep their local canonical step certificates. On the reached bodies,
 the component overlay classification derives agreement for ordinary
 allocation, local operations and Core callouts. If it encounters an unequal
-direct install, it exposes the common prefix and actual request instead of
-inventing an error; a later lookup may still find a common continuation.
+direct install and the observed read selects a lifted function, comparison
+continues at the same canonical lift. Otherwise it exposes the common prefix
+and actual request instead of inventing an error.
 Even after this dispatch comparison, live canonical replay can cut at a
 nested give, an open host observation, or a substituted return. This result
 does not turn a typed stopped prefix into a successful reply.
+`LiveDispatch.linked_stopped_give_plan` also classifies already compared
+refusal and trap prefixes. `LiveDispatch.linked_allocator_cut` classifies a
+compared allocator path up to its active or saved occurrence; observing this
+prefix neither requires a return nor releases the saved continuation.
 
 ## Checking
 

@@ -72,6 +72,50 @@ theorem linked_rejoined_give_plan {route : GiveEffectRoute} (site : PayloadRoot.
         Dispatch.LookupCut profile ready bindings callees (site.reference site.referenceReply) canonLabels reference) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedRejoinedGive site linked value entry compared
 
+/-- Classify the actual matched body prefix of a typed refusal or canonical
+trap. Reaching a refusal does not pop a canonical caller or emit its checked
+error there. A canonical trap is compared with its reached store, not the
+entry store. Neither branch requires an unvisited callback suffix. -/
+theorem linked_stopped_give_plan {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {callees : List (ComponentCall.Callee sig)} {entryLabels checkLabels canonLabels reached reference check phase}
+    (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)
+      site.start (.give route .entered) entryLabels site.checked)
+    (left : Steps profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels reached)
+    (right : Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels reference)
+    (stop : GiveStop site check phase canonLabels reached reference) (store : reached.store = reference.store)
+    (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels) :
+    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
+        (entryLabels ++ checkLabels) reached ∨
+      Dispatch.LookupCut profile ready bindings callees site.checked checkLabels reached ∨
+      Dispatch.LookupCut profile ready bindings callees (site.reference site.referenceReply) canonLabels reference :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedGiveStop
+    site linked entry left right stop store seen
+
+/-- Classify the actual finite callback of a public give while its allocator
+occurrence still survives. The mark can be active or saved; there is no
+return premise. The observed canonical prefix and the original occurrence
+are retained, even if subsequent progress is not known. -/
+theorem linked_allocator_cut {route : GiveEffectRoute} {site : PayloadRoot.Site grow sig route}
+    {callees : List (ComponentCall.Callee sig)} {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {beforeCheck beforeCanon left right reached reference : Config (core3 grow) (HostState sig)}
+    {checkEntryLabels canonEntryLabels checkLabels canonLabels mark}
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels (some mark))
+    (checkEntry : Dispatch.Compatible profile ready bindings callees site.checked checkEntryLabels beforeCheck)
+    (canonEntry : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonEntryLabels beforeCanon)
+    (seenEntry : PayloadPrefix.visible checkEntryLabels = PayloadPrefix.visible canonEntryLabels)
+    (checkInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCheck [.tau, .tau, .tau] left)
+    (canonInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCanon [.tau, .tau] right) :
+    let checkTrace := checkEntryLabels ++ [.tau, .tau, .tau] ++ checkLabels
+    let canonTrace := canonEntryLabels ++ [.tau, .tau] ++ canonLabels
+    (Transition profile ready (ComponentCall.hostWithComponent bindings callees) site.checked
+        (.give route (.allocatorPrefix (some mark))) checkTrace reached ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) (site.reference site.referenceReply) canonTrace reference ∧
+      PayloadPrefix.visible checkTrace = PayloadPrefix.visible canonTrace) ∨
+      Dispatch.LookupCut profile ready bindings callees left checkLabels reached ∨
+      Dispatch.LookupCut profile ready bindings callees right canonLabels reference :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedAllocatorCut
+    cut checkEntry canonEntry seenEntry checkInstall canonInstall
+
 /-- A closed local segment replays to the end, even with a different host and
 older paired continuations. Each reached focus rules out a give installation,
 host read, or pop of a substituted program return. -/

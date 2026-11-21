@@ -63,9 +63,9 @@ theorem Compatible.of_closed {labels} (run : Steps profile ready (coreOnly ready
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.closedPrefix run closed
 
 /-- Classify the actual finite Core-binding path under the component overlay.
-Only a reached unequal direct install can cut this comparison. In particular,
-ordinary allocator requests, Core steps and Core callouts need no additional
-dispatch-agreement premise. -/
+At a reached lifted slot, compare the installed programs after the actual
+arena read and continue with the shorter source suffix. A cut remains only
+at an unequal direct install not covered by the finite observed lookup. -/
 theorem compatible_or_lookup {labels} (run : Steps profile ready (coreOnly ready bindings) start labels finish) :
     Compatible profile ready bindings callees start labels finish ∨ LookupCut profile ready bindings callees start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.Dispatch.compatibleOrLookup run

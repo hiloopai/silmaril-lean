@@ -177,6 +177,50 @@ theorem linkedRejoinedGive {route : GiveEffectRoute} (site : PayloadRoot.Site gr
     · exact .inr (.inr lookup)
   · exact .inr (.inl lookup)
 
+theorem linkedGiveStop {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+    {callees : List (ComponentCall.Callee sig)} {entryLabels checkLabels canonLabels reached reference check phase}
+    (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)
+      site.start (.give route .entered) entryLabels site.checked)
+    (left : Steps profile ready (Dispatch.coreOnly ready bindings) site.checked checkLabels reached)
+    (right : Steps profile ready (Dispatch.coreOnly ready bindings) (site.reference site.referenceReply) canonLabels reference)
+    (stop : GiveStop site check phase canonLabels reached reference) (store : reached.store = reference.store)
+    (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels) :
+    NestedPlan bindings profile ready (ComponentCall.hostWithComponent bindings callees) site.start
+        (entryLabels ++ checkLabels) reached ∨
+      Dispatch.LookupCut profile ready bindings callees site.checked checkLabels reached ∨
+      Dispatch.LookupCut profile ready bindings callees (site.reference site.referenceReply) canonLabels reference := by
+  rcases Dispatch.compatible_or_lookup (callees := callees) left with accepted | lookup
+  · rcases Dispatch.compatible_or_lookup (callees := callees) right with canonical | lookup
+    · exact .inl (.stop site linked entry accepted.steps (planOfSteps canonical.steps) stop store seen)
+    · exact .inr (.inr lookup)
+  · exact .inr (.inl lookup)
+
+theorem linkedAllocatorCut {route : GiveEffectRoute} {site : PayloadRoot.Site grow sig route}
+    {callees : List (ComponentCall.Callee sig)} {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {beforeCheck beforeCanon left right reached reference : State grow sig}
+    {checkEntryLabels canonEntryLabels checkLabels canonLabels mark}
+    (cut : AllocatorCut profile ready bindings older changes left right reached reference checkLabels canonLabels (some mark))
+    (checkEntry : Dispatch.Compatible profile ready bindings callees site.checked checkEntryLabels beforeCheck)
+    (canonEntry : Dispatch.Compatible profile ready bindings callees (site.reference site.referenceReply) canonEntryLabels beforeCanon)
+    (seenEntry : PayloadPrefix.visible checkEntryLabels = PayloadPrefix.visible canonEntryLabels)
+    (checkInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCheck [.tau, .tau, .tau] left)
+    (canonInstall : Steps profile ready (Dispatch.linked ready bindings callees) beforeCanon [.tau, .tau] right) :
+    let checkTrace := checkEntryLabels ++ [.tau, .tau, .tau] ++ checkLabels
+    let canonTrace := canonEntryLabels ++ [.tau, .tau] ++ canonLabels
+    (Transition profile ready (ComponentCall.hostWithComponent bindings callees) site.checked
+        (.give route (.allocatorPrefix (some mark))) checkTrace reached ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) (site.reference site.referenceReply) canonTrace reference ∧
+      PayloadPrefix.visible checkTrace = PayloadPrefix.visible canonTrace) ∨
+      Dispatch.LookupCut profile ready bindings callees left checkLabels reached ∨
+      Dispatch.LookupCut profile ready bindings callees right canonLabels reference := by
+  obtain ⟨_, _, path⟩ := cut.checked.survives
+  obtain ⟨_, _, peer⟩ := cut.canonical.survives
+  rcases Dispatch.compatible_or_lookup (callees := callees) (ReturnFrame.Occurrence.prefix_survives path).1 with good | lookup
+  · rcases Dispatch.compatible_or_lookup (callees := callees) (ReturnFrame.Occurrence.prefix_survives peer).1 with matched | lookup
+    · exact .inl (cut.session checkEntry canonEntry seenEntry checkInstall canonInstall good matched)
+    · exact .inr (.inr lookup)
+  · exact .inr (.inl lookup)
+
 theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     (paired : HostFrame.Related.Paired older start incoming) :
     ∃ trace reached, Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming trace reached ∧

@@ -3,6 +3,7 @@ module
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Defs
 public import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Defs
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
+import Silmaril.Wasm.Component.Reference.Silent.Thms
 
 public section
 
@@ -13,6 +14,7 @@ open Silmaril.Wasm Silmaril.Wasm.Component Silmaril.Wasm.Component.Canon Silmari
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open ComponentCall ComponentCall.Delivery.FiniteSession ComponentCall.Delivery.FiniteSession.Dispatch
+open Silmaril.Proofs.Wasm.Component.Reference (DetRun UniqueStep)
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind}
   {ready : HostReady (HostState sig)} {bindings : List (Binding sig)} {callees : List (Callee sig)}
@@ -91,14 +93,14 @@ theorem overlayStep {label} (agrees : AgreesAt ready bindings callees start)
   | hostCancel hostReady cancel unresolved => exact .hostCancel hostReady cancel unresolved
   | hostRun hostReady => exact .hostRun hostReady
 
-theorem liftedLookupSteps {impl : HostImpl (core3 grow) (HostState sig)}
+private theorem liftedLookupRun {impl : HostImpl (core3 grow) (HostState sig)}
     {thread func caller next frames rest core fnType opts inst}
     (focus : start.ctl = ⟨thread, .prog (.op (.call (.funcInst func caller)) next), frames⟩ :: rest)
     (lookup : start.store.func? func = some (.lifted core fnType opts inst)) :
-    Steps profile ready (specDispatch ready impl) start [.tau, .tau]
+    DetRun profile ready (specDispatch ready impl) start [.tau, .tau]
       { start with ctl := ⟨thread, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller),
         .prog next :: frames⟩ :: rest } := by
-  refine .cons (.call focus) ?_
+  refine .cons (.of_prog focus (fun _ _ different => by cases different) (.call focus)) ?_
   let read : CStore (core3 grow) → P (core3 grow) (HostState sig) (Ret (core3 grow)) := fun store =>
     (match store.func? func with
       | some entry => pure entry
@@ -119,12 +121,41 @@ theorem liftedLookupSteps {impl : HostImpl (core3 grow) (HostState sig)}
       funext response
       cases response
     | some entry => cases entry <;> rfl
-  have step := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl)
-    (m := { start with ctl := ⟨thread, .prog (specDispatch ready impl (.funcInst func caller)),
-      .prog next :: frames⟩ :: rest }) (th := thread) (segs := .prog next :: frames)
-    (rest := rest) (k := read) (by simp only [installed])
-  rw [readReached] at step
-  exact .cons step (.refl _)
+  let middle := { start with ctl := ⟨thread, .prog (specDispatch ready impl (.funcInst func caller)),
+    .prog next :: frames⟩ :: rest }
+  have focused : middle.ctl = ⟨thread, .prog (.op .get read), .prog next :: frames⟩ :: rest := by
+    simp only [middle, installed]
+  have unique := UniqueStep.of_prog (prof := profile) (hr := ready) (dispatch := specDispatch ready impl)
+    focused (fun _ _ different => by cases different) (.get focused)
+  rw [readReached] at unique
+  exact .single unique
+
+theorem liftedLookupSteps {impl : HostImpl (core3 grow) (HostState sig)}
+    {thread func caller next frames rest core fnType opts inst}
+    (focus : start.ctl = ⟨thread, .prog (.op (.call (.funcInst func caller)) next), frames⟩ :: rest)
+    (lookup : start.store.func? func = some (.lifted core fnType opts inst)) :
+    Steps profile ready (specDispatch ready impl) start [.tau, .tau]
+      { start with ctl := ⟨thread, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller),
+        .prog next :: frames⟩ :: rest } :=
+  (liftedLookupRun focus lookup).steps
+
+theorem peelLiftedLookup {labels thread func caller next frames rest core fnType opts inst}
+    (focus : start.ctl = ⟨thread, .prog (.op (.call (.funcInst func caller)) next), frames⟩ :: rest)
+    (lookup : start.store.func? func = some (.lifted core fnType opts inst))
+    (run : Steps profile ready (coreOnly ready bindings) start labels finish) (two : 2 ≤ labels.length) :
+    ∃ trailing, labels = .tau :: .tau :: trailing ∧
+      Steps profile ready (coreOnly ready bindings)
+        { start with ctl := ⟨thread, .prog (canonLift Limits.spec Quirks.none core fnType opts inst caller),
+          .prog next :: frames⟩ :: rest } trailing finish := by
+  rcases (liftedLookupRun (profile := profile) (ready := ready) (impl := host bindings) focus lookup).inv run with short | extended
+  · obtain ⟨tail, split, restRun⟩ := short
+    have lengths := congrArg List.length split
+    simp only [List.length_cons, List.length_nil, Nat.zero_add, List.length_append] at lengths
+    have empty : tail = [] := List.length_eq_zero_iff.mp (by omega)
+    subst tail
+    cases restRun
+    exact ⟨[], by simpa using split.symm, .refl _⟩
+  · exact extended
 
 private theorem appendSteps {middle : Config (core3 grow) (HostState sig)} {leading trailing}
     {dispatch : Call (core3 grow) → P (core3 grow) (HostState sig) (Ret (core3 grow))}
@@ -163,23 +194,46 @@ theorem closedPrefix {labels} (run : Steps profile ready (coreOnly ready binding
 theorem compatibleOrLookup {labels} (run : Steps profile ready (coreOnly ready bindings) start labels finish) :
     Compatible profile ready bindings callees start labels finish ∨ LookupCut profile ready bindings callees start labels finish := by
   classical
-  induction run with
-  | refl _ => exact .inl (.done _)
-  | @cons before middle after label labels step tail ih =>
-    by_cases agrees : AgreesAt ready bindings callees before
-    · rcases ih with whole | openCall
-      · exact .inl (.next agrees step whole)
-      · cases openCall with
-        | reached common focus component different suffix =>
-          exact .inr (.reached (.next agrees step common) focus component different suffix)
-    · have request : ∃ thread call next frames rest,
-          before.ctl = ⟨thread, .prog (.op (.call call) next), frames⟩ :: rest ∧
-          coreOnly ready bindings call ≠ linked ready bindings callees call := by
-        by_contra absent
-        exact agrees (fun focused => Classical.byContradiction fun different => absent ⟨_, _, _, _, _, focused, different⟩)
-      obtain ⟨_, call, _, _, _, focus, different⟩ := request
-      have component : UsesComponent call := Classical.byContradiction fun closed => different (closedDispatch closed)
-      exact .inr (.reached (.done _) focus component different (.cons step tail))
+  generalize countEq : labels.length = count
+  induction count using Nat.strong_induction_on generalizing start labels with
+  | _ count smaller =>
+    cases run with
+    | refl => exact .inl (.done _)
+    | @cons _ middle _ label trailing step tail =>
+      by_cases agrees : AgreesAt ready bindings callees start
+      · have less : trailing.length < count := by simp [← countEq]
+        rcases smaller trailing.length less tail rfl with whole | openCall
+        · exact .inl (.next agrees step whole)
+        · cases openCall with
+          | reached common focus component different pending suffix =>
+            exact .inr (.reached (.next agrees step common) focus component different pending suffix)
+      · have request : ∃ thread call next frames rest,
+            start.ctl = ⟨thread, .prog (.op (.call call) next), frames⟩ :: rest ∧
+            coreOnly ready bindings call ≠ linked ready bindings callees call := by
+          by_contra absent
+          exact agrees (fun focused => Classical.byContradiction fun different => absent ⟨_, _, _, _, _, focused, different⟩)
+        obtain ⟨_, call, _, _, _, focus, different⟩ := request
+        have component : UsesComponent call := Classical.byContradiction fun closed => different (closedDispatch closed)
+        by_cases pending : trailing = [] ∨ ¬ SelectsLifted start call
+        · exact .inr (.reached (.done _) focus component different pending (.cons step tail))
+        · have selected : SelectsLifted start call := Classical.byContradiction fun missing => pending (.inr missing)
+          have two : 2 ≤ (label :: trailing).length := by
+            cases trailing with
+            | nil => exact (pending (.inl rfl)).elim
+            | cons => simp
+          cases call <;> simp only [SelectsLifted] at selected
+          case funcInst =>
+            obtain ⟨_, _, _, _, lookup⟩ := selected
+            obtain ⟨remaining, split, rest⟩ := peelLiftedLookup focus lookup (.cons step tail) two
+            have less : remaining.length < count := by
+              simp only [← countEq, split, List.length_cons]
+              omega
+            rw [split]
+            rcases smaller remaining.length less rest rfl with whole | openCall
+            · exact .inl (.liftedLookup focus lookup whole)
+            · cases openCall with
+              | reached common reachedAt uses different pending suffix =>
+                exact .inr (.reached (.liftedLookup focus lookup common) reachedAt uses different pending suffix)
 
 theorem closedOccurrence {labels origin mark}
     (path : ReturnFrame.Occurrence.Prefix profile ready (coreOnly ready bindings) start origin labels finish mark)
