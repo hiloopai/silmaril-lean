@@ -116,7 +116,7 @@ theorem resume_returned_give {route : GiveEffectRoute} (call : PayloadRoot.Site 
     ∃ left right, (∀ dispatch, Steps profile ready dispatch reached [.tau, .tau, .tau] left) ∧
       (∀ dispatch, Steps profile ready dispatch reference [.tau] right) ∧ left.store = right.store ∧
       left.host = reached.host.record reply.1 ∧ right.host = reference.host ∧
-      List.Forall₂ (ReturnFrame.Related.Active older) left.ctl right.ctl := by
+      HostFrame.Related.Paired older left right := by
   obtain ⟨_, caller⟩ := call.reached_caller checked tracked
   exact Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PublicMemorySequence.resumeReturned
     call value frame caller checked canonical

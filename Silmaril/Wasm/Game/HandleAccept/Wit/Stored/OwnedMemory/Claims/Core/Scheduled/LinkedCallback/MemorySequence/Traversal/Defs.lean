@@ -41,7 +41,7 @@ def GiveReplies {route : GiveEffectRoute} (call : PayloadRoot.Site grow sig rout
   (∀ dispatch, Steps profile ready dispatch reached [.tau, .tau, .tau] left) ∧
     (∀ dispatch, Steps profile ready dispatch reference [.tau] right) ∧ left.store = right.store ∧
     left.host = reached.host.record reply.1 ∧ right.host = reference.host ∧
-    List.Forall₂ (ReturnFrame.Related.Active older) left.ctl right.ctl
+    HostFrame.Related.Paired older left right
 
 def RejoinedGive {route : GiveEffectRoute} (call : PayloadRoot.Site grow sig route) (value : route.output.Result)
     (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))

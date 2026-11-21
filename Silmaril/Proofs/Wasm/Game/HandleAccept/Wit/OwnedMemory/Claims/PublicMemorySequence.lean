@@ -513,6 +513,18 @@ private theorem pairedCoreHead {route : GiveEffectRoute} (call : PayloadRoot.Sit
   cases paired with
   | cons head tails => cases head with | same => exact ⟨_, rfl, tails⟩
 
+private theorem rejoinedMachine {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : State grow sig} (store : left.store = right.store) (pending : left.pending = right.pending)
+    (results : left.results = right.results) (cancels : left.cancels = right.cancels)
+    (control : List.Forall₂ (ReturnFrame.Related.Active older) left.ctl right.ctl)
+    (blocked : List.Forall₂ (ReturnFrame.Related.Saved older) left.conts right.conts) :
+    HostFrame.Related.Paired older left right := by
+  cases left
+  cases right
+  dsimp only at *
+  subst_vars
+  exact .mk control blocked
+
 theorem resumeReturned {route : GiveEffectRoute} (call : PayloadRoot.Site grow sig route)
     (value : route.output.Result) {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {reached reference : State grow sig} {check canon : Cursor (E := core3 grow) (HostState sig)}
@@ -524,7 +536,7 @@ theorem resumeReturned {route : GiveEffectRoute} (call : PayloadRoot.Site grow s
     ∃ left right, (∀ dispatch, Steps profile ready dispatch reached [.tau, .tau, .tau] left) ∧
       (∀ dispatch, Steps profile ready dispatch reference [.tau] right) ∧ left.store = right.store ∧
       left.host = reached.host.record reply.1 ∧ right.host = reference.host ∧
-      List.Forall₂ (ReturnFrame.Related.Active older) left.ctl right.ctl := by
+      HostFrame.Related.Paired older left right := by
   have paired := frame.frames
   rw [caller] at paired
   obtain ⟨referenceSegments, referenceCaller, tails⟩ := pairedCoreHead call paired
@@ -536,7 +548,14 @@ theorem resumeReturned {route : GiveEffectRoute} (call : PayloadRoot.Site grow s
       { reference with ctl := ⟨canon.thread, .core ((core3 grow).resume reference.store.core call.core (.values reply.2))
         call.resume, referenceSegments⟩ :: canon.rest } := .cons (.popCore canonical) (.refl _)
   refine ⟨_, _, checkRun, referenceRun, frame.store, rfl, rfl, ?_⟩
-  rw [frame.store, frame.thread]
-  exact .cons (.mk tails) frame.rest
+  refine rejoinedMachine ?_ ?_ ?_ ?_ ?_ ?_
+  · exact frame.store
+  · exact frame.pending
+  · exact frame.results
+  · exact frame.cancels
+  · dsimp only
+    rw [frame.store, frame.thread]
+    exact .cons (.mk tails) frame.rest
+  · exact frame.blocked
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PublicMemorySequence

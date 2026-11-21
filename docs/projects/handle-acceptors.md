@@ -1344,6 +1344,18 @@ consumption followed by an event-buffer trap. This transport does not equate
 different open cancellation continuations or compare the full public-give
 session.
 
+`Run.give_then_delivery` bridges a successfully compared public give body
+to a finite tail across different host journals. The two real reply paths
+rejoin the active and blocked activations and the reached store, pending
+calls, results and cancellation records. The checked reply records its
+completion; the canonical reply does not. The proof then transports the
+actual Core, poll, wait (including park and resume), and closed cancel
+delivery edges. It derives their journal independence from the edge
+constructors. Each take uses its reached event and retains consumption
+when a subsequent buffer write traps. This tail does not include another
+give, event publication, open cancel requests or readiness-sensitive tick
+selection. Typed stopped prefixes still have no canonical reply.
+
 ## Checking
 
 ```
