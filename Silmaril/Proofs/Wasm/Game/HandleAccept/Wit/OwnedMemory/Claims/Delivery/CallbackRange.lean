@@ -104,6 +104,105 @@ private theorem appendRun {dispatch : Call (core3 grow) → Session grow sig (Re
 private theorem appendVisible (first second : Trace grow sig) :
     visible (first ++ second) = visible first ++ visible second := List.filter_append ..
 
+theorem collectionPaths (destination : RecordDestination) (inst : InstId) (type element : Stored.TypeOf)
+    (entries : List Field) (index : Nat) (output : Stored.Lower.Output)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {start incoming : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older start incoming check canon)
+    (width : (core3 grow).memAddrType? incoming.store.core destination.memory = some destination.width)
+    (prepared : Record.prepare start.store start.host.writer (Field.listObjects entries) = .ok ())
+    (checkAt : start.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) index output >>= checkNext))
+    (canonAt : incoming.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) output >>= canonNext))
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    LiveCollectionPaths profile ready base bindings older destination inst type element entries index output checkNext canonNext
+      start incoming check canon := by
+  unfold LiveCollectionPaths
+  intro area mode first second leftEntry rightEntry seen finish path
+  obtain ⟨lhs, rhs, reached, mark, checkRun, canonRun, paired, checkSeen, canonSeen, growth, _, _, marked⟩ :=
+    CallbackPrefix.collectionPrefix (profile := profile) (ready := ready) destination inst type element entries output index
+      checkNext canonNext frame width prepared checkAt canonAt embedder path
+  have checkObserved : visible ([.tau, .tau, .tau] ++ lhs) = seen := by
+    rw [appendVisible, silent (by simp), List.nil_append, checkSeen]
+  have canonObserved : visible ([.tau, .tau] ++ rhs) = seen := by
+    rw [appendVisible, silent (by simp), List.nil_append, canonSeen]
+  have sameStore : finish.store = reached.store := by
+    change ReturnFrame.Related.Paired _ (HostFrame.replace finish reached.host) reached at paired
+    generalize reached.host = observer at paired
+    cases paired
+    rfl
+  refine ⟨lhs, rhs, reached, mark, marked, paired, ⟨_, _, checkRun, canonRun, checkObserved, canonObserved, sameStore⟩, ?_⟩
+  intro pointer cursor atTop returning
+  subst mark
+  have cut := collectionRange (profile := profile) (ready := ready) destination inst type element entries output index pointer
+    checkNext canonNext marked paired returning (frame.store ▸ width) growth
+  refine ⟨cut, ?_⟩
+  intro bytes sized aligned bounds fresh
+  unfold CollectionRangeCut at cut
+  obtain ⟨peer, capacity, liveWidth, liveSize, frameAtReturn, outcomes⟩ := cut
+  have capacityEq := Option.some.inj (liveSize.symm.trans sized)
+  rw [ite_eq_right (not_not_intro aligned), capacityEq, ite_eq_left bounds, fresh] at outcomes
+  obtain ⟨⟨checkTail, checkTau, checkTracks⟩, ⟨canonTail, canonTau, canonTracks⟩⟩ := outcomes
+  have leftInstall := fun depth => (PayloadPrefix.collection_install_tracks (profile := profile) (ready := ready)
+    (dispatch := specDispatch ready base) destination inst type element entries output index start incoming check canon
+    checkNext canonNext width prepared checkAt canonAt depth).1
+  have rightInstall := fun depth => (PayloadPrefix.collection_install_tracks (profile := profile) (ready := ready)
+    (dispatch := specDispatch ready (LiveDispatch.host bindings base)) destination inst type element entries output index
+    start incoming check canon checkNext canonNext width prepared checkAt canonAt depth).2
+  refine ⟨_, _, peer, ⟨[.tau, .tau, .tau] ++ (lhs ++ checkTail), [.tau, .tau] ++ (rhs ++ canonTail),
+    marked.checkedTrail.through_return_suffix leftInstall checkTracks, marked.canonicalTrail.through_return_suffix rightInstall canonTracks,
+    ?_, ?_⟩, ⟨frameAtReturn.store, frameAtReturn.pending, frameAtReturn.results, frameAtReturn.cancels, frameAtReturn.blocked,
+      frameAtReturn.thread, frameAtReturn.frames, frameAtReturn.rest⟩, liveWidth, sized, aligned, bounds, growth, rfl, rfl⟩
+  · rw [← List.append_assoc, appendVisible, checkObserved, silent checkTau, List.append_nil]
+  · rw [← List.append_assoc, appendVisible, canonObserved, silent canonTau, List.append_nil]
+
+theorem collectionEntryPaths (destination : RecordDestination) (inst : InstId) (type element : Stored.TypeOf)
+    (entries : List Field) (index : Nat) (output : Stored.Lower.Output)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {start incoming : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older start incoming check canon)
+    (checkAt : start.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) index output >>= checkNext))
+    (canonAt : incoming.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none
+      (destination.context inst) destination.width (.dynamic type element entries) output >>= canonNext))
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    LiveCollectionEntry profile ready base bindings older destination inst type element entries index output checkNext canonNext
+      start incoming check canon := by
+  unfold LiveCollectionEntry
+  cases prepared : Record.prepare start.store start.host.writer (Field.listObjects entries) with
+  | ok result =>
+    cases result
+    exact fun width => collectionPaths destination inst type element entries index output checkNext canonNext
+      frame width prepared checkAt canonAt embedder
+  | error issue =>
+    let entered := fun verdict : Except RecordLower.Issue Unit => (match verdict with
+      | .error (.preflight issue) => pure (.error (.field index (.beforeAllocation issue)))
+      | .error issue => pure (.error (.nested index issue))
+      | .ok () => do
+        let area := layout destination.width element
+        let ptr ← allocateListRange (destination.context inst) area entries.length
+        let live ← Record.Effects.reserve recordClaims (Field.listObjects entries)
+        checkedCollectionTail destination inst entries area index output ptr live) >>= checkNext
+    have fetched : start.ctl = check.control (.op .get fun store => .op .hostGet fun host =>
+        entered (Record.prepare store host.writer (Field.listObjects entries))) := by
+      rw [Record.Effects.field] at checkAt
+      exact checkAt
+    have track : RetainsActiveSlots profile ready (specDispatch ready base) start [.tau, .tau]
+        { start with ctl := check.control (entered (.error issue)) } := by
+      intro depth
+      refine .step (middle := .active 0 depth) (.get fetched) ?_
+        (.step (middle := .active 0 depth) (.hostGet rfl) rfl ?_)
+      · rw [ReturnFrame.Occurrence.transitionEdit, fetched]
+        rfl
+      · rw [prepared]
+        exact .done _ _
+    cases issue <;> exact ⟨[.tau, .tau], [], track, fun depth => .done incoming (.active 0 depth), rfl, rfl⟩
+
 private theorem leafSilent {Result : Type} {value : Result} {labels : Trace grow sig}
     (quiet : LocalLeafLabels (.ok value) labels) : visible labels = [] := by
   apply silent

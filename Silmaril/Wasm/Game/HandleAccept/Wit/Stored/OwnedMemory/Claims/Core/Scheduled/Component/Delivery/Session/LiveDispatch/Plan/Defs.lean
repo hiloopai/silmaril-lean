@@ -221,6 +221,94 @@ def CollectionRangeCut (profile : ProfileKind) (ready : HostReady (HostState sig
         { canonical with ctl := canonCursor.control (canonNext pointer) })
     else traps .outOfBounds
 
+/-- Entry into the exact recursive bodies of a nested collection after its
+marked allocator returns, range checks pass and a fresh reservation succeeds.
+The frame and cumulative trails are for the reached state, not the state
+before the allocator. Memory-map placement keeps its allocation-time mode. -/
+def LiveCollectionChildren (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (destination : RecordDestination) (inst : InstId) (type element : Stored.TypeOf)
+    (entries : List Stored.Endpoints.RecordLower.Field) (index : Nat) (output : Stored.Lower.Output)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    (start incoming : Config (core3 grow) (HostState sig)) (pointer bytes : Nat)
+    (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (observed : Trace grow sig) : Prop :=
+  open Stored.Endpoints.RecordLower ABI PayloadPrefix in
+  let area := layout destination.width element
+  let mode := CanonicalTree.EntryMode.forOutput destination.width type output
+  ∃ left right canon,
+    ComparedSlots profile ready base bindings start incoming observed left right ∧
+    LinkedCallback.ChildFrameOver older left right check canon ∧
+    (core3 grow).memAddrType? left.store.core destination.memory = some destination.width ∧
+    (core3 grow).memSize? left.store.core destination.memory = some bytes ∧
+    pointer = alignTo pointer area.alignment ∧ pointer + entries.length * area.size ≤ bytes ∧
+    Core3.Grows start.store.core left.store.core ∧
+    left.ctl = check.control (checkedCollectionTail destination inst entries area index output pointer (.ok ()) >>= checkNext) ∧
+    right.ctl = canon.control (canonicalCollectionTail destination inst entries area output pointer mode >>= canonNext)
+
+/-- Finite callback paths for an actual dynamic child. A live mark at the
+natural-pointer return is required to inspect the range. Failed range checks
+trap, and a failed fresh reservation does not enter the children. -/
+def LiveCollectionPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (destination : RecordDestination) (inst : InstId) (type element : Stored.TypeOf)
+    (entries : List Stored.Endpoints.RecordLower.Field) (index : Nat) (output : Stored.Lower.Output)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    (start incoming : Config (core3 grow) (HostState sig))
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+  open Stored.Endpoints.RecordLower ABI PayloadPrefix in
+  let area := layout destination.width element
+  let mode := CanonicalTree.EntryMode.forOutput destination.width type output
+  let first := checkedCollectionResume destination inst entries area index output checkNext
+  let second := canonicalCollectionResume destination inst entries area output canonNext mode
+  let leftEntry := collectionEntry destination inst area entries.length (specDispatch ready base) start check first
+  let rightEntry := collectionEntry destination inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+    incoming canon second
+  ∀ {seen finish}, ClosedCallbackPrefix bindings profile ready base
+      (fun resume => (∃ peer, older resume peer) ∨ resume = first) leftEntry seen finish →
+    ∃ checkLabels canonLabels reached mark,
+      AllocatorMark profile ready base bindings older leftEntry rightEntry checkLabels canonLabels finish reached mark ∧
+      HostFrame.Related.Paired (ReturnFrame.Extend older first second) finish reached ∧
+      ComparedPaths profile ready base bindings start incoming seen finish reached ∧
+      ∀ pointer cursor, mark = some (.active 0 0) →
+        finish.ctl = { cursor with frames := .prog first :: cursor.frames }.control (.pure (.nat pointer)) →
+        CollectionRangeCut profile ready base bindings older finish reached cursor destination area entries.length pointer
+          (Stored.Endpoints.RecordLower.Field.listObjects entries)
+          (fun addr verdict => checkedCollectionTail destination inst entries area index output addr verdict >>= checkNext)
+          (fun addr => canonicalCollectionTail destination inst entries area output addr mode >>= canonNext) ∧
+        ∀ bytes, (core3 grow).memSize? finish.store.core destination.memory = some bytes →
+          pointer = alignTo pointer area.alignment → pointer + entries.length * area.size ≤ bytes →
+          OwnedMemory.Claims.Record.prepare finish.store finish.host.writer (Field.listObjects entries) = .ok () →
+          LiveCollectionChildren profile ready base bindings older destination inst type element entries index output checkNext
+            canonNext start incoming pointer bytes cursor seen
+
+/-- The live dry run before a nested allocation either reaches the typed
+checked continuation alone or admits the finite allocator comparison. The
+refusal leaves canonical at its original program, before any width read. -/
+def LiveCollectionEntry (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (destination : RecordDestination) (inst : InstId) (type element : Stored.TypeOf)
+    (entries : List Stored.Endpoints.RecordLower.Field) (index : Nat) (output : Stored.Lower.Output)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue output.Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : output.Result → Session grow sig (Ret (core3 grow)))
+    (start incoming : Config (core3 grow) (HostState sig))
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) : Prop :=
+  open Stored.Endpoints.RecordLower in
+  match OwnedMemory.Claims.Record.prepare start.store start.host.writer (Field.listObjects entries) with
+  | .error issue =>
+    let refusal := match issue with
+      | .preflight reason => Issue.field index (.beforeAllocation reason)
+      | reason => Issue.nested index reason
+    ComparedSlots profile ready base bindings start incoming []
+      { start with ctl := check.control (checkNext (.error refusal)) } incoming
+  | .ok () => (core3 grow).memAddrType? incoming.store.core destination.memory = some destination.width →
+    LiveCollectionPaths profile ready base bindings older destination inst type element entries index output checkNext canonNext
+      start incoming check canon
+
 /-- A reached collection segment. The slot offset counts removed frames.
 On checked refusal, the canonical program is the actual unexecuted suffix
 at the reached stop, not necessarily the initial child-entry program. -/
