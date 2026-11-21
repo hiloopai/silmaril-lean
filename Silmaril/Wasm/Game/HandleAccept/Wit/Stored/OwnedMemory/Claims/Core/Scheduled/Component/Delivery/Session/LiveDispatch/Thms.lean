@@ -159,6 +159,39 @@ theorem LiveDispatch.CoreGiveRequest.Selected.compiler_refusal {request : LiveDi
     ∃ count, Steps profile ready (specDispatch ready impl) start (List.replicate count .tau) (selection.compilerRefused issue) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.compilerRefusal selection refused impl embedder
 
+/-- At the actual paired Core request, the guarded selectors agree when the
+single reached lookup agrees. This includes boundary refusals and the case
+where no lookup takes place. Both evaluators leave their own host and store
+unchanged; there is no equality premise on journals, authority or older frames. -/
+theorem LiveDispatch.CoreGiveRequest.paired_selection (request : LiveDispatch.CoreGiveRequest bindings start)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle) :
+    ∃ otherFrames otherRest verdict,
+      other.ctl = ⟨request.thread, .core request.core request.next, otherFrames⟩ :: otherRest ∧
+      (core3 grow).status other.store.core request.core = .callout (.embedder request.name request.kind) request.args ∧
+      Plain.runBody request.selectionProgram start.store start.host (some request.thread) = (start.store, start.host, verdict) ∧
+      Plain.runBody request.selectionProgram other.store other.host (some request.thread) = (other.store, other.host, verdict) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedSelectionObservations request paired reads
+
+/-- Compare the actual paired caller's selector or expose the differing live
+lookup. A lookup difference is not yet a different verdict: for example,
+both flat selections can reject the schema of different roots. -/
+theorem LiveDispatch.CoreGiveRequest.paired_selection_or_lookup_difference (request : LiveDispatch.CoreGiveRequest bindings start)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    (∃ otherFrames otherRest verdict,
+      other.ctl = ⟨request.thread, .core request.core request.next, otherFrames⟩ :: otherRest ∧
+      (core3 grow).status other.store.core request.core = .callout (.embedder request.name request.kind) request.args ∧
+      Plain.runBody request.selectionProgram start.store start.host (some request.thread) = (start.store, start.host, verdict) ∧
+      Plain.runBody request.selectionProgram other.store other.host (some request.thread) = (other.store, other.host, verdict)) ∨
+    ∃ handle, request.lookupDemand = some handle ∧
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle ≠
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.classifyPairedSelection request paired
+
 /-- Enter on the live root and compare the reached prefix of the nested body,
 even if it has not returned or executes another public give. Further requests
 are exposed at their real caller and with all older frames still paired. -/

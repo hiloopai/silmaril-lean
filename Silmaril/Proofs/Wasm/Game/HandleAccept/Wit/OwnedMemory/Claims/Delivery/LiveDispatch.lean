@@ -454,6 +454,134 @@ theorem compilerRefusal {request : CoreGiveRequest bindings start} (selection : 
   rw [List.replicate_add, ← replicated]
   exact append entry completed
 
+private abbrev Observations {Result : Type} (program : Session grow sig Result) (store : CStore (core3 grow))
+    (left right : HostState sig) (thread : Option ThreadId) : Prop :=
+  ∃ verdict, Plain.runBody program store left (some thread) = (store, left, verdict) ∧
+    Plain.runBody program store right (some thread) = (store, right, verdict)
+
+private theorem admitObservations {Result : Type} {inst : InstId} {store : CStore (core3 grow)}
+    {left right : HostState sig} {thread : Option ThreadId} {program : Session grow sig (Except Issue Result)}
+    (observes : Plain.callerInstance store thread = .ok (some inst) →
+      (store.inst? inst).any (·.mayLeave) = true → Observations program store left right thread) :
+    Observations (admit inst program) store left right thread := by
+  unfold Observations
+  simp only [admit, Prog.bind_eq, Plain.runBody_currentInst]
+  cases caller : Plain.callerInstance store thread with
+  | error issue => exact ⟨.error issue, rfl, rfl⟩
+  | ok actual =>
+    by_cases same : actual = some inst
+    · subst actual
+      by_cases mayLeave : (store.inst? inst).any (·.mayLeave) = true
+      · simpa [readStore, mayLeave] using observes caller mayLeave
+      · simp [readStore, Bool.eq_false_iff.mpr mayLeave, Prog.pure_eq, Plain.runBody]
+    · simp [readStore, bne_iff_ne.mpr same, Prog.pure_eq, Plain.runBody]
+
+private theorem memoryObservations {destination : RecordDestination} {args : List FlatValue} {store : CStore (core3 grow)}
+    {left right : HostState sig} {thread : Option ThreadId}
+    (reads : ∀ handle pointer, args = [.int .i32 handle, pointer] →
+      Stored.flatType pointer = ABI.pointerType destination.width → destination.check store = .ok () →
+      Stored.Endpoints.Core.childFromHistory left.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory right.writer.accepted handle) :
+    Observations (selectMemoryDestination destination args) store left right thread := by
+  unfold Observations selectMemoryDestination
+  split
+  next _ handle pointer =>
+    by_cases width : Stored.flatType pointer = ABI.pointerType destination.width
+    · simp only [width, bne_self_eq_false, Bool.false_eq_true, ite_false, Prog.bind_eq, readStore]
+      cases checked : destination.check store with
+      | error issue => exact ⟨.ok (.error issue), rfl, rfl⟩
+      | ok checkedValue =>
+        cases checkedValue
+        simp only [readSelection]
+        rw [reads handle pointer rfl width checked]
+        cases Stored.Endpoints.Core.childFromHistory right.writer.accepted handle <;> exact ⟨_, rfl, rfl⟩
+    · simp [width, Prog.pure_eq, Plain.runBody]
+  next => exact ⟨_, rfl, rfl⟩
+
+private theorem flatObservations {destination : RecordDestination} {args : List FlatValue} {schema : Stored.TypeOf}
+    {store : CStore (core3 grow)} {left right : HostState sig} {thread : Option ThreadId}
+    (reads : ∀ handle, args = [.int .i32 handle] → destination.check store = .ok () →
+      Stored.Endpoints.Core.childFromHistory left.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory right.writer.accepted handle) :
+    Observations (selectFlatDestination destination schema args) store left right thread := by
+  unfold Observations selectFlatDestination
+  split
+  next _ handle =>
+    simp only [Prog.bind_eq, readStore]
+    cases checked : destination.check store with
+    | error issue => exact ⟨.ok (.error issue), rfl, rfl⟩
+    | ok checkedValue =>
+      cases checkedValue
+      simp only [readSelection]
+      rw [reads handle rfl checked]
+      cases found : Stored.Endpoints.Core.childFromHistory right.writer.accepted handle with
+      | none => exact ⟨_, rfl, rfl⟩
+      | some tree =>
+        cases sameSchema : rootHasSchema tree schema <;> simp [sameSchema, Plain.runBody, Prog.pure_eq]
+  next => exact ⟨_, rfl, rfl⟩
+
+private theorem selectionObservations (request : CoreGiveRequest bindings start) (other : HostState sig)
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory other.writer.accepted handle) :
+    Observations request.selectionProgram start.store start.host other request.thread := by
+  cases request with
+  | mk name kind args inst destination schema thread core next frames rest focused calling linked =>
+    cases schema with
+    | none =>
+      apply admitObservations
+      intro caller mayLeave
+      apply memoryObservations
+      intro handle pointer arguments width checked
+      apply reads handle
+      change args = [.int .i32 handle, pointer] at arguments
+      change Stored.flatType pointer = ABI.pointerType destination.width at width
+      simp [CoreGiveRequest.lookupDemand, caller, mayLeave, arguments, Execution.Runtime.Value.int, width, checked]
+    | some schema =>
+      apply admitObservations
+      intro caller mayLeave
+      apply flatObservations
+      intro handle arguments checked
+      apply reads handle
+      change args = [.int .i32 handle] at arguments
+      simp [CoreGiveRequest.lookupDemand, caller, mayLeave, arguments, Execution.Runtime.Value.int, checked]
+
+theorem pairedSelectionObservations (request : CoreGiveRequest bindings start)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle) :
+    ∃ otherFrames otherRest verdict,
+      other.ctl = ⟨request.thread, .core request.core request.next, otherFrames⟩ :: otherRest ∧
+      (core3 grow).status other.store.core request.core = .callout (.embedder request.name request.kind) request.args ∧
+      Plain.runBody request.selectionProgram start.store start.host (some request.thread) = (start.store, start.host, verdict) ∧
+      Plain.runBody request.selectionProgram other.store other.host (some request.thread) = (other.store, other.host, verdict) := by
+  have sameStore := paired.data.1
+  obtain ⟨otherFrames, otherRest, focused, _⟩ := paired.push_shared_frames request.focused
+    (.core request.core request.next) []
+  obtain ⟨verdict, left, right⟩ := selectionObservations request other.host reads
+  exact ⟨otherFrames, otherRest, verdict, focused, sameStore ▸ request.calling, left, sameStore ▸ right⟩
+
+theorem classifyPairedSelection (request : CoreGiveRequest bindings start)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    (∃ otherFrames otherRest verdict,
+      other.ctl = ⟨request.thread, .core request.core request.next, otherFrames⟩ :: otherRest ∧
+      (core3 grow).status other.store.core request.core = .callout (.embedder request.name request.kind) request.args ∧
+      Plain.runBody request.selectionProgram start.store start.host (some request.thread) = (start.store, start.host, verdict) ∧
+      Plain.runBody request.selectionProgram other.store other.host (some request.thread) = (other.store, other.host, verdict)) ∨
+    ∃ handle, request.lookupDemand = some handle ∧
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle ≠
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle := by
+  classical
+  by_cases reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle
+  · exact .inl (pairedSelectionObservations request paired reads)
+  · push Not at reads
+    exact .inr reads
+
 theorem classifyStep {label} (step : Step profile ready (specDispatch ready base) start label finish) :
     Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) start label finish ∨
       GiveInstall bindings (specDispatch ready base) start label finish := by
