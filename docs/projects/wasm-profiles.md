@@ -6,6 +6,8 @@ semantics layer can take the same tag and separately choose its execution model.
 For conversions between these native dialects, see the [version injection API](wasm-version-injections.md).
 For exact Core syntax images and a checked way to lift the Core linker, see
 [Wasm sublanguages](wasm-sublanguages.md).
+For raw, checked, and intrinsic views with a common API, see
+[indexed Wasm syntax](wasm-indexed-syntax.md).
 
 | Tag | `Module W` and `Instruction W` | Judgment |
 | --- | --- | --- |
@@ -43,9 +45,9 @@ share Lean types:
 | `Wasm3` | Core `ValType` has nullability and abstract or indexed heap types. Core `Instr` includes the GC, tail-call and exception families. |
 | `Lime` | Scalar `V1.ValType`, but native `Lime1.Instr` supports sign extension, saturating conversion and indexed block types; no reference or vector value types. |
 
-Only `Wasm3` has a `HasIntrinsic` instance. The V1/V2/Lime1 native judgments are
-proofs about their raw syntax, not native intrinsic body or module types in
-this API. To get a Core witness, transport validation via the existing
+Only `Wasm3` has a full `HasIntrinsic` instance. The native Wasm1 and Lime
+scalar slices have explicit sound intrinsic witnesses, but do not cover the
+whole native judgment. To get a Core witness, transport validation via the existing
 `V1.Validation.ModuleValid.toCore`, `V2.Validation.ModuleValid.toCore_ok`
 (given a `toCore` image), or `Lime1.Validation.ModuleValid.toCore`, then use
 Core `Intrinsic.Module.lift_erase` at the resulting Core interface. Such a witness

@@ -125,6 +125,7 @@ check-runtime:
 	$(if $(filter CerberusTests,$(CHECK_TARGETS)),$(PYTHON) -I tools/corpus/check_cjson_detach_native.py)
 	$(if $(filter CerberusTests,$(CHECK_TARGETS)),$(LAKE) env lean -DwarningAsError=true --run tests/cerberus/LoopControl.lean)
 	$(if $(filter Silmaril +Silmaril.Wasm.Profiles.Injections.Thms,$(CHECK_TARGETS)),$(LAKE) build +Silmaril.Wasm.V1.Validation.Examples --wfail && $(LAKE) env lean -DwarningAsError=true tests/wasm/profiles/Injections.lean)
+	$(if $(filter Silmaril +Silmaril.Wasm.Profiles.Syntax.Thms +Silmaril.Wasm.Profiles.Syntax.LimeScalar.Thms,$(CHECK_TARGETS)),$(LAKE) build --wfail +Silmaril.Wasm.Profiles.Syntax.LimeScalar.Thms +Silmaril.Wasm.Validation.Intrinsic.Reify +Silmaril.Wasm.Verify.Kernel.Defs && $(LAKE) env lean -DwarningAsError=true tests/wasm/profiles/IndexedSyntax.lean)
 	$(if $(filter Silmaril +Silmaril.Wasm.Sublanguages.Link.Thms,$(CHECK_TARGETS)),$(LAKE) build --wfail +Silmaril.Wasm.V1.Validation.Examples +Silmaril.Wasm.Verify.Kernel.Defs && $(LAKE) env lean -DwarningAsError=true tests/wasm/profiles/Sublanguages.lean)
 
 check-integrations:
