@@ -122,6 +122,75 @@ def LiveStringReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
                 LiveStringReplay profile ready base bindings older cx checkNext canonNext finish rest.length after referenceAfter cursor peer
 termination_by length
 
+/-- Two finite paths, compared at their reached stores and visible labels. -/
+def ComparedPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (leftStart rightStart : Config (core3 grow) (HostState sig)) (seen : Trace grow sig)
+    (left right : Config (core3 grow) (HostState sig)) : Prop :=
+  ∃ checkLabels canonLabels,
+    Steps profile ready (specDispatch ready base) leftStart checkLabels left ∧
+    Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) rightStart canonLabels right ∧
+    PayloadPrefix.visible checkLabels = seen ∧ PayloadPrefix.visible canonLabels = seen ∧ left.store = right.store
+
+/-- A compared prefix after the active slots rejoin their original locations.
+The trails follow occurrences through all intermediate scheduler edits. -/
+def ComparedSlots (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (leftStart rightStart : Config (core3 grow) (HostState sig)) (seen : Trace grow sig)
+    (left right : Config (core3 grow) (HostState sig)) : Prop :=
+  open ReturnFrame.Occurrence in
+  ∃ checkLabels canonLabels,
+    RetainsActiveSlots profile ready (specDispatch ready base) leftStart checkLabels left ∧
+    RetainsActiveSlots profile ready (specDispatch ready (LiveDispatch.host bindings base)) rightStart canonLabels right ∧
+    PayloadPrefix.visible checkLabels = seen ∧ PayloadPrefix.visible canonLabels = seen
+
+/-- A cumulative view of the actual string plan. Compare a finite stopped
+allocator prefix at its reached state; to continue, it must pop the marked
+occurrence. Only a finished plan reaches the consumer. -/
+def LiveStringPaths (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) (cx : LiftLowerContext (core3 grow))
+    (checkNext canonNext : Nat → Session grow sig (Ret (core3 grow)))
+    (leftStart rightStart : Config (core3 grow) (HostState sig))
+    (finish : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) →
+      Trace grow sig → Prop)
+    (length : Nat) (left right : Config (core3 grow) (HostState sig))
+    (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (seen : Trace grow sig) : Prop :=
+  open PayloadPrefix ReturnFrame.Occurrence in
+  let checkDispatch := specDispatch ready base
+  let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
+  ∃ (store : CStore (core3 grow)) (result : Except TrapReason (StringFront length)) (labels : Trace grow sig),
+    let lhs := localLeafEnd left left.host store check.thread check.frames check.rest
+      (fun front : StringFront length => front.remaining cx >>= checkNext) result
+    let rhs := localLeafEnd right right.host store canon.thread canon.frames canon.rest
+      (fun front : StringFront length => front.remaining cx >>= canonNext) result
+    LocalLeafLabels result labels ∧ Steps profile ready checkDispatch left labels lhs ∧ Steps profile ready canonDispatch right labels rhs ∧
+    match result with
+    | .error reason => lhs.ctl = [] ∧ rhs.ctl = [] ∧
+      ComparedPaths profile ready base bindings leftStart rightStart (seen ++ [.trap reason]) lhs rhs
+    | .ok (.done pointer) => ComparedSlots profile ready base bindings leftStart rightStart seen lhs rhs ∧
+      finish pointer lhs rhs check canon seen
+    | .ok (.call pointer oldSize alignment size rest _) =>
+      let first := stringPlanResume cx rest checkNext
+      let second := stringPlanResume cx rest canonNext
+      let firstEntry := LinkedCallback.stringReallocEntry ready bindings cx pointer oldSize alignment size rest checkNext lhs check
+      let secondEntry := stringAllocatorEntry canonDispatch cx pointer oldSize alignment size rhs canon second
+      ∀ {observed reached}, ClosedCallbackPrefix bindings profile ready base
+        (fun resume => (∃ peer, older resume peer) ∨ resume = first) firstEntry observed reached →
+        ∃ checkLabels canonLabels reference mark,
+          AllocatorMark profile ready base bindings older firstEntry secondEntry checkLabels canonLabels reached reference mark ∧
+          HostFrame.Related.Paired (ReturnFrame.Extend older first second) reached reference ∧
+          ComparedPaths profile ready base bindings leftStart rightStart (seen ++ observed) reached reference ∧
+          ∀ (value : Nat) (cursor : Cursor (E := core3 grow) (HostState sig)), mark = some (.active 0 0) →
+            reached.ctl = { cursor with frames := .prog first :: cursor.frames }.control (.pure (.nat value)) →
+            ∃ peer : Cursor (E := core3 grow) (HostState sig),
+              let after := { reached with ctl := cursor.control (first (.nat value)) }
+              let referenceAfter := { reference with ctl := peer.control (second (.nat value)) }
+              LiveStringPaths profile ready base bindings older cx checkNext canonNext leftStart rightStart finish
+                rest.length after referenceAfter cursor peer (seen ++ observed)
+termination_by length
+
 /-- Validate the pointer from an actual marked return. The invalid branches
 trap at the reached stores. The valid branch exposes the real checked live
 verdict and the canonical child-entry program, before either executes children. -/

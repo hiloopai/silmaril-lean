@@ -331,6 +331,25 @@ theorem string_key_nominal_value (origin : CStore (core3 grow)) (destination : R
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.stringKeyNominalValue
     origin destination inst element output key value address issueIndex nominal matched emitted width checkNext canonNext
 
+/-- Accumulate actual paired paths and occurrence trails from string replay.
+Finite callback prefixes compare at the reached states without popping;
+only the marked return can advance the residual plan. -/
+theorem LiveStringReplay.paths {cx : LiftLowerContext (core3 grow)}
+    {checkNext canonNext : Nat → Session grow sig (Ret (core3 grow))}
+    {leftStart rightStart : Config (core3 grow) (HostState sig)}
+    {first : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop}
+    {second : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Trace grow sig → Prop}
+    (next : ∀ ptr lhs rhs check canon seen, first ptr lhs rhs check canon →
+      ComparedSlots profile ready base bindings leftStart rightStart seen lhs rhs → second ptr lhs rhs check canon seen)
+    {length : Nat} {left right : Config (core3 grow) (HostState sig)}
+    {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {seen : Trace grow sig}
+    (leading : ComparedSlots profile ready base bindings leftStart rightStart seen left right)
+    (run : LiveStringReplay profile ready base bindings older cx checkNext canonNext first length left right check canon) :
+    LiveStringPaths profile ready base bindings older cx checkNext canonNext leftStart rightStart second length left right check canon seen :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.stringPaths next leading run
+
 /-- Derive the selected string key, nominal value and allocator option from
 the linked public compiler result. Compare the actual entry programs under
 the two dispatchers, after a successful root fit and reached range check. -/

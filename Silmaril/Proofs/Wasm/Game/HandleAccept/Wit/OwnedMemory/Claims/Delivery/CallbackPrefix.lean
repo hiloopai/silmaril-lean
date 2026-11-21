@@ -426,4 +426,89 @@ theorem stringReplayMap {cx : LiftLowerContext (core3 grow)}
       obtain ⟨peer, checked, canonical, tail⟩ := returning value cursor atMark focus
       exact ⟨peer, checked, canonical, ih rest.length shorter tail⟩
 
+theorem appendComparedSlots {leftStart rightStart left right lhs rhs : Config (core3 grow) (HostState sig)}
+    {before after : Trace grow sig}
+    (leading : ComparedSlots profile ready base bindings leftStart rightStart before left right)
+    (trailing : ComparedSlots profile ready base bindings left right after lhs rhs) :
+    ComparedSlots profile ready base bindings leftStart rightStart (before ++ after) lhs rhs := by
+  obtain ⟨checkLabels, canonLabels, checkTracks, canonTracks, checkSeen, canonSeen⟩ := leading
+  obtain ⟨leftLabels, rightLabels, leftTracks, rightTracks, leftSeen, rightSeen⟩ := trailing
+  exact ⟨checkLabels ++ leftLabels, canonLabels ++ rightLabels,
+    fun depth => (checkTracks depth).append (leftTracks depth), fun depth => (canonTracks depth).append (rightTracks depth),
+    (List.filter_append ..).trans (congrArg₂ List.append checkSeen leftSeen),
+    (List.filter_append ..).trans (congrArg₂ List.append canonSeen rightSeen)⟩
+
+theorem appendComparedPaths {leftStart rightStart left right lhs rhs : Config (core3 grow) (HostState sig)}
+    {before after : Trace grow sig}
+    (leading : ComparedSlots profile ready base bindings leftStart rightStart before left right)
+    (trailing : ComparedPaths profile ready base bindings left right after lhs rhs) :
+    ComparedPaths profile ready base bindings leftStart rightStart (before ++ after) lhs rhs := by
+  obtain ⟨checkLabels, canonLabels, checkTracks, canonTracks, checkSeen, canonSeen⟩ := leading
+  obtain ⟨leftLabels, rightLabels, leftRun, rightRun, leftSeen, rightSeen, same⟩ := trailing
+  exact ⟨checkLabels ++ leftLabels, canonLabels ++ rightLabels,
+    append (prefix_survives (checkTracks 0)).1 leftRun, append (prefix_survives (canonTracks 0)).1 rightRun,
+    (List.filter_append ..).trans (congrArg₂ List.append checkSeen leftSeen),
+    (List.filter_append ..).trans (congrArg₂ List.append canonSeen rightSeen), same⟩
+
+theorem stringPaths {cx : LiftLowerContext (core3 grow)}
+    {checkNext canonNext : Nat → Session grow sig (Ret (core3 grow))}
+    {leftStart rightStart : Config (core3 grow) (HostState sig)}
+    {first : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop}
+    {second : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Trace grow sig → Prop}
+    (next : ∀ ptr lhs rhs check canon seen, first ptr lhs rhs check canon →
+      ComparedSlots profile ready base bindings leftStart rightStart seen lhs rhs → second ptr lhs rhs check canon seen)
+    {length : Nat} {left right : Config (core3 grow) (HostState sig)}
+    {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {seen : Trace grow sig}
+    (leading : ComparedSlots profile ready base bindings leftStart rightStart seen left right)
+    (run : LiveStringReplay profile ready base bindings older cx checkNext canonNext first length left right check canon) :
+    LiveStringPaths profile ready base bindings older cx checkNext canonNext leftStart rightStart second length left right check canon seen := by
+  induction length using Nat.strong_induction_on generalizing left right check canon seen with
+  | ind length ih =>
+    rw [LiveStringReplay] at run
+    rw [LiveStringPaths]
+    obtain ⟨store, result, labels, observed, checked, canonical, nextCut⟩ := run
+    refine ⟨store, result, labels, observed, checked.steps, canonical.steps, ?_⟩
+    cases result with
+    | error reason =>
+      obtain ⟨count, silent⟩ := observed
+      have atTrap : PayloadPrefix.visible labels = [.trap reason] := by
+        rw [silent, show PayloadPrefix.visible (List.replicate count .tau ++ [.trap reason] : Trace grow sig) =
+          PayloadPrefix.visible (List.replicate count .tau : Trace grow sig) ++ PayloadPrefix.visible ([.trap reason] : Trace grow sig)
+          from List.filter_append ..]
+        rw [invisible (by simp), List.nil_append]
+        rfl
+      exact ⟨rfl, rfl, appendComparedPaths leading ⟨labels, labels, checked.steps, canonical.steps, atTrap, atTrap, rfl⟩⟩
+    | ok front =>
+      obtain ⟨checkLocal, canonLocal, matched⟩ := nextCut front rfl
+      simp only [LocalLeafLabels] at observed
+      have noLabels : PayloadPrefix.visible labels = [] := by
+        apply List.filter_eq_nil_iff.mpr
+        intro label member
+        have tau := List.all_eq_true.mp observed label member
+        cases label <;> simp_all
+      have reached := appendComparedSlots leading ⟨labels, labels, checkLocal, canonLocal, noLabels, noLabels⟩
+      rw [List.append_nil] at reached
+      cases front with
+      | done pointer => exact ⟨reached, next pointer _ _ _ _ seen matched reached⟩
+      | call ptr oldSize alignment size rest shorter =>
+        intro observed reachedCall path
+        obtain ⟨checkLabels, canonLabels, reference, mark, lhs, rhs, checkSeen, canonSeen, paired,
+          _, _, _, marked, returning⟩ := matched path
+        have sameStore := HostFrame.Related.Paired.data paired |>.1
+        refine ⟨checkLabels, canonLabels, reference, mark, marked, paired, appendComparedPaths reached
+          ⟨_, _, lhs, rhs, checkSeen, canonSeen, sameStore⟩, ?_⟩
+        intro value cursor atMark focus
+        obtain ⟨peer, checked, canonical, tail⟩ := returning value cursor atMark focus
+        have checkPopped : PayloadPrefix.visible (.tau :: checkLabels ++ [.tau]) = observed := by
+          change PayloadPrefix.visible (checkLabels ++ [.tau]) = observed
+          rw [show PayloadPrefix.visible (checkLabels ++ [.tau]) = PayloadPrefix.visible checkLabels ++
+            PayloadPrefix.visible ([.tau] : Trace grow sig) from List.filter_append .., checkSeen]; simp [PayloadPrefix.visible]
+        have canonPopped : PayloadPrefix.visible (.tau :: canonLabels ++ [.tau]) = observed := by
+          change PayloadPrefix.visible (canonLabels ++ [.tau]) = observed
+          rw [show PayloadPrefix.visible (canonLabels ++ [.tau]) = PayloadPrefix.visible canonLabels ++
+            PayloadPrefix.visible ([.tau] : Trace grow sig) from List.filter_append .., canonSeen]; simp [PayloadPrefix.visible]
+        exact ⟨peer, ih rest.length shorter (appendComparedSlots reached ⟨_, _, checked, canonical, checkPopped, canonPopped⟩) tail⟩
+
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix
