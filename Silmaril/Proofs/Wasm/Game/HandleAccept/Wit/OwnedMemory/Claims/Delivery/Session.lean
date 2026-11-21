@@ -1183,6 +1183,108 @@ theorem calleeOutside {state : State grow sig} (result : CalleeSpillReturn args 
 
 end CalleeArguments
 
+theorem storeDirectArgument (context : LiftLowerContext (core3 grow)) (arg : DirectArgument) (address : Nat) :
+    (store .spec .none context arg.value arg.type address : Session grow sig Unit) = writeMem context address arg.bytes := by
+  cases arg <;> rw [DirectArgument.type, DirectArgument.value, store.eq_def] <;> rfl
+
+theorem storeScalarTuple (context : LiftLowerContext (core3 grow)) {memory : (core3 grow).MemAddr}
+    (selected : context.opts.memory = some memory) (args : List DirectArgument) (pointer : Nat)
+    (state : State grow sig) {thread segments rest} (tail : Session grow sig (Ret (core3 grow)))
+    (focused : state.ctl = ⟨thread, .prog (storeTuple .spec .none context
+      (args.map DirectArgument.value) (args.map DirectArgument.type) pointer >>= fun _ => tail), segments⟩ :: rest) :
+    let effect := scalarTupleEffect context memory args pointer state.store
+    Steps profile ready (specDispatch ready impl) state effect.labels (effect.finish state thread segments rest tail) := by
+  induction args generalizing pointer state with
+  | nil =>
+    have atTail : state.ctl = ⟨thread, .prog tail, segments⟩ :: rest := by
+      simpa only [List.map_nil, storeTuple.eq_def, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind'] using focused
+    have same : { state with ctl := ⟨thread, .prog tail, segments⟩ :: rest } = state := by rw [← atTail]
+    change Steps profile ready (specDispatch ready impl) state [] { state with ctl := _ }
+    rw [same]
+    exact .refl _
+  | cons arg args ih =>
+    let width := ptrTypeIn state.store context
+    let address := arg.address width pointer
+    let remaining (width : AddrType) := storeTuple .spec .none context (args.map DirectArgument.value)
+      (args.map DirectArgument.type) (arg.address width pointer + (ABI.layout width arg.type).size) >>= fun _ => tail
+    have widthRead : state.ctl = ⟨thread, .prog (.op .get (fun current =>
+        writeMem context (arg.address (ptrTypeIn current context) pointer) arg.bytes >>= fun _ =>
+          remaining (ptrTypeIn current context))), segments⟩ :: rest := by
+      rw [focused]
+      rw [List.map_cons, List.map_cons, storeTuple.eq_def]
+      simp only [storeDirectArgument, Prog.bind_eq, Prog.bind_assoc]
+      rfl
+    let afterWidth := { state with ctl := ⟨thread, .prog (writeMem context address arg.bytes >>= fun _ => remaining width),
+      segments⟩ :: rest }
+    have readWidth : Step profile ready (specDispatch ready impl) state .tau afterWidth := .get widthRead
+    have focusWrite : afterWidth.ctl = ⟨thread, .prog (.op .get (fun current =>
+        (match (core3 grow).memWrite? current.core memory address arg.bytes with
+        | none => trap .outOfBounds
+        | some _ => modifyStore (writeMemSt memory address arg.bytes)) >>= fun _ => remaining width)), segments⟩ :: rest := by
+      let write (current : CStore (core3 grow)) : Session grow sig Unit :=
+          match (core3 grow).memWrite? current.core memory address arg.bytes with
+          | none => trap .outOfBounds
+          | some _ => modifyStore (writeMemSt memory address arg.bytes)
+      have expanded : (writeMem context address arg.bytes : Session grow sig Unit) = .op .get write := by
+        unfold writeMem memAddr
+        rw [selected]
+        simp only [orTrap, getStore, perform, Prog.lift, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind']
+        change (Prog.op (S := Eff (core3 grow) (HostState sig)) .get Prog.pure).bind _ = _
+        refine (@Prog.op_bind (Eff (core3 grow) (HostState sig)) (CStore (core3 grow)) Unit .get Prog.pure _).trans ?_
+        apply congrArg (Prog.op (S := Eff (core3 grow) (HostState sig)) .get)
+        funext current
+        change (Prog.pure (S := Eff (core3 grow) (HostState sig)) (α := CStore (core3 grow)) current).bind _ = _
+        refine (@Prog.pure_bind' (Eff (core3 grow) (HostState sig)) (CStore (core3 grow)) Unit current _).trans ?_
+        dsimp only [write]
+        cases (core3 grow).memWrite? current.core memory address arg.bytes <;> rfl
+      have bound : ((writeMem context address arg.bytes : Session grow sig Unit) >>= fun _ => remaining width) =
+          .op .get (fun current =>
+            (match (core3 grow).memWrite? current.core memory address arg.bytes with
+            | none => trap .outOfBounds
+            | some _ => modifyStore (writeMemSt memory address arg.bytes)) >>= fun _ => remaining width) := by
+        rw [expanded]
+        exact @Prog.op_bind (Eff (core3 grow) (HostState sig)) Unit (Ret (core3 grow)) .get _ _
+      simp only [afterWidth, bound]
+    have readWrite := Step.get (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) focusWrite
+    cases written : (core3 grow).memWrite? state.store.core memory address arg.bytes with
+    | none =>
+      have failed := written
+      dsimp [address, width] at failed
+      simp only [scalarTupleEffect, failed]
+      refine .cons readWidth (.cons readWrite ?_)
+      simp only [afterWidth, written, Prog.bind_eq]
+      exact .cons (.trap rfl) (.refl _)
+    | some core =>
+      have checked := written
+      dsimp [address, width] at checked
+      let writtenState := { state with
+        store := writeMemSt memory address arg.bytes state.store
+        ctl := ⟨thread, .prog (remaining width), segments⟩ :: rest }
+      have tailSteps := ih (address + (ABI.layout width arg.type).size) writtenState rfl
+      have restSteps := Steps.cons readWrite (Steps.cons (Step.modify (f := writeMemSt memory address arg.bytes)
+        (k := fun _ => remaining width) (by
+          simp only [afterWidth, written, modifyStore, perform, Prog.lift]
+          rfl))
+        tailSteps)
+      have whole := Steps.cons readWidth restSteps
+      simp only [scalarTupleEffect, checked]
+      cases trapAt : (scalarTupleEffect context memory args (address + (ABI.layout width arg.type).size)
+          writtenState.store).trap <;>
+        simpa only [writtenState, ScalarTupleEffect.labels, ScalarTupleEffect.finish, trapAt, List.replicate_add,
+          List.append_assoc, StepDefs.trapCfg, List.replicate_succ, List.replicate_zero, List.nil_append,
+          List.cons_append] using whole
+
+theorem calleeStoreScalars {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    (result : CalleeSpillReturn args state) {memory} (scalars : List DirectArgument)
+    (schema : args.types = scalars.map DirectArgument.type) (values : returned.values = scalars.map DirectArgument.value)
+    (selected : args.context.opts.memory = some memory) :
+    let effect := scalarTupleEffect args.context memory scalars result.pointer state.store
+    Steps profile ready (specDispatch ready impl) result.writing effect.labels (result.scalarFinished effect) := by
+  apply storeScalarTuple args.context selected scalars result.pointer result.writing
+  simp only [CalleeSpillReturn.writing, CalleeArguments.write, schema, values]
+  rw [store.eq_def]
+
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by
   cases edge with
@@ -1209,6 +1311,7 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | calleePlaced result aligned selected sized fits => exact calleePlaced result aligned selected sized fits
   | calleeOutside result aligned selected sized outside => exact calleeOutside result aligned selected sized outside
   | lowerEmptyArgs handoff empty => exact lowerEmptyArgs handoff empty
+  | calleeSpillScalars result scalars schema values selected => exact calleeStoreScalars result scalars schema values selected
   | calleeStackfulCore args focused asyncMode callback =>
     have call (values : List FlatValue) : args.enter values = .op (.callCore args.callee values) (stackfulTail args.task) := by
       simp only [CalleeArguments.enter, liftArgumentsTail, asyncMode, callback, Bool.not_true, Bool.false_eq_true, ite_false]
@@ -1385,6 +1488,27 @@ theorem runSteps {actions labels} (path : Run profile ready impl start actions l
   induction path with
   | stop => exact .refl _
   | next edge _ ih => exact appendSteps (transitionSteps edge) ih
+
+theorem spillScalarStackful {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    (result : CalleeSpillReturn args state) {memory size} (scalars : List DirectArgument)
+    (schema : args.types = scalars.map DirectArgument.type) (values : returned.values = scalars.map DirectArgument.value)
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (fits : result.pointer + args.layout.size ≤ size)
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none)
+    (written : (scalarTupleEffect args.context memory scalars result.pointer state.store).trap = none) :
+    let effect := scalarTupleEffect args.context memory scalars result.pointer state.store
+    ∀ impl, Run profile ready impl state
+      [.calleeSpillPlacement site.thread none, .calleeSpillScalars site.thread effect.trap, .coreEnter site.thread]
+      ([.tau, .tau] ++ (effect.labels ++ [.tau])) (result.enteredStackful effect.store) := by
+  intro effect impl
+  refine .next (.calleePlaced result aligned selected sized fits) (.next (.calleeSpillScalars result scalars schema values selected) ?_)
+  refine .next (.calleeStackfulCore args (flat := [ptrFlat args.width result.pointer])
+    (segments := result.segments) (rest := result.rest) ?_ asyncMode callback) ?_
+  · simp only [CalleeSpillReturn.scalarFinished, ScalarTupleEffect.finish, written, CalleeSpillReturn.writing]
+  · simp only [CalleeSpillReturn.scalarFinished, ScalarTupleEffect.finish, written, CalleeSpillReturn.writing]
+    exact .stop _
 
 theorem lowerEnterDirect {site : OnStartSite start} {handoff : LowerStartAt site} {reached : State grow sig}
     (returned : LowerArgumentReturn handoff reached) (task : TaskId) (callee : (core3 grow).FuncAddr)

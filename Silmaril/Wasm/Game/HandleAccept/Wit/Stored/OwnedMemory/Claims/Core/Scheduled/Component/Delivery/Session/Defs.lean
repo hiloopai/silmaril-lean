@@ -305,6 +305,10 @@ def DirectArgument.byteCount : DirectArgument → Nat
   | .bool _ => 1
   | .u32 _ => 4
 
+def DirectArgument.bytes : DirectArgument → ByteArray
+  | .bool value => intToLE 1 (if value then 1 else 0)
+  | .u32 value => intToLE 4 value.toNat
+
 def DirectArgument.decode (arg : DirectArgument) (bytes : ByteArray) : Value.Val :=
   match arg with
   | .bool _ => .bool (convertIntToBool (intOfLE false bytes))
@@ -312,6 +316,38 @@ def DirectArgument.decode (arg : DirectArgument) (bytes : ByteArray) : Value.Val
 
 def DirectArgument.address (arg : DirectArgument) (width : AddrType) (ptr : Nat) : Nat :=
   ABI.alignTo ptr (ABI.layout width arg.type).alignment
+
+/-- The last store before the continuation or canonical lockdown. Each
+successful field has one width read, one write check and one write effect. -/
+structure ScalarTupleEffect (grow : SingleThreaded.GrowOracle) where
+  store : CStore (core3 grow)
+  ticks : Nat
+  trap : Option TrapReason
+
+def ScalarTupleEffect.labels (effect : ScalarTupleEffect grow) : Trace grow sig :=
+  List.replicate effect.ticks .tau ++ effect.trap.toList.map Label.trap
+
+def ScalarTupleEffect.finish (effect : ScalarTupleEffect grow) (state : State grow sig)
+    (thread : Option ThreadId) (segments : List (Seg (core3 grow) (HostState sig)))
+    (rest : List (Activation (core3 grow) (HostState sig))) (tail : Session grow sig (Ret (core3 grow))) : State grow sig :=
+  match effect.trap with
+  | none => { state with store := effect.store, ctl := ⟨thread, .prog tail, segments⟩ :: rest }
+  | some _ => StepDefs.trapCfg { state with store := effect.store }
+
+/-- Compute effects in ABI field order, testing each write against the
+store produced by the preceding fields rather than prevalidating the tuple. -/
+def scalarTupleEffect (context : LiftLowerContext (core3 grow)) (memory : (core3 grow).MemAddr) :
+    List DirectArgument → Nat → CStore (core3 grow) → ScalarTupleEffect grow
+  | [], _, store => ⟨store, 0, none⟩
+  | arg :: args, pointer, store =>
+    let width := ptrTypeIn store context
+    let address := arg.address width pointer
+    match (core3 grow).memWrite? store.core memory address arg.bytes with
+    | none => ⟨store, 2, some .outOfBounds⟩
+    | some _ =>
+      let next := scalarTupleEffect context memory args (address + (ABI.layout width arg.type).size)
+        (writeMemSt memory address arg.bytes store)
+      { next with ticks := 3 + next.ticks }
 
 /-- The reached bytes and decoded values at each canonical tuple-field offset. -/
 inductive ScalarSpill (store : CStore (core3 grow)) (memory : (core3 grow).MemAddr) (width : AddrType) :
@@ -628,6 +664,17 @@ def CalleeSpillReturn.writing {args : CalleeArguments returned} {state : State g
     (result : CalleeSpillReturn args state) : State grow sig :=
   { state with ctl := ⟨some site.thread, .prog (args.write result.pointer), result.segments⟩ :: result.rest }
 
+def CalleeSpillReturn.scalarFinished {args : CalleeArguments returned} {state : State grow sig}
+    (result : CalleeSpillReturn args state) (effect : ScalarTupleEffect grow) : State grow sig :=
+  effect.finish result.writing (some site.thread) result.segments result.rest
+    (args.enter [ptrFlat args.width result.pointer])
+
+def CalleeSpillReturn.enteredStackful {args : CalleeArguments returned} {state : State grow sig}
+    (result : CalleeSpillReturn args state) (store : CStore (core3 grow)) : State grow sig :=
+  { state with store, ctl :=
+      ⟨some site.thread, .core ((core3 grow).invoke args.callee [ptrFlat args.width result.pointer])
+        (fun _ => Task.exitImplicitThread args.task >>= fun _ => pure .unit), result.segments⟩ :: result.rest }
+
 def LiftSite.withLowerValues (site : LiftSite grow sig) (state : State grow sig) (args : List Value.Val)
     (pos : Nat) : State grow sig :=
   { state with
@@ -729,6 +776,7 @@ inductive Action where
   | lowerArgsReturn (caller : CallerId)
   | calleeArguments (thread : ThreadId) (spill : Bool)
   | calleeSpillPlacement (thread : ThreadId) (trap : Option TrapReason)
+  | calleeSpillScalars (thread : ThreadId) (trap : Option TrapReason)
   | calleeAllocationPrefix (thread : ThreadId) (mark : ReturnFrame.Occurrence.Location)
   | lowerSpillTrap (caller : CallerId) (reason : TrapReason)
   | lowerInstallCancel (subtask : SubtaskId)
@@ -874,6 +922,14 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
       (outside : size < result.pointer + args.layout.size) :
       Transition profile ready impl state (.calleeSpillPlacement site.thread (some .outOfBounds))
         [.tau, .tau, .trap .outOfBounds] (StepDefs.trapCfg state)
+  | calleeSpillScalars {start reached state} {site : OnStartSite start} {handoff : LowerStartAt site}
+      {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned} (result : CalleeSpillReturn args state)
+      {memory} (scalars : List DirectArgument) (schema : args.types = scalars.map DirectArgument.type)
+      (values : returned.values = scalars.map DirectArgument.value) (selected : args.context.opts.memory = some memory) :
+      Transition profile ready impl result.writing
+        (.calleeSpillScalars site.thread (scalarTupleEffect args.context memory scalars result.pointer state.store).trap)
+        (scalarTupleEffect args.context memory scalars result.pointer state.store).labels
+        (result.scalarFinished (scalarTupleEffect args.context memory scalars result.pointer state.store))
   | calleeStackfulCore {start reached state} {site : OnStartSite start} {handoff : LowerStartAt site}
       {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned) {flat segments rest}
       (focused : state.ctl = ⟨some site.thread, .prog (args.enter flat), segments⟩ :: rest)

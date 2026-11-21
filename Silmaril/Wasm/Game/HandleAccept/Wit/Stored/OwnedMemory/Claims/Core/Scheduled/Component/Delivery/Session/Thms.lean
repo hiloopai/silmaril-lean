@@ -551,6 +551,41 @@ theorem CalleeSpillReturn.of_occurrence {site : OnStartSite start} {handoff : Lo
     ∃ result : CalleeSpillReturn args state, result.pointer = pointer :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.calleeReachedReturn path focused
 
+/-- Execute the actual scalar tuple store after live spill placement. The
+computed result uses the store from each previous write, including on a trap. -/
+theorem CalleeSpillReturn.placed_scalar_writes {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    (result : CalleeSpillReturn args state) {memory size} (scalars : List DirectArgument)
+    (schema : args.types = scalars.map DirectArgument.type) (values : returned.values = scalars.map DirectArgument.value)
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (fits : result.pointer + args.layout.size ≤ size) :
+    let effect := scalarTupleEffect args.context memory scalars result.pointer state.store
+    ∀ impl, Run profile ready impl state [.calleeSpillPlacement site.thread none, .calleeSpillScalars site.thread effect.trap]
+      ([.tau, .tau] ++ effect.labels) (result.scalarFinished effect) := by
+  intro effect impl
+  have run := Run.next (.calleePlaced result aligned selected sized fits)
+    (.next (.calleeSpillScalars result scalars schema values selected) (.stop _)) (impl := impl) (profile := profile) (ready := ready)
+  simpa only [List.append_nil] using run
+
+/-- Pass the allocator's pointer to the reached stackful Core callee if every
+scalar store commits. The callee inherits the reached scheduler tail. -/
+theorem CalleeSpillReturn.stackful_scalar_callee {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    (result : CalleeSpillReturn args state) {memory size} (scalars : List DirectArgument)
+    (schema : args.types = scalars.map DirectArgument.type) (values : returned.values = scalars.map DirectArgument.value)
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (fits : result.pointer + args.layout.size ≤ size)
+    (asyncMode : args.record.opts.async_ = true) (callback : args.record.opts.callback = none)
+    (written : (scalarTupleEffect args.context memory scalars result.pointer state.store).trap = none) :
+    let effect := scalarTupleEffect args.context memory scalars result.pointer state.store
+    ∀ impl, Run profile ready impl state
+      [.calleeSpillPlacement site.thread none, .calleeSpillScalars site.thread effect.trap, .coreEnter site.thread]
+      ([.tau, .tau] ++ (effect.labels ++ [.tau])) (result.enteredStackful effect.store) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.spillScalarStackful
+    result scalars schema values aligned selected sized fits asyncMode callback written
+
 /-- A spilled scalar tuple is loaded in ABI field order from the reached memory.
 It consumes one caller word before using the same direct callee entry as flat arguments. -/
 theorem LowerStartAt.spilled_scalar_callee {site : OnStartSite start} (handoff : LowerStartAt site)
