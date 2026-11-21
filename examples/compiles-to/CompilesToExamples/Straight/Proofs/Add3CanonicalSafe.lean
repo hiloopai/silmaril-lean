@@ -8,6 +8,7 @@ import all Init.Data.String.Basic
 import all Init.Data.String.Bootstrap
 public import CompilesToExamples.Straight.Defs
 public import Silmaril.Project.CompilesTo.Thms
+public import Silmaril.Project.Shapes.CompilesTo.Translate.Defs
 
 /-! `examples/compiles-to/straight/straight.c`, `add3`: **safe from its canonical entry**. The call
 `add3(1, 2, 3)` from the canonical entry (`CFn.canonicalEntry`: the arguments allocated in order
@@ -18,6 +19,7 @@ checked by `cbv`; `safe_of_forced` makes the entry safe. This is the non-vacuity
 namespace CompilesToExamples.Straight
 
 open Silmaril.Project.CompilesTo
+open Silmaril.Project.Shapes.CompilesTo (endsInt)
 open Silmaril.Cerberus Silmaril.Cerberus.Core Silmaril.Cerberus.Core.Dynamics
 
 /-- The arguments of the call `add3(1, 2, 3)`. -/
@@ -31,24 +33,16 @@ attribute [local cbv_eval] Silmaril.Cerberus.Core.Dynamics.controlHasCCall.eq_de
 attribute [local cbv_eval] Silmaril.Cerberus.Core.Dynamics.activeCall.eq_def
 attribute [local cbv_eval] List.mergeSort_pair List.mergeSort_nil List.mergeSort_singleton
 
-/-- The run ends normally. -/
-def endsDefined (s : Option State) : Bool :=
-  match s with
-  | some h => match h.control with
-    | .halt (.defined _) => true
-    | _ => false
-  | none => false
-
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 40000000 in
-theorem run_forced :
-    endsDefined (forcedRun add3Fn.file add3Fn.labels 400 (add3Fn.canonicalEntry add3Args)) = true := by
+public theorem add3_returns_six :
+    endsInt 6 (forcedRun add3Fn.file add3Fn.labels 400 (add3Fn.canonicalEntry add3Args)) = true := by
   cbv
 
 /-- The canonical entry of `add3(1, 2, 3)` is safe. -/
 public theorem add3_args_safe : (add3Fn.source []).Safe (add3Fn.canonicalEntry add3Args) := by
-  have h := run_forced
-  unfold endsDefined at h
+  have h := add3_returns_six
+  unfold endsInt at h
   split at h
   · rename_i hfin hrun
     split at h

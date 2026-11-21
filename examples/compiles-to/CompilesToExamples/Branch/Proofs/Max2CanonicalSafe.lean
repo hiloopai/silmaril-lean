@@ -8,6 +8,7 @@ import all Init.Data.String.Basic
 import all Init.Data.String.Bootstrap
 public import CompilesToExamples.Branch.Defs
 public import Silmaril.Project.CompilesTo.Thms
+public import Silmaril.Project.Shapes.CompilesTo.Translate.Defs
 -- Not used: built after `add3`'s run, so that the two `cbv` runs of the Core (several GB each)
 -- do not overlap on a 16 GB machine.
 import CompilesToExamples.Straight.Proofs.Add3CanonicalSafe
@@ -21,6 +22,7 @@ checked by `cbv`; `safe_of_forced` makes the entry safe. This is the non-vacuity
 namespace CompilesToExamples.Branch
 
 open Silmaril.Project.CompilesTo
+open Silmaril.Project.Shapes.CompilesTo (endsInt)
 open Silmaril.Cerberus Silmaril.Cerberus.Core Silmaril.Cerberus.Core.Dynamics
 
 /-- The arguments of the call `max2(1, 2)`. -/
@@ -33,24 +35,16 @@ attribute [local cbv_eval] Silmaril.Cerberus.Core.Dynamics.controlHasCCall.eq_de
 attribute [local cbv_eval] Silmaril.Cerberus.Core.Dynamics.activeCall.eq_def
 attribute [local cbv_eval] List.mergeSort_pair List.mergeSort_nil List.mergeSort_singleton
 
-/-- The run ends normally. -/
-def endsDefined (s : Option State) : Bool :=
-  match s with
-  | some h => match h.control with
-    | .halt (.defined _) => true
-    | _ => false
-  | none => false
-
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 40000000 in
-theorem run_forced :
-    endsDefined (forcedRun max2Fn.file max2Fn.labels 400 (max2Fn.canonicalEntry max2Args)) = true := by
+public theorem max2_returns_two :
+    endsInt 2 (forcedRun max2Fn.file max2Fn.labels 400 (max2Fn.canonicalEntry max2Args)) = true := by
   cbv
 
 /-- The canonical entry of `max2(1, 2)` is safe. -/
 public theorem max2_args_safe : (max2Fn.source []).Safe (max2Fn.canonicalEntry max2Args) := by
-  have h := run_forced
-  unfold endsDefined at h
+  have h := max2_returns_two
+  unfold endsInt at h
   split at h
   · rename_i hfin hrun
     split at h

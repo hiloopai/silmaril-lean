@@ -28,6 +28,11 @@ modules=(
   Silmaril.Proofs.Compiler.Explorer.Text
   Silmaril.Compiler.Explorer.Text.Thms
   CompilesToExamples.Explorer.TypeError
+  Silmaril.Proofs.Compiler.C.Compact
+  Silmaril.Proofs.Compiler.C.CompactBody
+  Silmaril.Compiler.C.Compact.Thms
+  CompilesToExamples.Explorer.Compact.Checks
+  CompilesToExamples.Explorer.Compact.Core
 )
 # Each replay has its own environment. Bound concurrent processes to avoid multiplying
 # Mathlib import memory by the host CPU count; keep a serial mode for small hosts.

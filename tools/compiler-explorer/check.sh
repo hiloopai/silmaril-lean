@@ -21,6 +21,7 @@ mkdir -p "$out"
   CompilesToExamples.Explorer.Code CompilesToExamples.Explorer.Rows CompilesToExamples.Explorer.Decompiled \
   CompilesToExamples.Explorer.C2C.Runs CompilesToExamples.Explorer.TypeError CompilesToExamples.Explorer.Blocks \
   CompilesToExamples.Explorer.C2C.Elaborates \
+  CompilesToExamples.Explorer.Compact.Core \
   Silmaril.Compiler.Explorer.Text.Thms
 regen="$(mktemp -d)"
 replay_pid=

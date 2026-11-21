@@ -67,6 +67,8 @@ K0 = "∀ k0 : List Silmaril.Cerberus.Core.Dynamics.Frame,"
 def core_equality(namespace: str) -> str:
     return f"Silmaril.Project.Shapes.C.ElabAil {namespace}.ail = .ok {namespace}.core"
 
+COMPACT_MODEL = "Silmaril.Compiler.C.Compact.project"
+
 # Per family, per obligation kind: the Lean statement, from the manifest's `lean.vars` and the
 # obligation's point (`k`) and line. `None` for kinds the family does not state.
 TEMPLATES = {
@@ -90,6 +92,7 @@ TEMPLATES = {
         "elaboration": lambda v, k, line: (
             f"Silmaril.Project.Shapes.C.ElaboratesTo {v['ail']} \"{v['cname']}\" {v['fn']}.cfn"),
         "core_elaboration": lambda v, k, line: core_equality(v["ail"].rsplit(".", 1)[0]),
+        "compact_projection": lambda v, k, line: f"{COMPACT_MODEL} {v['ail']} = .ok {v['compact']}",
         "nonvacuity_canonical": lambda v, k, line: (
             f"Silmaril.Project.Shapes.CompilesTo.CompilesToCanonical {v['isa']} {v['fn']}.placement "
             f"{v['fn']}.frame {v['fn']}.cfn"),
@@ -278,10 +281,10 @@ ROW_SHAPES = {
 # Machine-dependent obligations need this target byte binding. An Ail/Core equality does not.
 BINDING = {"c-function-x86": "artifact"}
 IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*(\.[A-Za-z_][A-Za-z0-9_']*)*$")
-CORE_ELABORATION_KINDS = ("core_elaboration", "target_core_elaboration")
+ARTIFACT_STAGE_KINDS = ("core_elaboration", "target_core_elaboration", "compact_projection")
 KINDS = ("translation", "mapping", "edge", "refinement", "abi", "point", "elaboration", "decompilation",
          "decoding", "c2c_refines", "c2c_equivalent", "typing", "operand_types",
-         "nonvacuity", "nonvacuity_canonical", "nonvacuity_universal", "artifact", *CORE_ELABORATION_KINDS)
+         "nonvacuity", "nonvacuity_canonical", "nonvacuity_universal", "artifact", *ARTIFACT_STAGE_KINDS)
 FAMILY_VARS = {"c-function-x86": ("fn", "ail", "cname", "isa", "comorphism", "target_value", "listing"),
                "c-to-c": ("source_fn", "target_fn"), "c-additive": ("t1", "t2"),
                "decompiled-word-block": ("name", "bytes", "n", "inputs")}
@@ -333,6 +336,13 @@ def frontend_stages(family: str, vars_: dict) -> list[dict]:
              "obligation": prefix + "core_elaboration",
              "evidence": "Kernel equality for these exact Ail and Core values; not evidence for the preceding frontend."},
         ])
+    if family == "c-function-x86" and "compact" in vars_:
+        stages.append({"side": "source", "name": "Typed Ail → compact signed int", "trust": "verified",
+                       "input": "ail", "output": "compact", "model": COMPACT_MODEL,
+                       "input_decl": vars_["ail"], "output_decl": vars_["compact"],
+                       "origin_table": "compact_origins", "obligation": "compact_projection",
+                       "evidence": "Kernel projection equality, including preorder source origins. "
+                                   "Expression evaluation is related to C0; this is not a general Core simulation."})
     return stages
 
 
@@ -345,6 +355,11 @@ def model_bindings(family: str, vars_: dict) -> dict[str, str]:
     if family == "c-function-x86":
         listing = vars_["listing"]
         bound["decoded"] = f"{PROBE}.listingText {listing} {lean_str(listing)}"
+        if "compact" in vars_:
+            compact = vars_["compact"]
+            if not isinstance(compact, str) or not IDENT.fullmatch(compact):
+                raise ValueError("compact projection must name a Lean declaration")
+            bound.update(compact=f"{compact}.fn.encode", compact_origins=f"{compact}.originText")
         if block := vars_.get("block_model"):
             if not isinstance(block, str) or not IDENT.fullmatch(block):
                 raise ValueError("block model must name a Lean declaration")
@@ -697,6 +712,9 @@ def check_manifest(root: pathlib.Path, m: dict, blobs: dict[str, bytes]) -> None
     if dict(bindings) != model_bindings(family, vars_):
         raise ValueError(f"{family} needs exact text and model artifact bindings")
     expected_stages = frontend_stages(family, vars_)
+    compact_roles = {"compact", "compact_origins"}
+    if compact_roles.intersection(arts) != compact_roles.intersection(dict(bindings)):
+        raise ValueError("compact artifacts require exact tree and source-origin bindings")
     stage_outputs = {stage["output"] for stage in expected_stages}
     actual_stages = [stage for stage in m.get("stages", []) if stage["output"] in stage_outputs]
     obligations_by_id = {obligation["id"]: obligation for obligation in m["obligations"]}
@@ -981,7 +999,7 @@ STATUS_TEXT = {
 def obligation_status(db, ver, o) -> dict:
     st = raw_status(db, ver, o)
     binding = BINDING.get(ver["family"])
-    if st["status"] == "proved" and binding and o["kind"] not in (binding, *CORE_ELABORATION_KINDS):
+    if st["status"] == "proved" and binding and o["kind"] not in (binding, *ARTIFACT_STAGE_KINDS):
         b = db.execute("SELECT * FROM obligations WHERE version_id = ? AND kind = ?",
                        (ver["id"], binding)).fetchone()
         if b is None or raw_status(db, ver, b)["status"] != "proved":

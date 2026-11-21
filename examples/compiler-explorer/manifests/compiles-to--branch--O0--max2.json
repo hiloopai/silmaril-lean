@@ -6,6 +6,18 @@
       "sha256": "6ea5bc014a1233d4548c91a8610246f0260c0a45872450911e0e6289a0537c80",
       "size": 4024
     },
+    "compact": {
+      "media": "text/x-lisp",
+      "path": "examples/compiles-to/branch/compact.sexp",
+      "sha256": "e9cd2aaa1c3c2dc61113f9c91388f370c9cedfe81a2f3c5ec335845886383f19",
+      "size": 85
+    },
+    "compact_origins": {
+      "media": "text/x-lisp",
+      "path": "examples/compiles-to/branch/compact-origins.sexp",
+      "sha256": "e00179ce402595232c04cf0f0a01ab0342cdd819a9a61720dd22cfd7b7a583ad",
+      "size": 573
+    },
     "core": {
       "media": "text/x-lisp",
       "path": "examples/compiles-to/branch/core.sexp",
@@ -614,6 +626,14 @@
       [
         "decoded",
         "Silmaril.Project.CompilesTo.Probe.listingText CompilesToExamples.Branch.O0.max2Listing \"CompilesToExamples.Branch.O0.max2Listing\""
+      ],
+      [
+        "compact",
+        "CompilesToExamples.Explorer.Compact.max2.fn.encode"
+      ],
+      [
+        "compact_origins",
+        "CompilesToExamples.Explorer.Compact.max2.originText"
       ]
     ],
     "definitions": [
@@ -623,6 +643,9 @@
       "CompilesToExamples.Branch.cText",
       "CompilesToExamples.Branch.core",
       "CompilesToExamples.Branch.elab_eq",
+      "CompilesToExamples.Explorer.Compact.max2",
+      "Silmaril.Compiler.C.Compact.ExprProjection.eval_eq",
+      "Silmaril.Compiler.C.Compact.project",
       "Silmaril.Project.CompilesTo.FnData.Holds",
       "Silmaril.Project.CompilesTo.FnData.mapping",
       "Silmaril.Project.CompilesTo.FnData.source",
@@ -636,7 +659,8 @@
     "modules": [
       "CompilesToExamples.Explorer.Builds",
       "CompilesToExamples.Explorer.Code",
-      "Silmaril.Project.CompilesTo.Probe.Defs"
+      "Silmaril.Project.CompilesTo.Probe.Defs",
+      "CompilesToExamples.Explorer.Compact.Checks"
     ],
     "registry": {
       "source": "silmaril.compiles_to.branch.source",
@@ -646,6 +670,7 @@
       "ail": "CompilesToExamples.Branch.ail",
       "cname": "max2",
       "comorphism": "Silmaril.Project.CompilesTo.dwarf",
+      "compact": "CompilesToExamples.Explorer.Compact.max2",
       "fn": "CompilesToExamples.Branch.O0.max2",
       "isa": "Silmaril.X86.Open.isa",
       "listing": "CompilesToExamples.Branch.O0.max2Listing",
@@ -798,6 +823,12 @@
       "id": "nonvacuity/universal",
       "kind": "nonvacuity_universal",
       "statement": "CompilesToExamples.Branch.O0.max2.cfn.meaning.Inhabited"
+    },
+    {
+      "decl": "CompilesToExamples.Explorer.Compact.max2_project",
+      "id": "compact_projection",
+      "kind": "compact_projection",
+      "statement": "Silmaril.Compiler.C.Compact.project CompilesToExamples.Branch.ail = .ok CompilesToExamples.Explorer.Compact.max2"
     }
   ],
   "problem_form": "semantic",
@@ -827,6 +858,19 @@
       "obligation": "core_elaboration",
       "output": "core",
       "output_decl": "CompilesToExamples.Branch.core",
+      "side": "source",
+      "trust": "verified"
+    },
+    {
+      "evidence": "Kernel projection equality, including preorder source origins. Expression evaluation is related to C0; this is not a general Core simulation.",
+      "input": "ail",
+      "input_decl": "CompilesToExamples.Branch.ail",
+      "model": "Silmaril.Compiler.C.Compact.project",
+      "name": "Typed Ail → compact signed int",
+      "obligation": "compact_projection",
+      "origin_table": "compact_origins",
+      "output": "compact",
+      "output_decl": "CompilesToExamples.Explorer.Compact.max2",
       "side": "source",
       "trust": "verified"
     },
@@ -864,6 +908,10 @@
         {
           "label": "Core",
           "role": "core"
+        },
+        {
+          "label": "Compact C (signed int)",
+          "role": "compact"
         }
       ],
       "target": [

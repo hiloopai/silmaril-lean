@@ -95,7 +95,7 @@ function render() {
     const role = state.show[side];
     const exact = text[side];
     if (!state.pretty.has(role)) {
-      state.pretty.set(role, langOf(p.artifacts[role]?.media) === "sexp" ? prettySexp(exact) : null);
+      state.pretty.set(role, langOf(p.artifacts[role]?.media) === "sexp" ? prettySexp(exact, role === "compact" ? 64 : 88) : null);
     }
     const pretty = state.pretty.get(role);
     const showPretty = pretty !== null && !$(`${side}-exact`).checked;
@@ -383,6 +383,10 @@ function stageRow(p, stage) {
     el("span", null, ` ${stage.side}: ${stage.name}`));
   const trace = el("div", "muted", `${stage.input} → ${stage.output}; ${stage.evidence} `);
   appendLinks(trace, [stage.input, stage.output].map((role) => artifactDownload(p, role)));
+  if (stage.origin_table) {
+    const download = artifactDownload(p, stage.origin_table);
+    if (download) appendLinks(trace, [{ ...download, label: "Source origins by preorder node ID" }]);
+  }
   if (evidence) appendLinks(trace, evidence.links || []);
   row.append(trace);
   if (stage.output_decl) {

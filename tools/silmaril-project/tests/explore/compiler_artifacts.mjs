@@ -69,6 +69,21 @@ try {
     assert.ok(await page.locator("#source .line").count() > 100);
   }
   assert.equal(stageAddresses.size, 2);
+  await page.selectOption("#source-show", "compact");
+  const fixture = name => new URL(`../../../../examples/compiles-to/straight/${name}`, import.meta.url);
+  assert.match(await page.locator("#source").innerText(), /compact-c-i32-v1/);
+  assert.ok(await page.locator("#source .line").count() > 1);
+  assert.equal(await page.locator(".line.linked").count(), 0);
+  const originLink = page.locator("#source-stage").getByRole("link", { name: "Source origins by preorder node ID" });
+  assert.equal(await (await page.request.get(new URL(await originLink.getAttribute("href"), page.url()).href)).text(),
+    fs.readFileSync(fixture("compact-origins.sexp"), "utf8"));
+  await page.locator("#source-exact").press("Space");
+  const raw = await page.locator("#source .line").first().evaluate(line => {
+    const content = line.cloneNode(true);
+    content.firstChild.remove();
+    return content.textContent;
+  });
+  assert.equal(raw, fs.readFileSync(fixture("compact.sexp"), "utf8").trimEnd());
   await page.selectOption("#source-show", "source");
   assert.ok(await page.locator(".line.linked").count() > 0);
   console.log("ok   distinct Ail/Core stages, keyboard exact toggle, byte-identical downloads and mapping coordinates");
