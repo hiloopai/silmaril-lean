@@ -153,6 +153,33 @@ theorem Transition.poll_paired {target index result suffix} (poll : ParkedPoll s
       reached.host = other.host :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.pollPaired poll pending branch paired
 
+/-- Save the two actual activations when the reached waitable set is empty. -/
+theorem Transition.wait_block_paired (wait : ParkedWait start) (empty : start.store.wsetHasEvent wait.ws = false)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.waitEnter wait.thread false) (List.replicate 13 .tau) reached ∧
+      HostFrame.Related.Paired older wait.blocked reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.waitBlockPaired wait empty paired
+
+/-- Replay the actual permitted early/park choice, even when an event is ready. -/
+theorem Transition.wait_ready_paired (wait : ParkedWait start) (available : start.store.wsetHasEvent wait.ws = true)
+    (early : Bool) (allowed : Allowed profile (.earlyReturn .waitableSetWait) early)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.waitEnter wait.thread early) (ParkedWait.readyLabels early) reached ∧
+      HostFrame.Related.Paired older (if early then wait.early else wait.blocked) reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.waitReadyPaired
+    wait available early allowed paired
+
+/-- Resume the live blocked activation at a reached canonical resume request. -/
+theorem Transition.wait_resume_paired {initial : State grow sig} {wait : ParkedWait initial} (resume : WaitResume wait start)
+    (saved : start.cont? wait.thread = some wait.saved)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.waitResume wait.thread) (List.replicate 4 .tau) reached ∧
+      HostFrame.Related.Paired older resume.reached reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.waitResumePaired resume saved paired
+
 /-- Compare a wait at the actual reached selection, not its historical
 admission. Rejoin the saved Core caller or retain the consumed event on trap. -/
 theorem Transition.wait_take_paired {initial : State grow sig} {wait : ParkedWait initial} {target index result suffix}

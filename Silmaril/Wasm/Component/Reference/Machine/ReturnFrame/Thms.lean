@@ -116,6 +116,31 @@ theorem Paired.retarget_core_frame {left right : Config E Host} (paired : Paired
         { right with host, ctl := ⟨thread, next, otherFrames⟩ :: otherRest } :=
   Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.retargetCoreFrame paired focused next host
 
+/-- Move the current activation and its shared Core caller into the blocked slot. -/
+theorem Paired.park_core {left right : Config E Host} (paired : Paired changes left right)
+    {thread core coreNext frames rest} (focused : left.ctl = ⟨some thread, .core core coreNext, frames⟩ :: rest)
+    (saved : Focus E Host) :
+    ∃ otherFrames otherRest, right.ctl = ⟨some thread, .core core coreNext, otherFrames⟩ :: otherRest ∧
+      Paired changes
+        { (left.setCont thread (some ⟨some thread, saved, .core core coreNext :: frames⟩)) with ctl := rest }
+        { (right.setCont thread (some ⟨some thread, saved, .core core coreNext :: otherFrames⟩)) with ctl := otherRest } :=
+  Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.parkCore paired focused saved
+
+/-- Restore the actual saved activation, preserving both sets of older frames. -/
+theorem Paired.resume_core {left right : Config E Host} (paired : Paired changes left right)
+    {thread focus frames rest target saved core coreNext savedFrames}
+    (focused : left.ctl = ⟨thread, focus, frames⟩ :: rest)
+    (found : left.cont? target = some ⟨some target, saved, .core core coreNext :: savedFrames⟩)
+    (ongoing resumed : Focus E Host) :
+    ∃ otherFrames otherRest otherSaved, right.ctl = ⟨thread, focus, otherFrames⟩ :: otherRest ∧
+      right.cont? target = some ⟨some target, saved, .core core coreNext :: otherSaved⟩ ∧
+      Paired changes
+        { (left.setCont target none) with ctl :=
+          ⟨some target, resumed, .core core coreNext :: savedFrames⟩ :: ⟨thread, ongoing, frames⟩ :: rest }
+        { (right.setCont target none) with ctl :=
+          ⟨some target, resumed, .core core coreNext :: otherSaved⟩ :: ⟨thread, ongoing, otherFrames⟩ :: otherRest } :=
+  Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.resumeCore paired focused found ongoing resumed
+
 /-- Save the same caller segment on both sides (including a Core caller).
 Active and blocked frame substitutions are unchanged. -/
 theorem Paired.push_shared {left right : Config E Host} (paired : Paired changes left right)

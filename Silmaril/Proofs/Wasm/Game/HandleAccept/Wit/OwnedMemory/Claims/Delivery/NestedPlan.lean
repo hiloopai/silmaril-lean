@@ -68,6 +68,9 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
   | segment path => exact path.steps
   | commit resolve => exact (Transition.commit (impl := base) resolve).steps
   | poll poll pending branch => exact (Transition.poll (impl := base) poll pending branch).steps
+  | waitBlock wait empty => exact (Transition.waitBlock (impl := base) wait empty).steps
+  | waitReady wait available early allowed => exact (Transition.waitReady (impl := base) wait available early allowed).steps
+  | waitResume resume saved => exact (Transition.waitResume (impl := base) resume saved).steps
   | waitTake delivery focused pending branch => exact (Transition.waitTake (impl := base) delivery focused pending branch).steps
   | cancelReturned cancel pending available => exact (Transition.cancelReturned (impl := base) cancel pending available).steps
   | sequence _ _ front back => exact append front back
@@ -102,6 +105,18 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
   | poll poll pending branch =>
     obtain ⟨_, replay, aligned, _⟩ :=
       Transition.poll_paired (ready := ready) (impl := LiveDispatch.host bindings base) poll pending branch paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | waitBlock wait empty =>
+    obtain ⟨_, replay, aligned⟩ :=
+      Transition.wait_block_paired (profile := profile) (ready := ready) (impl := LiveDispatch.host bindings base) wait empty paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | waitReady wait available early allowed =>
+    obtain ⟨_, replay, aligned⟩ :=
+      Transition.wait_ready_paired (ready := ready) (impl := LiveDispatch.host bindings base) wait available early allowed paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | waitResume resume saved =>
+    obtain ⟨_, replay, aligned⟩ :=
+      Transition.wait_resume_paired (profile := profile) (ready := ready) (impl := LiveDispatch.host bindings base) resume saved paired
     exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | waitTake delivery focused pending branch =>
     obtain ⟨_, replay, aligned, _⟩ :=

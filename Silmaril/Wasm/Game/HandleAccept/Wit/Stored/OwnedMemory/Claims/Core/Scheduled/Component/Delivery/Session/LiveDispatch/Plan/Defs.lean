@@ -31,6 +31,15 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
       (branch : BufferBranch start.store poll.memory (flatNat poll.out) result suffix) :
       NestedPlan bindings profile ready base start (pollLabels poll ++ suffix)
         (result.finish (pollReply poll index) { start with store := StepDefs.lockdownSt poll.delivered, ctl := [] })
+  | waitBlock {start} (wait : ComponentCall.Delivery.ParkedWait start) (empty : start.store.wsetHasEvent wait.ws = false) :
+      NestedPlan bindings profile ready base start (List.replicate 13 .tau) wait.blocked
+  | waitReady {start} (wait : ComponentCall.Delivery.ParkedWait start) (available : start.store.wsetHasEvent wait.ws = true)
+      (early : Bool) (allowed : Allowed profile (.earlyReturn .waitableSetWait) early) :
+      NestedPlan bindings profile ready base start (ComponentCall.Delivery.ParkedWait.readyLabels early)
+        (if early then wait.early else wait.blocked)
+  | waitResume {initial start} {wait : ComponentCall.Delivery.ParkedWait initial}
+      (resume : ComponentCall.Delivery.WaitResume wait start) (saved : start.cont? wait.thread = some wait.saved) :
+      NestedPlan bindings profile ready base start (List.replicate 4 .tau) resume.reached
   | waitTake {initial start target index result suffix} {wait : ComponentCall.Delivery.ParkedWait initial}
       (delivery : ComponentCall.Delivery.WaitDelivery wait start profile target)
       (focused : start.ctl = ⟨some wait.thread, .prog wait.takeEvent, .core wait.core wait.next :: wait.segments⟩ :: start.ctl.drop 1)

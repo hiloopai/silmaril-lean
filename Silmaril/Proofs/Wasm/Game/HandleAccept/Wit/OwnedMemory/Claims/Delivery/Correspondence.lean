@@ -4,6 +4,7 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
 
 public section
 
@@ -338,6 +339,75 @@ private def waitAtFrames {initial : State grow sig} (wait : ParkedWait initial)
     (segments : List (Seg (core3 grow) (HostState sig))) :
     ParkedWait { initial with ctl := ⟨some wait.thread, .core wait.core wait.next, segments⟩ :: wait.rest } :=
   { wait with segments, focused := rfl }
+
+private def replayWait (wait : ParkedWait start) {other : State grow sig}
+    (store : start.store = other.store) {segments rest}
+    (focused : other.ctl = ⟨some wait.thread, .core wait.core wait.next, segments⟩ :: rest) : ParkedWait other :=
+  { wait with
+    segments, rest, focused
+    callout := by rw [← store]; exact wait.callout
+    liveThread := by rw [← store]; exact wait.liveThread
+    liveTask := by rw [← store]; exact wait.liveTask
+    liveInst := by rw [← store]; exact wait.liveInst }
+
+private theorem waitParkPaired (wait : ParkedWait start) {other : State grow sig}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} (paired : HostFrame.Related.Paired older start other) :
+    ∃ replay : ParkedWait other, replay.ws = wait.ws ∧ replay.thread = wait.thread ∧
+      HostFrame.Related.Paired older wait.blocked replay.blocked := by
+  have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+  obtain ⟨_, _, focused, framed⟩ := aligned.park_core wait.focused wait.saved.focus
+  let replay := replayWait wait paired.data.1 focused
+  refine ⟨replay, rfl, rfl, ?_⟩
+  have result := framed.set_store wait.blocked.store
+  simpa only [ParkedWait.blocked, ParkedWait.saved, ParkedWait.takeEvent, HostFrame.Related.Paired, HostFrame.replace,
+    replay, replayWait, Config.setCont, ← paired.data.1] using result
+
+theorem waitBlockPaired (wait : ParkedWait start) (empty : start.store.wsetHasEvent wait.ws = false)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.waitEnter wait.thread false) (List.replicate 13 .tau) reached ∧
+      HostFrame.Related.Paired older wait.blocked reached := by
+  obtain ⟨replay, waitable, caller, paired'⟩ := waitParkPaired wait paired
+  have empty' : other.store.wsetHasEvent replay.ws = false := by rw [waitable, ← paired.data.1]; exact empty
+  exact ⟨replay.blocked, caller ▸ Transition.waitBlock replay empty', paired'⟩
+
+theorem waitReadyPaired (wait : ParkedWait start) (available : start.store.wsetHasEvent wait.ws = true)
+    (early : Bool) (allowed : Allowed profile (.earlyReturn .waitableSetWait) early)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.waitEnter wait.thread early) (ParkedWait.readyLabels early) reached ∧
+      HostFrame.Related.Paired older (if early then wait.early else wait.blocked) reached := by
+  cases early with
+  | false =>
+    obtain ⟨replay, waitable, caller, paired'⟩ := waitParkPaired wait paired
+    have available' : other.store.wsetHasEvent replay.ws = true := by rw [waitable, ← paired.data.1]; exact available
+    exact ⟨replay.blocked, caller ▸ Transition.waitReady replay available' false allowed, paired'⟩
+  | true =>
+    have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+    obtain ⟨_, _, focused, framed⟩ := aligned.push_shared wait.focused (.prog wait.takeEvent) (.core wait.core wait.next)
+    let replay := replayWait wait paired.data.1 focused
+    refine ⟨replay.early, .waitReady replay (paired.data.1 ▸ available) true allowed, ?_⟩
+    change HostFrame.Related.Paired older wait.early replay.early
+    have result := framed.set_store wait.early.store
+    simpa only [ParkedWait.early, ParkedWait.takeEvent, HostFrame.Related.Paired, HostFrame.replace,
+      replay, replayWait, ← paired.data.1] using result
+
+theorem waitResumePaired {initial : State grow sig} {wait : ParkedWait initial} (resume : WaitResume wait start)
+    (saved : start.cont? wait.thread = some wait.saved)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.waitResume wait.thread) (List.replicate 4 .tau) reached ∧
+      HostFrame.Related.Paired older resume.reached reached := by
+  have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+  obtain ⟨segments, rest, savedFrames, focused, otherSaved, framed⟩ :=
+    aligned.resume_core resume.focused (show start.cont? wait.thread = some ⟨some wait.thread,
+       wait.saved.focus, .core wait.core wait.next :: wait.segments⟩ from saved) (.prog resume.resumeAfter) (.prog wait.takeEvent)
+  let replay : WaitResume (waitAtFrames wait savedFrames) other :=
+    { resume with segments, rest, focused, waiting := paired.data.1 ▸ resume.waiting }
+  refine ⟨replay.reached, .waitResume replay otherSaved, ?_⟩
+  have result := framed.set_store resume.reached.store
+  simpa only [WaitResume.reached, ParkedWait.takeEvent, HostFrame.Related.Paired, HostFrame.replace, replay, waitAtFrames,
+    Config.setCont, ← paired.data.1] using result
 
 theorem waitTakePaired {initial : State grow sig} {wait : ParkedWait initial} {target index result suffix}
     (delivery : WaitDelivery wait start profile target)

@@ -1366,10 +1366,13 @@ locks down the delivered store without resuming the caller. On success it
 writes the event words and rejoins Core with the older frames still paired.
 At a wait's actual selection, the same comparison consumes the reached
 event and either rejoins the saved Core caller or keeps the delivered store
-on a trap. Cancel of an already returned event also uses the reached record
-and consumes the event without invoking a cancel callback. These classified
-finite edges do not compare wait parking and resumption or open cancellation
-requests, and do not imply scheduler progress.
+on a trap. Wait entry compares empty-set parks and both permitted branches
+when an event is ready. A park saves each side's actual Core caller and older
+frames; resumption uses the live blocked slot at the reached `Thread.resume`
+request. The slot may never be resumed, and the eventual selection uses its
+own live evidence. Cancel of an already returned event uses the reached record
+and consumes it without invoking a cancel callback. These classified finite
+edges do not cover open cancellation requests or imply scheduler progress.
 
 ## Checking
 
