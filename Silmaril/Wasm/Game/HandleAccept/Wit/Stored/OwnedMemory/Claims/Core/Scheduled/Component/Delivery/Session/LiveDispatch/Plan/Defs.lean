@@ -165,38 +165,47 @@ def ListReturnStop (destination : RecordDestination) (inst : InstId) (entries : 
   ElementStop destination inst entries area.size ptr
     (fun _ => Stored.Endpoints.ListLower.publish (destination.context inst) destination.width ptr entries.length output >>= finish) stop
 
-def mapValueSuffix (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
+def mapFieldPlacement (cx : LiftLowerContext (core3 grow))
+    (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)
+    (next : AddrType → Session grow sig (Ret (core3 grow))) : Session grow sig (Ret (core3 grow)) :=
+  match mode with
+  | .value => ptrType cx >>= next
+  | .memoryMap width _ _ => next width
+
+def mapValueSuffix (destination : RecordDestination) (inst : InstId)
+    (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)
     (keyField value : Stored.Endpoints.RecordLower.Field) (rest : List Stored.Endpoints.RecordLower.Field) (stride address : Nat)
     (finish : Unit → Session grow sig (Ret (core3 grow))) : Session grow sig (Ret (core3 grow)) :=
   open Stored.Endpoints.RecordLower ABI in
   let keyArea := layout destination.width keyField.type
   let keyPtr := alignTo address keyArea.alignment
-  let valPtr := alignTo (keyPtr + keyArea.size) (layout destination.width value.type).alignment
   let cx := destination.context inst
-  CanonicalTree.field Limits.spec Quirks.none cx destination.width value (.memory valPtr) >>= fun _ =>
-    CanonicalTree.elements Limits.spec Quirks.none cx destination.width rest (.memoryMap destination.width key element)
-      stride (address + stride) >>= finish
+  mapFieldPlacement cx mode fun reached =>
+    let valPtr := alignTo (keyPtr + keyArea.size) (layout reached value.type).alignment
+    CanonicalTree.field Limits.spec Quirks.none cx destination.width value (.memory valPtr) >>= fun _ =>
+      CanonicalTree.elements Limits.spec Quirks.none cx destination.width rest mode stride (address + stride) >>= finish
 
-/-- A memory-map value guard stops after its key has run, not at the
-beginning of that entry. The suffix uses allocation-time placement. -/
+/-- A map value guard stops after its key has run. Flat maps still have the
+reached value-width read ahead of them; memory maps use allocation-time placement. -/
 def MapValueStop (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
+    (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)
     (entries : List Stored.Endpoints.RecordLower.Field) (stride ptr : Nat)
     (finish : Unit → Session grow sig (Ret (core3 grow))) (stop : Session grow sig (Ret (core3 grow))) : Prop :=
   ∃ leading rest keyField value,
     entries = leading ++ .aggregate (.record (ABI.mapEntryFields key element)) [keyField, value] :: rest ∧
-    stop = mapValueSuffix destination inst key element keyField value rest stride (ptr + leading.length * stride) finish
+    stop = mapValueSuffix destination inst mode keyField value rest stride (ptr + leading.length * stride) finish
 
-/-- A reached memory map can stop before entries at fresh preparation, or
+/-- A reached map can stop before entries at fresh preparation, or
 after the key of the value currently being visited. -/
 def MapReturnStop (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : Stored.TypeOf)
-    (entries : List Stored.Endpoints.RecordLower.Field) (outputPtr ptr : Nat)
-    (finish : Unit → Session grow sig (Ret (core3 grow))) (stop : Session grow sig (Ret (core3 grow))) : Prop :=
+    (entries : List Stored.Endpoints.RecordLower.Field) (output : Stored.Lower.Output) (ptr : Nat)
+    (finish : output.Result → Session grow sig (Ret (core3 grow))) (stop : Session grow sig (Ret (core3 grow))) : Prop :=
   open Stored.Endpoints.RecordLower ABI in
   let area := layout destination.width (.record (mapEntryFields key element))
-  let mode := CanonicalTree.EntryMode.memoryMap destination.width key element
-  stop = (PayloadPrefix.canonicalCollectionTail destination inst entries area (.memory outputPtr) ptr mode >>= finish) ∨
-  MapValueStop destination inst key element entries area.size ptr
-    (fun _ => Stored.Endpoints.ListLower.publish (destination.context inst) destination.width ptr entries.length (.memory outputPtr) >>= finish) stop
+  let mode := CanonicalTree.EntryMode.forOutput destination.width (.map key element) output
+  stop = (PayloadPrefix.canonicalCollectionTail destination inst entries area output ptr mode >>= finish) ∨
+  MapValueStop destination inst key element mode entries area.size ptr
+    (fun _ => Stored.Endpoints.ListLower.publish (destination.context inst) destination.width ptr entries.length output >>= finish) stop
 
 /-- Complete the actual public replies from a reached allocator return.
 Only a returned descriptor rejoins both machines. A typed refusal records

@@ -2145,7 +2145,7 @@ private theorem localDataAt {reference : Call (core3 grow) → Session grow sig 
   exact localDataLeafFrameBetween destination inst type data payload index (.memory pointer) origin left right growth
     (same ▸ placed.1) (same ▸ placed.2) same
 
-theorem localMapKey {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+theorem localMapKeyThen {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
     (keyData : LocalDataType (.prim key.toPrimitive)) (keyPayload : Payload (.prim key.toPrimitive)) (valField : Field)
     (origin : CStore (core3 grow)) (base bytes count index : Nat)
@@ -2157,7 +2157,7 @@ theorem localMapKey {reference : Call (core3 grow) → Session grow sig (Ret (co
     (growth : Core3.Grows origin.core right.store.core) (same : left.store = right.store)
     (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
     (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
-    (canonNext : Unit → Session grow sig (Ret (core3 grow))) :
+    (refFollowing : Unit → Session grow sig (Ret (core3 grow))) :
     let cx := destination.context inst
     let type : TypeOf := .record (mapEntryFields key element)
     let addr := base + index * (layout destination.width type).size
@@ -2167,22 +2167,18 @@ theorem localMapKey {reference : Call (core3 grow) → Session grow sig (Ret (co
     let keyField := Field.data (.prim key.toPrimitive) keyPayload
     left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
       (.aggregate type [keyField, valField]) issueIndex (.memory addr) >>= checkNext) →
-    right.ctl = canon.control (Prog.bind (CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr))
-      (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)) >>= canonNext) →
+    right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr) >>= refFollowing) →
     LocalCutKeepingBetween profile scheduledReady scheduledDispatch reference
       (fun store => Core3.Grows origin.core store.core) left right check canon
       (fun (_ : Unit) => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr) >>=
         fun result => checkNext (result.mapError (.nested issueIndex)))
-      (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr) >>= canonNext) := by
+      refFollowing := by
   intro cx type addr keyArea keyPtr valPtr keyField checkAt canonAt
   let area := layout destination.width type
   let following := fun verdict : Except RecordLower.Issue Unit => (match verdict with
     | .error issue => pure (.error issue)
     | .ok () => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr))
       >>= fun result => checkNext (result.mapError (.nested issueIndex))
-  let refVal : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)
-  let refKey : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr)
-  let refFollowing := fun (_ : Unit) => refVal >>= canonNext
   let keyBody : Session grow sig (Except RecordLower.Issue Unit) :=
     Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width keyField 0 (.memory keyPtr)
   let entered := { left with ctl := check.control (keyBody >>= following) }
@@ -2230,11 +2226,7 @@ theorem localMapKey {reference : Call (core3 grow) → Session grow sig (Ret (co
   obtain ⟨typed, keyPlaced, _⟩ := mapEntryPlacement destination inst key element growth width sized aligned bounds entry
   have first := localDataAt (reference := reference) (profile := profile) (scheduledReady := scheduledReady)
     (scheduledDispatch := scheduledDispatch) destination inst (.prim key.toPrimitive) keyData keyPayload 0 keyPtr origin entered
-    right growth ⟨typed, keyPlaced⟩ same check canon thread following refFollowing rfl
-    (by
-      change right.ctl = canon.control ((refKey.bind (fun _ => refVal)).bind canonNext) at canonAt
-      rw [Prog.bind_assoc] at canonAt
-      exact canonAt)
+    right growth ⟨typed, keyPlaced⟩ same check canon thread following refFollowing rfl canonAt
   apply prependLocalCut guard rfl
   exact first
 
@@ -2264,9 +2256,14 @@ private theorem localMapEntry {reference : Call (core3 grow) → Session grow si
         CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr)
         CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)) := by
   intro cx type addr keyArea keyPtr valPtr keyField valField same check canon thread checkNext canonNext checkAt canonAt
-  have first := localMapKey (profile := profile) (scheduledReady := scheduledReady) (scheduledDispatch := scheduledDispatch)
+  have first := localMapKeyThen (profile := profile) (scheduledReady := scheduledReady) (scheduledDispatch := scheduledDispatch)
     (reference := reference) destination inst key element keyData keyPayload valField origin base bytes count index width sized aligned bounds
-    entry index left right growth same check canon thread checkNext canonNext checkAt canonAt
+    entry index left right growth same check canon thread checkNext
+    (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr) >>= canonNext)
+    checkAt (by
+      let keyBody : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr)
+      let valueBody : Session grow sig Unit := CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)
+      exact canonAt.trans (congrArg canon.control (Prog.bind_assoc keyBody (fun _ => valueBody) canonNext)))
   apply continueLocal first
   intro store value grown
   cases value

@@ -529,7 +529,7 @@ theorem local_data_collection_tail
 under either dispatcher, stopping at the value's effect program. The value
 may allocate or use nominal claims; the key proof neither runs it nor
 requires a comparison hypothesis about it. -/
-theorem local_map_key_between {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+theorem local_map_key_then_between {reference : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     (destination : RecordDestination) (inst : InstId) (key : WIT.KeyType) (element : TypeOf)
     (keyData : LocalDataType (.prim key.toPrimitive)) (keyPayload : Stored.Payload (.prim key.toPrimitive)) (valField : Field)
     (origin : CStore (core3 grow)) (base bytes count index : Nat)
@@ -541,7 +541,7 @@ theorem local_map_key_between {reference : Call (core3 grow) → Session grow si
     (growth : Core3.Grows origin.core right.store.core) (same : left.store = right.store)
     (check canon : Cursor (E := core3 grow) (HostState sig)) (thread : check.thread = canon.thread)
     (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
-    (canonNext : Unit → Session grow sig (Ret (core3 grow))) :
+    (refFollowing : Unit → Session grow sig (Ret (core3 grow))) :
     let cx := destination.context inst
     let type : TypeOf := .record (mapEntryFields key element)
     let addr := base + index * (layout destination.width type).size
@@ -551,16 +551,15 @@ theorem local_map_key_between {reference : Call (core3 grow) → Session grow si
     let keyField := Field.data (.prim key.toPrimitive) keyPayload
     left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
       (.aggregate type [keyField, valField]) issueIndex (.memory addr) >>= checkNext) →
-    right.ctl = canon.control (Prog.bind (CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr))
-      (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr)) >>= canonNext) →
+    right.ctl = canon.control (CanonicalTree.field Limits.spec Quirks.none cx destination.width keyField (.memory keyPtr) >>= refFollowing) →
     LocalCutKeepingBetween profile ready dispatch reference
       (fun store => Core3.Grows origin.core store.core) left right check canon
       (fun (_ : Unit) => Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width valField 1 (.memory valPtr) >>=
         fun result => checkNext (result.mapError (.nested issueIndex)))
-      (fun _ => CanonicalTree.field Limits.spec Quirks.none cx destination.width valField (.memory valPtr) >>= canonNext) :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localMapKey
+      refFollowing :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PayloadPrefix.localMapKeyThen
     destination inst key element keyData keyPayload valField origin base bytes count index width sized aligned bounds entry
-    issueIndex left right growth same check canon thread checkNext canonNext
+    issueIndex left right growth same check canon thread checkNext refFollowing
 
 theorem local_data_map_objects {key : WIT.KeyType} {element : TypeOf} {entries : List Field}
     (data : LocalDataType element)

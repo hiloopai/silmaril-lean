@@ -251,11 +251,12 @@ theorem AllocatorMark.local_map_replies {outputPointer : FlatValue} (site : Payl
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.localMapReplies
     site linked key element entries keyData valueData field pointer
 
-/-- Traverse the actual memory-map lowering after a reached allocator return.
+/-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys
-remain written if a later value refuses or traps. Only a completed map
-publishes the descriptor and runs the two caller replies. -/
-theorem AllocatorMark.nominal_map_replies {outputPointer : FlatValue} (site : PayloadRoot.Site grow sig (.memory outputPointer))
+remain written if a later value refuses or traps. Flat entries read the
+reached width at their own field boundaries; memory entries use the captured
+width. Only a completed map publishes the descriptor and rejoins both callers. -/
+theorem AllocatorMark.nominal_map_replies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (key : WIT.KeyType) (element : Stored.TypeOf) (entries : List Field)
     (keyData : PayloadPrefix.LocalDataType (.prim key.toPrimitive)) (nominal : NominalElement element)
     (field : site.field = .dynamic (.map key element) (.record (mapEntryFields key element)) entries) (pointer : Nat)
@@ -265,8 +266,8 @@ theorem AllocatorMark.nominal_map_replies {outputPointer : FlatValue} (site : Pa
     {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)} {checkTrace canonTrace} :
     let entryType : Stored.TypeOf := .record (mapEntryFields key element)
     let area := layout site.destination.width entryType
-    let mode := CanonicalTree.EntryMode.memoryMap site.destination.width key element
-    let output := (GiveEffectRoute.memory outputPointer).output
+    let output := route.output
+    let mode := CanonicalTree.EntryMode.forOutput site.destination.width (.map key element) output
     let first := PayloadPrefix.checkedCollectionResume site.destination site.inst entries area 0 output site.reply
     let second := PayloadPrefix.canonicalCollectionResume site.destination site.inst entries area output site.referenceReply mode
     AllocatorMark profile ready base bindings older
@@ -277,7 +278,7 @@ theorem AllocatorMark.nominal_map_replies {outputPointer : FlatValue} (site : Pa
     checked.ctl = { check with frames := .prog first :: check.frames }.control (.pure (.nat pointer)) →
     Core3.Grows site.checked.store.core checked.store.core →
     CollectionSegmentReplies profile ready base bindings older site checked canonical
-      (MapReturnStop site.destination site.inst key element entries (flatNat outputPointer) pointer site.referenceReply) :=
+      (MapReturnStop site.destination site.inst key element entries output pointer site.referenceReply) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.nominalMapReplies
     site linked key element entries keyData nominal field pointer admitted
 
