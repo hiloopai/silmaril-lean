@@ -375,6 +375,69 @@ private theorem memoryCollectionProgram (context : LiftLowerContext (core3 grow)
   simp only [storeListWith, Bool.false_eq_true, ite_false, storeListIntoRangeWith, Prog.bind_eq, Prog.bind_assoc,
     Prog.pure_eq, Prog.pure_bind']
 
+private def mapEntryValue (entry : ArgumentField × ArgumentField) : Value.Val := .record [entry.1.value, entry.2.value]
+
+private def mapEntryLayout (key : WIT.KeyType) (valueType : Stored.TypeOf) (width : AddrType) : ABI.Layout :=
+  ABI.layout width (.record (ABI.mapEntryFields key valueType))
+
+private def memoryMapEntry (context : LiftLowerContext (core3 grow)) (key : WIT.KeyType) (valueType : Stored.TypeOf)
+    (width : AddrType) (entry : Value.Val) (address : Nat) : Session grow sig Unit :=
+  match entry with
+  | .record [keyValue, value] => do
+    let keyLayout := ABI.primitiveLayout width key.toPrimitive
+    let keySlot := ABI.alignTo address keyLayout.alignment
+    storePrim .spec .none context key.toPrimitive keyValue keySlot
+    store .spec .none context value valueType (ABI.alignTo (keySlot + keyLayout.size) (ABI.layout width valueType).alignment)
+  | _ => storeMismatch
+
+private theorem flatMapProgram (context : LiftLowerContext (core3 grow)) (width : AddrType) (key : WIT.KeyType)
+    (valueType : Stored.TypeOf) (values : List Value.Val) (next : List FlatValue → Session grow sig (Ret (core3 grow))) :
+    (lowerFlatAt .spec .none context width (.list values) (.map key valueType) >>= next) = (do
+      let liveWidth ← ptrType context
+      let ptr ← allocateListRange context (mapEntryLayout key valueType liveWidth) values.length
+      storeListIntoValidRangeWith (mapEntryLayout key valueType liveWidth).size (fun value address =>
+        store .spec .none context value (.record (ABI.mapEntryFields key valueType)) address) values ptr
+      next [ptrFlat width ptr, ptrFlat width values.length]) := by
+  rw [lowerFlatAt]
+  simp only [storeListIntoRange, storeListIntoRangeWith, Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind', mapEntryLayout]
+
+private theorem memoryMapProgram (context : LiftLowerContext (core3 grow)) (address : Nat) (key : WIT.KeyType)
+    (valueType : Stored.TypeOf) (values : List Value.Val) (next : Unit → Session grow sig (Ret (core3 grow))) :
+    (store .spec .none context (.list values) (.map key valueType) address >>= next) = (do
+      let liveWidth ← ptrType context
+      let ptr ← allocateListRange context (mapEntryLayout key valueType liveWidth) values.length
+      storeListIntoValidRangeWith (mapEntryLayout key valueType liveWidth).size
+        (memoryMapEntry context key valueType liveWidth) values ptr
+      storeListDescriptor context ptr values.length address >>= next) := by
+  rw [store.eq_def]
+  dsimp only
+  simp only [storeListWith, Bool.false_eq_true, ite_false, storeListIntoRangeWith, Prog.bind_eq, Prog.bind_assoc,
+    Prog.pure_eq, Prog.pure_bind', mapEntryLayout]
+  rfl
+
+private theorem indexedElements {Entry : Type} (valueOf : Entry → Value.Val)
+    (storeElement : Value.Val → Nat → Session grow sig Unit) (stride base index : Nat)
+    (members : List Entry) (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (next : Unit → Session grow sig (Ret (core3 grow)))
+    (focused : start.ctl = cursor.control (Prog.forM ((members.map valueOf).zipIdx index)
+      (fun item => storeElement item.1 (base + item.2 * stride)) >>= next))
+    (child : ∀ entry ∈ members, ∀ (address : Nat) (last : State grow sig)
+      (reached : Cursor (E := core3 grow) (HostState sig)) (tail : Unit → Session grow sig (Ret (core3 grow))),
+      last.ctl = reached.control (storeElement (valueOf entry) address >>= tail) →
+      StringPlanPair profile ready bindings callees last tail) :
+    StringPlanPair profile ready bindings callees start next := by
+  induction members generalizing index start cursor with
+  | nil => exact ⟨[], start, .refl _, .refl _, .complete cursor () focused⟩
+  | cons entry rest ih =>
+    let tail := fun _ : Unit => Prog.forM ((rest.map valueOf).zipIdx (index + 1))
+      (fun item => storeElement item.1 (base + item.2 * stride)) >>= next
+    have atHead : start.ctl = cursor.control (storeElement (valueOf entry) (base + index * stride) >>= tail) := by
+      simp only [List.map_cons, List.zipIdx_cons, Prog.forM, Prog.bind_eq, Prog.bind_assoc, tail] at focused ⊢
+      exact focused
+    exact continuePair (child entry (List.mem_cons_self ..) _ start cursor tail atHead)
+      (fun last reached _ nextAt => ih (index + 1) last reached nextAt
+        (fun member present => child member (List.mem_cons_of_mem _ present)))
+
 private theorem identicalFlatSlots (types : List CoreType) (words : List FlatValue) :
     (coerceLowerSlots types types words : Session grow sig (List FlatValue × List CoreType)) =
       pure (words, types.drop words.length) := by
@@ -441,6 +504,20 @@ private theorem recordMembersSize (members : List (String × ArgumentField)) :
     obtain ⟨name, field⟩ := member
     simp only [List.map_cons, List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
     omega
+
+private theorem mapEntrySize {members : List (ArgumentField × ArgumentField)} {entry : ArgumentField × ArgumentField}
+    (present : entry ∈ members) : sizeOf [entry.1, entry.2] ≤ sizeOf members := by
+  induction members with
+  | nil => simp at present
+  | cons head tail ih =>
+    rcases List.mem_cons.mp present with rfl | rest
+    · obtain ⟨key, value⟩ := entry
+      have positive : 0 < sizeOf tail := by cases tail <;> simp
+      simp only [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec, List.nil.sizeOf_spec]
+      omega
+    · have smaller := ih rest
+      simp only [List.cons.sizeOf_spec] at smaller ⊢
+      omega
 
 mutual
 
@@ -554,8 +631,12 @@ private theorem lowerArgument (context : LiftLowerContext (core3 grow)) (width :
         exact focused.trans (congrArg cursor.control (flatCollectionProgram context width element.type
           (members.map ArgumentField.value) next))
       · intro liveWidth ptr last reached tail atElements
-        exact collectionSequence context liveWidth element.type (ABI.layout liveWidth element.type).size ptr 0
-          tail choose members (fun child present => ⟨typed child present, schema child present⟩) last reached atElements
+        apply indexedElements ArgumentField.value (fun value slot => store .spec .none context value element.type slot)
+          (ABI.layout liveWidth element.type).size ptr 0 members last reached tail atElements
+        intro child present slot last cursor after atChild
+        apply lowerArgument context liveWidth (.memory slot) after choose child (typed child present) last cursor
+        rw [ArgumentField.lower, schema child present]
+        exact atChild
     | memory address =>
       change Unit → Session grow sig (Ret (core3 grow)) at next
       refine collection context width (.memory address) (fun liveWidth => ABI.layout liveWidth element.type)
@@ -565,12 +646,79 @@ private theorem lowerArgument (context : LiftLowerContext (core3 grow)) (width :
         exact focused.trans (congrArg cursor.control (memoryCollectionProgram context address element.type
           (members.map ArgumentField.value) next))
       · intro liveWidth ptr last reached tail atElements
-        exact collectionSequence context liveWidth element.type (ABI.layout liveWidth element.type).size ptr 0
-          tail choose members (fun child present => ⟨typed child present, schema child present⟩) last reached atElements
+        apply indexedElements ArgumentField.value (fun value slot => store .spec .none context value element.type slot)
+          (ABI.layout liveWidth element.type).size ptr 0 members last reached tail atElements
+        intro child present slot last cursor after atChild
+        apply lowerArgument context liveWidth (.memory slot) after choose child (typed child present) last cursor
+        rw [ArgumentField.lower, schema child present]
+        exact atChild
+  | @map key keyShape valueShape members _ _ keySchema keysTyped valuesTyped keysMatch valuesMatch =>
+    cases output with
+    | flat =>
+      change List FlatValue → Session grow sig (Ret (core3 grow)) at next
+      let storeMember := fun value address => store (E := core3 grow) (σ := HostState sig) .spec .none context value
+        (.record (ABI.mapEntryFields key valueShape.type)) address
+      refine collection context width .flat (mapEntryLayout key valueShape.type) (fun _ => storeMember)
+        (members.map mapEntryValue) next choose start cursor ?_ ?_
+      · rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type] at focused
+        exact focused.trans (congrArg cursor.control (flatMapProgram context width key valueShape.type
+          (members.map mapEntryValue) next))
+      · intro liveWidth ptr last reached tail atElements
+        apply indexedElements mapEntryValue storeMember (mapEntryLayout key valueShape.type liveWidth).size ptr 0
+          members last reached tail atElements
+        intro entry present address last reached after atEntry
+        have entryTyped : ∀ field ∈ [entry.1, entry.2], ArgumentField.Valid field := by
+          intro field contained
+          simp only [List.mem_cons, List.not_mem_nil, or_false] at contained
+          rcases contained with rfl | rfl
+          · exact keysTyped entry present
+          · exact valuesTyped entry present
+        have fieldsAt : storeMember (mapEntryValue entry) address = storeTuple .spec .none context
+            [entry.1.value, entry.2.value] [.prim key.toPrimitive, valueShape.type] address := by
+          dsimp only [storeMember, mapEntryValue]
+          rw [store.eq_def]
+          exact storeFieldNames context _ (ABI.mapEntryFields key valueShape.type) address
+        apply spilledSequence context after choose [entry.1, entry.2] entryTyped address last reached
+        simp only [List.map_cons, List.map_nil, keysMatch entry present, valuesMatch entry present, keySchema]
+        exact atEntry.trans (congrArg (fun body : Session grow sig Unit => reached.control (body >>= after)) fieldsAt)
+    | memory address =>
+      change Unit → Session grow sig (Ret (core3 grow)) at next
+      let storeMember := memoryMapEntry (sig := sig) context key valueShape.type
+      refine collection context width (.memory address) (mapEntryLayout key valueShape.type) storeMember
+        (members.map mapEntryValue) next choose start cursor ?_ ?_
+      · rw [ArgumentField.lower, ArgumentField.value, ArgumentField.type] at focused
+        exact focused.trans (congrArg cursor.control (memoryMapProgram context address key valueShape.type
+          (members.map mapEntryValue) next))
+      · intro liveWidth ptr last reached tail atElements
+        apply indexedElements mapEntryValue (storeMember liveWidth) (mapEntryLayout key valueShape.type liveWidth).size ptr 0
+          members last reached tail atElements
+        intro entry present entryAddress last reached after atEntry
+        let keyLayout := ABI.primitiveLayout liveWidth key.toPrimitive
+        let keySlot := ABI.alignTo entryAddress keyLayout.alignment
+        let valueSlot := ABI.alignTo (keySlot + keyLayout.size) (ABI.layout liveWidth valueShape.type).alignment
+        let afterKey := fun _ : Unit => entry.2.lower context liveWidth (.memory valueSlot) >>= after
+        have keyAt : last.ctl = reached.control (entry.1.lower context liveWidth (.memory keySlot) >>= afterKey) := by
+          have keyStore : entry.1.lower (sig := sig) context liveWidth (.memory keySlot) =
+              storePrim .spec .none context key.toPrimitive entry.1.value keySlot := by
+            rw [ArgumentField.lower, keysMatch entry present, keySchema, store.eq_def]
+          rw [keyStore]
+          simp only [storeMember, memoryMapEntry, mapEntryValue, ArgumentField.lower, valuesMatch entry present,
+            Prog.bind_eq, Prog.bind_assoc, afterKey, valueSlot, keySlot, keyLayout] at atEntry ⊢
+          exact atEntry
+        exact continuePair (lowerArgument context liveWidth (.memory keySlot) afterKey choose entry.1
+          (keysTyped entry present) last reached keyAt)
+          (fun written remaining _ valueAt => lowerArgument context liveWidth (.memory valueSlot) after choose entry.2
+            (valuesTyped entry present) written remaining valueAt)
 termination_by sizeOf field
 decreasing_by
   all_goals subst_vars; simp_wf
-  all_goals first | omega | have := recordMembersSize members; omega
+  all_goals first
+    | omega
+    | have := recordMembersSize members; omega
+    | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega
+    | have smaller := mapEntrySize ‹_ ∈ _›
+      simp only [List.cons.sizeOf_spec, List.nil.sizeOf_spec] at smaller
+      omega
 
 private theorem directSequence (context : LiftLowerContext (core3 grow)) (width : AddrType)
     (next : List FlatValue → Session grow sig (Ret (core3 grow))) (choose : ArgumentAllocatorSelection grow sig profile ready bindings)
@@ -628,31 +776,6 @@ private theorem spilledSequence (context : LiftLowerContext (core3 grow)) (next 
       (fun last reached _ nextAt => spilledSequence context next choose rest
         (fun child present => typed child (List.mem_cons_of_mem _ present)) (endPtr width) last reached nextAt)
 termination_by sizeOf fields
-
-private theorem collectionSequence (context : LiftLowerContext (core3 grow)) (width : AddrType) (element : Stored.TypeOf)
-    (stride base index : Nat) (next : Unit → Session grow sig (Ret (core3 grow)))
-    (choose : ArgumentAllocatorSelection grow sig profile ready bindings) (members : List ArgumentField)
-    (typed : ∀ field ∈ members, ArgumentField.Valid field ∧ field.type = element)
-    (start : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig))
-    (focused : start.ctl = cursor.control (Prog.forM ((members.map ArgumentField.value).zipIdx index)
-      (fun item => store .spec .none context item.1 element (base + item.2 * stride)) >>= next)) :
-    StringPlanPair profile ready bindings callees start next := by
-  cases members with
-  | nil =>
-    exact ⟨[], start, .refl _, .refl _, .complete cursor () focused⟩
-  | cons field rest =>
-    let slot := base + index * stride
-    let tail := fun _ : Unit => Prog.forM ((rest.map ArgumentField.value).zipIdx (index + 1))
-      (fun item => store .spec .none context item.1 element (base + item.2 * stride)) >>= next
-    obtain ⟨fieldTyped, schema⟩ := typed field (List.mem_cons_self ..)
-    have atHead : start.ctl = cursor.control (field.lower context width (.memory slot) >>= tail) := by
-      rw [ArgumentField.lower, schema]
-      simp only [List.map_cons, List.zipIdx_cons, Prog.forM, Prog.bind_eq, Prog.bind_assoc, slot, tail] at focused ⊢
-      exact focused
-    exact continuePair (lowerArgument context width (.memory slot) tail choose field fieldTyped start cursor atHead)
-      (fun last reached _ nextAt => collectionSequence context width element stride base (index + 1) next choose rest
-        (fun child present => typed child (List.mem_cons_of_mem _ present)) last reached nextAt)
-termination_by sizeOf members
 
 end
 

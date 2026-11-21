@@ -1285,7 +1285,7 @@ do not assume that it returns or preserves memory.
 
 `direct_arguments` and `spilled_arguments` iterate those cuts across a
 parameter list mixing bool, u32, and strings through arbitrarily nested
-tuples, named records, options, and dynamic lists. Direct scalars add their
+tuples, named records, options, dynamic lists, and maps. Direct scalars add their
 canonical flat word; spilled scalars do a live width read and bounds-checked
 write. The next field uses the reached cursor; in the spill path it starts at
 the previous field's ABI end offset. Canonical tuple and record programs
@@ -1308,9 +1308,14 @@ Its structural argument evidence checks the element schema even for an empty
 list and does not assert any child execution agreement. Once all elements
 finish, the direct path passes the pointer/count operands. The spilled path
 reads the reached pointer width and writes the real pointer followed by the
-count; a trap on the second write retains the first. Maps, general variants,
-results, resources, and arbitrary component host reentry remain outside
-this worker argument proof.
+count; a trap on the second write retains the first. Maps share the indexed
+loop and descriptor cut. Direct map elements use the actual canonical
+record stores. Indirect map elements instead place the key and value using
+the allocation-time layout, even when a string key allocates before the
+value is written. Map keys in this fragment are bool, u32, or string; an
+empty map still supplies both shapes. General variants, results, resources,
+and arbitrary component host reentry remain outside this worker argument
+proof.
 
 `finish_stackful_after_arguments` continues the reached Core entry along a
 selected finite body. Guest-only paths classify without a host premise;

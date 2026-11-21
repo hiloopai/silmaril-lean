@@ -93,8 +93,9 @@ theorem CalleeArguments.direct_arguments {site : OnStartSite start} {handoff : L
     args fields schema input typed fits choose
 
 /-- Traverse the supported recursively typed arguments after actual spill
-placement. Each dynamic list writes its real descriptor after the last
-element. A late trap retains the writes of its reached prefix. -/
+placement. Each dynamic collection writes its real descriptor after the last
+element. An indirect map uses the allocation-time key/value layout. A late
+trap retains the writes of its reached prefix. -/
 theorem CalleeSpillReturn.spilled_arguments {site : OnStartSite start} {handoff : LowerStartAt site}
     {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
     (result : CalleeSpillReturn args state) (fields : List ArgumentField) {memory size}

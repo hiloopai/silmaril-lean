@@ -75,11 +75,19 @@ inductive ArgumentField where
   | optionNone (payloadShape : ArgumentField)
   | optionSome (payload : ArgumentField)
   | list (elementShape : ArgumentField) (members : List ArgumentField)
+  | map (key : WIT.KeyType) (keyShape valueShape : ArgumentField) (members : List (ArgumentField × ArgumentField))
 
 private theorem namedArgumentSize {members : List (String × ArgumentField)} {member : String × ArgumentField}
     (present : member ∈ members) : sizeOf member.2 < sizeOf members := by
   have smaller := List.sizeOf_lt_of_mem present
   obtain ⟨name, field⟩ := member
+  simp only [Prod.mk.sizeOf_spec] at smaller ⊢
+  omega
+
+private theorem mapArgumentSizes {members : List (ArgumentField × ArgumentField)} {member : ArgumentField × ArgumentField}
+    (present : member ∈ members) : sizeOf member.1 < sizeOf members ∧ sizeOf member.2 < sizeOf members := by
+  have smaller := List.sizeOf_lt_of_mem present
+  obtain ⟨key, field⟩ := member
   simp only [Prod.mk.sizeOf_spec] at smaller ⊢
   omega
 
@@ -91,6 +99,7 @@ def ArgumentField.type : ArgumentField → Stored.TypeOf
   | .optionNone payloadShape => .option (type payloadShape)
   | .optionSome payload => .option (type payload)
   | .list elementShape _ => .list (type elementShape)
+  | .map key _ valueShape _ => .map key (type valueShape)
 termination_by field => sizeOf field
 decreasing_by
   all_goals simp_wf
@@ -104,10 +113,14 @@ def ArgumentField.value : ArgumentField → Value.Val
   | .optionNone _ => .variant 0 none
   | .optionSome payload => .variant 1 (some (value payload))
   | .list _ members => .list (members.map value)
+  | .map _ _ _ members => .list (members.map fun member => .record [value member.1, value member.2])
 termination_by field => sizeOf field
 decreasing_by
   all_goals simp_wf
-  all_goals first | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega | have := namedArgumentSize ‹_ ∈ _›; omega
+  all_goals first
+    | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; omega
+    | have := namedArgumentSize ‹_ ∈ _›; omega
+    | obtain ⟨_, _⟩ := mapArgumentSizes ‹_ ∈ _›; omega
 
 /-- Structural typing of the witness for a reached argument value. Collection
 members carry the same schema, including when that schema itself allocates.
@@ -121,6 +134,11 @@ inductive ArgumentField.Valid : ArgumentField → Prop where
   | optionSome {child : ArgumentField} (typed : Valid child) : Valid (.optionSome child)
   | list {shape : ArgumentField} {members : List ArgumentField} (shapeTyped : Valid shape)
       (typed : ∀ child ∈ members, Valid child) (schema : ∀ child ∈ members, child.type = shape.type) : Valid (.list shape members)
+  | map {key : WIT.KeyType} {keyShape valueShape : ArgumentField} {members : List (ArgumentField × ArgumentField)}
+      (keyTyped : Valid keyShape) (valueTyped : Valid valueShape) (keySchema : keyShape.type = .prim key.toPrimitive)
+      (keysTyped : ∀ member ∈ members, Valid member.1) (valuesTyped : ∀ member ∈ members, Valid member.2)
+      (keysMatch : ∀ member ∈ members, member.1.type = keyShape.type)
+      (valuesMatch : ∀ member ∈ members, member.2.type = valueShape.type) : Valid (.map key keyShape valueShape members)
 
 /-- The actual canonical lowering of a single argument at the selected output. -/
 def ArgumentField.lower (context : LiftLowerContext (core3 grow)) (width : AddrType)
