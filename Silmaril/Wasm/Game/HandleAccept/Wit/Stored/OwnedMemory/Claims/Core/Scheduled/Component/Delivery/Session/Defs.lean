@@ -337,6 +337,11 @@ def LowerReturn.delivered (returned : LowerReturn request reached) : State grow 
 def LowerReturn.pending (returned : LowerReturn request reached) (record : Subtask) (index : Nat) : State grow sig :=
   returned.atProgram (returned.indexedStore index) (.pure (.flat (LowerReturn.pendingValues record index)))
 
+def LowerReturn.pendingReply (returned : LowerReturn request reached) (record : Subtask) (index : Nat) : State grow sig :=
+  { returned.pending record index with ctl :=
+    ⟨site.thread, .core ((core3 grow).resume (returned.indexedStore index).core site.core
+      (.values (LowerReturn.pendingValues record index))) site.next, site.segments⟩ :: site.rest }
+
 def LowerReturn.tableFull (returned : LowerReturn request reached) : State grow sig :=
   returned.atProgram returned.cancelInstalled.store (trap .tableFull >>= fun values : List FlatValue => pure (.flat values))
 

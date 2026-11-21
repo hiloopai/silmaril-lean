@@ -260,8 +260,47 @@ theorem LowerRequest.k1_parent {site : CoreCallSite start} (request : LowerReque
       Steps profile ready (specDispatch ready impl) lift.start (List.replicate 14 .tau) entry.wait.blocked ∧
       returned.cancel = .task lift.storeAndTask.2 ∧
       entry.wait.blocked.store.subtask? returned.subtask = some { inst := request.inst } ∧
-      returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved :=
+      returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved ∧
+      returned.cancelInstalled.store.inst? request.inst = (start.store.inst? request.inst).map
+        (fun caller => if inst = request.inst then caller.incWaitingToEnter else caller) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerK1Parent request live asyncMode pressure
+
+/-- A pending reply returns the index selected by the original caller's
+handle table. Even a same-instance K1 park only increments the wait count
+before insertion; the callee stays saved and its pending event is untouched. -/
+theorem LowerRequest.k1_pending_reply {site : CoreCallSite start} (request : LowerRequest site)
+    {core fnType opts inst} {instance_ caller : InstState} {index : Nat}
+    (live : start.store.inst? inst = some instance_) (asyncMode : fnType.async_ = true)
+    (pressure : instance_.hasBackpressure (liftTaskData fnType opts inst request.storeAndCaller.2).needsExclusive = true)
+    (asyncLower : request.opts.async_ = true) (callerLive : start.store.inst? request.inst = some caller)
+    (room : (caller.handles.add? (.waitable (.subtask request.storeAndSubtask.2))).map Prod.fst = some index) :
+    let lift := request.lifted core fnType opts inst
+    let record : Subtask := { inst := request.inst, onCancel := .task lift.storeAndTask.2, index := some index }
+    ∃ (entry : K1GateEntry lift.launched lift.storeAndThread.2 lift.storeAndTask.2)
+      (returned : LowerReturn request entry.wait.blocked),
+      Steps profile ready (specDispatch ready impl) lift.start (List.replicate 21 .tau) (returned.pendingReply record index) ∧
+      (returned.pendingReply record index).cont? lift.storeAndThread.2 = some entry.wait.saved ∧
+      (returned.pendingReply record index).store.subtask? returned.subtask = some record :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerK1PendingReply
+    request live asyncMode pressure asyncLower callerLive room
+
+/-- Full capacity traps after the same K1 park and cancellation-handle
+installation, without returning an index or running the parked caller. -/
+theorem LowerRequest.k1_full_trap {site : CoreCallSite start} (request : LowerRequest site)
+    {core fnType opts inst} {instance_ caller : InstState}
+    (live : start.store.inst? inst = some instance_) (asyncMode : fnType.async_ = true)
+    (pressure : instance_.hasBackpressure (liftTaskData fnType opts inst request.storeAndCaller.2).needsExclusive = true)
+    (asyncLower : request.opts.async_ = true) (callerLive : start.store.inst? request.inst = some caller)
+    (full : caller.handles.add? (.waitable (.subtask request.storeAndSubtask.2)) = none) :
+    let lift := request.lifted core fnType opts inst
+    ∃ (entry : K1GateEntry lift.launched lift.storeAndThread.2 lift.storeAndTask.2)
+      (returned : LowerReturn request entry.wait.blocked),
+      Steps profile ready (specDispatch ready impl) lift.start (List.replicate 18 .tau ++ [.trap .tableFull])
+        (StepDefs.trapCfg returned.tableFull) ∧
+      (StepDefs.trapCfg returned.tableFull).store.subtask? returned.subtask =
+        some { inst := request.inst, onCancel := .task lift.storeAndTask.2 } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerK1FullTrap
+    request live asyncMode pressure asyncLower callerLive full
 
 /-- A host invocation starts the actual lift body and leaves the parent
 continuation pending. It does not assume the body returns or delivers. -/

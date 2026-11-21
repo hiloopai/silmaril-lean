@@ -482,7 +482,9 @@ theorem lowerK1Parent {site : CoreCallSite start} (request : LowerRequest site) 
       Steps profile ready (specDispatch ready impl) lift.start (List.replicate 14 .tau) entry.wait.blocked ∧
       returned.cancel = .task lift.storeAndTask.2 ∧
       entry.wait.blocked.store.subtask? returned.subtask = some { inst := request.inst } ∧
-      returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved := by
+      returned.cancelInstalled.cont? lift.storeAndThread.2 = some entry.wait.saved ∧
+      returned.cancelInstalled.store.inst? request.inst = (start.store.inst? request.inst).map
+        (fun caller => if inst = request.inst then caller.incWaitingToEnter else caller) := by
   let lift := request.lifted core fnType opts inst
   let task := liftTaskData fnType opts inst request.storeAndCaller.2
   have taskLive : lift.launched.store.task? lift.storeAndTask.2 = some task :=
@@ -526,8 +528,16 @@ theorem lowerK1Parent {site : CoreCallSite start} (request : LowerRequest site) 
     exact Config.cont?_setCont_self entry.waitingEntry lift.storeAndThread.2 (some entry.wait.saved)
   have parked : Steps profile ready (specDispatch ready impl) lift.launched (List.replicate 9 .tau) entry.wait.blocked :=
     appendSteps gate (entry.wait.blocks unready)
-  refine ⟨entry, returned, ?_, rfl, liveSub, saved⟩
-  exact appendSteps (liftLaunchSteps lift) parked
+  have callerFrame : returned.cancelInstalled.store.inst? request.inst = (start.store.inst? request.inst).map
+      (fun caller => if inst = request.inst then caller.incWaitingToEnter else caller) := by
+    change ArenaField.insts.get? (ArenaField.insts.modify entry.waitingEntry.store entry.task.inst
+        InstState.incWaitingToEnter) request.inst = _
+    rw [ArenaField.get?_modify]
+    have unchanged : ArenaField.insts.get? entry.waitingEntry.store request.inst = start.store.inst? request.inst := rfl
+    have instEq : entry.task.inst = inst := congrArg Task.inst sameTask
+    rw [unchanged, instEq]
+    split <;> simp_all
+  exact ⟨entry, returned, appendSteps (liftLaunchSteps lift) parked, rfl, liveSub, saved, callerFrame⟩
 
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
@@ -828,6 +838,96 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | giveAllocatorPrefix _ overlay checkEntry _ _ checkInstall _ checked _ _ =>
     subst impl
     exact appendSteps (appendSteps checkEntry.steps checkInstall) checked.steps
+
+set_option maxHeartbeats 500000 in
+theorem lowerK1PendingReply {site : CoreCallSite start} (request : LowerRequest site)
+    {core fnType opts inst} {instance_ caller : InstState} {index : Nat}
+    (live : start.store.inst? inst = some instance_) (asyncMode : fnType.async_ = true)
+    (pressure : instance_.hasBackpressure (liftTaskData fnType opts inst request.storeAndCaller.2).needsExclusive = true)
+    (asyncLower : request.opts.async_ = true) (callerLive : start.store.inst? request.inst = some caller)
+    (room : (caller.handles.add? (.waitable (.subtask request.storeAndSubtask.2))).map Prod.fst = some index) :
+    let lift := request.lifted core fnType opts inst
+    let record : Subtask := { inst := request.inst, onCancel := .task lift.storeAndTask.2, index := some index }
+    ∃ (entry : K1GateEntry lift.launched lift.storeAndThread.2 lift.storeAndTask.2)
+      (returned : LowerReturn request entry.wait.blocked),
+      Steps profile ready (specDispatch ready impl) lift.start (List.replicate 21 .tau) (returned.pendingReply record index) ∧
+      (returned.pendingReply record index).cont? lift.storeAndThread.2 = some entry.wait.saved ∧
+      (returned.pendingReply record index).store.subtask? returned.subtask = some record := by
+  let lift := request.lifted core fnType opts inst
+  obtain ⟨entry, returned, path, cancel, fresh, saved, frame⟩ :=
+    lowerK1Parent (core := core) (profile := profile) (ready := ready) (impl := impl) request live asyncMode pressure
+  let current := if inst = request.inst then caller.incWaitingToEnter else caller
+  have currentLive : returned.cancelInstalled.store.inst? request.inst = some current := by
+    rw [frame, callerLive]
+    rfl
+  have handles : current.handles = caller.handles := by
+    unfold current
+    split <;> rfl
+  obtain ⟨table, allocation⟩ : ∃ table, caller.handles.add? (.waitable (.subtask returned.subtask)) = some (index, table) := by
+    change ((caller.handles.add? (.waitable (.subtask returned.subtask))).map Prod.fst) = some index at room
+    cases selected : caller.handles.add? (.waitable (.subtask returned.subtask)) with
+    | none => simp [selected] at room
+    | some result => rcases result with ⟨selectedIndex, table⟩; simp [selected] at room; exact ⟨table, by rw [room]⟩
+  have actualRoom : current.addHandle? (.waitable (.subtask returned.subtask)) = some (index, { current with handles := table }) := by
+    simp only [InstState.addHandle?, handles, allocation, Option.map_some]
+  let original : Subtask := { inst := request.inst }
+  let updated : Subtask := { original with onCancel := returned.cancel, index := some index }
+  have installed : Steps profile ready (specDispatch ready impl) entry.wait.blocked [.tau, .tau] returned.cancelInstalled :=
+    lowerInstallCancel returned
+  have pending : Steps profile ready (specDispatch ready impl) returned.cancelInstalled [.tau, .tau, .tau, .tau]
+      (returned.pending updated index) :=
+    transitionSteps (.lowerPending returned asyncLower fresh rfl currentLive actualRoom)
+  have reply : Steps profile ready (specDispatch ready impl) (returned.pending updated index) [.tau]
+      (returned.pendingReply updated index) := .cons (.popCore rfl) (.refl _)
+  have total : Steps profile ready (specDispatch ready impl) lift.start (List.replicate 21 .tau)
+      (returned.pendingReply updated index) := appendSteps path (appendSteps installed (appendSteps pending reply))
+  have record : updated = { inst := request.inst, onCancel := .task lift.storeAndTask.2, index := some index } := by
+    dsimp [updated, original]
+    rw [cancel]
+  refine ⟨entry, returned, ?_, ?_, ?_⟩
+  · rw [← record]
+    exact total
+  · exact saved
+  · rw [← record]
+    exact lowerIndexedRecord returned index fresh
+
+set_option maxHeartbeats 500000 in
+theorem lowerK1FullTrap {site : CoreCallSite start} (request : LowerRequest site)
+    {core fnType opts inst} {instance_ caller : InstState}
+    (live : start.store.inst? inst = some instance_) (asyncMode : fnType.async_ = true)
+    (pressure : instance_.hasBackpressure (liftTaskData fnType opts inst request.storeAndCaller.2).needsExclusive = true)
+    (asyncLower : request.opts.async_ = true) (callerLive : start.store.inst? request.inst = some caller)
+    (full : caller.handles.add? (.waitable (.subtask request.storeAndSubtask.2)) = none) :
+    let lift := request.lifted core fnType opts inst
+    ∃ (entry : K1GateEntry lift.launched lift.storeAndThread.2 lift.storeAndTask.2)
+      (returned : LowerReturn request entry.wait.blocked),
+      Steps profile ready (specDispatch ready impl) lift.start (List.replicate 18 .tau ++ [.trap .tableFull])
+        (StepDefs.trapCfg returned.tableFull) ∧
+      (StepDefs.trapCfg returned.tableFull).store.subtask? returned.subtask =
+        some { inst := request.inst, onCancel := .task lift.storeAndTask.2 } := by
+  let lift := request.lifted core fnType opts inst
+  obtain ⟨entry, returned, path, cancel, fresh, _, frame⟩ :=
+    lowerK1Parent (core := core) (profile := profile) (ready := ready) (impl := impl) request live asyncMode pressure
+  let current := if inst = request.inst then caller.incWaitingToEnter else caller
+  have currentLive : returned.cancelInstalled.store.inst? request.inst = some current := by
+    rw [frame, callerLive]
+    rfl
+  have handles : current.handles = caller.handles := by
+    unfold current
+    split <;> rfl
+  have actualFull : current.addHandle? (.waitable (.subtask returned.subtask)) = none := by
+    change caller.handles.add? (.waitable (.subtask returned.subtask)) = none at full
+    simp only [InstState.addHandle?, handles, full, Option.map_none]
+  have unresolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = false := by
+    rw [CStore.subtaskResolved, lowerCancelRecord returned fresh]
+    rfl
+  have late : Steps profile ready (specDispatch ready impl) returned.cancelInstalled [.tau, .tau, .trap .tableFull]
+      (StepDefs.trapCfg returned.tableFull) :=
+    transitionSteps (.lowerTableFull returned asyncLower unresolved currentLive actualFull)
+  have whole := appendSteps path (appendSteps (lowerInstallCancel returned) late)
+  refine ⟨entry, returned, whole, ?_⟩
+  change returned.cancelInstalled.store.subtask? returned.subtask = _
+  rw [lowerCancelRecord returned fresh, cancel]
 
 theorem runSteps {actions labels} (path : Run profile ready impl start actions labels finish) :
     Steps profile ready (specDispatch ready impl) start labels finish := by
