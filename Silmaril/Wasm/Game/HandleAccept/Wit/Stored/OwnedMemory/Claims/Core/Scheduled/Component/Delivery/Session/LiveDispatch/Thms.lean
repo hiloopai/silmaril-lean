@@ -16,6 +16,12 @@ variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {route : GiveEffec
   {profile : ProfileKind} {ready : HostReady (HostState sig)} {base : HostImpl (core3 grow) (HostState sig)}
   {bindings : List (Binding sig)}
 
+/-- The give overlay does not replace the program installed at an on-cancel
+request. The installed program can still consult the reached host later. -/
+theorem LiveDispatch.cancel_dispatch (callback : CancelRef) :
+    specDispatch ready base (.onCancel callback) = specDispatch ready (LiveDispatch.host bindings base) (.onCancel callback) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.dispatchUnchanged trivial
+
 /-- Each reached call uses the same dynamic dispatcher, but selects the root from
 its own live journal. The selected-site replacement and its exclusion of later
 matching requests are not needed for this entry. This does not assert that the

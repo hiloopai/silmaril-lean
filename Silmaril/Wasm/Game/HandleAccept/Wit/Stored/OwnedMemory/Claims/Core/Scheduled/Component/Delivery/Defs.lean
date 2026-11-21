@@ -534,6 +534,14 @@ inductive TaskCancelReentry {cfg : Config (core3 grow) (HostState sig)} {subtask
   | started (state : request.callee.state = .started) (cancellable : request.implicitState.cancellable = true)
       (available : request.markedStore.threadReady (ready cfg.host) request.implicitThread = true)
 
+/-- Only a blocked thread's reached host condition can make the immediate
+cancel reentry decision depend on the replacement host. -/
+def TaskCancelAdmission.ReadsAgree {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
+    {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel)
+    (ready : HostReady (HostState sig)) (other : HostState sig) : Prop :=
+  ∀ entry, request.markedStore.thread? request.implicitThread = some entry → entry.blocked = true →
+    ∀ query, entry.readyCond = some (.host query) → ready cfg.host query = ready other query
+
 def TaskCancelAdmission.waiting {cfg : Config (core3 grow) (HostState sig)} {subtask : SubtaskId}
     {cancel : ParkedCancel cfg subtask} (request : TaskCancelAdmission cancel) : Bool :=
   request.markedStore.threadIs Thread.waiting request.implicitThread

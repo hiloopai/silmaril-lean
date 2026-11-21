@@ -206,6 +206,55 @@ theorem Transition.cancel_returned_paired {target index} (cancel : ParkedCancel 
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelReturnedPaired
     cancel pending available paired
 
+/-- Install the actual cancellation callback while preserving the older
+paired frames. Only dispatch at this request must agree. -/
+theorem Transition.cancel_request_paired {target} (cancel : ParkedCancel start target) (record : Subtask)
+    (live : start.store.subtask? target = some record) (unresolved : record.state.resolved = false)
+    (notDelivered : record.lenders.isSome = true) (notRequested : record.cancellationRequested = false)
+    (notJoined : record.common.wset = none)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {source : HostImpl (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (installed : specDispatch ready source (.onCancel record.onCancel) = specDispatch ready impl (.onCancel record.onCancel)) :
+    ∃ reached, Transition profile ready impl other (.cancelRequest target) (List.replicate 14 .tau) reached ∧
+      HostFrame.Related.Paired older (cancel.callbackEntry record ready source) reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelRequestPaired
+    cancel record live unresolved notDelivered notRequested notJoined paired installed
+
+theorem TaskCancelAdmission.ReadsAgree.of_closed {target} {cancel : ParkedCancel start target}
+    {request : TaskCancelAdmission cancel} {other : HostState sig}
+    (closed : ∀ entry, request.markedStore.thread? request.implicitThread = some entry → entry.blocked = true →
+      ∀ query, entry.readyCond ≠ some (.host query)) : request.ReadsAgree ready other :=
+  fun entry live blocked query condition => (closed entry live blocked query condition).elim
+
+theorem TaskCancelAdmission.ReadsAgree.thread_ready {target} {cancel : ParkedCancel start target}
+    {request : TaskCancelAdmission cancel} {other : HostState sig} (agrees : request.ReadsAgree ready other) :
+    request.markedStore.threadReady (ready start.host) request.implicitThread =
+      request.markedStore.threadReady (ready other) request.implicitThread :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelReadiness request agrees
+
+/-- Consume each side's actual saved activation and retain its caller's
+cancellation continuation; this does not require the resumed guest to return. -/
+theorem Transition.cancel_reentry_paired {target} {cancel : ParkedCancel start target} (request : TaskCancelAdmission cancel)
+    (mode : TaskCancelReentry request ready) {callee : Activation (core3 grow) (HostState sig)}
+    (saved : start.cont? request.implicitThread = some callee)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (available : request.callee.state = .started →
+      request.markedStore.threadReady (ready other.host) request.implicitThread = true) :
+    ∃ reached, Transition profile ready impl other (.cancelReentry target request.implicitThread)
+        (List.replicate request.reentrySteps .tau) reached ∧
+      HostFrame.Related.Paired older (request.reentered callee) reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelReentryPaired
+    request mode saved paired available
+
+theorem Transition.cancel_callback_done_paired {target} {cancel : ParkedCancel start target} (request : StartedCancel cancel)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.cancelCallbackDone target) (List.replicate 20 .tau) reached ∧
+      HostFrame.Related.Paired older request.callbackReturned reached :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.Correspondence.cancelCallbackDonePaired request paired
+
 /-- Replay the actual selected candidate, not an arbitrary runnable
 thread. No host-read premise is needed for store-only ready conditions. -/
 theorem Transition.tick_on_journal {thread} (tick : SelectedTick thread start ready profile) (other : HostState sig)

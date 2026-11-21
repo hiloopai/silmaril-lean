@@ -151,6 +151,26 @@ theorem Paired.push_shared {left right : Config E Host} (paired : Paired changes
         { right with ctl := ⟨thread, next, frame :: otherFrames⟩ :: otherRest } :=
   Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.pushShared paired focused next frame
 
+/-- Install a common continuation prefix without replacing older frames. -/
+theorem Paired.push_shared_frames {left right : Config E Host} (paired : Paired changes left right)
+    {thread focus frames rest} (focused : left.ctl = ⟨thread, focus, frames⟩ :: rest)
+    (next : Focus E Host) (shared : List (Seg E Host)) :
+    ∃ otherFrames otherRest, right.ctl = ⟨thread, focus, otherFrames⟩ :: otherRest ∧
+      Paired changes { left with ctl := ⟨thread, next, shared ++ frames⟩ :: rest }
+        { right with ctl := ⟨thread, next, shared ++ otherFrames⟩ :: otherRest } :=
+  Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.pushSharedFrames paired focused next shared
+
+/-- Enter the actual saved activation and install a common resumer prefix. -/
+theorem Paired.reenter_saved {left right : Config E Host} (paired : Paired changes left right)
+    {thread focus frames rest target saved} (focused : left.ctl = ⟨thread, focus, frames⟩ :: rest)
+    (found : left.cont? target = some saved) (ongoing : Focus E Host) (shared : List (Seg E Host)) :
+    ∃ otherFrames otherRest otherSaved, right.ctl = ⟨thread, focus, otherFrames⟩ :: otherRest ∧
+      right.cont? target = some otherSaved ∧
+      Paired changes
+        { (left.setCont target none) with ctl := saved :: ⟨thread, ongoing, shared ++ frames⟩ :: rest }
+        { (right.setCont target none) with ctl := otherSaved :: ⟨thread, ongoing, shared ++ otherFrames⟩ :: otherRest } :=
+  Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.reenterSaved paired focused found ongoing shared
+
 /-- Push a new substituted continuation at the current focus. All already
 paired frames, including those in blocked activations, keep their relation. -/
 theorem Paired.push {left right : Config E Host} (paired : Paired changes left right)

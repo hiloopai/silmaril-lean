@@ -73,6 +73,10 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
   | waitResume resume saved => exact (Transition.waitResume (impl := base) resume saved).steps
   | waitTake delivery focused pending branch => exact (Transition.waitTake (impl := base) delivery focused pending branch).steps
   | cancelReturned cancel pending available => exact (Transition.cancelReturned (impl := base) cancel pending available).steps
+  | cancelRequest cancel record live unresolved notDelivered notRequested notJoined =>
+    exact (Transition.cancelRequest (impl := base) cancel record live unresolved notDelivered notRequested notJoined).steps
+  | cancelReentry request mode saved => exact (Transition.cancelReentry (impl := base) request mode saved).steps
+  | cancelCallbackDone request => exact (Transition.cancelCallbackDone (impl := base) request).steps
   | sequence _ _ front back => exact append front back
   | give _ _ entry checkedBody _ _ replies _ _ => exact append (append entry.steps checkedBody) (replies.1 _)
   | stop _ _ entry checkedBody _ _ _ _ _ => exact append entry.steps checkedBody
@@ -126,6 +130,22 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     obtain ⟨_, replay, aligned, _⟩ :=
       Transition.cancel_returned_paired (profile := profile) (ready := ready) (impl := LiveDispatch.host bindings base)
         cancel pending available paired
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | cancelRequest cancel record live unresolved notDelivered notRequested notJoined =>
+    have installed := LiveDispatch.cancel_dispatch (bindings := bindings) (ready := ready) (base := base) record.onCancel
+    obtain ⟨_, replay, aligned⟩ := Transition.cancel_request_paired (profile := profile) cancel record live unresolved
+      notDelivered notRequested notJoined paired installed
+    exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+  | cancelReentry request mode saved =>
+    by_cases available : request.callee.state = .started →
+        request.markedStore.threadReady (ready incoming.host) request.implicitThread = true
+    · obtain ⟨_, replay, aligned⟩ := Transition.cancel_reentry_paired (profile := profile)
+        (impl := LiveDispatch.host bindings base) request mode saved paired available
+      exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
+    · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.cancelReadiness request mode paired available)⟩
+  | cancelCallbackDone request =>
+    obtain ⟨_, replay, aligned⟩ := Transition.cancel_callback_done_paired (profile := profile) (ready := ready)
+      (impl := LiveDispatch.host bindings base) request paired
     exact ⟨_, _, replay.steps, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | sequence _ _ replayFront replayBack =>
     obtain ⟨_, _, front, frontPrefix, ⟨seenFront, aligned⟩ | cut⟩ := replayFront paired

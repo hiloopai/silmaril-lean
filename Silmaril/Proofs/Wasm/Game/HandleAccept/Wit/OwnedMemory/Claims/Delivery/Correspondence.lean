@@ -449,6 +449,23 @@ theorem waitTakePaired {initial : State grow sig} {wait : ParkedWait initial} {t
       simpa only [BufferResult.finish, delivered] using paired.clear_control.set_store (StepDefs.lockdownSt delivery.delivered)
   · cases result <;> rfl
 
+private def replayCancel {target} (cancel : ParkedCancel start target) {other : State grow sig}
+    (store : start.store = other.store) {segments rest}
+    (focused : other.ctl = ⟨some cancel.thread, .core cancel.core cancel.next, segments⟩ :: rest) : ParkedCancel other target :=
+  { cancel with
+    segments, rest, focused
+    callout := by rw [← store]; exact cancel.callout
+    liveThread := by rw [← store]; exact cancel.liveThread
+    liveTask := by rw [← store]; exact cancel.liveTask
+    liveInst := by rw [← store]; exact cancel.liveInst }
+
+private def replayTaskCancel {target} {cancel : ParkedCancel start target} (request : TaskCancelAdmission cancel)
+    {other : State grow sig} (replay : ParkedCancel other target) (store : start.store = other.store) : TaskCancelAdmission replay :=
+  { request with
+    live := store ▸ request.live
+    taskLive := store ▸ request.taskLive
+    threadLive := store ▸ request.threadLive }
+
 theorem cancelReturnedPaired {target index} (cancel : ParkedCancel start target)
     (pending : PendingAt start.store target index) (available : CancelAvailable start.store target)
     {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
@@ -460,15 +477,98 @@ theorem cancelReturnedPaired {target index} (cancel : ParkedCancel start target)
   obtain ⟨segments, rest, focused, framed⟩ :=
     paired.retarget cancel.focused (.core resumed cancel.next) start.host other.host
   have store := paired.data.1
-  let replay : ParkedCancel other target :=
-    { cancel with
-      segments, rest, focused
-      callout := by rw [← store]; exact cancel.callout
-      liveThread := by rw [← store]; exact cancel.liveThread
-      liveTask := by rw [← store]; exact cancel.liveTask
-      liveInst := by rw [← store]; exact cancel.liveInst }
+  let replay := replayCancel cancel store focused
   refine ⟨_, .cancelReturned replay (store ▸ pending) (store ▸ available), ?_, rfl⟩
-  simpa only [ParkedCancel.resumed, replay, resumed, delivered, ← store] using framed.set_store delivered
+  simpa only [ParkedCancel.resumed, replay, replayCancel, resumed, delivered, ← store] using framed.set_store delivered
+
+theorem cancelRequestPaired {target} (cancel : ParkedCancel start target) (record : Subtask)
+    (live : start.store.subtask? target = some record) (unresolved : record.state.resolved = false)
+    (notDelivered : record.lenders.isSome = true) (notRequested : record.cancellationRequested = false)
+    (notJoined : record.common.wset = none)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {source : HostImpl (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (installed : specDispatch ready source (.onCancel record.onCancel) = specDispatch ready impl (.onCancel record.onCancel)) :
+    ∃ reached, Transition profile ready impl other (.cancelRequest target) (List.replicate 14 .tau) reached ∧
+      HostFrame.Related.Paired older (cancel.callbackEntry record ready source) reached := by
+  have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+  obtain ⟨_, _, focused, framed⟩ := aligned.push_shared_frames cancel.focused
+    (.prog (specDispatch ready impl (.onCancel record.onCancel))) [.prog cancel.afterCallback, .core cancel.core cancel.next]
+  have store := paired.data.1
+  let replay := replayCancel cancel store focused
+  refine ⟨_, .cancelRequest replay record (store ▸ live) unresolved notDelivered notRequested notJoined, ?_⟩
+  have reached := framed.set_store (cancel.callbackEntry record ready source).store
+  simp only [ParkedCancel.callbackEntry, HostFrame.Related.Paired, HostFrame.replace,
+    replay, replayCancel, ← store, installed]
+  exact reached
+
+theorem cancelReadiness {target} {cancel : ParkedCancel start target} (request : TaskCancelAdmission cancel)
+    {other : HostState sig} (agrees : request.ReadsAgree ready other) :
+    request.markedStore.threadReady (ready start.host) request.implicitThread =
+      request.markedStore.threadReady (ready other) request.implicitThread := by
+  simp only [CStore.threadReady, CStore.threadIs]
+  split
+  · rename_i entry live
+    unfold Thread.ready
+    cases blocked : entry.blocked
+    · rfl
+    cases condition : entry.readyCond with
+    | none => rfl
+    | some predicate =>
+      cases predicate <;> try rfl
+      rename_i query
+      simp only [ReadyCond.eval, agrees entry live blocked query condition]
+  · rfl
+
+theorem cancelReentryPaired {target} {cancel : ParkedCancel start target} (request : TaskCancelAdmission cancel)
+    (mode : TaskCancelReentry request ready) {callee : Activation (core3 grow) (HostState sig)}
+    (saved : start.cont? request.implicitThread = some callee)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (available : request.callee.state = .started →
+      request.markedStore.threadReady (ready other.host) request.implicitThread = true) :
+    ∃ reached, Transition profile ready impl other (.cancelReentry target request.implicitThread)
+        (List.replicate request.reentrySteps .tau) reached ∧
+      HostFrame.Related.Paired older (request.reentered callee) reached := by
+  have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+  obtain ⟨_, _, _, focused, otherSaved, framed⟩ := aligned.reenter_saved cancel.focused saved
+    (.prog (pure .unit)) [.prog cancel.afterCallback, .core cancel.core cancel.next]
+  have store := paired.data.1
+  let replay := replayCancel cancel store focused
+  let pending := replayTaskCancel request replay store
+  have marked : pending.markedStore = request.markedStore := by
+    simp only [TaskCancelAdmission.markedStore, pending, replayTaskCancel, replay, replayCancel, ← store]
+  have sameWaiting : pending.waiting = request.waiting :=
+    congrArg (fun markedStore => markedStore.threadIs Thread.waiting request.implicitThread) marked
+  have sameLength : pending.reentrySteps = request.reentrySteps := by
+    unfold TaskCancelAdmission.reentrySteps
+    rw [sameWaiting]
+    rfl
+  have otherMode : TaskCancelReentry pending ready := by
+    cases mode with
+    | initial state => exact .initial state
+    | started state cancellable _ =>
+      exact .started state cancellable (marked.symm ▸ available state)
+  refine ⟨_, sameLength ▸ Transition.cancelReentry pending otherMode otherSaved, ?_⟩
+  have reached := framed.set_store (request.reentered callee).store
+  simp only [TaskCancelAdmission.reentered, sameWaiting, marked, HostFrame.Related.Paired, HostFrame.replace]
+  exact reached
+
+theorem cancelCallbackDonePaired {target} {cancel : ParkedCancel start target} (request : StartedCancel cancel)
+    {other : State grow sig} {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) :
+    ∃ reached, Transition profile ready impl other (.cancelCallbackDone target) (List.replicate 20 .tau) reached ∧
+      HostFrame.Related.Paired older request.callbackReturned reached := by
+  have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+  obtain ⟨_, _, focused, framed⟩ := aligned.push_shared cancel.focused
+    (.prog (cancel.afterCallback .unit)) (.core cancel.core cancel.next)
+  have store := paired.data.1
+  let replay := replayCancel cancel store focused
+  let pending : StartedCancel replay := { request with toTaskCancelAdmission := replayTaskCancel request.toTaskCancelAdmission replay store }
+  refine ⟨_, .cancelCallbackDone pending, ?_⟩
+  have reached := framed.set_store request.callbackReturned.store
+  simpa only [StartedCancel.callbackReturned, TaskCancelAdmission.markedStore, ParkedCancel.afterCallback,
+    HostFrame.Related.Paired, HostFrame.replace, pending, replayTaskCancel, replay, replayCancel, ← store] using reached
 
 private theorem tickCandidates (other : HostState sig) (agrees : TickReadsAgree ready start other) :
     (StepDefs.enterHostSt start.store).candidates (ready start.host) =

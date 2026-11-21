@@ -51,6 +51,18 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
       (pending : ComponentCall.Delivery.PendingAt start.store target index)
       (available : ComponentCall.Delivery.CancelAvailable start.store target) :
       NestedPlan bindings profile ready base start (List.replicate 15 .tau) cancel.resumed
+  | cancelRequest {start target} (cancel : ComponentCall.Delivery.ParkedCancel start target) (record : Subtask)
+      (live : start.store.subtask? target = some record) (unresolved : record.state.resolved = false)
+      (notDelivered : record.lenders.isSome = true) (notRequested : record.cancellationRequested = false)
+      (notJoined : record.common.wset = none) :
+      NestedPlan bindings profile ready base start (List.replicate 14 .tau) (cancel.callbackEntry record ready base)
+  | cancelReentry {start target callee} {cancel : ComponentCall.Delivery.ParkedCancel start target}
+      (request : ComponentCall.Delivery.TaskCancelAdmission cancel) (mode : ComponentCall.Delivery.TaskCancelReentry request ready)
+      (saved : start.cont? request.implicitThread = some callee) :
+      NestedPlan bindings profile ready base start (List.replicate request.reentrySteps .tau) (request.reentered callee)
+  | cancelCallbackDone {start target} {cancel : ComponentCall.Delivery.ParkedCancel start target}
+      (request : ComponentCall.Delivery.StartedCancel cancel) :
+      NestedPlan bindings profile ready base start (List.replicate 20 .tau) request.callbackReturned
   | sequence {start middle finish leading trailing}
       (front : NestedPlan bindings profile ready base start leading middle)
       (back : NestedPlan bindings profile ready base middle trailing finish) :
@@ -99,6 +111,12 @@ inductive NestedCut (bindings : List (Binding sig)) (profile : ProfileKind) (rea
       (paired : HostFrame.Related.Paired older start incoming)
       (different : ¬ ∃ writer, incoming.host.writer.register resolve.tree = .ok writer ∧
         writer.accepted.length = resolve.writer.accepted.length) :
+      NestedCut bindings profile ready base older incoming
+  | cancelReadiness {start target incoming} {cancel : ComponentCall.Delivery.ParkedCancel start target}
+      (request : ComponentCall.Delivery.TaskCancelAdmission cancel) (mode : ComponentCall.Delivery.TaskCancelReentry request ready)
+      (paired : HostFrame.Related.Paired older start incoming)
+      (different : ¬ (request.callee.state = .started →
+        request.markedStore.threadReady (ready incoming.host) request.implicitThread = true)) :
       NestedCut bindings profile ready base older incoming
   | stopped {route phase checkLabels referenceLabels liveLabels liveStart checked reference reached check}
       (site : PayloadRoot.Site grow sig route) (stop : GiveStop site check phase referenceLabels checked reference)
