@@ -119,8 +119,8 @@ open Silmaril.Semantics.Operational
 
 variable {S O : Type*} {sem : WithUB S O}
 
-theorem sized {source final : S} (path : sem.toOpSem.Reach source final) :
-    ∃ length, StepsN sem.step length source final := by
+theorem sized {source final : S} {step : S → S → Prop} (path : Relation.ReflTransGen step source final) :
+    ∃ length, StepsN step length source final := by
   induction path using Relation.ReflTransGen.head_induction_on with
   | refl => exact ⟨0, .nil _⟩
   | head edge _ ih => obtain ⟨length, suffix⟩ := ih; exact ⟨length + 1, .cons edge suffix⟩
@@ -131,15 +131,24 @@ theorem unsized {length : Nat} {source final : S} {step : S → S → Prop}
   | nil => exact .refl
   | cons head _ rest => exact (Relation.ReflTransGen.single head).trans rest
 
+theorem may_iff_exists_stepsN (rel : OpSem S O) (source : S) (outcome : Outcome O) :
+    rel.May source outcome ↔ ∃ length final, StepsN rel.step length source final ∧ rel.observe final outcome := by
+  constructor
+  · rintro ⟨final, path, observed⟩
+    obtain ⟨length, sizedPath⟩ := sized path
+    exact ⟨length, final, sizedPath, observed⟩
+  · rintro ⟨_, final, path, observed⟩
+    exact ⟨final, unsized path, observed⟩
+
 theorem may_iff_run (oracle : Oracle sem) (start : S) (outcome : Outcome O)
     (det : sem.toOpSem.DetFrom start) (discipline : sem.toOpSem.TerminalDiscipline)
     (safe : sem.SafeAt start) (known : ∀ ⦃source⦄, sem.toOpSem.Reach start source →
       oracle.pick source ≠ .stop .unknown) :
     sem.toOpSem.May start outcome ↔ ∃ fuel final, oracle.run start fuel = .stop final (.observed outcome) := by
   constructor
-  · rintro ⟨final, path, observed⟩
-    obtain ⟨length, sizedPath⟩ := sized path
-    exact ⟨length, final, run_complete oracle sizedPath observed (Nat.le_refl _) det discipline safe known⟩
+  · intro may
+    obtain ⟨length, final, path, observed⟩ := (may_iff_exists_stepsN sem.toOpSem start outcome).mp may
+    exact ⟨length, final, run_complete oracle path observed (Nat.le_refl _) det discipline safe known⟩
   · rintro ⟨fuel, final, run⟩
     have sound := run_sound oracle start fuel
     rw [run] at sound

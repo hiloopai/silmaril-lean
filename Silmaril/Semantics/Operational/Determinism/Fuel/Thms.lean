@@ -14,6 +14,17 @@ theorem StepsN.reach {length : Nat} {source final : S} {step : S → S → Prop}
     (path : StepsN step length source final) : Relation.ReflTransGen step source final :=
   Proofs.Semantics.Operational.Determinism.unsized path
 
+/-- Every finite reachability witness has an exact primitive-step count. -/
+theorem StepsN.reach_iff_exists {source final : S} {step : S → S → Prop} :
+    Relation.ReflTransGen step source final ↔ ∃ length, StepsN step length source final :=
+  ⟨Proofs.Semantics.Operational.Determinism.sized, fun ⟨_, path⟩ => path.reach⟩
+
+/-- Finite outcomes can be witnessed by a sized path even in a nondeterministic
+relation. This does not say a particular executable choice will find it. -/
+theorem OpSem.may_iff_exists_stepsN (rel : OpSem S O) (source : S) (outcome : Outcome O) :
+    rel.May source outcome ↔ ∃ length final, StepsN rel.step length source final ∧ rel.observe final outcome :=
+  Proofs.Semantics.Operational.Determinism.may_iff_exists_stepsN rel source outcome
+
 theorem Oracle.run_sound (oracle : Oracle sem) (source : S) (fuel : Nat) :
     (oracle.run source fuel).Sound sem source fuel :=
   Proofs.Semantics.Operational.Determinism.run_sound oracle source fuel
@@ -28,6 +39,8 @@ theorem Oracle.run_complete (oracle : Oracle sem) {start final : S} {length fuel
       oracle.pick source ≠ .stop .unknown) : oracle.run start fuel = .stop final (.observed outcome) :=
   Proofs.Semantics.Operational.Determinism.run_complete oracle path observed enough det discipline safe known
 
+/-- Executable counterpart of `OpSem.may_iff_exists_stepsN`, for a particular
+selector under the hypotheses of `run_complete`. -/
 theorem Oracle.may_iff_run (oracle : Oracle sem) (start : S) (outcome : Outcome O)
     (det : sem.toOpSem.DetFrom start) (discipline : sem.toOpSem.TerminalDiscipline)
     (safe : sem.SafeAt start) (known : ∀ ⦃source⦄, sem.toOpSem.Reach start source →

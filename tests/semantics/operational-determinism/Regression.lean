@@ -79,6 +79,17 @@ private theorem returned : base.toOpSem.May .entry (.returned 7) :=
 private theorem trap : base.toOpSem.May .entry .trap :=
   ⟨.trapped, .tail (.single (show base.step .entry .fork from trivial)) trivial, Or.inr ⟨rfl, rfl⟩⟩
 
+example : ∃ length, StepsN base.step length .entry .trapped :=
+  StepsN.reach_iff_exists.mp (.tail (.single (show base.step .entry .fork from trivial)) trivial)
+
+example : ∃ length target, StepsN base.step length .entry target ∧ base.observe target .trap :=
+  (base.toOpSem.may_iff_exists_stepsN .entry .trap).mp trap
+
+example (fuel : Nat) : selector.run .entry fuel ≠ .stop .trapped (.observed .trap) := by
+  cases fuel with
+  | zero => simp [Oracle.run, selector, choose]
+  | succ remaining => cases remaining <;> simp [Oracle.run, selector, choose]
+
 private theorem nonTrap : base.toOpSem.NonTrapDetAt .entry := by
   apply OpSem.nonTrapDetAt_iff.mpr
   intro left right hLeft hRight
@@ -144,4 +155,6 @@ example : ¬ protocol.TraceDetAt false := by
 #print axioms Oracle.run_sound
 #print axioms Oracle.run_complete
 #print axioms Oracle.may_iff_run
+#print axioms StepsN.reach_iff_exists
+#print axioms OpSem.may_iff_exists_stepsN
 #print axioms StepsN.no_diverges_of_normal

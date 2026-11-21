@@ -3,6 +3,23 @@
 `Silmaril.Semantics.Operational.Determinism` adds policies to `WithUB` without
 changing `HasOpSem`, or making an executable selection the source of truth.
 
+## Default: unfuelled relations
+
+Use `step`, `Reach`, `May`, and (for infinite primitive paths) `Diverges` on
+`OpSem`. At a program entry use `HasOpSem.May` and `HasOpSem.UBReachable`; neither
+takes fuel. These are existential relations, not a choice of strategy. Fix the
+actual host and numeric profile when choosing a Core model; determinism and
+extra UB policies are opt-in properties or transformations.
+
+## Optional budgets and policies
+
+- [`Determinism.Fuel.Thms`](../../Silmaril/Semantics/Operational/Determinism/Fuel/Thms.lean)
+  is the optional import for bounds. `StepsN.reach_iff_exists` and
+  `OpSem.may_iff_exists_stepsN` say that unfuelled finite reachability and
+  outcomes are exactly those with a finite primitive-step count. The count
+  witnesses any at-most budget greater than or equal to it. This requires no
+  determinism, oracle, or safety premise. Counting primitive relation steps
+  is not the same as counting instructions in a normalized or typed evaluator.
 - `StepDetAt` is immediate successor uniqueness; `DetFrom` additionally requires
   immediate observation uniqueness at every reachable state. Neither says that
   any successor or observation exists. `ResultDetAt` compares complete finite
@@ -28,9 +45,11 @@ changing `HasOpSem`, or making an executable selection the source of truth.
   an ambiguity decision from incomplete search. `run_sound` returns bounded
   relational evidence, even on exhaustion. Exhaustion means a known next step
   at the budget boundary, not UB or divergence. Unknown is not certified stuck.
-  Completeness needs a finite witness, sufficient fuel, reachable determinism,
-  terminal observations, safety, and an oracle that does not return unknown on
-  the relevant reachable states.
+  `Oracle.may_iff_run` connects an outcome to some sufficient executable fuel
+  under reachable determinism, terminal observations, safety, and an oracle
+  that does not return unknown on the relevant reachable states. Without those
+  hypotheses a finite trap path, for example, can be missed at every fuel by
+  a selector which always takes the return branch.
 
 ## Actual Core boundary
 
