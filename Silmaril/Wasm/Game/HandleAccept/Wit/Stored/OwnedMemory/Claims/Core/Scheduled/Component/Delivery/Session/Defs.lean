@@ -302,6 +302,46 @@ def LowerRequest.lifted {site : CoreCallSite start} (request : LowerRequest site
 
 end
 
+/-- An actual return to this lower's saved continuation, above its parked
+Core caller. The reached store need not equal the lower's allocation store. -/
+structure LowerReturn {initial : State grow sig} {site : CoreCallSite initial}
+    (request : LowerRequest site) (reached : State grow sig) where
+  cancel : CancelRef
+  focused : reached.ctl = ⟨site.thread, .prog (.pure (.cancel cancel)),
+    .prog request.afterCall :: .core site.core site.next :: site.segments⟩ :: site.rest
+
+section
+
+variable {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+
+def LowerReturn.subtask (_ : LowerReturn request reached) : SubtaskId := request.storeAndSubtask.2
+
+def LowerReturn.atProgram (_ : LowerReturn request reached) (store : CStore (core3 grow))
+    (body : Session grow sig (Ret (core3 grow))) : State grow sig :=
+  { reached with store, ctl := ⟨site.thread, .prog body, .core site.core site.next :: site.segments⟩ :: site.rest }
+
+def LowerReturn.cancelInstalled (returned : LowerReturn request reached) : State grow sig :=
+  returned.atProgram (LowerSt.setOnCancelSt returned.subtask returned.cancel reached.store)
+    (lowerAfterCancel request.inst returned.subtask request.opts.async_ >>= fun values => pure (.flat values))
+
+def LowerReturn.indexedStore (returned : LowerReturn request reached) (index : Nat) : CStore (core3 grow) :=
+  LowerSt.addSubtaskSt request.inst returned.subtask index returned.cancelInstalled.store
+
+def LowerReturn.pendingValues (record : Subtask) (index : Nat) : List FlatValue :=
+  [i32Flat (AsyncLowerResult.pending record.state index).pack]
+
+def LowerReturn.delivered (returned : LowerReturn request reached) : State grow sig :=
+  returned.atProgram (returned.cancelInstalled.store.deliverResolveSt returned.subtask)
+    (.pure (.flat [i32Flat AsyncLowerResult.returned.pack]))
+
+def LowerReturn.pending (returned : LowerReturn request reached) (record : Subtask) (index : Nat) : State grow sig :=
+  returned.atProgram (returned.indexedStore index) (.pure (.flat (LowerReturn.pendingValues record index)))
+
+def LowerReturn.tableFull (returned : LowerReturn request reached) : State grow sig :=
+  returned.atProgram returned.cancelInstalled.store (trap .tableFull >>= fun values : List FlatValue => pure (.flat values))
+
+end
+
 /-- The lower caller read by the admitted lift, including the live progress
 record. Re-reading it distinguishes eager start from a pending event replacement. -/
 structure LowerStart (site : LiftSite grow sig) where
@@ -387,6 +427,11 @@ inductive Action where
   | lowerAllocate (subtask : SubtaskId) (caller : CallerId)
   | lowerStart (subtask : SubtaskId) (indexed : Bool)
   | lowerEmptyArgs (caller : CallerId)
+  | lowerInstallCancel (subtask : SubtaskId)
+  | lowerEagerDelivery (subtask : SubtaskId)
+  | lowerPending (subtask : SubtaskId) (index : Nat)
+  | lowerTableFull (subtask : SubtaskId)
+  | coreReply (values : List FlatValue)
   | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
   | coreStep
@@ -465,6 +510,34 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
   | invokeReturn {start cancel} (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
       Transition profile ready impl start (.invokeReturn cancel) [.tau, .tau, .tau]
         (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store })
+  | lowerInstallCancel {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+      (returned : LowerReturn request reached) :
+      Transition profile ready impl reached (.lowerInstallCancel returned.subtask) [.tau, .tau] returned.cancelInstalled
+  | lowerEagerDelivery {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+      (returned : LowerReturn request reached) (asyncLower : request.opts.async_ = true)
+      (resolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = true) :
+      Transition profile ready impl returned.cancelInstalled (.lowerEagerDelivery returned.subtask) [.tau, .tau]
+        returned.delivered
+  | lowerPending {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+      (returned : LowerReturn request reached) {instance_ nextInstance : InstState} {index : Nat} {record : Subtask}
+      (asyncLower : request.opts.async_ = true)
+      (recordLive : reached.store.subtask? returned.subtask = some record) (unresolved : record.state.resolved = false)
+      (live : returned.cancelInstalled.store.inst? request.inst = some instance_)
+      (room : instance_.addHandle? (.waitable (.subtask returned.subtask)) = some (index, nextInstance)) :
+      Transition profile ready impl returned.cancelInstalled (.lowerPending returned.subtask index)
+        [.tau, .tau, .tau, .tau] (returned.pending { record with onCancel := returned.cancel, index := some index } index)
+  | lowerTableFull {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+      (returned : LowerReturn request reached) {instance_ : InstState}
+      (asyncLower : request.opts.async_ = true)
+      (unresolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = false)
+      (live : returned.cancelInstalled.store.inst? request.inst = some instance_)
+      (full : instance_.addHandle? (.waitable (.subtask returned.subtask)) = none) :
+      Transition profile ready impl returned.cancelInstalled (.lowerTableFull returned.subtask)
+        [.tau, .tau, .trap .tableFull] (StepDefs.trapCfg returned.tableFull)
+  | coreReply {start thread core next segments rest values}
+      (focused : start.ctl = ⟨thread, .prog (.pure (.flat values)), .core core next :: segments⟩ :: rest) :
+      Transition profile ready impl start (.coreReply values) [.tau]
+        { start with ctl := ⟨thread, .core ((core3 grow).resume start.store.core core (.values values)) next, segments⟩ :: rest }
   | tick {start thread} (tick : SelectedTick thread start ready profile) :
       Transition profile ready impl start (.tick thread) tick.selectionLabels tick.atResume
   | coreInternal {start thread core next segments rest coreStore advanced}

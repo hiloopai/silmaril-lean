@@ -69,7 +69,7 @@ theorem canonLower (h : LowerPres I) (lim : Limits) (q : Quirks) (callee : FuncI
     (ft : WIT.FuncType Empty RtId) (opts : CanonOpts E) (inst : InstId)
     (flatArgs : List FlatValue) :
     P.InvW I W (Canon.canonLower lim q callee ft opts inst flatArgs : P E σ (List FlatValue)) := by
-  unfold Canon.canonLower Canon.lowerAfterCallee
+  unfold Canon.canonLower Canon.lowerAfterCallee Canon.lowerAfterCancel
   refine bind (getInst _) fun _ => bind (trapIf _ _) fun _ => ?_
   refine bind (allocObj _ _ (h.allocSubtask _)) fun s => ?_
   refine bind (allocObj _ _ (h.allocCaller _)) fun c => ?_

@@ -220,11 +220,9 @@ def lowerOnResolve (lim : Limits) (q : Quirks) (c : CallerId) (r : Option (List 
       Subtask.resolve s .returned flat
   | _ => internal "lowerOnResolve: not a canon_lower caller record"
 
-/-- The continuation after the callee supplies its cancellation handle. Completion,
-waiting, and async handle installation all inspect the store reached by that call. -/
-def lowerAfterCallee (inst : InstId) (s : SubtaskId) (async_ : Bool) (oc : CancelRef) :
+/-- Completion, waiting and handle allocation read the store after cancel installation. -/
+def lowerAfterCancel (inst : InstId) (s : SubtaskId) (async_ : Bool) :
     P E σ (List FlatValue) := do
-  modifyStore (LowerSt.setOnCancelSt s oc)
   if !async_ then
     let resolved ← gets (·.subtaskResolved s)
     let _ ← (if !resolved then Thread.waitUntilGuest .syncLower (.subtaskResolved s)
@@ -239,6 +237,12 @@ def lowerAfterCallee (inst : InstId) (s : SubtaskId) (async_ : Bool) (oc : Cance
       let i ← handlesAddSubtask inst s
       let x ← getObj ArenaField.subtasks s
       return [i32Flat (AsyncRef.AsyncLowerResult.pending x.state i).pack]
+
+/-- The continuation after the callee supplies its cancellation handle. -/
+def lowerAfterCallee (inst : InstId) (s : SubtaskId) (async_ : Bool) (oc : CancelRef) :
+    P E σ (List FlatValue) := do
+  modifyStore (LowerSt.setOnCancelSt s oc)
+  lowerAfterCancel inst s async_
 
 /-- REF `canon_lower(callee, ft, opts, flat_args)` (L2169-2233) of the `canon lower` defined in
 instance `inst`, called from a thread of `inst` (REF `current_thread().task.inst`; the

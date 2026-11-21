@@ -24,6 +24,30 @@ theorem Transition.steps {action labels} (edge : Transition profile ready impl s
     Steps profile ready (specDispatch ready impl) start labels finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.transitionSteps edge
 
+section LowerReturn
+
+variable {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+
+theorem LowerReturn.cancel_record (returned : LowerReturn request reached) {record : Subtask}
+    (live : reached.store.subtask? returned.subtask = some record) :
+    returned.cancelInstalled.store.subtask? returned.subtask = some { record with onCancel := returned.cancel } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerCancelRecord returned live
+
+/-- The pending handle insertion changes the index without taking an event. -/
+theorem LowerReturn.indexed_record (returned : LowerReturn request reached) {record : Subtask} (index : Nat)
+    (live : reached.store.subtask? returned.subtask = some record) :
+    (returned.indexedStore index).subtask? returned.subtask = some { record with onCancel := returned.cancel, index := some index } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerIndexedRecord returned index live
+
+/-- Eager delivery releases lends but is not a pending-event take. Neither
+this cut nor the pending-result cut has resumed the parked Core yet. -/
+theorem LowerReturn.delivered_record (returned : LowerReturn request reached) {record : Subtask}
+    (live : reached.store.subtask? returned.subtask = some record) :
+    returned.delivered.store.subtask? returned.subtask = some { record with onCancel := returned.cancel, lenders := none } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerDeliveredRecord returned live
+
+end LowerReturn
+
 /-- Soundness for finite classified sessions, including those stopping at a
 park or a trap. Neither a scheduler choice nor eventual delivery is promised. -/
 theorem Run.steps {actions labels} (path : Run profile ready impl start actions labels finish) :
@@ -182,6 +206,26 @@ theorem Run.append {first second leading trailing} (left : Run profile ready imp
     (right : Run profile ready impl middle second trailing finish) :
     Run profile ready impl start (first ++ second) (leading ++ trailing) finish :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.runAppend left right
+
+/-- Extend a finite run that reached the original lower continuation. The
+result is ready to reply; it has not popped the saved Core caller. -/
+theorem Run.finish_pending_lower {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+    {actions labels} (run : Run profile ready impl start actions labels reached) (returned : LowerReturn request reached)
+    {instance_ nextInstance : InstState} {index : Nat} {record : Subtask} (asyncLower : request.opts.async_ = true)
+    (recordLive : reached.store.subtask? returned.subtask = some record) (unresolved : record.state.resolved = false)
+    (live : returned.cancelInstalled.store.inst? request.inst = some instance_)
+    (room : instance_.addHandle? (.waitable (.subtask returned.subtask)) = some (index, nextInstance)) :
+    Run profile ready impl start (actions ++ [.lowerInstallCancel returned.subtask, .lowerPending returned.subtask index])
+      (labels ++ [.tau, .tau, .tau, .tau, .tau, .tau])
+      (returned.pending { record with onCancel := returned.cancel, index := some index } index) :=
+  run.append (.next (.lowerInstallCancel returned) (.next (.lowerPending returned asyncLower recordLive unresolved live room) (.stop _)))
+
+theorem Run.finish_eager_lower {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+    {actions labels} (run : Run profile ready impl start actions labels reached) (returned : LowerReturn request reached)
+    (asyncLower : request.opts.async_ = true) (resolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = true) :
+    Run profile ready impl start (actions ++ [.lowerInstallCancel returned.subtask, .lowerEagerDelivery returned.subtask])
+      (labels ++ [.tau, .tau, .tau, .tau]) returned.delivered :=
+  run.append (.next (.lowerInstallCancel returned) (.next (.lowerEagerDelivery returned asyncLower resolved) (.stop _)))
 
 /-- The actual implicit-thread install and forced resume take five silent
 steps under either dispatcher. The fresh thread has no waiting condition. -/

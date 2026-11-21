@@ -517,6 +517,180 @@ private theorem invokeReturnSteps {cancel}
       (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store }) := by
   exact .cons (.popProg focused) (.cons (.modify rfl) (.cons (.hostDone rfl) (.refl _)))
 
+section LowerReturn
+
+variable {initial reached : State grow sig} {site : CoreCallSite initial} {request : LowerRequest site}
+
+private theorem lowerInstallCancel (returned : LowerReturn request reached) :
+    Steps profile ready (specDispatch ready impl) reached [.tau, .tau] returned.cancelInstalled := by
+  exact .cons (.popProg returned.focused) (.cons (.modify rfl) (.refl _))
+
+theorem lowerCancelRecord (returned : LowerReturn request reached) {record : Subtask}
+    (live : reached.store.subtask? returned.subtask = some record) :
+    returned.cancelInstalled.store.subtask? returned.subtask = some { record with onCancel := returned.cancel } := by
+  have lookup : ArenaField.subtasks.get? reached.store returned.subtask = some record := live
+  simp only [LowerReturn.cancelInstalled, LowerReturn.atProgram, LowerSt.setOnCancelSt, CStore.subtask?,
+    ArenaField.get?_modify_self, lookup, Option.map_some]
+
+theorem lowerIndexedRecord (returned : LowerReturn request reached) {record : Subtask} (index : Nat)
+    (live : reached.store.subtask? returned.subtask = some record) :
+    (returned.indexedStore index).subtask? returned.subtask = some { record with onCancel := returned.cancel, index := some index } := by
+  have installed := lowerCancelRecord returned live
+  let store := returned.cancelInstalled.store
+  have frame : (ArenaField.insts.modify store request.inst
+      (InstState.addHandle (.waitable (.subtask returned.subtask)))).subtask? returned.subtask = store.subtask? returned.subtask := rfl
+  unfold LowerReturn.indexedStore LowerSt.addSubtaskSt
+  rw [installed]
+  simp only [LowerSt.setIndexSt, CStore.subtask?, ArenaField.get?_modify_self]
+  change ((ArenaField.insts.modify store request.inst (InstState.addHandle (.waitable (.subtask returned.subtask)))).subtask?
+      returned.subtask).map _ = _
+  rw [frame, installed]
+  rfl
+
+theorem lowerDeliveredRecord (returned : LowerReturn request reached) {record : Subtask}
+    (live : reached.store.subtask? returned.subtask = some record) :
+    returned.delivered.store.subtask? returned.subtask = some { record with onCancel := returned.cancel, lenders := none } := by
+  have installed := lowerCancelRecord returned live
+  have frame (lenders : List HandleObjId) (store : CStore (core3 grow)) :
+      (lenders.foldl (fun store handle => ArenaField.resHandles.modify store handle fun entry =>
+        { entry with numLends := entry.numLends - 1 }) store).subtask? returned.subtask = store.subtask? returned.subtask := by
+    induction lenders generalizing store with
+    | nil => rfl
+    | cons handle rest ih => exact ih (ArenaField.resHandles.modify store handle _)
+  change (returned.cancelInstalled.store.deliverResolveSt returned.subtask).subtask? returned.subtask = _
+  rw [CStore.deliverResolveSt, installed, CStore.subtask?, ArenaField.get?_modify_self]
+  exact congrArg (Option.map fun entry => { entry with lenders := none }) ((frame _ _).trans installed)
+
+private def pendingResult (returned : LowerReturn request reached) (index : Nat) : Session grow sig (Ret (core3 grow)) := do
+  let record ← getObj ArenaField.subtasks returned.subtask
+  pure (.flat (LowerReturn.pendingValues record index))
+
+private def asyncBranch (returned : LowerReturn request reached) (resolved : Bool) : Session grow sig (Ret (core3 grow)) :=
+  if resolved then
+    Subtask.deliverResolve returned.subtask >>= fun _ => pure (.flat [i32Flat AsyncRef.AsyncLowerResult.returned.pack])
+  else handlesAddSubtask request.inst returned.subtask >>= pendingResult returned
+
+private theorem lowerReadResolution (returned : LowerReturn request reached) (asyncLower : request.opts.async_ = true)
+    {resolved : Bool} (live : returned.cancelInstalled.store.subtaskResolved returned.subtask = resolved) :
+    Steps profile ready (specDispatch ready impl) returned.cancelInstalled [.tau]
+      (returned.atProgram returned.cancelInstalled.store (asyncBranch returned resolved)) := by
+  have focused : returned.cancelInstalled.ctl = ⟨site.thread,
+      .prog (.op .get (fun store => asyncBranch returned (store.subtaskResolved returned.subtask))),
+      .core site.core site.next :: site.segments⟩ :: site.rest := by
+    simp only [LowerReturn.cancelInstalled, LowerReturn.atProgram, lowerAfterCancel, asyncLower,
+      Bool.not_true, Bool.false_eq_true, ite_false]
+    congr 1
+    next =>
+      congr 1
+      next =>
+        congr 1
+        next =>
+          change Prog.op (S := Eff (core3 grow) (HostState sig)) Op.get _ = Prog.op Op.get _
+          congr 1
+          funext store
+          change CStore (core3 grow) at store
+          dsimp [Bind.bind, Prog.bind, pure]
+          cases store.subtaskResolved returned.subtask <;>
+            simp [asyncBranch, Prog.bind_assoc, Prog.pure_bind']
+          rfl
+  refine .cons (.get focused) ?_
+  rw [live]
+  exact .refl _
+
+private theorem lowerEagerDelivery (returned : LowerReturn request reached) (asyncLower : request.opts.async_ = true)
+    (resolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = true) :
+    Steps profile ready (specDispatch ready impl) returned.cancelInstalled [.tau, .tau] returned.delivered :=
+  appendSteps (lowerReadResolution returned asyncLower resolved) (.cons (.modify rfl) (.refl _))
+
+private theorem lowerReadInstance (returned : LowerReturn request reached) (asyncLower : request.opts.async_ = true)
+    (unresolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = false) {instance_ : InstState}
+    (live : returned.cancelInstalled.store.inst? request.inst = some instance_) :
+    Steps profile ready (specDispatch ready impl) returned.cancelInstalled [.tau, .tau]
+      (returned.atProgram returned.cancelInstalled.store
+        ((match instance_.addHandle? (.waitable (.subtask returned.subtask)) with
+        | none => trap .tableFull
+        | some (index, _) => modifyStore (LowerSt.addSubtaskSt request.inst returned.subtask index) >>= fun _ => pure index)
+        >>= pendingResult returned)) := by
+  refine appendSteps (lowerReadResolution returned asyncLower unresolved) ?_
+  let next : CStore (core3 grow) → Session grow sig (Ret (core3 grow)) := fun store =>
+    ((match ArenaField.insts.get? store request.inst with
+      | some current => match current.addHandle? (.waitable (.subtask returned.subtask)) with
+        | none => trap .tableFull
+        | some (index, _) => modifyStore (LowerSt.addSubtaskSt request.inst returned.subtask index) >>= fun _ => pure index
+      | none => internal "dangling arena id") >>= pendingResult returned)
+  have focus : (returned.atProgram returned.cancelInstalled.store (asyncBranch returned false)).ctl =
+      ⟨site.thread, .prog (.op .get next), .core site.core site.next :: site.segments⟩ :: site.rest := by
+    suffices body : asyncBranch returned false = .op .get next by rw [body]; rfl
+    change Prog.op (S := Eff (core3 grow) (HostState sig)) Op.get _ = Prog.op Op.get _
+    congr 1
+    funext store
+    change CStore (core3 grow) at store
+    dsimp [Bind.bind, Prog.bind, pure, next]
+    cases ArenaField.insts.get? store request.inst with
+    | none =>
+      dsimp [internal, trap, Prog.bind]
+      congr 1
+      funext response
+      cases response
+    | some current =>
+      cases current.addHandle? (.waitable (.subtask returned.subtask)) with
+      | none => rfl
+      | some allocation => cases allocation; rfl
+  refine .cons (.get focus) ?_
+  have lookup : ArenaField.insts.get? returned.cancelInstalled.store request.inst = some instance_ := live
+  change Steps _ _ _ (returned.atProgram returned.cancelInstalled.store (next returned.cancelInstalled.store)) [] _
+  simp only [next, lookup]
+  exact .refl _
+
+private theorem lowerPending (returned : LowerReturn request reached) {instance_ nextInstance : InstState}
+    {index : Nat} {record : Subtask} (asyncLower : request.opts.async_ = true)
+    (unresolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = false)
+    (live : returned.cancelInstalled.store.inst? request.inst = some instance_)
+    (room : instance_.addHandle? (.waitable (.subtask returned.subtask)) = some (index, nextInstance))
+    (indexed : (returned.indexedStore index).subtask? returned.subtask = some record) :
+    Steps profile ready (specDispatch ready impl) returned.cancelInstalled [.tau, .tau, .tau, .tau]
+      (returned.pending record index) := by
+  have read := lowerReadInstance (profile := profile) (ready := ready) (impl := impl) returned asyncLower unresolved live
+  rw [room] at read
+  let next : CStore (core3 grow) → Session grow sig (Ret (core3 grow)) := fun store =>
+    (match ArenaField.subtasks.get? store returned.subtask with
+    | some found => pure found
+    | none => internal "dangling arena id") >>= fun found => pure (.flat (LowerReturn.pendingValues found index))
+  have body : pendingResult returned index = .op .get next := by
+    change Prog.op (S := Eff (core3 grow) (HostState sig)) Op.get _ = Prog.op Op.get _
+    congr 1
+    funext store
+    change CStore (core3 grow) at store
+    dsimp [Bind.bind, Prog.bind, pure, next]
+    cases ArenaField.subtasks.get? store returned.subtask <;> rfl
+  have insert : Steps profile ready (specDispatch ready impl)
+      (returned.atProgram returned.cancelInstalled.store
+        ((modifyStore (LowerSt.addSubtaskSt request.inst returned.subtask index) >>= fun _ => pure index) >>= pendingResult returned)) [.tau]
+      (returned.atProgram (returned.indexedStore index) (pendingResult returned index)) :=
+    .cons (.modify rfl) (.refl _)
+  refine appendSteps read (appendSteps insert ?_)
+  have focus : (returned.atProgram (returned.indexedStore index) (pendingResult returned index)).ctl =
+      ⟨site.thread, .prog (.op .get next), .core site.core site.next :: site.segments⟩ :: site.rest := by rw [body]; rfl
+  refine .cons (.get focus) ?_
+  have recordLookup : ArenaField.subtasks.get? (returned.indexedStore index) returned.subtask = some record := indexed
+  change Steps _ _ _ (returned.atProgram (returned.indexedStore index) (next (returned.indexedStore index)))
+    [] (returned.pending record index)
+  simp only [next, recordLookup]
+  exact .refl _
+
+private theorem lowerTableFull (returned : LowerReturn request reached) {instance_ : InstState}
+    (asyncLower : request.opts.async_ = true)
+    (unresolved : returned.cancelInstalled.store.subtaskResolved returned.subtask = false)
+    (live : returned.cancelInstalled.store.inst? request.inst = some instance_)
+    (full : instance_.addHandle? (.waitable (.subtask returned.subtask)) = none) :
+    Steps profile ready (specDispatch ready impl) returned.cancelInstalled [.tau, .tau, .trap .tableFull]
+      (StepDefs.trapCfg returned.tableFull) := by
+  have read := lowerReadInstance (profile := profile) (ready := ready) (impl := impl) returned asyncLower unresolved live
+  rw [full] at read
+  exact appendSteps read (.cons (.trap rfl) (.refl _))
+
+end LowerReturn
+
 theorem transitionSteps {action leading} (edge : Transition profile ready impl start action leading finish) :
     Steps profile ready (specDispatch ready impl) start leading finish := by
   cases edge with
@@ -533,6 +707,14 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | lowerEmptyArgs handoff empty => exact lowerEmptyArgs handoff empty
   | lowerEmptyCore _ entry => exact entry
   | invokeReturn focused => exact invokeReturnSteps focused
+  | lowerInstallCancel returned => exact lowerInstallCancel returned
+  | lowerEagerDelivery returned asyncLower resolved => exact lowerEagerDelivery returned asyncLower resolved
+  | lowerPending returned asyncLower recordLive unresolved live room =>
+    exact lowerPending returned asyncLower (by simp only [CStore.subtaskResolved, lowerCancelRecord returned recordLive, unresolved])
+      live room (lowerIndexedRecord returned _ recordLive)
+  | lowerTableFull returned asyncLower unresolved live full =>
+    exact lowerTableFull returned asyncLower unresolved live full
+  | coreReply focused => exact .cons (.popCore focused) (.refl _)
   | tick tick => exact tick.selects_thread
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)
   | coreReturned focused returned => exact .cons (.coreReturned focused returned) (.refl _)
