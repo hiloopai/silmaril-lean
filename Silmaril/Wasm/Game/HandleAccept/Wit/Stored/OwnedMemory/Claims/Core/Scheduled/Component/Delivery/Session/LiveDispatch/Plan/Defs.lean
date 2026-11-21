@@ -154,14 +154,16 @@ def CollectionRangeCut (profile : ProfileKind) (ready : HostReady (HostState sig
 /-- A reached collection segment. The slot offset counts removed frames.
 On checked refusal, the canonical program is the actual unexecuted suffix
 at the reached stop, not necessarily the initial child-entry program. -/
-def CollectionSegment (profile : ProfileKind) (ready : HostReady (HostState sig))
+def CollectionSegmentThen (profile : ProfileKind) (ready : HostReady (HostState sig))
     (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
     (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
     (checked canonical : Config (core3 grow) (HostState sig))
     (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) {Result : Type}
     (checkNext : Except Stored.Endpoints.RecordLower.Issue Result → Session grow sig (Ret (core3 grow)))
     (canonNext : Result → Session grow sig (Ret (core3 grow))) (offset : Nat)
-    (stopsAt : Session grow sig (Ret (core3 grow)) → Prop) (keep : CStore (core3 grow) → Prop := fun _ => True) : Prop :=
+    (stopsAt : Session grow sig (Ret (core3 grow)) → Prop)
+    (next : Result → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop) : Prop :=
   let checkedDispatch := specDispatch ready base
   let canonDispatch := specDispatch ready (LiveDispatch.host bindings base)
   ∃ (canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) (outcome : PayloadPrefix.Outcome Result)
@@ -175,13 +177,24 @@ def CollectionSegment (profile : ProfileKind) (ready : HostReady (HostState sig)
         (∀ depth, ReturnFrame.Occurrence.Prefix profile ready checkedDispatch checked (.active 0 (depth + offset))
           checkLabels left (.active 0 depth)) ∧
         (∀ depth, ReturnFrame.Occurrence.Prefix profile ready canonDispatch canonical (.active 0 (depth + offset))
-          canonLabels right (.active 0 depth)) ∧ keep left.store
+          canonLabels right (.active 0 depth)) ∧ next value left right canon
     | .refused issue => ∃ stop, stopsAt stop ∧
         left.ctl = check.control (checkNext (.error issue)) ∧ right.ctl = canon.control stop ∧
         (∀ depth, ReturnFrame.Occurrence.Prefix profile ready checkedDispatch checked (.active 0 (depth + offset))
           checkLabels left (.active 0 depth)) ∧
         (∀ depth, ReturnFrame.Occurrence.Prefix profile ready canonDispatch canonical (.active 0 (depth + offset))
           canonLabels right (.active 0 depth))
+
+abbrev CollectionSegment (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (checked canonical : Config (core3 grow) (HostState sig))
+    (check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)) {Result : Type}
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Result → Session grow sig (Ret (core3 grow)))
+    (canonNext : Result → Session grow sig (Ret (core3 grow))) (offset : Nat)
+    (stopsAt : Session grow sig (Ret (core3 grow)) → Prop) (keep : CStore (core3 grow) → Prop := fun _ => True) : Prop :=
+  CollectionSegmentThen profile ready base bindings older checked canonical check checkNext canonNext offset stopsAt
+    (fun _ left _ _ => keep left.store)
 
 /-- The specialization in which a failed fresh preparation stops before
 any child executes. -/
@@ -315,7 +328,10 @@ def LinkedStringMapEntry (profile : ProfileKind) (ready : HostReady (HostState s
     (index : Fin entries.length) (origin : CStore (core3 grow)) (basePtr : Nat)
     (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
     (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
-    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    (next : Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → PayloadPrefix.Cursor (E := core3 grow) (HostState sig) → Prop :=
+        fun lhs _ _ _ => Core3.Grows origin.core lhs.store.core) : Prop :=
   open Stored.Endpoints.RecordLower ABI in
   let destination := site.destination
   let cx := destination.context site.inst
@@ -347,8 +363,47 @@ def LinkedStringMapEntry (profile : ProfileKind) (ready : HostReady (HostState s
       | .ok () => OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
           value 1 (.memory valuePtr)) >>= report
     StringKeyThen profile ready base bindings older destination site.inst key keyPtr left right check canon checked (fun _ => pending)
-      (fun _ lhs rhs cursor _ => CollectionSegment profile ready base bindings older lhs rhs cursor checkTail canonTail 0
-        (· = pending) (fun reached => Core3.Grows origin.core reached.core))
+      (fun _ lhs rhs cursor _ => CollectionSegmentThen profile ready base bindings older lhs rhs cursor checkTail canonTail 0
+        (· = pending) (fun _ reached peer nextCheck => next reached peer cursor nextCheck))
+
+/-- Exact controls for a reached suffix, including the original finish. -/
+def LinkedStringMapAt {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf)
+    (entries : List Stored.Endpoints.RecordLower.Field) (index basePtr : Nat)
+    (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+  open Stored.Endpoints.RecordLower ABI in
+  let stride := (layout site.destination.width (.record (mapEntryFields .string element))).size
+  let address := basePtr + index * stride
+  let cx := site.destination.context site.inst
+  let mode := CanonicalTree.EntryMode.forOutput site.destination.width (.map .string element) route.output
+  left.ctl = check.control (OwnedMemory.Claims.Record.Effects.elements recordClaims Limits.spec Quirks.none cx
+    site.destination.width (entries.drop index) stride address index >>= checkNext) ∧
+  right.ctl = canon.control (CanonicalTree.elements Limits.spec Quirks.none cx site.destination.width
+    (entries.drop index) mode stride address >>= canonNext)
+
+/-- Compare a suffix of the actual map traversal. Only a returned key and
+value enter the next suffix; a suspended allocator, refusal or trap does not.
+Each link retains its visible trace and the trails of older occurrences. -/
+def LinkedStringMapTraversal (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
+    (index : Nat) (origin : CStore (core3 grow)) (basePtr : Nat)
+    (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+  LinkedStringMapAt site element entries index basePtr left right check canon checkNext canonNext ∧
+    if present : index < entries.length then
+      LinkedStringMapEntry profile ready base bindings older site element entries ⟨index, present⟩ origin basePtr
+        left right check canon checkNext canonNext (fun lhs rhs cursor peer =>
+          LinkedStringMapTraversal profile ready base bindings older site element entries (index + 1) origin basePtr
+            lhs rhs cursor peer checkNext canonNext)
+    else
+      LinkedCallback.ChildFrameOver older left right check canon ∧
+        left.ctl = check.control (checkNext (.ok ())) ∧ right.ctl = canon.control (canonNext ()) ∧
+        Core3.Grows origin.core left.store.core
+termination_by entries.length - index
 
 def mapValueSuffix (destination : RecordDestination) (inst : InstId)
     (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)

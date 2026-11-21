@@ -353,6 +353,31 @@ theorem linked_string_map_entry {route : GiveEffectRoute} (site : PayloadRoot.Si
       checkNext canonNext :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapEntry
     site linked element entries index nominal field fits origin basePtr bytes width sized aligned bounds checkNext canonNext frame growth embedder
+      _ (fun _ _ _ _ _ grown _ _ => grown)
+
+/-- Compare every reached string-key nominal map entry in either public
+give. Advance only on actual returns, retaining the stopped value suffix,
+the reached trap, or the finite classified allocator prefix at each entry. -/
+theorem linked_string_map_traversal {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (index : Nat)
+    (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
+    (origin : CStore (core3 grow)) (basePtr bytes : Nat)
+    (width : (core3 grow).memAddrType? origin.core site.destination.memory = some site.destination.width)
+    (sized : (core3 grow).memSize? origin.core site.destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout site.destination.width (.record (mapEntryFields .string element))).alignment)
+    (bounds : basePtr + entries.length * (layout site.destination.width (.record (mapEntryFields .string element))).size ≤ bytes)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {left right : Config (core3 grow) (HostState sig)} {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    (atSuffix : LinkedStringMapAt site element entries index basePtr left right check canon checkNext canonNext) :
+    LinkedStringMapTraversal profile ready base bindings older site element entries index origin basePtr left right check canon
+      checkNext canonNext :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapTraversal
+    site linked element entries index nominal field fits origin basePtr bytes width sized aligned bounds checkNext canonNext frame growth embedder atSuffix
 
 /-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys

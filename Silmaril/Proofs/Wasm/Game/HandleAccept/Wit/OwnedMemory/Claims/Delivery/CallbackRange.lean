@@ -1049,6 +1049,19 @@ private theorem preflightAllocator {route : GiveEffectRoute} (site : PayloadRoot
     · contradiction
     · simp [RecordLower.compileValue, options, bind, Except.bind, Except.mapError] at compiled
 
+private theorem mapStringKeyFinish (destination : RecordDestination) (inst : InstId) (key : LinkedCallback.StringField)
+    (address : Nat) (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    {first second : Nat → Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      Cursor (E := core3 grow) (HostState sig) → Cursor (E := core3 grow) (HostState sig) → Prop}
+    (next : ∀ pointer lhs rhs cursor peer, first pointer lhs rhs cursor peer → second pointer lhs rhs cursor peer)
+    (replay : StringKeyThen profile ready base bindings older destination inst key address left right check canon checkNext canonNext first) :
+    StringKeyThen profile ready base bindings older destination inst key address left right check canon checkNext canonNext second := by
+  obtain ⟨lhs, rhs, checkSeen, canonSeen, checkTracks, canonTracks, frame, rest⟩ := replay
+  exact ⟨lhs, rhs, checkSeen, canonSeen, checkTracks, canonTracks, frame, CallbackPrefix.stringReplayMap next rest⟩
+
 theorem linkedStringMapEntry {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (index : Fin entries.length)
     (nominal : NominalElement element)
@@ -1064,9 +1077,21 @@ theorem linkedStringMapEntry {route : GiveEffectRoute} (site : PayloadRoot.Site 
     {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
     (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
-    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    (next : Config (core3 grow) (HostState sig) → Config (core3 grow) (HostState sig) →
+      Cursor (E := core3 grow) (HostState sig) → Cursor (E := core3 grow) (HostState sig) → Prop)
+    (follow : ∀ lhs rhs cursor peer, LinkedCallback.ChildFrameOver older lhs rhs cursor peer →
+      Core3.Grows origin.core lhs.store.core →
+      (let stride := (layout site.destination.width (.record (mapEntryFields .string element))).size
+       let addr := basePtr + index.val * stride + stride
+       let cx := site.destination.context site.inst
+       let mode := CanonicalTree.EntryMode.forOutput site.destination.width (.map .string element) route.output
+       lhs.ctl = cursor.control (Record.Effects.elements recordClaims Limits.spec Quirks.none cx site.destination.width
+         (entries.drop (index.val + 1)) stride addr (index.val + 1) >>= checkNext) →
+       rhs.ctl = peer.control (CanonicalTree.elements Limits.spec Quirks.none cx site.destination.width
+         (entries.drop (index.val + 1)) mode stride addr >>= canonNext) → next lhs rhs cursor peer)) :
     LinkedStringMapEntry profile ready base bindings older site element entries index origin basePtr left right check canon
-      checkNext canonNext := by
+      checkNext canonNext next := by
   unfold LinkedStringMapEntry
   intro destination cx type stride ptr mode item rest checkTail canonTail checkAt canonAt
   obtain ⟨plan, compiled⟩ := linked.compiled
@@ -1107,9 +1132,19 @@ theorem linkedStringMapEntry {route : GiveEffectRoute} (site : PayloadRoot.Site 
         | ok result => cases result; rfl
       have atCanon := canonAt
       rw [selectedDrop] at atCanon
-      refine stringKeyNominalValue (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+      refine mapStringKeyFinish _ _ _ _ _ _ ?_ (stringKeyNominalValue (profile := profile) (ready := ready) (base := base) (bindings := bindings)
         origin destination site.inst element route.output key value (alignTo ptr (layout destination.width key.field.type).alignment)
-        index.val nominal matched valid width checkTail canonTail (keyRun atCheck ?_)
+        index.val nominal matched valid width checkTail canonTail (keyRun atCheck ?_))
+      · intro pointer lhs rhs cursor peer segment
+        obtain ⟨reached, outcome, lhsTrace, rhsTrace, leftFinal, rightFinal, lhsRun, rhsRun, same, seen, status⟩ := segment
+        refine ⟨reached, outcome, lhsTrace, rhsTrace, leftFinal, rightFinal, lhsRun, rhsRun, same, seen, ?_⟩
+        cases outcome with
+        | trapped _ | refused _ => exact status
+        | returned result =>
+          cases result
+          obtain ⟨paired, lhsAt, rhsAt, lhsTrail, rhsTrail, grown⟩ := status
+          exact ⟨paired, lhsAt, rhsAt, lhsTrail, rhsTrail,
+            follow leftFinal rightFinal cursor reached paired grown lhsAt rhsAt⟩
       rw [atCanon]
       apply congrArg canon.control
       let canonRest : Session grow sig Unit := CanonicalTree.elements Limits.spec Quirks.none cx destination.width rest mode stride (ptr + stride)
@@ -1132,6 +1167,44 @@ theorem linkedStringMapEntry {route : GiveEffectRoute} (site : PayloadRoot.Site 
           readWidth.bind (fun keyWidth => (keyBody keyWidth).bind fun _ =>
             readWidth.bind fun reached => (valueBody keyWidth reached).bind fun _ => canonRest.bind canonNext)
         simp only [Prog.bind_assoc, Prog.pure_bind']
+
+theorem linkedStringMapTraversal {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (index : Nat)
+    (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
+    (origin : CStore (core3 grow)) (basePtr bytes : Nat)
+    (width : (core3 grow).memAddrType? origin.core site.destination.memory = some site.destination.width)
+    (sized : (core3 grow).memSize? origin.core site.destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout site.destination.width (.record (mapEntryFields .string element))).alignment)
+    (bounds : basePtr + entries.length * (layout site.destination.width (.record (mapEntryFields .string element))).size ≤ bytes)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    (atSuffix : LinkedStringMapAt site element entries index basePtr left right check canon checkNext canonNext) :
+    LinkedStringMapTraversal profile ready base bindings older site element entries index origin basePtr left right check canon
+      checkNext canonNext := by
+  rw [LinkedStringMapTraversal]
+  refine ⟨atSuffix, ?_⟩
+  split
+  next present =>
+    refine linkedStringMapEntry site linked element entries ⟨index, present⟩ nominal field fits origin basePtr bytes width sized
+      aligned bounds checkNext canonNext frame growth embedder _ ?_
+    intro lhs rhs cursor peer paired grown stride addr cx mode checkAt canonAt
+    refine linkedStringMapTraversal site linked element entries (index + 1) nominal field fits origin basePtr bytes width sized
+      aligned bounds checkNext canonNext paired (paired.store ▸ grown) embedder ?_
+    unfold LinkedStringMapAt
+    dsimp only [addr] at checkAt canonAt
+    simpa only [Nat.add_mul, Nat.one_mul, Nat.add_assoc] using And.intro checkAt canonAt
+  next absent =>
+    obtain ⟨checkAt, canonAt⟩ := atSuffix
+    rw [List.drop_eq_nil_of_le (Nat.le_of_not_gt absent)] at checkAt canonAt
+    simp only [Record.Effects.elements, CanonicalTree.elements, Prog.bind_eq, Prog.pure_eq, Prog.pure_bind'] at checkAt canonAt
+    exact ⟨frame, checkAt, canonAt, frame.store.symm ▸ growth⟩
+termination_by entries.length - index
 
 theorem nominalMapReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (key : WIT.KeyType) (element : Stored.TypeOf) (entries : List Field)
