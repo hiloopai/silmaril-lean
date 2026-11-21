@@ -446,26 +446,33 @@ private def reallocSetup (flat invalid : Bool) :
 private def expectWords (expected : List Nat) : List Instr :=
   expected.reverse.flatMap fun value => [word value, .intRelOp .i32 .eq, .if_ .empty [] [.unreachable]]
 
-private def liftedReallocBody (flat : Bool) : List Instr :=
-  [word 77, .call ⟨3⟩] ++ expectWords [1] ++ reallocInput ++
+private def giveBody (flat : Bool) : List Instr :=
+  reallocInput ++
   [word 0, word 32, word 0, word 0, .call ⟨0⟩] ++ expectWords [0, 1] ++
   (if flat then [word 1, .call ⟨2⟩] ++ expectWords [0, 1, 65536, 1, 91]
     else [word 1, word 0, .call ⟨1⟩] ++ expectWords [0, 0]) ++
-  [word 1, .call ⟨4⟩] ++ expectWords [77] ++ storeWord 216 91 ++
+  [word 1, .call ⟨4⟩] ++ expectWords [77] ++ storeWord 216 91
+
+private def liftedReallocBody (flat : Bool) : List Instr :=
+  [word 77, .call ⟨3⟩] ++ expectWords [1] ++ giveBody flat ++
   [.call ⟨5⟩] ++ expectWords [0] ++ [word 91, .call ⟨6⟩]
+
+private def liftedResult : Option (WIT.ClosedType RtId) := some (.prim .u32)
+private def liftedOptions : CanonOpts engine := { async_ := true }
+private def liftedType : WIT.FuncType Empty RtId := ⟨[], liftedResult, true⟩
+
+private def liftedImports : List (String × V1.FuncType × CanonHost engine) :=
+  [("yield", wordFn 0 1, .builtin .threadYield ⟨0⟩),
+    ("task-return", wordFn 1 0, .builtin (.taskReturn liftedResult liftedOptions) ⟨0⟩)]
 
 private def liftedReallocSetup (flat invalid : Bool) :
     Option (List (Binding reallocSignature) × Machine.Config engine (HostState reallocSignature)) := do
-  let opts : CanonOpts engine := { async_ := true }
-  let result : Option (WIT.ClosedType RtId) := some (.prim .u32)
-  let (bindings, core, inst) ← reallocModule invalid
-    [("yield", wordFn 0 1, .builtin .threadYield ⟨0⟩),
-     ("task-return", wordFn 1 0, .builtin (.taskReturn result opts) ⟨0⟩)]
+  let (bindings, core, inst) ← reallocModule invalid liftedImports
     [("run", wordFn 0 0, liftedReallocBody flat)]
   let address ← exportAddr inst "run"
   let store : CStore engine := { CStore.empty with
     core, insts := [{}], resourceTypes := [{ impl := some ⟨0⟩ }],
-    funcs := [.lifted address ⟨[], result, true⟩ opts ⟨0⟩] }
+    funcs := [.lifted address liftedType liftedOptions ⟨0⟩] }
   return (bindings, { store, host := {} })
 
 private def runLiftedRealloc (bindings : List (Binding reallocSignature))
@@ -517,6 +524,102 @@ private def liftedReallocRegression (flat invalid : Bool) : Bool := Id.run do
 #guard liftedReallocRegression true false
 #guard liftedReallocRegression false true
 #guard liftedReallocRegression true true
+
+private inductive DeliveryRoute where
+  | wait | poll | cancel
+  deriving BEq
+
+private def deliveryImports : List (String × V1.FuncType × CanonHost engine) :=
+  liftedImports ++
+    [("produce", wordFn 1 1, .lowered ⟨1⟩ liftedType { liftedOptions with memory := some coreMemory } ⟨0⟩),
+     ("new-set", wordFn 0 1, .builtin .waitableSetNew ⟨0⟩),
+     ("join", wordFn 2 0, .builtin .waitableJoin ⟨0⟩),
+     ("wait", wordFn 2 1, .builtin (.waitableSetWait coreMemory) ⟨0⟩),
+     ("poll", wordFn 2 1, .builtin (.waitableSetPoll coreMemory) ⟨0⟩),
+     ("cancel", wordFn 1 1, .builtin (.subtaskCancel true) ⟨0⟩),
+     ("drop-set", wordFn 1 0, .builtin .waitableSetDrop ⟨0⟩),
+     ("drop-subtask", wordFn 1 0, .builtin .subtaskDrop ⟨0⟩),
+     ("producer-yield", wordFn 0 1, .builtin .threadYield ⟨1⟩),
+     ("producer-return", wordFn 1 0, .builtin (.taskReturn liftedResult liftedOptions) ⟨1⟩)]
+
+private def deliveryProducer : List Instr :=
+  [.call ⟨15⟩] ++ expectWords [0] ++ [word 37, .call ⟨16⟩]
+
+private def expectMemoryWord (ptr value : Nat) : List Instr :=
+  [word ptr, .intLoad .i32 none ⟨0⟩ ⟨0, 0⟩] ++ expectWords [value]
+
+private def liftedDeliveryBody (flat : Bool) (route : DeliveryRoute) (badBuffer : Bool) : List Instr :=
+  let useSet := route != .cancel
+  let buffer := if badBuffer then 131072 else 232
+  let pending := (AsyncLowerResult.pending .started 2).pack
+  [word 77, .call ⟨3⟩] ++ expectWords [1] ++
+  [word 224, .call ⟨7⟩] ++ expectWords [pending] ++
+  (if useSet then
+    [.call ⟨8⟩] ++ expectWords [3] ++ [word 2, word 3, .call ⟨9⟩] ++
+    [word 3, word 232, .call ⟨11⟩] ++ expectWords [EventCode.none.toNat]
+    else []) ++ giveBody flat ++
+  (if route != .wait then [.call ⟨5⟩] ++ expectWords [0] else []) ++
+  (match route with
+    | .wait => [word 3, word buffer, .call ⟨10⟩] ++ expectWords [EventCode.subtask.toNat]
+    | .poll => [word 3, word buffer, .call ⟨11⟩] ++ expectWords [EventCode.subtask.toNat]
+    | .cancel => [word 2, .call ⟨12⟩] ++ expectWords [subtaskCancelResult (some .returned)]) ++
+  (if useSet then
+    expectMemoryWord 232 2 ++ expectMemoryWord 236 SubtaskState.returned.toNat ++
+      [word 3, word 240, .call ⟨11⟩] ++ expectWords [EventCode.none.toNat] ++
+      [word 2, word 0, .call ⟨9⟩, word 3, .call ⟨13⟩]
+    else []) ++ expectMemoryWord 224 37 ++ [word 2, .call ⟨14⟩, word 91, .call ⟨6⟩]
+
+private def liftedDeliverySetup (flat : Bool) (route : DeliveryRoute) (badBuffer : Bool) :
+    Option (List (Binding reallocSignature) × Machine.Config engine (HostState reallocSignature)) := do
+  let (bindings, core, inst) ← reallocModule false deliveryImports
+    [("run", wordFn 0 0, liftedDeliveryBody flat route badBuffer), ("produce-local", wordFn 0 0, deliveryProducer)]
+  let entry ← exportAddr inst "run"
+  let producer ← exportAddr inst "produce-local"
+  let store : CStore engine := { CStore.empty with
+    core, insts := [{}, {}], resourceTypes := [{ impl := some ⟨0⟩ }],
+    funcs := [.lifted entry liftedType liftedOptions ⟨0⟩, .lifted producer liftedType liftedOptions ⟨1⟩] }
+  return (bindings, { store, host := {} })
+
+private def liftedDeliveryRegression (flat : Bool) (route : DeliveryRoute) (badBuffer : Bool := false) : Bool := Id.run do
+  let some (bindings, start) := liftedDeliverySetup flat route badBuffer | return false
+  let some replay := runLiftedRealloc bindings start | return false
+  let state := replay.config
+  let bytes := (state.store.core.mems[0]?.map (·.bytes)).getD ByteArray.empty
+  let reply := if flat then .returnedFlat 1 ([1, 65536, 1, 91].map i32Flat) else Event.returned 1 0
+  let outcome := if badBuffer then
+      replay.outcome == .trap && replay.labels.any (· matches .trap .outOfBounds) &&
+        (state.result? ⟨0⟩).isNone && state.store.subtaskResolveDelivered ⟨0⟩ &&
+        !state.store.waitableHasEvent (.subtask ⟨0⟩)
+    else replay.outcome == .resolved && state.result? ⟨0⟩ == some (some [.int .u32 91]) &&
+      ((state.store.inst? ⟨0⟩).bind (·.handles.get? 2)).isNone
+  return outcome && state.host.publications == [(0, 1)] && state.host.refusals == [.wrongContext] &&
+    state.host.transcript.contains reply && state.host.writer.held.isEmpty &&
+    (replay.labels.countP (· matches .host .tick)) == 2 &&
+    (bytes.extract 216 228).data == #[91, 0, 0, 0, 0, 0, 0, 0, 37, 0, 0, 0] &&
+    (bytes.extract 65536 65540).data == #[77, 0, 0, 0]
+
+private def liftedDeliveryParked (flat : Bool) : Bool := Id.run do
+  let some (bindings, start) := liftedDeliverySetup flat .wait false | return false
+  let some (_, invoked) := Machine.hostStep? ready (.invoke ⟨0⟩ ⟨0⟩ []) start | return false
+  let paused := run bindings invoked
+  let state := paused.config
+  let reply := if flat then .returnedFlat 1 ([1, 65536, 1, 91].map i32Flat) else Event.returned 1 0
+  let some record := state.store.subtask? ⟨0⟩ | return false
+  let bytes := (state.store.core.mems[0]?.map (·.bytes)).getD ByteArray.empty
+  return paused.outcome == .running && state.hostReady && state.conts.countP Option.isSome == 2 &&
+    state.host.transcript.contains reply && (state.result? ⟨0⟩).isNone && record.state == .started &&
+    !state.store.waitableHasEvent (.subtask ⟨0⟩) && (bytes.extract 224 228).data == #[0, 0, 0, 0]
+
+#guard liftedDeliveryParked false
+#guard liftedDeliveryParked true
+#guard liftedDeliveryRegression false .wait
+#guard liftedDeliveryRegression true .wait
+#guard liftedDeliveryRegression false .poll
+#guard liftedDeliveryRegression true .poll
+#guard liftedDeliveryRegression false .cancel
+#guard liftedDeliveryRegression true .cancel
+#guard liftedDeliveryRegression true .wait true
+#guard liftedDeliveryRegression false .poll true
 
 private def reallocRegression (flat invalid : Bool) : Bool :=
   match reallocSetup flat invalid with
