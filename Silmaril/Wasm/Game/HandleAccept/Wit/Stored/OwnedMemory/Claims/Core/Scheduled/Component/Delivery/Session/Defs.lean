@@ -248,6 +248,56 @@ def CoreCallSite.reached {start : State grow sig} (site : CoreCallSite start)
     | none => calloutBody Limits.spec Quirks.none ready impl start.store site.thread site.target site.args
   { start with ctl := ⟨site.thread, .prog body, .core site.core site.next :: site.segments⟩ :: site.rest }
 
+/-- The lowered import must be the actual reached Core request, with its
+instance entry check already discharged. The lower body still reads mayLeave. -/
+structure LowerRequest {start : State grow sig} (site : CoreCallSite start) where
+  callee : FuncId
+  fnType : WIT.FuncType Empty RtId
+  opts : CanonOpts (core3 grow)
+  inst : InstId
+  target : site.target = .lowered callee fnType opts inst
+  admitted : calloutEntry start.store site.thread site.target = none
+
+section
+
+variable {start : State grow sig}
+
+def LowerRequest.storeAndSubtask {site : CoreCallSite start} (request : LowerRequest site) : CStore (core3 grow) × SubtaskId :=
+  ArenaField.subtasks.alloc start.store { inst := request.inst }
+
+def LowerRequest.callerData {site : CoreCallSite start} (request : LowerRequest site) : Caller (core3 grow) :=
+  let sub := request.storeAndSubtask.2
+  let limits := lowerLimits request.opts.async_
+  .lower sub { opts := request.opts, inst := request.inst, scope := .subtask sub } site.args 0
+    request.fnType limits.1 limits.2
+
+def LowerRequest.storeAndCaller {site : CoreCallSite start} (request : LowerRequest site) : CStore (core3 grow) × CallerId :=
+  ArenaField.callers.alloc request.storeAndSubtask.1 request.callerData
+
+def LowerRequest.afterCall {site : CoreCallSite start} (request : LowerRequest site)
+    (result : Ret (core3 grow)) : Session grow sig (Ret (core3 grow)) :=
+  ((match result with
+    | .cancel cancel => pure cancel
+    | _ => internal "late-bound call: expected Ret.cancel") >>=
+    lowerAfterCallee request.inst request.storeAndSubtask.2 request.opts.async_) >>= fun values => pure (.flat values)
+
+def LowerRequest.allocated {site : CoreCallSite start} (request : LowerRequest site) : State grow sig :=
+  { start with
+    store := request.storeAndCaller.1
+    ctl := ⟨site.thread, .prog (.op (.call (.funcInst request.callee request.storeAndCaller.2)) request.afterCall),
+      .core site.core site.next :: site.segments⟩ :: site.rest }
+
+def LowerRequest.lifted {site : CoreCallSite start} (request : LowerRequest site)
+    (core : (core3 grow).FuncAddr) (fnType : WIT.FuncType Empty RtId) (opts : CanonOpts (core3 grow))
+    (inst : InstId) : LiftSite grow sig :=
+  let caller := request.storeAndCaller.2
+  let program : Session grow sig (Ret (core3 grow)) := canonLift Limits.spec Quirks.none core fnType opts inst caller
+  let frames := .prog request.afterCall :: .core site.core site.next :: site.segments
+  ⟨{ request.allocated with ctl := ⟨site.thread, .prog program, frames⟩ :: site.rest },
+    core, fnType, opts, inst, caller, site.thread, frames, site.rest, rfl⟩
+
+end
+
 /-- No K1 wait is entered on this branch. Full registration tables are not
 classified as admitted and must take the canonical trap branch instead. -/
 structure LiftAdmission (site : LiftSite grow sig) where
@@ -273,6 +323,7 @@ inductive Action where
   | liftArguments (call : CallId)
   | coreEnter (thread : ThreadId)
   | coreCallout
+  | lowerAllocate (subtask : SubtaskId) (caller : CallerId)
   | invokeReturn (cancel : CancelRef)
   | tick (selected : ThreadId)
   | coreStep
@@ -333,6 +384,10 @@ inductive Transition (profile : ProfileKind) (ready : HostReady (HostState sig))
         (.coreEnter site.storeAndThread.2) [.tau, .tau] (site.coreEntered (args.map DirectArgument.flat) next)
   | coreCallout {start : State grow sig} (site : CoreCallSite start) :
       Transition profile ready impl start .coreCallout [.tau, .tau, .tau] (site.reached ready impl)
+  | lowerAllocate {start : State grow sig} {site : CoreCallSite start} (request : LowerRequest site)
+      {instance_ : InstState} (live : start.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true) :
+      Transition profile ready impl (site.reached ready impl) (.lowerAllocate request.storeAndSubtask.2 request.storeAndCaller.2)
+        [.tau, .tau, .tau, .tau, .tau] request.allocated
   | invokeReturn {start cancel} (focused : start.ctl = [⟨none, .prog (.pure (.cancel cancel)), [.prog invokeReturn]⟩]) :
       Transition profile ready impl start (.invokeReturn cancel) [.tau, .tau, .tau]
         (StepDefs.hostFinish (.cancel cancel) [] { start with store := StepDefs.leaveHostSt start.store })

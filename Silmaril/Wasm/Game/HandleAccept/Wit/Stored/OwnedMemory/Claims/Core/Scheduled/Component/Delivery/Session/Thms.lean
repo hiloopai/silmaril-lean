@@ -276,6 +276,53 @@ theorem CoreCallSite.linked_entry (site : CoreCallSite start) (bindings : List (
       Steps profile ready (Dispatch.linked ready bindings callees) start [.tau, .tau, .tau] (site.reached ready (host bindings)) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.coreCalloutPair site bindings callees
 
+/-- Allocate the actual subtask and caller from the live store, stopping before
+the callee can run. The parked Core frame and the real lower suffix remain in place. -/
+theorem LowerRequest.allocate_steps {site : CoreCallSite start} (request : LowerRequest site) {instance_ : InstState}
+    (live : start.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true) :
+    Steps profile ready (specDispatch ready impl) (site.reached ready impl)
+      [.tau, .tau, .tau, .tau, .tau] request.allocated :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerAllocate request live allowed
+
+theorem Run.allocate_lowered {site : CoreCallSite middle} {actions labels}
+    (run : Run profile ready impl start actions labels (site.reached ready impl))
+    (request : LowerRequest site) {instance_ : InstState}
+    (live : middle.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true) :
+    Run profile ready impl start (actions ++ [.lowerAllocate request.storeAndSubtask.2 request.storeAndCaller.2])
+      (labels ++ [.tau, .tau, .tau, .tau, .tau]) request.allocated :=
+  run.append (.next (.lowerAllocate request live allowed) (.stop _))
+
+/-- The allocated caller is still at position zero and binds the original
+flat arguments to the fresh subtask's borrow scope. -/
+theorem LowerRequest.live_caller {site : CoreCallSite start} (request : LowerRequest site) :
+    ArenaField.callers.get? request.allocated.store request.storeAndCaller.2 = some request.callerData :=
+  ArenaField.get?_alloc_self ArenaField.callers request.storeAndSubtask.1 request.callerData
+
+/-- Both dispatchers reach the lift selected by the live function slot,
+with the genuine return continuation above the same parked Core frame. -/
+theorem LowerRequest.linked_lift {site : CoreCallSite start} (request : LowerRequest site)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) {instance_ : InstState} {core fnType opts inst}
+    (live : start.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true)
+    (lookup : start.store.func? request.callee = some (.lifted core fnType opts inst)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start (List.replicate 10 .tau)
+        (request.lifted core fnType opts inst).start ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) start (List.replicate 10 .tau)
+        (request.lifted core fnType opts inst).start :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.lowerLinkedLift request bindings callees live allowed lookup
+
+/-- Extend the session through the actual lower request and the selected lift. -/
+theorem Run.enter_lowered_lift {site : CoreCallSite middle} {actions labels}
+    (run : Run profile ready impl start actions labels middle)
+    (request : LowerRequest site) {instance_ : InstState} {core fnType opts inst}
+    (live : middle.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true)
+    (lookup : middle.store.func? request.callee = some (.lifted core fnType opts inst)) :
+    Run profile ready impl start
+      (actions ++ [.coreCallout, .lowerAllocate request.storeAndSubtask.2 request.storeAndCaller.2,
+        .liftedLookup request.callee request.storeAndCaller.2]) (labels ++ List.replicate 10 .tau)
+      (request.lifted core fnType opts inst).start :=
+  run.append (.next (.coreCallout site) (.next (.lowerAllocate request live allowed)
+    (.next (.liftedLookup (start := request.allocated) rfl lookup) (.stop _))))
+
 /-- Actual backpressure makes the launched worker park at K1, even after
 incrementing the entry count. The async parent returns the cancellation
 handle while that worker is still saved; this is not result delivery. -/

@@ -326,6 +326,58 @@ theorem coreCalloutPair (site : CoreCallSite start) (bindings : List (Binding si
   rw [coreCalloutOverlay site bindings callees]
   exact coreCalloutSteps site
 
+theorem lowerAllocate {site : CoreCallSite start} (request : LowerRequest site) {instance_ : InstState}
+    (live : start.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true) :
+    Steps profile ready (specDispatch ready impl) (site.reached ready impl)
+      [.tau, .tau, .tau, .tau, .tau] request.allocated := by
+  have lookup : ArenaField.insts.get? start.store request.inst = some instance_ := live
+  let tail : InstState → Session grow sig (List FlatValue) := fun current => do
+    trapIf (!current.mayLeave) .cannotLeave
+    let sub ← allocObj ArenaField.subtasks ({ inst := request.inst } : Subtask)
+    let limits := lowerLimits request.opts.async_
+    let caller ← allocObj ArenaField.callers (.lower sub
+      { opts := request.opts, inst := request.inst, scope := .subtask sub } site.args 0 request.fnType limits.1 limits.2)
+    let cancel ← callCancel (.funcInst request.callee caller)
+    lowerAfterCallee request.inst sub request.opts.async_ cancel
+  let read : CStore (core3 grow) → Session grow sig (Ret (core3 grow)) := fun store =>
+    ((match ArenaField.insts.get? store request.inst with
+      | some current => pure current
+      | none => internal "dangling arena id") >>= tail) >>= fun values => pure (.flat values)
+  have focus : (site.reached ready impl).ctl = ⟨site.thread, .prog (.op .get read),
+      .core site.core site.next :: site.segments⟩ :: site.rest := by
+    simp only [CoreCallSite.reached, request.admitted]
+    rw [request.target]
+    simp [calloutBody, canonLower, getInst, getObj, getStore, perform, Prog.lift, pure, read, tail]
+    dsimp [Bind.bind, Prog.bind]
+    congr 1
+    funext store
+    cases ArenaField.insts.get? store request.inst <;> rfl
+  refine .cons (.get focus) ?_
+  simp only [read, CoreCallSite.reached, lookup, tail, allowed, trapIf, Bool.not_true,
+    Bool.false_eq_true, ite_false, Prog.pure_eq, Prog.bind_eq, Prog.pure_bind']
+  refine .cons (.get rfl) (.cons (.modify rfl) (.cons (.get rfl) (.cons (.modify rfl) ?_)))
+  convert (Steps.refl (prof := profile) (hr := ready) (dispatch := specDispatch ready impl) request.allocated) using 1
+  simp [LowerRequest.allocated, LowerRequest.storeAndCaller, LowerRequest.callerData, LowerRequest.storeAndSubtask,
+    ArenaOps.allocSt, callCancel, callRet, perform, Prog.lift, Prog.bind, pure]
+  dsimp [Bind.bind, Prog.bind]
+  congr 1
+  funext result
+  cases result <;> rfl
+
+theorem lowerLinkedLift {site : CoreCallSite start} (request : LowerRequest site)
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) {instance_ : InstState} {core fnType opts inst}
+    (live : start.store.inst? request.inst = some instance_) (allowed : instance_.mayLeave = true)
+    (lookup : start.store.func? request.callee = some (.lifted core fnType opts inst)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start (List.replicate 10 .tau)
+        (request.lifted core fnType opts inst).start ∧
+      Steps profile ready (Dispatch.linked ready bindings callees) start (List.replicate 10 .tau)
+        (request.lifted core fnType opts inst).start := by
+  obtain ⟨checked, linked⟩ := coreCalloutPair site bindings callees (profile := profile) (ready := ready)
+  have actual : request.allocated.store.func? request.callee = some (.lifted core fnType opts inst) := lookup
+  refine ⟨appendSteps checked (appendSteps (lowerAllocate request live allowed) (Dispatch.liftedLookup_steps rfl actual)), ?_⟩
+  rw [coreCalloutOverlay site bindings callees] at linked
+  exact appendSteps linked (appendSteps (lowerAllocate request live allowed) (Dispatch.liftedLookup_steps rfl actual))
+
 theorem allocatorSession {route : GiveEffectRoute} {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {site : PayloadRoot.Site grow sig route} {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {beforeCheck beforeCanon left right reached reference : State grow sig}
@@ -382,6 +434,7 @@ theorem transitionSteps {action leading} (edge : Transition profile ready impl s
   | liftArguments site live => exact liftArguments site live
   | directCore entry => exact entry
   | coreCallout site => exact coreCalloutSteps site
+  | lowerAllocate request live allowed => exact lowerAllocate request live allowed
   | invokeReturn focused => exact invokeReturnSteps focused
   | tick tick => exact tick.selects_thread
   | coreInternal focused running step => exact .cons (.coreInternal focused running step) (.refl _)

@@ -220,6 +220,26 @@ def lowerOnResolve (lim : Limits) (q : Quirks) (c : CallerId) (r : Option (List 
       Subtask.resolve s .returned flat
   | _ => internal "lowerOnResolve: not a canon_lower caller record"
 
+/-- The continuation after the callee supplies its cancellation handle. Completion,
+waiting, and async handle installation all inspect the store reached by that call. -/
+def lowerAfterCallee (inst : InstId) (s : SubtaskId) (async_ : Bool) (oc : CancelRef) :
+    P E σ (List FlatValue) := do
+  modifyStore (LowerSt.setOnCancelSt s oc)
+  if !async_ then
+    let resolved ← gets (·.subtaskResolved s)
+    let _ ← (if !resolved then Thread.waitUntilGuest .syncLower (.subtaskResolved s)
+      else pure () : P E σ Unit)
+    Subtask.deliverResolve s
+    return (← getObj ArenaField.subtasks s).flatResults
+  else
+    if ← gets (·.subtaskResolved s) then
+      Subtask.deliverResolve s
+      return [i32Flat AsyncRef.AsyncLowerResult.returned.pack]
+    else
+      let i ← handlesAddSubtask inst s
+      let x ← getObj ArenaField.subtasks s
+      return [i32Flat (AsyncRef.AsyncLowerResult.pending x.state i).pack]
+
 /-- REF `canon_lower(callee, ft, opts, flat_args)` (L2169-2233) of the `canon lower` defined in
 instance `inst`, called from a thread of `inst` (REF `current_thread().task.inst`; the
 dispatcher's entry check `Canon.calloutEntry` traps on a thread of another instance):
@@ -241,26 +261,12 @@ def canonLower (_lim : Limits) (_q : Quirks) (callee : FuncId) (ft : WIT.FuncTyp
     (opts : CanonOpts E) (inst : InstId) (flatArgs : List FlatValue) :
     P E σ (List FlatValue) := do
   trapIf (!(← getInst inst).mayLeave) .cannotLeave
-  let (maxParams, maxResults) := lowerLimits opts.async_
+  let limits := lowerLimits opts.async_
   let s ← allocObj ArenaField.subtasks ({ inst := inst } : Subtask)
   let cx : LiftLowerContext E := { opts := opts, inst := inst, scope := .subtask s }
-  let c ← allocObj ArenaField.callers (Caller.lower s cx flatArgs 0 ft maxParams maxResults)
+  let c ← allocObj ArenaField.callers (Caller.lower s cx flatArgs 0 ft limits.1 limits.2)
   let oc ← callCancel (.funcInst callee c)
-  modifyStore (LowerSt.setOnCancelSt s oc)
-  if !opts.async_ then
-    let resolved ← gets (·.subtaskResolved s)
-    let _ ← (if !resolved then Thread.waitUntilGuest .syncLower (.subtaskResolved s)
-      else pure () : P E σ Unit)
-    Subtask.deliverResolve s
-    return (← getObj ArenaField.subtasks s).flatResults
-  else
-    if ← gets (·.subtaskResolved s) then
-      Subtask.deliverResolve s
-      return [i32Flat AsyncRef.AsyncLowerResult.returned.pack]
-    else
-      let i ← handlesAddSubtask inst s
-      let x ← getObj ArenaField.subtasks s
-      return [i32Flat (AsyncRef.AsyncLowerResult.pending x.state i).pack]
+  lowerAfterCallee inst s opts.async_ oc
 
 /-! ## Program-logic lemmas -/
 
