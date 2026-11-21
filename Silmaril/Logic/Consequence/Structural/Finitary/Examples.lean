@@ -36,11 +36,11 @@ theorem mem_cn_zero (n : Nat) : n ∈ tsuccCn {0} := by
     exact cn_cn (tsucc_closed.cut trivial) _ h
 
 /-- Through the enumeration of `[1, 0, 1].toFinset`, which `WeakSubset` makes irrelevant. -/
-example : onFinset tsucc [1, 0, 1].toFinset 2 ↔ tsucc [1, 0, 1] 2 :=
+theorem onFinset_tsucc_enum : onFinset tsucc [1, 0, 1].toFinset 2 ↔ tsucc [1, 0, 1] 2 :=
   onFinset_toFinset tsucc_closed.weak _ _
 
 /-- Order and multiplicity of premises do not matter in the Tarski closure. -/
-example : tsucc [1, 0, 1] 2 ↔ tsucc [0, 1] 2 :=
+theorem tsucc_set_like : tsucc [1, 0, 1] 2 ↔ tsucc [0, 1] 2 :=
   ⟨tsucc_closed.weak (show [1, 0, 1] ⊆ [0, 1] by decide),
     tsucc_closed.weak (show [0, 1] ⊆ [1, 0, 1] by decide)⟩
 

@@ -19,7 +19,7 @@ namespace Silmaril.Consequence.Structural.Examples
 /-- `[n] ⊢ n + 1`. -/
 def succ : Rel Nat := fun Γ c => ∃ n, Γ = [n] ∧ c = n + 1
 
-example : Derives (jointRules List.Sublist) succ [0, 7] 2 := by
+theorem succ_derives_two : Derives (jointRules List.Sublist) succ [0, 7] 2 := by
   have h1 : Derives (jointRules List.Sublist) succ [0] 1 := .base ⟨0, rfl, rfl⟩
   have h2 : Derives (jointRules List.Sublist) succ [1] 2 := .base ⟨1, rfl, rfl⟩
   have h : Derives (jointRules List.Sublist) succ ([0] ++ []) 2 := Derives.cut1 h1 h2
@@ -44,7 +44,7 @@ theorem subperm_closure_not_contraction :
   absurd (twice_subperm (@h 0 [] 1 (.base ⟨rfl, rfl⟩))).length_le (by decide)
 
 /-- The Tarski closure contracts. -/
-example : Derives tarskiRules twice [0] 1 :=
+theorem twice_tarski_contracts : Derives tarskiRules twice [0] 1 :=
   .weak (show [0, 0] ⊆ [0] by decide) (.base ⟨rfl, rfl⟩)
 
 end Silmaril.Consequence.Structural.Examples
