@@ -175,6 +175,15 @@ theorem callbackPlan {protectedReturn}
     obtain ⟨trace, tail, seen⟩ := ih
     exact ⟨_, .sequence (.syncReady focused readyAgreement) tail, (visibleAppend _ _).trans seen⟩
 
+theorem callbackPlanExact {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
+    (trace : LinkedCallback.ReplayTrace profile ready bindings start labels finish right referenceLabels reference) :
+    NestedPlan bindings profile ready (Scheduled.host bindings) start labels finish := by
+  induction trace with
+  | done left _ => exact .localSegment (.refl left)
+  | step lhs _ _ ih => exact .sequence (planOfSteps (.cons lhs (.refl _))) ih
+  | closedGive callout _ lhs _ _ ih => exact .sequence (.closedGive callout lhs) ih
+  | syncReady focused agrees _ _ ih => exact .sequence (.syncReady focused agrees) ih
+
 theorem rootAdmission {route} {site : PayloadRoot.Site grow sig route} {body : Prop} (linked : site.Linked bindings)
     (cut : PayloadRoot.Cut site profile ready bindings body base) : RootAdmission bindings profile ready base site body := by
   cases cut with

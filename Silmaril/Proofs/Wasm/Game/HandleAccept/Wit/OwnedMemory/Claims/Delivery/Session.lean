@@ -52,10 +52,11 @@ theorem collectionAllocatorPrefix {bindings : List (Binding sig)}
       AllocatorCut profile ready bindings older changes entered reference last other checkLabels canonLabels mark := by
   dsimp only
   intro path covers
-  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, seenCheck, seenCanon, paired, outside, checkTrack, canonTrack, _⟩ :=
+  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, seenCheck, seenCanon, paired, outside,
+    checkTrack, canonTrack, classified, _⟩ :=
     replay.2.2 path covers
   exact ⟨other, mark, checkLabels, canonLabels, checked.steps, canonical.steps,
-    ⟨checkTrack, canonTrack, paired, outside, seenCheck.trans seenCanon.symm⟩⟩
+    ⟨checkTrack, canonTrack, paired, outside, seenCheck.trans seenCanon.symm, classified⟩⟩
 
 theorem collectionInstallLinked {bindings : List (Binding sig)} {callees : List (Callee sig)}
     {destination : RecordDestination} {inst : InstId} {type element : Stored.TypeOf}

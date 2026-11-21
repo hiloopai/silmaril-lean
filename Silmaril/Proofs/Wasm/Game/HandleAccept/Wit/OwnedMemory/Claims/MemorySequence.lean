@@ -411,9 +411,11 @@ theorem valueCollectionReplay {older : ReturnFrame.Substitutions (core3 grow) (H
   obtain ⟨checkInstall, canonInstall, continueRun⟩ := replay
   refine ⟨checkInstall, canonInstall, ?_⟩
   intro last seen protectedReturn path covers
-  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside, checkTrail, canonTrail, cut⟩ :=
+  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside,
+    checkTrail, canonTrail, trace, cut⟩ :=
     continueRun path covers
-  refine ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside, checkTrail, canonTrail, ?_⟩
+  refine ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside,
+    checkTrail, canonTrail, trace, ?_⟩
   intro pointer cursor reached atReturn
   unfold ValueListReturn
   refine (cut pointer cursor reached atReturn).visit_collection destination inst type (layout destination.width element) entries
@@ -449,9 +451,11 @@ theorem recursiveValueReplay {older : ReturnFrame.Substitutions (core3 grow) (Ho
   obtain ⟨checkInstall, canonInstall, continueRun⟩ := replay
   refine ⟨checkInstall, canonInstall, ?_⟩
   intro last seen protectedReturn path covers
-  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside, checkTrail, canonTrail, cut⟩ :=
+  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside,
+    checkTrail, canonTrail, trace, cut⟩ :=
     continueRun path covers
-  refine ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside, checkTrail, canonTrail, ?_⟩
+  refine ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside,
+    checkTrail, canonTrail, trace, ?_⟩
   intro pointer cursor reached atReturn
   unfold RecursiveValueReturn
   refine (cut pointer cursor reached atReturn).visit_collection destination inst type (layout destination.width element)
@@ -555,9 +559,11 @@ private theorem mapReplay {older : ReturnFrame.Substitutions (core3 grow) (HostS
   obtain ⟨checkInstall, canonInstall, continueRun⟩ := replay
   refine ⟨checkInstall, canonInstall, ?_⟩
   intro last seen protectedReturn path covers
-  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside, checkTrail, canonTrail, cut⟩ :=
+  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside,
+    checkTrail, canonTrail, trace, cut⟩ :=
     continueRun path covers
-  refine ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside, checkTrail, canonTrail, ?_⟩
+  refine ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside,
+    checkTrail, canonTrail, trace, ?_⟩
   intro pointer cursor reached atReturn
   unfold MapReturn
   let output := Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Lower.Output.memory address

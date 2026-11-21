@@ -20,24 +20,6 @@ abbrev State (grow : SingleThreaded.GrowOracle) (sig : Signature) := Config (cor
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature}
 
-/-- In addition to matching visible labels, replay preserves the older
-relation off the selected occurrence. If a mark survives, both actual runs
-carry it from the same original coordinate; a dropped mark cannot reappear. -/
-def MarkedReplay (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
-    (older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig))
-    (left right last : State grow sig) (mark : Option ReturnFrame.Occurrence.Location)
-    (seen : List (Label (core3 grow) (HostState sig))) : Prop :=
-  let dispatch := specDispatch ready (host (grow := grow) bindings)
-  ∃ leftLabels rightLabels other reached,
-    CoreGrowthSteps profile ready dispatch left leftLabels last ∧
-    CoreGrowthSteps profile ready dispatch right rightLabels other ∧
-    HostFrame.Related.Paired changes last other ∧
-    visible leftLabels = seen ∧ visible rightLabels = seen ∧
-    ReturnFrame.Occurrence.Outside older (ReturnFrame.Occurrence.segmentStorage last)
-      (ReturnFrame.Occurrence.segmentStorage other) reached ∧
-    ReturnFrame.Occurrence.Trail profile ready dispatch left mark leftLabels last reached ∧
-    ReturnFrame.Occurrence.Trail profile ready dispatch right mark rightLabels other reached
-
 /-- Evidence for a give import actually reached within a closed instance.
 It includes the reached caller and binding, not agreement of the two writers. -/
 structure ClosedGive (bindings : List (Binding sig)) (start : State grow sig) where
@@ -112,6 +94,54 @@ inductive PrefixFor (profile : ProfileKind) (ready : HostReady (HostState sig)) 
 abbrev Prefix (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
     (resume : ReturnFrame.Continuation (core3 grow) (HostState sig)) :=
   PrefixFor profile ready bindings (· = resume)
+
+/-- Exact small-step traces of a classified callback under the linked dispatcher.
+The right execution has the substituted lowering continuation, but still uses
+the linked dispatcher inside the callback. This is not yet live canonical
+dispatch. Silent reentry may take different numbers of steps on the two sides. -/
+inductive ReplayTrace (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig)) :
+    State grow sig → List (Label (core3 grow) (HostState sig)) → State grow sig →
+    State grow sig → List (Label (core3 grow) (HostState sig)) → State grow sig → Prop where
+  | done (left right : State grow sig) : ReplayTrace profile ready bindings left [] left right [] right
+  | step {left right nextLeft nextRight last other label leftLabels rightLabels}
+      (lhs : Step profile ready (specDispatch ready (host bindings)) left label nextLeft)
+      (rhs : Step profile ready (specDispatch ready (host bindings)) right label nextRight)
+      (tail : ReplayTrace profile ready bindings nextLeft leftLabels last nextRight rightLabels other) :
+      ReplayTrace profile ready bindings left (label :: leftLabels) last right (label :: rightLabels) other
+  | closedGive {left right nextRight last other leftCount rightCount leftLabels rightLabels changes}
+      (callout : ClosedGive bindings left) (paired : HostFrame.Related.Paired changes left right)
+      (lhs : Steps profile ready (specDispatch ready (host bindings)) left (List.replicate leftCount .tau) callout.resume)
+      (rhs : Steps profile ready (specDispatch ready (host bindings)) right (List.replicate rightCount .tau) nextRight)
+      (tail : ReplayTrace profile ready bindings callout.resume leftLabels last nextRight rightLabels other) :
+      ReplayTrace profile ready bindings left (List.replicate leftCount .tau ++ leftLabels) last
+        right (List.replicate rightCount .tau ++ rightLabels) other
+  | syncReady {left right nextRight last other leftLabels rightLabels task inst thread frames rest}
+      (focused : left.ctl = ⟨thread, .prog (.op .hostGet (fun current =>
+        syncLiftCandidates task (left.store.instCandidates (ready current) inst))), frames⟩ :: rest)
+      (agrees : ReadyAgreement ready left inst)
+      (rhs : Step profile ready (specDispatch ready (host bindings)) right .tau nextRight)
+      (tail : ReplayTrace profile ready bindings { left with ctl := ⟨thread,
+        .prog (syncLiftCandidates task (left.store.instCandidates (ready left.host) inst)), frames⟩ :: rest }
+        leftLabels last nextRight rightLabels other) :
+      ReplayTrace profile ready bindings left (.tau :: leftLabels) last right (.tau :: rightLabels) other
+
+/-- The classified replay and occurrence trails refer to the very same traces.
+If a mark survives, both runs carry it from the same original coordinate. -/
+def MarkedReplay (profile : ProfileKind) (ready : HostReady (HostState sig)) (bindings : List (Binding sig))
+    (older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (left right last : State grow sig) (mark : Option ReturnFrame.Occurrence.Location)
+    (seen : List (Label (core3 grow) (HostState sig))) : Prop :=
+  let dispatch := specDispatch ready (host (grow := grow) bindings)
+  ∃ leftLabels rightLabels other reached,
+    CoreGrowthSteps profile ready dispatch left leftLabels last ∧
+    CoreGrowthSteps profile ready dispatch right rightLabels other ∧
+    HostFrame.Related.Paired changes last other ∧
+    visible leftLabels = seen ∧ visible rightLabels = seen ∧
+    ReturnFrame.Occurrence.Outside older (ReturnFrame.Occurrence.segmentStorage last)
+      (ReturnFrame.Occurrence.segmentStorage other) reached ∧
+    ReturnFrame.Occurrence.Trail profile ready dispatch left mark leftLabels last reached ∧
+    ReturnFrame.Occurrence.Trail profile ready dispatch right mark rightLabels other reached ∧
+    ReplayTrace profile ready bindings left leftLabels last right rightLabels other
 
 /-- Continue a designated allocator return using its measured width and size.
 The tail rule receives the alignment, bounds, and live-plan facts only after
@@ -311,6 +341,7 @@ inductive StringReplayLayer (profile : ProfileKind) (ready : HostReady (HostStat
             HostFrame.Related.Paired changes last other ∧
             ReturnFrame.Occurrence.Trail profile ready dispatch leftEntry (some (.active 0 0)) leftLabels last mark ∧
             ReturnFrame.Occurrence.Trail profile ready dispatch rightEntry (some (.active 0 0)) rightLabels other mark ∧
+            ReplayTrace profile ready bindings leftEntry leftLabels last rightEntry rightLabels other ∧
             (∀ value cursor, mark = some (ReturnFrame.Occurrence.Location.active 0 0) →
               last.ctl = { cursor with frames := .prog first :: cursor.frames }.control (.pure (.nat value)) →
               ∃ otherCursor,
@@ -657,6 +688,7 @@ def CollectionReplayFor (profile : ProfileKind) (ready : HostReady (HostState si
         (ReturnFrame.Occurrence.segmentStorage other) mark ∧
       ReturnFrame.Occurrence.Trail profile ready dispatch checked (some (.active 0 0)) leftLabels last mark ∧
       ReturnFrame.Occurrence.Trail profile ready dispatch canonical (some (.active 0 0)) rightLabels other mark ∧
+      ReplayTrace profile ready bindings checked leftLabels last canonical rightLabels other ∧
       ∀ pointer cursor, mark = some (ReturnFrame.Occurrence.Location.active 0 0) →
         last.ctl = { cursor with frames := .prog first :: cursor.frames }.control (.pure (.nat pointer)) →
         returned checked canonical last cursor pointer seen

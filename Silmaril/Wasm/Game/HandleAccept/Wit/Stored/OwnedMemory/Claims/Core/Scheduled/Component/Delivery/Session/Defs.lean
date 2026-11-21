@@ -85,6 +85,7 @@ structure AllocatorCut (profile : ProfileKind) (ready : HostReady (HostState sig
   outside : ReturnFrame.Occurrence.Outside older (ReturnFrame.Occurrence.segmentStorage reached)
     (ReturnFrame.Occurrence.segmentStorage reference) mark
   seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible canonLabels
+  classified : LinkedCallback.ReplayTrace profile ready bindings left checkLabels reached right canonLabels reference
 
 def refusedBodyReply {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (reached : State grow sig)
     (check : Cursor (E := core3 grow) (HostState sig)) (segments : List (Seg (core3 grow) (HostState sig)))

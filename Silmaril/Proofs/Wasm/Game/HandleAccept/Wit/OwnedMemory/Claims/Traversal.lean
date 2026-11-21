@@ -107,9 +107,9 @@ private theorem stringTrackFinish {older : ReturnFrame.Substitutions (core3 grow
     | @allocated pointer oldSize alignment size rest shorter store labels checked canonical silent tracked replay =>
       refine .allocated pointer oldSize alignment size rest shorter checked canonical silent tracked ?_
       intro dispatch leftEntry rightEntry first second changes last seen protectedReturn path covers
-      obtain ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, leftTrail, rightTrail, returns⟩ :=
+      obtain ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, leftTrail, rightTrail, trace, returns⟩ :=
         replay path covers
-      refine ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, leftTrail, rightTrail, ?_⟩
+      refine ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, leftTrail, rightTrail, trace, ?_⟩
       intro value cursor atMark atReturn
       obtain ⟨otherCursor, leftPop, rightPop, retained, smaller⟩ := returns value cursor atMark atReturn
       refine ⟨otherCursor, leftPop, rightPop, retained, ih rest.length shorter ?_ smaller⟩
@@ -158,9 +158,11 @@ theorem collectionTrackEntries {older : ReturnFrame.Substitutions (core3 grow) (
   obtain ⟨leftInstall, rightInstall, replay⟩ := run
   refine ⟨leftInstall, rightInstall, ?_⟩
   intro last seen protectedReturn path covers
-  obtain ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, outside, leftTrail, rightTrail, returns⟩ :=
+  obtain ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, outside, leftTrail, rightTrail,
+    trace, returns⟩ :=
     replay path covers
-  refine ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, outside, leftTrail, rightTrail, ?_⟩
+  refine ⟨leftLabels, rightLabels, other, mark, lhs, rhs, leftSeen, rightSeen, paired, outside, leftTrail, rightTrail,
+    trace, ?_⟩
   intro pointer cursor atMark atReturn
   cases returns pointer cursor atMark atReturn with
   | admitted region checked canonical checkedSeen canonSeen tail =>

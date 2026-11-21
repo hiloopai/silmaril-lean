@@ -178,9 +178,11 @@ theorem memoryMapReplay {older : ReturnFrame.Substitutions (core3 grow) (HostSta
   obtain ⟨checkInstall, canonInstall, continueRun⟩ := replay
   refine ⟨checkInstall, canonInstall, ?_⟩
   intro last seen protectedReturn path covers
-  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside, checkTrail, canonTrail, cut⟩ :=
+  obtain ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside,
+    checkTrail, canonTrail, trace, cut⟩ :=
     continueRun path covers
-  refine ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside, checkTrail, canonTrail, ?_⟩
+  refine ⟨checkLabels, canonLabels, other, mark, checked, canonical, checkSeen, canonSeen, paired, outside,
+    checkTrail, canonTrail, trace, ?_⟩
   intro pointer cursor reached atReturn
   exact reaches (memoryMap destination inst key element entries index pointer address checkNext canonNext
     (localMapEntries destination inst key element matched localEntries) (cut pointer cursor reached atReturn))

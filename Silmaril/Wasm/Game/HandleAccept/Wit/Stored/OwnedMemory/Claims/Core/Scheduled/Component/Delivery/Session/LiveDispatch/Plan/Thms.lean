@@ -46,6 +46,14 @@ theorem NestedPlan.of_callback_prefix {protectedReturn}
       PayloadPrefix.visible trace = labels :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.callbackPlan path
 
+/-- Lift the very trace used to track an allocator occurrence, not another
+prefix with the same visible labels. The resulting plan still classifies
+ordinary steps at the live dispatcher boundary. -/
+theorem NestedPlan.of_callback_trace {right reference : Config (core3 grow) (HostState sig)} {referenceLabels}
+    (trace : LinkedCallback.ReplayTrace profile ready bindings start labels finish right referenceLabels reference) :
+    NestedPlan bindings profile ready (Scheduled.host bindings) start labels finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.callbackPlanExact trace
+
 /-- At the reached linked memory give, use the public entry guards and the
 compiled recursive body. A preflight refusal becomes a checked reply and a
 stopped live canonical prefix, not a canonical error. A placement trap is
