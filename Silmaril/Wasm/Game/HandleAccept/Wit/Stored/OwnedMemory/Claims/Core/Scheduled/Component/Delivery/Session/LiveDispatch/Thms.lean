@@ -59,6 +59,38 @@ theorem LiveDispatch.nested_return (site : Site grow sig route) (linked : site.L
 
 variable {start finish : Config (core3 grow) (HostState sig)}
 
+/-- Discover the actual nested installation in a finite growth-certified run.
+No blanket exclusion of nested gives is needed. The live replay stops before
+dispatching the give, or at an earlier divergent read or substituted return. -/
+theorem LiveDispatch.paired_replay {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {incoming : Config (core3 grow) (HostState sig)} {labels}
+    (paired : HostFrame.Related.Paired older start incoming)
+    (run : CoreGrowthSteps profile ready (specDispatch ready base) start labels finish) :
+    LiveDispatch.PairedReplay bindings profile ready base older start incoming labels finish :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedReplay paired run
+
+theorem LiveDispatch.GiveInstall.step {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))} {label}
+    (install : LiveDispatch.GiveInstall bindings dispatch start label finish) :
+    Step profile ready dispatch start label finish := by
+  cases install with
+  | direct focused _ => exact .call focused
+  | core focused calling _ => exact .coreCallout focused calling
+
+/-- Enter on the live root and compare the reached prefix of the nested body,
+even if it has not returned or executes another public give. Further requests
+are exposed at their real caller and with all older frames still paired. -/
+theorem LiveDispatch.nested_prefix (site : Site grow sig route) (linked : site.Linked bindings)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {incoming : Config (core3 grow) (HostState sig)} {labels}
+    (paired : HostFrame.Related.Paired older site.start incoming)
+    (selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree)
+    (body : CoreGrowthSteps profile ready (specDispatch ready base) (site.reference site.referenceReply) labels finish) :
+    ∃ installed entered, installed.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming installed entered ∧
+      LiveDispatch.PairedReplay bindings profile ready base older (site.reference site.referenceReply) entered labels finish := by
+  obtain ⟨installed, entered, silent, entry, aligned⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
+  exact ⟨installed, entered, silent, entry, LiveDispatch.paired_replay aligned body⟩
+
 /-- Closed steps preserve their actual configurations under the reference overlay.
 An open handler is unchanged when installed, but later requests it issues are classified separately. -/
 theorem LiveDispatch.replay {labels} (run : Steps profile ready (specDispatch ready base) start labels finish)

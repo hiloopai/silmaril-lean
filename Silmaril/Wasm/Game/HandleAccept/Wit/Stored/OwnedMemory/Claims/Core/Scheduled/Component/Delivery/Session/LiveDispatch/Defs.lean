@@ -87,6 +87,52 @@ def UnchangedThrough (bindings : List (Binding sig)) (profile : ProfileKind) (re
     Steps profile ready (specDispatch ready base) start leading cut →
     Steps profile ready (specDispatch ready base) cut (label :: trailing) finish → UnchangedAt bindings cut
 
+/-- The actual step about to install an overlaid give. Suspended calls and
+unexecuted requests in a continuation do not count as installations. -/
+inductive GiveInstall (bindings : List (Binding sig))
+    (dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))) :
+    Config (core3 grow) (HostState sig) → Label (core3 grow) (HostState sig) →
+      Config (core3 grow) (HostState sig) → Prop where
+  | direct {state thread call next frames rest}
+      (focused : state.ctl = ⟨thread, .prog (.op (.call call) next), frames⟩ :: rest)
+      (give : ¬ Unchanged bindings call) :
+      GiveInstall bindings dispatch state .tau
+        { state with ctl := ⟨thread, .prog (dispatch call), .prog next :: frames⟩ :: rest }
+  | core {state thread core next frames rest callee args}
+      (focused : state.ctl = ⟨thread, .core core next, frames⟩ :: rest)
+      (calling : (core3 grow).status state.store.core core = .callout callee args)
+      (give : ¬ Unchanged bindings (.hostCallout callee args)) :
+      GiveInstall bindings dispatch state .tau
+        { state with ctl := ⟨thread, .prog (dispatch (.hostCallout callee args)), .core core next :: frames⟩ :: rest }
+
+/-- Replay up to the first reached give installation, divergent host read, or
+substituted return. At an installation the live run stops before installing any
+body. At a read or return both actual steps execute. The rest is evidence about
+the baseline only and is not claimed for the live run. -/
+inductive PairedReplay (bindings : List (Binding sig)) (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (start incoming : Config (core3 grow) (HostState sig)) (labels : List (Label (core3 grow) (HostState sig)))
+    (finish : Config (core3 grow) (HostState sig)) : Prop where
+  | complete {other}
+      (replay : Steps profile ready (specDispatch ready (host bindings base)) incoming labels other)
+      (paired : HostFrame.Related.Paired older finish other)
+  | request {leading label trailing beforeLeft beforeRight afterLeft}
+      (split : labels = leading ++ label :: trailing)
+      (baseline : CoreGrowthSteps profile ready (specDispatch ready base) start leading beforeLeft)
+      (replay : Steps profile ready (specDispatch ready (host bindings base)) incoming leading beforeRight)
+      (paired : HostFrame.Related.Paired older beforeLeft beforeRight)
+      (install : GiveInstall bindings (specDispatch ready base) beforeLeft label afterLeft)
+      (tail : CoreGrowthSteps profile ready (specDispatch ready base) afterLeft trailing finish)
+  | boundary {leading label trailing beforeLeft beforeRight afterLeft afterRight}
+      (split : labels = leading ++ label :: trailing)
+      (baseline : CoreGrowthSteps profile ready (specDispatch ready base) start leading beforeLeft)
+      (replay : Steps profile ready (specDispatch ready (host bindings base)) incoming leading beforeRight)
+      (paired : HostFrame.Related.Paired older beforeLeft beforeRight)
+      (boundary : HostFrame.Related.Boundary older beforeLeft beforeRight label afterLeft afterRight)
+      (baselineStep : Step profile ready (specDispatch ready base) beforeLeft label afterLeft)
+      (replayedStep : Step profile ready (specDispatch ready (host bindings base)) beforeRight label afterRight)
+      (tail : CoreGrowthSteps profile ready (specDispatch ready base) afterLeft trailing finish)
+
 /-- A compared nested give either rejoins its local caller with the older
 frames still paired, or reaches an actual read or older-frame pop. In the
 second case only the executed prefix (including the boundary) has replayed. -/

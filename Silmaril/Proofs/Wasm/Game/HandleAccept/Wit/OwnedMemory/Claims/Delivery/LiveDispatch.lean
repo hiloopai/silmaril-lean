@@ -169,40 +169,81 @@ theorem dispatchUnchanged {call : Call (core3 grow)} (unmodified : Unchanged bin
 
 variable {start finish : Config (core3 grow) (HostState sig)}
 
-theorem replayStep {label} (step : Step profile ready (specDispatch ready base) start label finish)
-    (unmodified : UnchangedAt bindings start) :
-    Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) start label finish := by
+private theorem classifyStep {label} (step : Step profile ready (specDispatch ready base) start label finish) :
+    Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) start label finish ∨
+      GiveInstall bindings (specDispatch ready base) start label finish := by
+  classical
   cases step with
-  | call focused => rw [dispatchUnchanged (unmodified.direct focused)]; exact .call focused
-  | coreCallout focused calling => rw [dispatchUnchanged (unmodified.core focused calling)]; exact .coreCallout focused calling
+  | @call _ call _ _ _ focused =>
+    by_cases unmodified : Unchanged bindings call
+    · left
+      rw [dispatchUnchanged unmodified]
+      exact .call focused
+    · exact .inr (.direct focused unmodified)
+  | @coreCallout _ _ _ _ _ callee args focused calling =>
+    by_cases unmodified : Unchanged bindings (.hostCallout callee args)
+    · left
+      rw [dispatchUnchanged unmodified]
+      exact .coreCallout focused calling
+    · exact .inr (.core focused calling unmodified)
   | newThread focused allocated =>
+    left
     unfold StepDefs.threadAct
     rw [dispatchUnchanged (bindings := bindings) (call := .threadBody _) trivial]
     exact .newThread focused allocated
-  | popProg focused => exact .popProg focused
-  | popCore focused => exact .popCore focused
-  | threadExit focused => exact .threadExit focused
-  | hostDone focused => exact .hostDone focused
-  | callCore focused => exact .callCore focused
-  | coreInternal focused status inner => exact .coreInternal focused status inner
-  | coreReturned focused status => exact .coreReturned focused status
-  | coreTrap focused status => exact .coreTrap focused status
-  | get focused => exact .get focused
-  | modify focused => exact .modify focused
-  | trap focused => exact .trap focused
-  | choose answer focused allowed => exact .choose answer focused allowed
-  | currentThread focused => exact .currentThread focused
-  | block focused => exact .block focused
-  | blockSwitch focused saved => exact .blockSwitch focused saved
-  | resumeThread focused saved => exact .resumeThread focused saved
-  | hostGet focused => exact .hostGet focused
-  | hostSet focused => exact .hostSet focused
-  | emit focused => exact .emit focused
-  | fault failed => exact .fault failed
-  | hostInvoke enabled fresh => exact .hostInvoke enabled fresh
-  | hostTick enabled => exact .hostTick enabled
-  | hostCancel enabled pending unresolved => exact .hostCancel enabled pending unresolved
-  | hostRun enabled => exact .hostRun enabled
+  | popProg focused => exact .inl (.popProg focused)
+  | popCore focused => exact .inl (.popCore focused)
+  | threadExit focused => exact .inl (.threadExit focused)
+  | hostDone focused => exact .inl (.hostDone focused)
+  | callCore focused => exact .inl (.callCore focused)
+  | coreInternal focused status inner => exact .inl (.coreInternal focused status inner)
+  | coreReturned focused status => exact .inl (.coreReturned focused status)
+  | coreTrap focused status => exact .inl (.coreTrap focused status)
+  | get focused => exact .inl (.get focused)
+  | modify focused => exact .inl (.modify focused)
+  | trap focused => exact .inl (.trap focused)
+  | choose answer focused allowed => exact .inl (.choose answer focused allowed)
+  | currentThread focused => exact .inl (.currentThread focused)
+  | block focused => exact .inl (.block focused)
+  | blockSwitch focused saved => exact .inl (.blockSwitch focused saved)
+  | resumeThread focused saved => exact .inl (.resumeThread focused saved)
+  | hostGet focused => exact .inl (.hostGet focused)
+  | hostSet focused => exact .inl (.hostSet focused)
+  | emit focused => exact .inl (.emit focused)
+  | fault failed => exact .inl (.fault failed)
+  | hostInvoke enabled fresh => exact .inl (.hostInvoke enabled fresh)
+  | hostTick enabled => exact .inl (.hostTick enabled)
+  | hostCancel enabled pending unresolved => exact .inl (.hostCancel enabled pending unresolved)
+  | hostRun enabled => exact .inl (.hostRun enabled)
+
+theorem replayStep {label} (step : Step profile ready (specDispatch ready base) start label finish)
+    (unmodified : UnchangedAt bindings start) :
+    Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) start label finish := by
+  rcases classifyStep (bindings := bindings) step with replayed | install
+  · exact replayed
+  · cases install with
+    | direct focused give => exact (give (unmodified.direct focused)).elim
+    | core focused calling give => exact (give (unmodified.core focused calling)).elim
+
+theorem pairedReplay {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {incoming : State grow sig} {labels}
+    (paired : HostFrame.Related.Paired older start incoming)
+    (run : CoreGrowthSteps profile ready (specDispatch ready base) start labels finish) :
+    PairedReplay bindings profile ready base older start incoming labels finish := by
+  induction run generalizing incoming with
+  | refl => exact .complete (.refl _) paired
+  | cons grows step tail ih =>
+    rcases classifyStep (bindings := bindings) step with unchanged | request
+    · obtain ⟨_, replayed, aligned | boundary⟩ := HostFrame.Related.paired_step paired unchanged
+      · cases ih aligned with
+        | complete replay aligned => exact .complete (.cons replayed replay) aligned
+        | request split baseline replay aligned install rest =>
+          exact .request (congrArg (List.cons _) split) (.cons grows step baseline) (.cons replayed replay)
+            aligned install rest
+        | boundary split baseline replay aligned cut lhs rhs rest =>
+          exact .boundary (congrArg (List.cons _) split) (.cons grows step baseline) (.cons replayed replay)
+            aligned cut lhs rhs rest
+      · exact .boundary (leading := []) rfl (.refl _) (.refl _) paired boundary step replayed tail
+    · exact .request (leading := []) rfl (.refl _) (.refl _) paired request tail
 
 theorem replay {labels} (run : Steps profile ready (specDispatch ready base) start labels finish)
     (closed : UnchangedThrough bindings profile ready base start labels finish) :
