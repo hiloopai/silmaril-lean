@@ -14,6 +14,21 @@ open ComponentCall.Delivery.FiniteSession
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature}
 
+/-- Stops before the recursive body. A checked preflight refusal resumes its
+caller; a bad placement traps the checked machine. Neither executes the
+canonical body, whose memory placement is a precondition. -/
+inductive RootStop (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) :
+    Trace grow sig → Config (core3 grow) (HostState sig) → Prop where
+  | refused (issue : Stored.Endpoints.RecordLower.Issue) {labels}
+      (silent : PayloadPrefix.visible labels = [])
+      (edge : Transition profile ready base site.start (.give route (.refused issue)) labels (site.refusedReply issue)) :
+      RootStop profile ready base site labels (site.refusedReply issue)
+  | placementTrap (reason : TrapReason) (count : Nat)
+      (edge : Transition profile ready base site.start (.give route (.placementTrap reason))
+        (List.replicate count .tau ++ [.trap reason]) (StepDefs.trapCfg site.checked)) :
+      RootStop profile ready base site (List.replicate count .tau ++ [.trap reason]) (StepDefs.trapCfg site.checked)
+
 /-- A finite decomposition of a checked run into scheduler segments and
 compared gives. The canonical body of a give is itself a plan, so callouts
 under a parked allocator can be compared before following the outer suffix.
@@ -92,6 +107,9 @@ inductive NestedPlan (bindings : List (Binding sig)) (profile : ProfileKind) (re
       (front : NestedPlan bindings profile ready base start leading middle)
       (back : NestedPlan bindings profile ready base middle trailing finish) :
       NestedPlan bindings profile ready base start (leading ++ trailing) finish
+  | rootStop {route} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings) {labels checked}
+      (stop : RootStop profile ready base site labels checked) :
+      NestedPlan bindings profile ready base site.start labels checked
   | give {route} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
       {entryLabels checkLabels referenceLabels reached reference checked baseline}
       (entry : Transition profile ready base site.start (.give route .entered) entryLabels site.checked)
@@ -132,6 +150,10 @@ inductive NestedCut (bindings : List (Binding sig)) (profile : ProfileKind) (rea
       (paired : HostFrame.Related.Paired older site.start incoming)
       (selection : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle ≠ some site.tree) :
       NestedCut bindings profile ready base older incoming
+  | rootStop {route reached labels checked} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
+      (stop : RootStop profile ready base site labels checked)
+      (installed : HostFrame.Related.Paired older (site.reference site.referenceReply) reached) :
+      NestedCut bindings profile ready base older reached
   | publication {start target index incoming} (resolve : ComponentCall.Delivery.LinkedResolution start target index)
       (paired : HostFrame.Related.Paired older start incoming)
       (different : ¬ ∃ writer, incoming.host.writer.register resolve.tree = .ok writer ∧
@@ -151,5 +173,15 @@ inductive NestedCut (bindings : List (Binding sig)) (profile : ProfileKind) (rea
       (store : checked.store = reached.store)
       (seen : PayloadPrefix.visible checkLabels = PayloadPrefix.visible liveLabels) :
       NestedCut bindings profile ready base older reached
+
+/-- Use the actual public entry cut before asking for a recursive body comparison. -/
+inductive RootAdmission (bindings : List (Binding sig)) (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (body : Prop) : Prop where
+  | stopped {labels checked} (stop : RootStop profile ready base site labels checked)
+      (plan : NestedPlan bindings profile ready base site.start labels checked) :
+      RootAdmission bindings profile ready base site body
+  | entered {labels} (entry : Transition profile ready base site.start (.give route .entered) labels site.checked)
+      (compared : body) : RootAdmission bindings profile ready base site body
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LiveDispatch

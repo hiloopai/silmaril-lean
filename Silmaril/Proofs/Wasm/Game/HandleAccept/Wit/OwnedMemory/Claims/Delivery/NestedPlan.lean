@@ -9,6 +9,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Dispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence.Public.Thms
+import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LinkedCallback.MemorySequence.Traversal.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadCursor.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadRoot.Thms
@@ -104,6 +105,7 @@ theorem source (plan : NestedPlan bindings profile ready base start labels finis
   | cancelResume resume saved => exact (Transition.cancelResume (impl := base) resume saved).steps
   | cancelFinish cancel record focused live resolved pending => exact cancel.finish_delivers record focused live resolved pending
   | sequence _ _ front back => exact append front back
+  | rootStop _ _ stop => cases stop <;> rename_i edge <;> exact edge.steps
   | give _ _ entry checkedBody _ _ replies _ _ => exact append (append entry.steps checkedBody) (replies.1 _)
   | stop _ _ entry checkedBody _ _ _ _ _ => exact append entry.steps checkedBody
 
@@ -172,6 +174,34 @@ theorem callbackPlan {protectedReturn}
   | syncReady focused readyAgreement _ ih =>
     obtain ⟨trace, tail, seen⟩ := ih
     exact ⟨_, .sequence (.syncReady focused readyAgreement) tail, (visibleAppend _ _).trans seen⟩
+
+theorem rootAdmission {route} {site : PayloadRoot.Site grow sig route} {body : Prop} (linked : site.Linked bindings)
+    (cut : PayloadRoot.Cut site profile ready bindings body base) : RootAdmission bindings profile ready base site body := by
+  cases cut with
+  | @refused issue labels silent run =>
+    have seen : PayloadPrefix.visible (labels ++ [.tau, .tau, .tau]) = [] := by rw [visibleAppend, silent]; rfl
+    let stop := RootStop.refused issue seen (.giveRefused site linked issue silent run)
+    exact .stopped stop (.rootStop site linked stop)
+  | placementTrap reason count verdict run =>
+    let stop := RootStop.placementTrap reason count (.givePlacementTrap site linked reason count verdict run)
+    exact .stopped stop (.rootStop site linked stop)
+  | placed silent verdict prepared run compared => exact .entered (.giveEntry site linked silent verdict prepared run) compared
+
+theorem memoryAdmission {pointer : FlatValue} (site : PayloadRoot.Site grow sig (.memory pointer))
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    ∃ depth, RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedRejoinedMemory site depth profile ready bindings) := by
+  obtain ⟨depth, cut⟩ := LinkedCallback.MemorySequence.parked_memory_rejoined site linked
+    (ComponentCall.hostWithComponent bindings callees) rfl
+  exact ⟨depth, rootAdmission linked cut⟩
+
+theorem flatAdmission {schema : Stored.TypeOf} (site : PayloadRoot.Site grow sig (.flat schema))
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    ∃ flatDepth entryDepth, RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedRejoinedFlat site flatDepth entryDepth profile ready bindings) := by
+  obtain ⟨flatDepth, entryDepth, cut⟩ := LinkedCallback.MemorySequence.parked_flat_rejoined site linked
+    (ComponentCall.hostWithComponent bindings callees) rfl
+  exact ⟨flatDepth, entryDepth, rootAdmission linked cut⟩
 
 theorem comparedGive {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
     {entryLabels checkLabels canonLabels reached reference checked baseline} (value : route.output.Result)
@@ -368,6 +398,12 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     · refine ⟨_, _, front, ?_, .inr cut⟩
       rw [visibleAppend]
       exact frontPrefix.trans (List.prefix_append _ _)
+  | rootStop site linked stop =>
+    by_cases selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree
+    · obtain ⟨installedLabels, _, installedSilent, installed, aligned⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected
+      exact ⟨installedLabels, _, installed, by rw [silentVisible installedSilent]; exact ⟨_, rfl⟩,
+        .inr (.rootStop site linked stop aligned)⟩
+    · exact ⟨[], _, .refl _, ⟨_, rfl⟩, .inr (.unselected site linked paired selected)⟩
   | @give _ site linked entryLabels checkLabels referenceLabels _ _ checked baseline entry _ _ _ replies seen replayBody =>
     by_cases selected : Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted site.handle = some site.tree
     · obtain ⟨installed, _, silent, install, aligned⟩ := LiveDispatch.entry_paired (base := base) site linked paired selected

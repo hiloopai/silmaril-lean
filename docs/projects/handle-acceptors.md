@@ -1417,6 +1417,16 @@ is needed only for reached blocked threads that query host readiness. Raw
 steps can still reach open dispatch boundaries; this does not classify all
 admitted nested bodies or require a callback to return.
 
+`LiveDispatch.linked_memory_admission` and `linked_flat_admission` join the
+actual linked root cut to the corresponding recursive body certificate. A
+checked preflight refusal resumes the checked Core caller, but the canonical
+side takes only its real entry prefix, up to the installed body if the live
+journal selects the same tree. No canonical refusal words are invented and
+no canonical lowering effects have run at that cut. Invalid root placement
+traps on the checked side, while the live canonical prefix likewise stops
+before executing the installed body. Canonical store takes valid root
+placement as a precondition; there is no claimed matching trap.
+
 ## Checking
 
 ```

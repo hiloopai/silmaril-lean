@@ -46,6 +46,24 @@ theorem NestedPlan.of_callback_prefix {protectedReturn}
       PayloadPrefix.visible trace = labels :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.callbackPlan path
 
+/-- At the reached linked memory give, use the public entry guards and the
+compiled recursive body. A preflight refusal becomes a checked reply and a
+stopped live canonical prefix, not a canonical error. A placement trap is
+also a stopped prefix: canonical store requires valid root placement. -/
+theorem linked_memory_admission {pointer : FlatValue} (site : PayloadRoot.Site grow sig (.memory pointer))
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    ∃ depth, RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedRejoinedMemory site depth profile ready bindings) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.memoryAdmission site linked
+
+/-- The flat ABI uses the same admission split and the recursive flat body
+with its actual memory-emitting descendants. -/
+theorem linked_flat_admission {schema : Stored.TypeOf} (site : PayloadRoot.Site grow sig (.flat schema))
+    (linked : site.Linked bindings) {callees : List (ComponentCall.Callee sig)} :
+    ∃ flatDepth entryDepth, RootAdmission bindings profile ready (ComponentCall.hostWithComponent bindings callees) site
+      (LinkedCallback.MemorySequence.ParkedRejoinedFlat site flatDepth entryDepth profile ready bindings) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.flatAdmission site linked
+
 /-- Join a recursive public give's reached checked and canonical bodies to
 the actual caller replies. This constructs the replay plan from the compared
 paths; it does not assume that a reached nested callout can be replayed. -/
