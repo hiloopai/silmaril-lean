@@ -169,6 +169,22 @@ theorem CoreGiveRequest.Selected.linked_admission {route : GiveEffectRoute} {req
     ReachedGiveAdmission profile ready callees selection :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.reachedGiveAdmission selection
 
+/-- Reach both sides of the compiler boundary under the linked worker
+dispatchers. Compilation supplies the checked refusal or recursive exit;
+the canonical side is at the actual pending program, not a status reply. -/
+theorem CoreGiveRequest.Selected.paired_linked_admission {route : GiveEffectRoute} {request : CoreGiveRequest bindings start}
+    (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)}
+    (paired : HostFrame.Related.Paired older start incoming)
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted handle) :
+    ∃ entryLabels entered, entryLabels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (ComponentCall.hostWithComponent bindings callees)))
+        incoming entryLabels entered ∧
+      HostFrame.Related.Paired older selection.canonicalPending entered ∧
+      ReachedGiveAdmission profile ready callees selection :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.pairedLinkedAdmission selection paired reads
+
 /-- Classify the actual matched body prefix of a typed refusal or canonical
 trap. Reaching a refusal does not pop a canonical caller or emit its checked
 error there. A canonical trap is compared with its reached store, not the

@@ -231,6 +231,38 @@ theorem LiveDispatch.CoreGiveRequest.paired_admission_trap (request : LiveDispat
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedAdmissionTrap
     request impl embedder paired trapped
 
+/-- At a successfully selected public give, the handle is the actual
+read demanded by the selector. It does not confer transfer permission. -/
+theorem LiveDispatch.CoreGiveRequest.Selected.lookup_demand {request : LiveDispatch.CoreGiveRequest bindings start}
+    (selection : request.Selected route) : request.lookupDemand = some selection.handle :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.selectedDemand selection
+
+/-- Install the next real canonical program after successful selection,
+without running any of its emitter operations. The same cut exists if the
+checked compiler rejects the payload; it is not a reference refusal. -/
+theorem LiveDispatch.CoreGiveRequest.Selected.paired_canonical_pending {request : LiveDispatch.CoreGiveRequest bindings start}
+    (selection : request.Selected route)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle) :
+    ∃ labels entered, labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
+      HostFrame.Related.Paired older selection.canonicalPending entered :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pendingPaired selection paired reads
+
+/-- Successful compilation's recursive comparison starts at the same
+canonical program identified by live selection. No synthetic reply or
+entry at a different memory pointer is needed to start the comparison. -/
+theorem LiveDispatch.CoreGiveRequest.Selected.pending_reference {request : LiveDispatch.CoreGiveRequest bindings start}
+    (selection : request.Selected route) {tag : sig.Tag} {payload : Stored.OwnedMemory.Payload (sig.payload tag)}
+    {arity : Nat} {children : Fin arity → Stored.OwnedMemory.Tree sig} (field : Stored.Endpoints.RecordLower.Field)
+    (picked : selection.tree = .tag ⟨tag, payload⟩ arity children) :
+    selection.canonicalPending = (selection.site tag payload arity children field).reference
+      (selection.site tag payload arity children field).referenceReply :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pendingReference selection field picked
+
 /-- Enter on the live root and compare the reached prefix of the nested body,
 even if it has not returned or executes another public give. Further requests
 are exposed at their real caller and with all older frames still paired. -/

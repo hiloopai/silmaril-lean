@@ -181,6 +181,17 @@ structure CoreGiveRequest.Selected {bindings : List (Binding sig)} {state : Conf
   selected : Stored.Endpoints.Core.childFromHistory state.host.writer.accepted handle = some tree
   admitted : route.admits request.destination tree
 
+/-- The live canonical cursor immediately after successful selection. Its
+emitter has not started, even if the checked compiler refuses the payload. -/
+noncomputable def CoreGiveRequest.Selected.canonicalPending {bindings : List (Binding sig)}
+    {state : Config (core3 grow) (HostState sig)} {request : CoreGiveRequest bindings state}
+    {route : GiveEffectRoute} (selection : request.Selected route) : Config (core3 grow) (HostState sig) :=
+  let body := match route with
+    | .memory pointer => memoryBody request.inst request.destination selection.tree (flatNat pointer)
+    | .flat schema => flatBody request.inst request.destination schema selection.tree
+  { state with ctl := ⟨request.thread, .prog (body >>= fun words => pure (.flat words)),
+      .core request.core request.next :: request.frames⟩ :: request.rest }
+
 def CoreGiveRequest.Selected.site {bindings : List (Binding sig)} {state : Config (core3 grow) (HostState sig)}
     {request : CoreGiveRequest bindings state} {route : GiveEffectRoute} (selection : request.Selected route)
     (tag : sig.Tag) (payload : OwnedMemory.Payload (sig.payload tag))

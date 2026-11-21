@@ -386,6 +386,21 @@ theorem reachedGiveAdmission {route : GiveEffectRoute} {request : CoreGiveReques
     | memory pointer => exact linkedMemoryExit _ linked
     | flat schema => exact linkedFlatExit _ linked
 
+theorem pairedLinkedAdmission {route : GiveEffectRoute} {request : CoreGiveRequest bindings start}
+    (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {incoming : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start incoming)
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory incoming.host.writer.accepted handle) :
+    ∃ entryLabels entered, entryLabels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (ComponentCall.hostWithComponent bindings callees)))
+        incoming entryLabels entered ∧
+      HostFrame.Related.Paired older selection.canonicalPending entered ∧
+      ReachedGiveAdmission profile ready callees selection := by
+  obtain ⟨labels, entered, silent, path, aligned⟩ := selection.paired_canonical_pending paired reads
+  exact ⟨labels, entered, silent, path, aligned, reachedGiveAdmission selection⟩
+
 theorem linkedGiveStop {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
     {callees : List (ComponentCall.Callee sig)} {entryLabels checkLabels canonLabels reached reference check phase}
     (entry : Transition profile ready (ComponentCall.hostWithComponent bindings callees)

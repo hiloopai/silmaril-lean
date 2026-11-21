@@ -920,6 +920,134 @@ theorem pairedAdmissionTrap (request : CoreGiveRequest bindings start)
     focused (shared ▸ request.calling) (shared ▸ rightEval)
   exact ⟨leftCount, rightCount, left, right⟩
 
+theorem selectedDemand {request : CoreGiveRequest bindings start} (selection : request.Selected route) :
+    request.lookupDemand = some selection.handle := by
+  have action : request.schema.elim (.givePayload request.destination) (.giveFlat request.destination) =
+      route.action (sig := sig) request.destination :=
+    congrArg Binding.action (Except.ok.inj (request.linked.symm.trans selection.linked))
+  unfold CoreGiveRequest.lookupDemand
+  rw [selection.caller, selection.args]
+  cases route with
+  | memory pointer =>
+    have width := selection.admitted
+    change Stored.flatType pointer = ABI.pointerType request.destination.width at width
+    cases schemaAt : request.schema with
+    | none => simp [GiveEffectRoute.args, Execution.Runtime.Value.int, selection.mayLeave, width, selection.destination]
+    | some schema => simp [schemaAt, GiveEffectRoute.action] at action
+  | flat schema =>
+    cases schemaAt : request.schema with
+    | none => simp [schemaAt, GiveEffectRoute.action] at action
+    | some _ => simp [GiveEffectRoute.args, Execution.Runtime.Value.int, selection.mayLeave, selection.destination]
+
+private theorem installSelected {request : CoreGiveRequest bindings start} {other : Config (core3 grow) (HostState sig)}
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (caller : Plain.callerInstance start.store request.thread = .ok (some request.inst))
+    (mayLeave : (start.store.inst? request.inst).any (·.mayLeave) = true)
+    {Value : Type} (program : Session grow sig Value) (verdict : Value)
+    (tail : Value → Session grow sig (List FlatValue))
+    (installed : (LiveDispatch.host bindings base).embedder request.name request.kind request.args = program >>= tail)
+    (evaluated : Plain.runBody program start.store other.host (some request.thread) = (start.store, other.host, .ok verdict)) :
+    ∃ labels entered, labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
+      HostFrame.Related.Paired older
+        { start with ctl := ⟨request.thread, .prog (tail verdict >>= fun words => pure (.flat words)),
+          .core request.core request.next :: request.frames⟩ :: request.rest } entered := by
+  let impl := LiveDispatch.host bindings base
+  let next : Value → Session grow sig (Ret (core3 grow)) := fun result => tail result >>= fun words => pure (.flat words)
+  have shared := paired.data.1
+  have aligned : ReturnFrame.Related.Paired older (HostFrame.replace start other.host) other := paired
+  obtain ⟨frames, rest, focused, entered⟩ := aligned.push_shared request.focused (.prog (next verdict)) (.core request.core request.next)
+  let active := { other with ctl := ⟨request.thread, .prog (program >>= next), .core request.core request.next :: frames⟩ :: rest }
+  obtain ⟨labels, silent, localRun⟩ := Plain.runBody_thread_steps program active other.store other.host verdict next
+    request.thread _ rest profile ready (specDispatch ready impl) rfl (shared ▸ evaluated)
+  have leaves : threadMayLeave other.store request.thread = true := shared ▸ Plain.thread_may_leave caller mayLeave
+  have actual := Plain.prepend_embedder_callout (impl := impl) (profile := profile) (ready := ready)
+    focused (shared ▸ request.calling)
+    (by simpa only [active, next, calloutBody, leaves, ite_true, impl, installed, Prog.bind_eq, Prog.bind_assoc] using localRun)
+  refine ⟨.tau :: .tau :: .tau :: labels, _, ?_, actual, ?_⟩
+  · apply List.all_eq_true.mpr
+    intro label member
+    simp only [List.mem_cons] at member
+    rcases member with rfl | rfl | rfl | member <;> try rfl
+    have observed := List.all_eq_true.mp silent label member
+    cases label <;> first | rfl | contradiction
+  · simpa only [HostFrame.Related.Paired, HostFrame.replace, next, Prog.bind_eq] using entered
+
+theorem pendingPaired {request : CoreGiveRequest bindings start} (selection : request.Selected route)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other)
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle) :
+    ∃ labels entered, labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
+      HostFrame.Related.Paired older selection.canonicalPending entered := by
+  have selected := (reads selection.handle (selectedDemand selection)).symm.trans selection.selected
+  have caller := selection.caller
+  have mayLeave := selection.mayLeave
+  have checked := selection.destination
+  have args := selection.args
+  have linked := selection.linked
+  cases route with
+  | memory pointer =>
+    let program : Session grow sig (Except Issue (Stored.OwnedMemory.Tree sig × Nat)) :=
+      admit request.inst (selectMemoryDestination request.destination request.args)
+    let tail : Except Issue (Stored.OwnedMemory.Tree sig × Nat) → Session grow sig (List FlatValue)
+      | .error issue => pure (completion 0 (.error issue)).2
+      | .ok (tree, ptr) => memoryBody request.inst request.destination tree ptr
+    have width := selection.admitted
+    change Stored.flatType pointer = ABI.pointerType request.destination.width at width
+    refine installSelected paired caller mayLeave program (.ok (selection.tree, flatNat pointer)) tail ?_ ?_
+    · simp only [LiveDispatch.host, selectBinding, GiveEffectRoute.action] at linked ⊢
+      simp only [linked, memoryWords, program, tail]
+      rfl
+    · simp only [program, admit, Prog.bind_eq, Plain.runBody_currentInst, caller, readStore,
+        bne_self_eq_false, mayLeave, Bool.not_true, Bool.or_false, Bool.false_eq_true, ite_false]
+      simp only [args, GiveEffectRoute.args, selectMemoryDestination, Execution.Runtime.Value.int, Prog.bind_eq,
+        width, bne_self_eq_false, Bool.false_eq_true, ite_false, readStore, checked, readSelection, selected]
+      rfl
+  | flat schema =>
+    let program : Session grow sig (Except Issue (Stored.OwnedMemory.Tree sig)) :=
+      admit request.inst (selectFlatDestination request.destination schema request.args)
+    let tail : Except Issue (Stored.OwnedMemory.Tree sig) → Session grow sig (List FlatValue)
+      | .error issue => pure (flatCompletion 0 (ABI.flatten request.destination.width schema) (.error issue)).2
+      | .ok tree => flatBody request.inst request.destination schema tree
+    have schemaMatches := selection.admitted
+    change rootHasSchema selection.tree schema = true at schemaMatches
+    refine installSelected paired caller mayLeave program (.ok selection.tree) tail ?_ ?_
+    · simp only [LiveDispatch.host, selectBinding, GiveEffectRoute.action] at linked ⊢
+      simp only [linked, flatWords, program, tail]
+      rfl
+    · simp only [program, admit, Prog.bind_eq, Plain.runBody_currentInst, caller, readStore,
+        bne_self_eq_false, mayLeave, Bool.not_true, Bool.or_false, Bool.false_eq_true, ite_false]
+      simp only [args, GiveEffectRoute.args, selectFlatDestination, Execution.Runtime.Value.int, Prog.bind_eq,
+        readStore, checked, readSelection, selected, schemaMatches, Bool.not_true, Bool.false_eq_true, ite_false]
+      rfl
+
+theorem pendingReference {request : CoreGiveRequest bindings start} (selection : request.Selected route)
+    {tag : sig.Tag} {payload : Stored.OwnedMemory.Payload (sig.payload tag)} {arity : Nat}
+    {children : Fin arity → Stored.OwnedMemory.Tree sig} (field : Stored.Endpoints.RecordLower.Field)
+    (picked : selection.tree = .tag ⟨tag, payload⟩ arity children) :
+    selection.canonicalPending = (selection.site tag payload arity children field).reference
+      (selection.site tag payload arity children field).referenceReply := by
+  cases route with
+  | memory pointer =>
+    simp only [CoreGiveRequest.Selected.canonicalPending, CoreGiveRequest.Selected.site, Site.reference, Site.cursor,
+      PayloadPrefix.Cursor.control, memoryBody, picked, Site.referenceProgram, GiveEffectRoute.output,
+      Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind']
+    rfl
+  | flat schema =>
+    have padding (words : List FlatValue) :
+        (flatCompletion 0 (ABI.flatten request.destination.width schema) (.ok words)).2 =
+          (flatCompletion start.host.nextTicket (ABI.flatten request.destination.width schema) (.ok words)).2 := by
+      simp only [flatCompletion]
+      split <;> rfl
+    simp only [CoreGiveRequest.Selected.canonicalPending, CoreGiveRequest.Selected.site, Site.reference, Site.cursor,
+      PayloadPrefix.Cursor.control, flatBody, picked, Site.referenceProgram, GiveEffectRoute.output,
+      Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind', padding]
+    rfl
+
 theorem classifyStep {label} (step : Step profile ready (specDispatch ready base) start label finish) :
     Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) start label finish ∨
       GiveInstall bindings (specDispatch ready base) start label finish := by
