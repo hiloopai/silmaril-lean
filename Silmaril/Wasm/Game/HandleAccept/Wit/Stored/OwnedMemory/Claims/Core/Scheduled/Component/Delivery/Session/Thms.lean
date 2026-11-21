@@ -551,7 +551,107 @@ theorem CalleeSpillReturn.of_occurrence {site : OnStartSite start} {handoff : Lo
     ∃ result : CalleeSpillReturn args state, result.pointer = pointer :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.calleeReachedReturn path focused
 
+/-- The direct string field reads its live plan width. After the plan,
+the canonical suffix appends its actual words before entering the guest. -/
+theorem direct_string_plan {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (context : LiftLowerContext (core3 grow)) (width : AddrType) (value : Value.StrVal)
+    (values : List Value.Val) (types : List Stored.TypeOf) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (enter : List FlatValue → Session grow sig (Ret (core3 grow)))
+    (focused : start.ctl = cursor.control (lowerFlatTypes .spec .none context width
+      (.string value :: values) (.prim .string :: types) >>= enter)) :
+    Steps profile ready dispatch start [.tau]
+      { start with ctl := cursor.control (argumentStringBody context width .flat value start.store >>=
+          directStringTail context width values types enter) } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.directStringPlan
+    context width value values types cursor enter focused
+
+/-- The indirect argument store reads the tuple field offset and then the
+string plan width. The canonical suffix uses the ABI field-end cursor. -/
+theorem spilled_string_plan {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (context : LiftLowerContext (core3 grow)) (value : Value.StrVal)
+    (values : List Value.Val) (types : List Stored.TypeOf) (pointer : Nat) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (enter : Session grow sig (Ret (core3 grow)))
+    (focused : start.ctl = cursor.control (storeTuple .spec .none context
+      (.string value :: values) (.prim .string :: types) pointer >>= fun _ => enter)) :
+    Steps profile ready dispatch start [.tau, .tau]
+      { start with ctl := cursor.control (spilledStringBody context (ptrTypeIn start.store context)
+          value values types pointer enter start.store) } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.spilledStringPlan
+    context value values types pointer cursor enter focused
+
 /-- Execute the actual scalar tuple store after live spill placement. The
+/-- Allocation within an argument is a closed request at the actual
+call site, regardless of subsequent allocator reentry. -/
+theorem ArgumentStringAllocation.linked_install (alloc : ArgumentStringAllocation start) (ready : HostReady (HostState sig))
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    Step profile ready (Dispatch.coreOnly ready bindings) start .tau (alloc.installed ready bindings) ∧
+    Step profile ready (Dispatch.linked ready bindings callees) start .tau (alloc.installed ready bindings) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.stringArgumentInstall alloc ready bindings callees
+
+/-- A finite allocator path may stop with the residual plan saved rather
+/-- A classified allocator trace is admissible even if it traps and loses
+the continuation. Its final configuration is the actual reached one. -/
+theorem ArgumentStringAllocation.linked_steps (alloc : ArgumentStringAllocation start) {bindings : List (Binding sig)}
+    {callees : List (Callee sig)} {last : State grow sig} {labels}
+    (path : Steps profile ready (Dispatch.coreOnly ready bindings) (alloc.installed ready bindings) labels last)
+    (closed : Dispatch.ClosedThrough profile ready bindings (alloc.installed ready bindings) labels last) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start (.tau :: labels) last ∧
+    Steps profile ready (Dispatch.linked ready bindings callees) start (.tau :: labels) last :=
+  let install := alloc.linked_install ready bindings callees
+  ⟨.cons install.1 path, .cons install.2 (Dispatch.Compatible.of_closed path closed).steps⟩
+
+than return. Transport the actual occurrence and all reached effects. -/
+theorem ArgumentStringAllocation.linked_prefix (alloc : ArgumentStringAllocation start) {bindings : List (Binding sig)}
+    {callees : List (Callee sig)} {last : State grow sig} {labels mark}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (Dispatch.coreOnly ready bindings)
+      (alloc.installed ready bindings) (.active 0 0) labels last mark)
+    (closed : Dispatch.ClosedThrough profile ready bindings (alloc.installed ready bindings) labels last) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start (.tau :: labels) last ∧
+    Steps profile ready (Dispatch.linked ready bindings callees) start (.tau :: labels) last ∧
+    ReturnFrame.Occurrence.Prefix profile ready (Dispatch.linked ready bindings callees)
+      (alloc.installed ready bindings) (.active 0 0) labels last mark :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.stringArgumentPrefix alloc path closed
+
+/-- Resume the original residual plan only when its tracked occurrence
+returns. Later transcoding, writes and siblings start from the reached store. -/
+theorem ArgumentStringAllocation.linked_return (alloc : ArgumentStringAllocation start) {bindings : List (Binding sig)}
+    {callees : List (Callee sig)} {last : State grow sig} {labels}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (Dispatch.coreOnly ready bindings)
+      (alloc.installed ready bindings) (.active 0 0) labels last (.active 0 0))
+    (closed : Dispatch.ClosedThrough profile ready bindings (alloc.installed ready bindings) labels last)
+    (cursor : Cursor (E := core3 grow) (HostState sig)) (answer : Ret (core3 grow)) {next : ReturnFrame.Continuation (core3 grow) (HostState sig)}
+    (returning : last.ctl = { cursor with frames := .prog next :: cursor.frames }.control (.pure answer)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start ((.tau :: labels) ++ [.tau]) (alloc.resumed last cursor answer) ∧
+    Steps profile ready (Dispatch.linked ready bindings callees) start ((.tau :: labels) ++ [.tau]) (alloc.resumed last cursor answer) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.stringArgumentReturn alloc path closed cursor answer returning
+
+/-- Compose the actual caller-cursor commit and direct branch selection with
+the string plan, retaining the append of the canonical suffix words. -/
+theorem CalleeArguments.direct_string_plan {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached : State grow sig} {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+    {value values types} (schema : args.types = .prim .string :: types) (input : returned.values = .string value :: values)
+    (fits : (ABI.flattenTypes args.width args.types).length ≤ ABI.maxFlatParams) :
+    Steps profile ready (specDispatch ready impl) reached [.tau, .tau, .tau, .tau]
+      (args.atProgram returned.resumed (argumentStringBody args.context args.width .flat value returned.resumed.store >>=
+        directStringTail args.context args.width values types args.enter)) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.calleeDirectStringPlan args schema input fits
+
+/-- After the actual outer allocator pop and live placement, enter the
+nested string plan at the reached tuple offset, not the allocator's saved store. -/
+theorem CalleeSpillReturn.spilled_string_plan {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    (result : CalleeSpillReturn args state) {memory size value values types}
+    (schema : args.types = .prim .string :: types) (input : returned.values = .string value :: values)
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (fits : result.pointer + args.layout.size ≤ size) :
+    Steps profile ready (specDispatch ready impl) state [.tau, .tau, .tau, .tau]
+      { state with ctl := ((⟨some site.thread, result.segments, result.rest⟩ : Cursor (HostState sig)).control
+          (spilledStringBody args.context (ptrTypeIn state.store args.context) value values types result.pointer
+            (args.enter [ptrFlat args.width result.pointer]) state.store)) } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.FiniteSession.calleeSpillStringPlan
+    result schema input aligned selected sized fits
+
 computed result uses the store from each previous write, including on a trap. -/
 theorem CalleeSpillReturn.placed_scalar_writes {site : OnStartSite start} {handoff : LowerStartAt site}
     {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}

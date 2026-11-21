@@ -636,6 +636,59 @@ def CalleeArguments.place (args : CalleeArguments returned) (pointer : Nat) : Se
   checkInBounds args.context pointer args.layout.size
   args.write pointer
 
+/-- The live plan width is read by the string itself; it need not be
+identified with the earlier flat ABI width or the spill field offset. -/
+def argumentStringBody (context : LiftLowerContext (core3 grow)) (flatWidth : AddrType)
+    (output : Stored.Lower.Output) (value : Value.StrVal) (current : CStore (core3 grow)) :
+    Session grow sig output.Result :=
+  let plan := storePlanFor .none context.opts.encoding (ptrTypeIn current context) value
+  runStoreSteps context 0 plan.steps >>= PayloadPrefix.stringPlanTail context flatWidth output plan
+
+def directStringTail (context : LiftLowerContext (core3 grow)) (width : AddrType)
+    (values : List Value.Val) (types : List Stored.TypeOf) (enter : List FlatValue → Session grow sig (Ret (core3 grow)))
+    (words : List FlatValue) : Session grow sig (Ret (core3 grow)) :=
+  lowerFlatTypes .spec .none context width values types >>= fun rest => enter (words ++ rest)
+
+/-- The tuple's width read chooses both the field address and the cursor for
+the remaining fields, even if allocating the field changes the reached store. -/
+def spilledStringBody (context : LiftLowerContext (core3 grow)) (width : AddrType) (value : Value.StrVal)
+    (values : List Value.Val) (types : List Stored.TypeOf) (pointer : Nat) (enter : Session grow sig (Ret (core3 grow)))
+    (current : CStore (core3 grow)) : Session grow sig (Ret (core3 grow)) :=
+  let layout := ABI.layout width (.prim .string : Stored.TypeOf)
+  let address := ABI.alignTo pointer layout.alignment
+  argumentStringBody context width (.memory address) value current >>= fun _ =>
+    storeTuple .spec .none context values types (address + layout.size) >>= fun _ => enter
+
+/-- A reached allocation (or resize) within a callee argument, with the
+unexecuted plan and the actual rest of the argument computation. -/
+structure ArgumentStringAllocation (state : State grow sig) where
+  context : LiftLowerContext (core3 grow)
+  pointer : Nat
+  oldSize : Option Nat
+  alignment : ABI.Alignment
+  size : Nat
+  residual : List ABI.StoreStep
+  finish : Nat → Session grow sig (Ret (core3 grow))
+  cursor : Cursor (E := core3 grow) (HostState sig)
+  focused : state.ctl = cursor.control (runStoreSteps context pointer
+    ((oldSize.elim (.allocate alignment size) (fun old => .reallocate old alignment size)) :: residual) >>= finish)
+
+def ArgumentStringAllocation.request {state : State grow sig} (alloc : ArgumentStringAllocation state) : Call (core3 grow) :=
+  .reallocate alloc.context (alloc.oldSize.elim 0 (fun _ => alloc.pointer)) (alloc.oldSize.getD 0) alloc.alignment.bytes alloc.size
+
+def ArgumentStringAllocation.resume {state : State grow sig} (alloc : ArgumentStringAllocation state) :
+    ReturnFrame.Continuation (core3 grow) (HostState sig) :=
+  PayloadPrefix.stringPlanResume alloc.context alloc.residual alloc.finish
+
+def ArgumentStringAllocation.installed {state : State grow sig} (alloc : ArgumentStringAllocation state)
+    (ready : HostReady (HostState sig)) (bindings : List (Binding sig)) : State grow sig :=
+  let parked := { alloc.cursor with frames := .prog alloc.resume :: alloc.cursor.frames }
+  { state with ctl := parked.control (Dispatch.coreOnly ready bindings alloc.request) }
+
+def ArgumentStringAllocation.resumed {state : State grow sig} (alloc : ArgumentStringAllocation state)
+    (reached : State grow sig) (cursor : Cursor (E := core3 grow) (HostState sig)) (answer : Ret (core3 grow)) : State grow sig :=
+  { reached with ctl := cursor.control (alloc.resume answer) }
+
 def CalleeArguments.request (args : CalleeArguments returned) : Call (core3 grow) :=
   .reallocate args.context 0 0 args.layout.alignment.bytes args.layout.size
 

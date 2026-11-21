@@ -1183,6 +1183,93 @@ theorem calleeOutside {state : State grow sig} (result : CalleeSpillReturn args 
 
 end CalleeArguments
 
+theorem flatArgumentString (context : LiftLowerContext (core3 grow)) (width : AddrType) (value : Value.StrVal) :
+    (lowerFlatAt .spec .none context width (.string value) (.prim .string) : Session grow sig (List FlatValue)) =
+      .op .get (argumentStringBody context width .flat value) := by
+  simp only [lowerFlatAt, lowerFlatPrim, storeStringIntoRange, Prog.bind_eq, Prog.bind_assoc]
+  rfl
+
+theorem memoryArgumentString (context : LiftLowerContext (core3 grow)) (width : AddrType)
+    (value : Value.StrVal) (address : Nat) :
+    (store .spec .none context (.string value) (.prim .string) address : Session grow sig Unit) =
+      .op .get (argumentStringBody context width (.memory address) value) := by
+  simp only [store.eq_def, storePrim, storeString, storeStringIntoRange, Prog.bind_eq, Prog.bind_assoc]
+  rfl
+
+theorem directStringPlan {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (context : LiftLowerContext (core3 grow)) (width : AddrType) (value : Value.StrVal)
+    (values : List Value.Val) (types : List Stored.TypeOf) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (enter : List FlatValue → Session grow sig (Ret (core3 grow)))
+    (focused : start.ctl = cursor.control (lowerFlatTypes .spec .none context width
+      (.string value :: values) (.prim .string :: types) >>= enter)) :
+    Steps profile ready dispatch start [.tau]
+      { start with ctl := cursor.control (argumentStringBody context width .flat value start.store >>=
+          directStringTail context width values types enter) } := by
+  have atRead : start.ctl = cursor.control (.op .get fun current =>
+      argumentStringBody context width .flat value current >>= directStringTail context width values types enter) := by
+    rw [focused, lowerFlatTypes, flatArgumentString]
+    simp only [Prog.bind_eq, Prog.bind_assoc, Prog.pure_eq, Prog.pure_bind']
+    rfl
+  exact .cons (.get atRead) (.refl _)
+
+theorem spilledStringPlan {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    (context : LiftLowerContext (core3 grow)) (value : Value.StrVal)
+    (values : List Value.Val) (types : List Stored.TypeOf) (pointer : Nat) (cursor : Cursor (E := core3 grow) (HostState sig))
+    (enter : Session grow sig (Ret (core3 grow)))
+    (focused : start.ctl = cursor.control (storeTuple .spec .none context
+      (.string value :: values) (.prim .string :: types) pointer >>= fun _ => enter)) :
+    Steps profile ready dispatch start [.tau, .tau]
+      { start with ctl := cursor.control (spilledStringBody context (ptrTypeIn start.store context)
+          value values types pointer enter start.store) } := by
+  have atRead : start.ctl = cursor.control (.op .get fun current => .op .get fun live =>
+      spilledStringBody context (ptrTypeIn current context) value values types pointer enter live) := by
+    rw [focused, storeTuple.eq_def]
+    simp only [memoryArgumentString context (ptrTypeIn start.store context), spilledStringBody]
+    simp only [Prog.bind_eq, Prog.bind_assoc]
+    rfl
+  exact .cons (.get atRead) (.cons (.get rfl) (.refl _))
+
+theorem stringArgumentInstall (alloc : ArgumentStringAllocation start) (ready : HostReady (HostState sig))
+    (bindings : List (Binding sig)) (callees : List (Callee sig)) :
+    Step profile ready (Dispatch.coreOnly ready bindings) start .tau (alloc.installed ready bindings) ∧
+    Step profile ready (Dispatch.linked ready bindings callees) start .tau (alloc.installed ready bindings) := by
+  have body := PayloadPrefix.string_realloc_focus alloc.context alloc.pointer alloc.oldSize alloc.alignment alloc.size
+    alloc.residual alloc.finish
+  have focused : start.ctl = alloc.cursor.control (.op (.call alloc.request) alloc.resume) := alloc.focused.trans (congrArg _ body)
+  exact ⟨.call focused, .call focused⟩
+
+theorem stringArgumentPrefix (alloc : ArgumentStringAllocation start) {bindings : List (Binding sig)}
+    {callees : List (Callee sig)} {last : State grow sig} {labels mark}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (Dispatch.coreOnly ready bindings)
+      (alloc.installed ready bindings) (.active 0 0) labels last mark)
+    (closed : Dispatch.ClosedThrough profile ready bindings (alloc.installed ready bindings) labels last) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start (.tau :: labels) last ∧
+    Steps profile ready (Dispatch.linked ready bindings callees) start (.tau :: labels) last ∧
+    ReturnFrame.Occurrence.Prefix profile ready (Dispatch.linked ready bindings callees)
+      (alloc.installed ready bindings) (.active 0 0) labels last mark := by
+  obtain ⟨left, right⟩ := stringArgumentInstall (profile := profile) alloc ready bindings callees
+  have following := Dispatch.occurrence_of_closed (callees := callees) path closed
+  exact ⟨.cons left (ReturnFrame.Occurrence.prefix_survives path).1,
+    .cons right (ReturnFrame.Occurrence.prefix_survives following).1, following⟩
+
+theorem stringArgumentReturn (alloc : ArgumentStringAllocation start) {bindings : List (Binding sig)}
+    {callees : List (Callee sig)} {last : State grow sig} {labels}
+    (path : ReturnFrame.Occurrence.Prefix profile ready (Dispatch.coreOnly ready bindings)
+      (alloc.installed ready bindings) (.active 0 0) labels last (.active 0 0))
+    (closed : Dispatch.ClosedThrough profile ready bindings (alloc.installed ready bindings) labels last)
+    (cursor : Cursor (E := core3 grow) (HostState sig)) (answer : Ret (core3 grow)) {next : ReturnFrame.Continuation (core3 grow) (HostState sig)}
+    (returning : last.ctl = { cursor with frames := .prog next :: cursor.frames }.control (.pure answer)) :
+    Steps profile ready (Dispatch.coreOnly ready bindings) start ((.tau :: labels) ++ [.tau]) (alloc.resumed last cursor answer) ∧
+    Steps profile ready (Dispatch.linked ready bindings callees) start ((.tau :: labels) ++ [.tau]) (alloc.resumed last cursor answer) := by
+  have retained := (ReturnFrame.Occurrence.prefix_survives path).2
+  simp [ReturnFrame.Occurrence.segmentStorage, ReturnFrame.Occurrence.segmentAt,
+    ArgumentStringAllocation.installed, Cursor.control, returning] at retained
+  have atReturn : last.ctl = { cursor with frames := .prog alloc.resume :: cursor.frames }.control (.pure answer) := by
+    simpa only [retained] using returning
+  obtain ⟨left, right, _⟩ := stringArgumentPrefix (callees := callees) alloc path closed
+  exact ⟨appendSteps left (.cons (.popProg atReturn) (.refl _)),
+    appendSteps right (.cons (.popProg atReturn) (.refl _))⟩
+
 theorem storeDirectArgument (context : LiftLowerContext (core3 grow)) (arg : DirectArgument) (address : Nat) :
     (store .spec .none context arg.value arg.type address : Session grow sig Unit) = writeMem context address arg.bytes := by
   cases arg <;> rw [DirectArgument.type, DirectArgument.value, store.eq_def] <;> rfl
@@ -1488,6 +1575,37 @@ theorem runSteps {actions labels} (path : Run profile ready impl start actions l
   induction path with
   | stop => exact .refl _
   | next edge _ ih => exact appendSteps (transitionSteps edge) ih
+
+theorem calleeDirectStringPlan {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached : State grow sig} {returned : LowerArgumentReturn handoff reached} (args : CalleeArguments returned)
+    {value values types} (schema : args.types = .prim .string :: types) (input : returned.values = .string value :: values)
+    (fits : (ABI.flattenTypes args.width args.types).length ≤ ABI.maxFlatParams) :
+    Steps profile ready (specDispatch ready impl) reached [.tau, .tau, .tau, .tau]
+      (args.atProgram returned.resumed (argumentStringBody args.context args.width .flat value returned.resumed.store >>=
+        directStringTail args.context args.width values types args.enter)) := by
+  have atString : args.direct.ctl = (⟨some site.thread, site.segments, site.rest⟩ : Cursor (HostState sig)).control
+      (lowerFlatTypes .spec .none args.context args.width (.string value :: values) (.prim .string :: types) >>= args.enter) := by
+    simp only [CalleeArguments.direct, CalleeArguments.atProgram, Cursor.control, schema, input]
+  exact appendSteps (transitionSteps (.lowerArgsReturn returned))
+    (.cons (calleeDirect args fits) (directStringPlan _ _ _ _ _ _ _ atString))
+
+theorem calleeSpillStringPlan {site : OnStartSite start} {handoff : LowerStartAt site}
+    {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
+    (result : CalleeSpillReturn args state) {memory size value values types}
+    (schema : args.types = .prim .string :: types) (input : returned.values = .string value :: values)
+    (aligned : result.pointer = ABI.alignTo result.pointer args.layout.alignment)
+    (selected : args.context.opts.memory = some memory) (sized : (core3 grow).memSize? state.store.core memory = some size)
+    (fits : result.pointer + args.layout.size ≤ size) :
+    Steps profile ready (specDispatch ready impl) state [.tau, .tau, .tau, .tau]
+      { state with ctl := ((⟨some site.thread, result.segments, result.rest⟩ : Cursor (HostState sig)).control
+          (spilledStringBody args.context (ptrTypeIn state.store args.context) value values types result.pointer
+            (args.enter [ptrFlat args.width result.pointer]) state.store)) } := by
+  have atString : result.writing.ctl = (⟨some site.thread, result.segments, result.rest⟩ : Cursor (HostState sig)).control
+      (storeTuple .spec .none args.context (.string value :: values) (.prim .string :: types) result.pointer >>=
+        fun _ => args.enter [ptrFlat args.width result.pointer]) := by
+    simp only [CalleeSpillReturn.writing, CalleeArguments.write, Cursor.control, schema, input]
+    rw [store.eq_def]
+  exact appendSteps (calleePlaced result aligned selected sized fits) (spilledStringPlan _ _ _ _ _ _ _ atString)
 
 theorem spillScalarStackful {site : OnStartSite start} {handoff : LowerStartAt site}
     {reached state : State grow sig} {returned : LowerArgumentReturn handoff reached} {args : CalleeArguments returned}
