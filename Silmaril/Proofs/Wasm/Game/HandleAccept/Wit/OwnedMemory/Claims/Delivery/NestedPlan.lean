@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Plan.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.StringPlan.Defs
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Thms
@@ -400,6 +401,38 @@ theorem pairedLinkedAdmission {route : GiveEffectRoute} {request : CoreGiveReque
       ReachedGiveAdmission profile ready callees selection := by
   obtain ⟨labels, entered, silent, path, aligned⟩ := selection.paired_canonical_pending paired reads
   exact ⟨labels, entered, silent, path, aligned, reachedGiveAdmission selection⟩
+
+theorem linkedAdmissionAfterInterleaving {route : GiveEffectRoute} {request : CoreGiveRequest bindings finish}
+    (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)} {actions incoming outgoing}
+    (between : JournalInterleaving profile ready (ComponentCall.hostWithComponent bindings callees)
+      start incoming actions labels finish outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted) :
+    ∃ entryLabels canonical, entryLabels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (ComponentCall.hostWithComponent bindings callees)))
+        (HostFrame.replace start incoming) (labels ++ entryLabels) canonical ∧
+      HostFrame.Related.Paired (fun _ _ => False) selection.canonicalPending canonical ∧
+      canonical.host.writer.accepted = finish.host.writer.accepted ∧
+      ReachedGiveAdmission profile ready callees selection := by
+  obtain ⟨entryLabels, canonical, silent, path, aligned, accepted⟩ := selection.pending_after_interleaving between roots
+  exact ⟨entryLabels, canonical, silent, path, aligned, accepted, reachedGiveAdmission selection⟩
+
+theorem compilerRefusalAfterInterleaving {route : GiveEffectRoute} {request : CoreGiveRequest bindings finish}
+    (selection : request.Selected route) {callees : List (ComponentCall.Callee sig)} {actions incoming outgoing}
+    (between : JournalInterleaving profile ready (ComponentCall.hostWithComponent bindings callees)
+      start incoming actions labels finish outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted) {issue : Stored.Endpoints.RecordLower.Issue}
+    (refused : selection.preflight = .error issue) :
+    ∃ count entryLabels canonical, entryLabels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (ComponentCall.hostWithComponent bindings callees))
+        start (labels ++ List.replicate count .tau) (selection.compilerRefused issue) ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (ComponentCall.hostWithComponent bindings callees)))
+        (HostFrame.replace start incoming) (labels ++ entryLabels) canonical ∧
+      HostFrame.Related.Paired (fun _ _ => False) selection.canonicalPending canonical ∧
+      canonical.host.writer.accepted = (selection.compilerRefused issue).host.writer.accepted := by
+  obtain ⟨entryLabels, canonical, silent, right, aligned, accepted⟩ := selection.pending_after_interleaving between roots
+  obtain ⟨count, left⟩ := selection.compiler_refusal (profile := profile) (ready := ready) refused
+    (ComponentCall.hostWithComponent bindings callees) rfl
+  exact ⟨count, entryLabels, canonical, silent, append between.runs.1.steps left, right, aligned, accepted⟩
 
 theorem linkedGiveStop {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route) (linked : site.Linked bindings)
     {callees : List (ComponentCall.Callee sig)} {entryLabels checkLabels canonLabels reached reference check phase}

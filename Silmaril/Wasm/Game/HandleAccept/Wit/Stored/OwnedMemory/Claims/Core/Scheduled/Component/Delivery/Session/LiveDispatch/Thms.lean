@@ -250,7 +250,9 @@ theorem LiveDispatch.CoreGiveRequest.Selected.paired_canonical_pending {request 
     ∃ labels entered, labels.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
       HostFrame.Related.Paired older selection.canonicalPending entered :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pendingPaired selection paired reads
+  (Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pendingPaired
+    (profile := profile) (ready := ready) (base := base) selection paired reads).imp fun _ result =>
+      result.imp fun _ ⟨silent, path, _, aligned⟩ => ⟨silent, path, aligned⟩
 
 /-- Successful compilation's recursive comparison starts at the same
 canonical program identified by live selection. No synthetic reply or
@@ -324,6 +326,20 @@ theorem LiveDispatch.entry_after_equal_roots (site : Site grow sig route) (linke
         (leading ++ middleLabels ++ labels) (HostFrame.replace (site.reference site.referenceReply) outgoing) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.afterSameRoots
     site linked roots prior between
+
+/-- A closed delivery interleaving derives the live selection from the starting
+observations. Installing the selected canonical body is read-only; it does not
+retain any claims or event records that the interleaving may have changed. -/
+theorem LiveDispatch.CoreGiveRequest.Selected.pending_after_interleaving {request : LiveDispatch.CoreGiveRequest bindings finish}
+    (selection : request.Selected route) {actions labels incoming outgoing}
+    (between : JournalInterleaving profile ready base start incoming actions labels finish outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted) :
+    ∃ leading entered, leading.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) (HostFrame.replace start incoming)
+        (labels ++ leading) entered ∧
+      HostFrame.Related.Paired (fun _ _ => False) selection.canonicalPending entered ∧
+      entered.host.writer.accepted = finish.host.writer.accepted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pendingAfterInterleaving selection between roots
 
 /-- Closed delivery interleavings derive lookup agreement from their
 starting accepted observations, including when an intervening commit

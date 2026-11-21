@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.LiveDispatch.Plan.Defs
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.StringPlan.Defs
+public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Defs
 import Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan
 
 public section
@@ -184,6 +185,42 @@ theorem CoreGiveRequest.Selected.paired_linked_admission {route : GiveEffectRout
       HostFrame.Related.Paired older selection.canonicalPending entered ∧
       ReachedGiveAdmission profile ready callees selection :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.pairedLinkedAdmission selection paired reads
+
+/-- Follow a classified delivery interleaving to an actually selected give.
+The reached lookup and compiler cut follow from the starting accepted
+observations even when the interleaving registered new roots. -/
+theorem CoreGiveRequest.Selected.linked_admission_after_interleaving {route : GiveEffectRoute}
+    {request : CoreGiveRequest bindings finish} (selection : request.Selected route)
+    {callees : List (ComponentCall.Callee sig)} {actions incoming outgoing}
+    (between : JournalInterleaving profile ready (ComponentCall.hostWithComponent bindings callees)
+      start incoming actions labels finish outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted) :
+    ∃ entryLabels canonical, entryLabels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (ComponentCall.hostWithComponent bindings callees)))
+        (HostFrame.replace start incoming) (labels ++ entryLabels) canonical ∧
+      HostFrame.Related.Paired (fun _ _ => False) selection.canonicalPending canonical ∧
+      canonical.host.writer.accepted = finish.host.writer.accepted ∧
+      ReachedGiveAdmission profile ready callees selection :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.linkedAdmissionAfterInterleaving selection between roots
+
+/-- When the checked compiler refuses, only that side rejoins the caller.
+The canonical run ends before its emitter; neither side undoes the
+interleaving and their accepted observations agree at the cut. -/
+theorem CoreGiveRequest.Selected.compiler_refusal_after_interleaving {route : GiveEffectRoute}
+    {request : CoreGiveRequest bindings finish} (selection : request.Selected route)
+    {callees : List (ComponentCall.Callee sig)} {actions incoming outgoing}
+    (between : JournalInterleaving profile ready (ComponentCall.hostWithComponent bindings callees)
+      start incoming actions labels finish outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted) {issue : Stored.Endpoints.RecordLower.Issue}
+    (refused : selection.preflight = .error issue) :
+    ∃ count entryLabels canonical, entryLabels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (ComponentCall.hostWithComponent bindings callees))
+        start (labels ++ List.replicate count .tau) (selection.compilerRefused issue) ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings (ComponentCall.hostWithComponent bindings callees)))
+        (HostFrame.replace start incoming) (labels ++ entryLabels) canonical ∧
+      HostFrame.Related.Paired (fun _ _ => False) selection.canonicalPending canonical ∧
+      canonical.host.writer.accepted = (selection.compilerRefused issue).host.writer.accepted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.NestedPlan.compilerRefusalAfterInterleaving selection between roots refused
 
 /-- Classify the actual matched body prefix of a typed refusal or canonical
 trap. Reaching a refusal does not pop a canonical caller or emit its checked

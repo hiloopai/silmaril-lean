@@ -950,6 +950,7 @@ private theorem installSelected {request : CoreGiveRequest bindings start} {othe
     (evaluated : Plain.runBody program start.store other.host (some request.thread) = (start.store, other.host, .ok verdict)) :
     ∃ labels entered, labels.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
+      entered.host = other.host ∧
       HostFrame.Related.Paired older
         { start with ctl := ⟨request.thread, .prog (tail verdict >>= fun words => pure (.flat words)),
           .core request.core request.next :: request.frames⟩ :: request.rest } entered := by
@@ -965,7 +966,7 @@ private theorem installSelected {request : CoreGiveRequest bindings start} {othe
   have actual := Plain.prepend_embedder_callout (impl := impl) (profile := profile) (ready := ready)
     focused (shared ▸ request.calling)
     (by simpa only [active, next, calloutBody, leaves, ite_true, impl, installed, Prog.bind_eq, Prog.bind_assoc] using localRun)
-  refine ⟨.tau :: .tau :: .tau :: labels, _, ?_, actual, ?_⟩
+  refine ⟨.tau :: .tau :: .tau :: labels, _, ?_, actual, rfl, ?_⟩
   · apply List.all_eq_true.mpr
     intro label member
     simp only [List.mem_cons] at member
@@ -982,6 +983,7 @@ theorem pendingPaired {request : CoreGiveRequest bindings start} (selection : re
         Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle) :
     ∃ labels entered, labels.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
+      entered.host = other.host ∧
       HostFrame.Related.Paired older selection.canonicalPending entered := by
   have selected := (reads selection.handle (selectedDemand selection)).symm.trans selection.selected
   have caller := selection.caller
@@ -1255,6 +1257,22 @@ private theorem sameFrames (state : Config (core3 grow) (HostState sig)) :
     | some activation => exact .some (active activation)
   cases state
   exact .mk (selfList active _) (selfList saved _)
+
+theorem pendingAfterInterleaving {request : CoreGiveRequest bindings finish} (selection : request.Selected route)
+    {actions labels incoming outgoing} (between : JournalInterleaving profile ready base start incoming actions labels finish outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted) :
+    ∃ leading entered, leading.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) (HostFrame.replace start incoming)
+        (labels ++ leading) entered ∧
+      HostFrame.Related.Paired (fun _ _ => False) selection.canonicalPending entered ∧
+      entered.host.writer.accepted = finish.host.writer.accepted := by
+  have reached := interleavingRoots between roots
+  have paired : HostFrame.Related.Paired (fun _ _ => False) finish (HostFrame.replace finish outgoing) :=
+    sameFrames (HostFrame.replace finish outgoing)
+  obtain ⟨leading, entered, silent, path, kept, aligned⟩ := pendingPaired (base := base) (profile := profile)
+    (ready := ready) selection paired
+    (fun handle _ => congrArg (fun accepted => Stored.Endpoints.Core.childFromHistory accepted handle) reached.symm)
+  exact ⟨leading, entered, silent, append (interleavingSteps between) path, aligned, kept ▸ reached⟩
 
 theorem afterRefusal (request : CoreGiveRequest bindings finish)
     (embedder : base.embedder = (Stored.OwnedMemory.Claims.Core.Scheduled.host (grow := grow) bindings).embedder)
