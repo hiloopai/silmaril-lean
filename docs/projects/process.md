@@ -8,6 +8,9 @@ families, and the two SHA-256 programs proved end to end
 ([sha256sum.md](sha256sum.md)).  The selected closure contains 638 Lean
 modules (`module_count` in `.process-promotion.json`).
 
+The [typed user/kernel boundary](typed-syscall.md) is a smaller ISA-independent
+pilot over the existing syscall relation, not a replacement for this release.
+
 ```mermaid
 flowchart LR
   ELF[ELF bytes] --> CST[ELF CST / IsCST]

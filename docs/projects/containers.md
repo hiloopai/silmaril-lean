@@ -146,6 +146,11 @@ judgements:
   (`vmonitor_correctInterleaved`); `vlang_iff`: a run has no undefined behaviour and only allowed
   events exactly when every observation prefix is accepted.
 
+The [typed syscall pilot](typed-syscall.md#container-execution-and-event-streams)
+uses `MachineSem` and this observation alphabet for a one-byte read and exit.
+It is separate from the LPS/OCI adapter and retains the richer syscall event
+type rather than using the container capability alphabet.
+
 **Where the registrations live.** The definitions are in the region (`Containers.Check`, and the
 named systems and postconditions in `Containers.Mini`); the records are in the `LogicGraph` view,
 `Silmaril.LogicGraph.Consequence.Containers`, next to the consequence systems of the logics. The
