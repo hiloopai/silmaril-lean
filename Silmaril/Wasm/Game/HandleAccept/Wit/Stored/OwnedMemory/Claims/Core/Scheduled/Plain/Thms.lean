@@ -63,8 +63,21 @@ theorem runBody_thread_steps {E : CoreEngine} {Host Result : Type} (body : P E H
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.body_steps_at
     body start updated host result finish thread segs rest profile ready dispatch focused (some thread) (.inr rfl) success
 
-/-- A successful body ending at its consumer preserves the active return slots
-through the actual reads and writes, rather than reconstructing them afterward. -/
+/-- A successful body ending at its consumer tracks active and saved slots
+through the actual reads and writes. -/
+theorem runBody_thread_tracks_all {E : CoreEngine} {Host Result : Type} (body : P E Host Result)
+    (start : Machine.Config E Host) (updated : CStore E) (host : Host) (result : Result)
+    (finish : Result → P E Host (Ret E)) (thread : Option ThreadId)
+    (segs : List (Machine.Seg E Host)) (rest : List (Machine.Activation E Host))
+    (profile : ProfileKind) (ready : HostReady Host) (dispatch : Call E → P E Host (Ret E))
+    (focused : start.ctl = ⟨thread, .prog (body >>= finish), segs⟩ :: rest)
+    (success : runBody body start.store start.host (some thread) = (updated, host, .ok result)) :
+    ∃ labels, labels.all (· matches .tau) = true ∧
+      ∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready dispatch start place labels
+        { start with store := updated, host, ctl := ⟨thread, .prog (finish result), segs⟩ :: rest } place :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.body_tracks_at
+    body start updated host result finish thread segs rest profile ready dispatch focused (some thread) (.inr rfl) success
+
 theorem runBody_thread_tracks {E : CoreEngine} {Host Result : Type} (body : P E Host Result)
     (start : Machine.Config E Host) (updated : CStore E) (host : Host) (result : Result)
     (finish : Result → P E Host (Ret E)) (thread : Option ThreadId)
@@ -74,9 +87,9 @@ theorem runBody_thread_tracks {E : CoreEngine} {Host Result : Type} (body : P E 
     (success : runBody body start.store start.host (some thread) = (updated, host, .ok result)) :
     ∃ labels, labels.all (· matches .tau) = true ∧
       Machine.ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch start labels
-        { start with store := updated, host, ctl := ⟨thread, .prog (finish result), segs⟩ :: rest } :=
-  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.body_tracks_at
-    body start updated host result finish thread segs rest profile ready dispatch focused (some thread) (.inr rfl) success
+        { start with store := updated, host, ctl := ⟨thread, .prog (finish result), segs⟩ :: rest } := by
+  obtain ⟨labels, silent, tracks⟩ := runBody_thread_tracks_all body start updated host result finish thread segs rest profile ready dispatch focused success
+  exact ⟨labels, silent, fun depth => tracks (.active 0 depth)⟩
 
 /-- A canonical trap in a non-suspending body locks down the reached store, not
 the entry store. Earlier host effects survive, and no continuation is resumed.
@@ -429,11 +442,15 @@ theorem parked_closed_give_steps {sig : Signature} {grow : SingleThreaded.GrowOr
       (start.CoreGrowing → Machine.Config.CoreGrowing { start with
         host := reached
         ctl := ⟨thread, .core ((core3 grow).resume start.store.core core (.values reply.2))
-          continuation, segments⟩ :: rest }) := by
-  obtain ⟨count, run, writer, growing, _, _⟩ :=
+          continuation, segments⟩ :: rest }) ∧
+      (∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready (specDispatch ready impl)
+        start place (List.replicate count .tau)
+        { start with host := reached, ctl := ⟨thread,
+          .core ((core3 grow).resume start.store.core core (.values reply.2)) continuation, segments⟩ :: rest } place) := by
+  obtain ⟨count, run, writer, growing, tracks, _⟩ :=
     Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.PlainScheduled.parked_closed_give_steps
       bindings name type args inst destination schema start thread profile ready parked calling linked caller live closed impl embedder
-  exact ⟨count, run, writer, growing⟩
+  exact ⟨count, run, writer, growing, tracks⟩
 
 theorem thread_cannot_leave {E : CoreEngine} {store : CStore E} {thread : Option ThreadId} {inst : InstId}
     {entry : InstState} (caller : callerInstance store thread = .ok (some inst))

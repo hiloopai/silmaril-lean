@@ -9,6 +9,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
 import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 
 public section
@@ -22,6 +23,7 @@ open Silmaril.Wasm.Game.HandleAccept.Wit.Stored (Signature)
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LiveDispatch
 open PayloadRoot ComponentCall.Delivery ComponentCall.Delivery.FiniteSession
+open ReturnFrame.Occurrence
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {route : GiveEffectRoute}
   {profile : ProfileKind} {ready : HostReady (HostState sig)} {base : HostImpl (core3 grow) (HostState sig)}
@@ -179,34 +181,54 @@ private theorem closedWords {start : State grow sig} (callout : LinkedCallback.C
 
 private theorem closedPath {start : State grow sig} (callout : LinkedCallback.ClosedGive bindings start) :
     ∃ labels, labels.all (· matches .tau) = true ∧
-      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) start labels
-        (HostFrame.replace callout.resume start.host) := by
+      ∀ place, Prefix profile ready (specDispatch ready (LiveDispatch.host bindings base)) start place labels
+        (HostFrame.replace callout.resume start.host) place := by
   let impl := LiveDispatch.host bindings base
   let body := confine (impl.embedder callout.name callout.type callout.args)
   let active := { start with ctl := ⟨callout.thread, .prog (body >>= fun words => pure (.flat words)),
     .core callout.core callout.next :: callout.frames⟩ :: callout.rest }
-  obtain ⟨labels, silent, run⟩ := Plain.runBody_thread_steps body active start.store start.host callout.reply.2
+  obtain ⟨labels, silent, run⟩ := Plain.runBody_thread_tracks_all body active start.store start.host callout.reply.2
     (fun words => pure (.flat words)) callout.thread _ callout.rest profile ready (specDispatch ready impl) rfl
     (closedWords (base := base) callout start.host)
-  have tail : Steps profile ready (specDispatch ready impl) active (labels ++ [.tau])
-      (HostFrame.replace callout.resume start.host) := append run (.cons (.popCore rfl) (.refl _))
   have leaves := Plain.thread_cannot_leave callout.caller callout.live callout.closed
-  have path := Plain.prepend_embedder_callout (impl := impl) callout.parked callout.calling
-    (by simpa only [active, calloutBody, leaves, Bool.false_eq_true, ite_false, body] using tail)
-  refine ⟨.tau :: .tau :: .tau :: (labels ++ [.tau]), ?_, path⟩
-  apply List.all_eq_true.mpr
-  intro label member
-  simp only [List.mem_cons, List.mem_append, List.not_mem_nil, or_false] at member
-  rcases member with rfl | rfl | rfl | inTrace | rfl <;> try rfl
-  have observed := List.all_eq_true.mp silent label inTrace
-  cases label <;> first | rfl | contradiction
+  refine ⟨.tau :: .tau :: .tau :: (labels ++ [.tau]), ?_, ?_⟩
+  · apply List.all_eq_true.mpr
+    intro label member
+    simp only [List.mem_cons, List.mem_append, List.not_mem_nil, or_false] at member
+    rcases member with rfl | rfl | rfl | inTrace | rfl <;> try rfl
+    have observed := List.all_eq_true.mp silent label inTrace
+    cases label <;> first | rfl | contradiction
+  intro place
+  let bumped := ((Edit.push (.core callout.core callout.next)).follow place).getD place
+  have push : (transitionEdit start .tau).follow place = some bumped := by
+    simp only [transitionEdit, callout.parked, callout.calling, bumped]
+    cases place with
+    | active activation _ => cases activation <;> rfl
+    | saved _ _ => rfl
+  have pop : (Edit.pop (E := core3 grow) (Host := HostState sig)).follow bumped = some place := by
+    cases place with
+    | active activation _ => cases activation <;> rfl
+    | saved _ _ => rfl
+  have tail : Prefix profile ready (specDispatch ready impl) active bumped (labels ++ [.tau])
+      (HostFrame.replace callout.resume start.host) place :=
+    (run bumped).append (.step (.popCore rfl) pop (.done _ _))
+  have entered : Prefix profile ready (specDispatch ready impl)
+      { start with ctl := ⟨callout.thread, .prog (calloutBody Limits.spec Quirks.none ready impl
+        start.store callout.thread (.embedder callout.name callout.type) callout.args),
+        .core callout.core callout.next :: callout.frames⟩ :: callout.rest }
+      bumped (labels ++ [.tau]) (HostFrame.replace callout.resume start.host) place := by
+    simpa only [active, calloutBody, leaves, Bool.false_eq_true, ite_false, body] using tail
+  refine .step (.coreCallout callout.parked callout.calling) push ?_
+  refine Prefix.step (middle := bumped) (.currentThread rfl) (by cases bumped <;> rfl) ?_
+  exact .step (.get rfl) (by cases bumped <;> rfl) entered
 
 theorem pairedClosedGive {start incoming : State grow sig} (callout : LinkedCallback.ClosedGive bindings start)
     {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     (paired : HostFrame.Related.Paired older start incoming) :
     ∃ labels reached, labels.all (· matches .tau) = true ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming labels reached ∧
-      HostFrame.Related.Paired older callout.resume reached ∧ reached.host = incoming.host := by
+      HostFrame.Related.Paired older callout.resume reached ∧ reached.host = incoming.host ∧
+      (∀ place, Prefix profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming place labels reached place) := by
   let next := Focus.core ((core3 grow).resume start.store.core callout.core (.values callout.reply.2)) callout.next
   obtain ⟨frames, rest, focused, aligned⟩ := paired.retarget callout.parked next callout.resume.host incoming.host
   have shared := paired.data.1
@@ -219,7 +241,7 @@ theorem pairedClosedGive {start incoming : State grow sig} (callout : LinkedCall
   obtain ⟨labels, silent, run⟩ := closedPath (profile := profile) (ready := ready) (base := base) shadow
   have words : shadow.reply.2 = callout.reply.2 := by
     cases schema : callout.schema <;> simp [LinkedCallback.ClosedGive.reply, shadow, schema, completion, flatCompletion]
-  refine ⟨labels, _, silent, run, ?_, rfl⟩
+  refine ⟨labels, _, silent, (prefix_survives (run (.active 0 0))).1, ?_, rfl, run⟩
   simpa only [HostFrame.replace, LinkedCallback.ClosedGive.resume, next, words, shared,
     show shadow.thread = callout.thread from rfl, show shadow.core = callout.core from rfl,
     show shadow.next = callout.next from rfl, show shadow.frames = frames from rfl,

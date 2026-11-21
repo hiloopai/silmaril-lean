@@ -47,6 +47,28 @@ inductive ClosedCallbackPrefix (bindings : List (Binding sig)) (profile : Profil
         .prog (syncLiftCandidates task (start.store.instCandidates (ready start.host) inst)), frames⟩ :: rest } seen finish) :
       ClosedCallbackPrefix bindings profile ready base protectedReturn start seen finish
 
+/-- The installed allocator occurrence migrates through actual scheduler
+edits. Older substitutions remain valid off that mark, even if it is lost
+to a trap or the callback is still suspended. -/
+structure AllocatorMark (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (checkEntry canonEntry : Config (core3 grow) (HostState sig)) (checkTrace canonTrace : Trace grow sig)
+    (checked canonical : Config (core3 grow) (HostState sig)) (mark : Option ReturnFrame.Occurrence.Location) : Prop where
+  outside : ReturnFrame.Occurrence.Outside older (ReturnFrame.Occurrence.segmentStorage checked)
+    (ReturnFrame.Occurrence.segmentStorage canonical) mark
+  checkedTrail : ReturnFrame.Occurrence.Trail profile ready (specDispatch ready base)
+    checkEntry (some (.active 0 0)) checkTrace checked mark
+  canonicalTrail : ReturnFrame.Occurrence.Trail profile ready (specDispatch ready (LiveDispatch.host bindings base))
+    canonEntry (some (.active 0 0)) canonTrace canonical mark
+
+def stringAllocatorEntry (dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow)))
+    (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (oldSize : Option Nat) (alignment : ABI.Alignment) (size : Nat)
+    (state : Config (core3 grow) (HostState sig)) (cursor : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (resume : ReturnFrame.Continuation (core3 grow) (HostState sig)) : Config (core3 grow) (HostState sig) :=
+  let request := Call.reallocate cx (oldSize.elim 0 (fun _ => ptr)) (oldSize.getD 0) alignment.bytes size
+  { state with ctl := { cursor with frames := .prog resume :: cursor.frames }.control (dispatch request) }
+
 /-- Stops before the recursive body. A checked preflight refusal resumes its
 caller; a bad placement traps the checked machine. Neither executes the
 canonical body, whose memory placement is a precondition. -/

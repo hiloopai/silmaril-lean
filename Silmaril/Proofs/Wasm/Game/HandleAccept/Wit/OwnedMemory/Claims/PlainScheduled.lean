@@ -72,8 +72,8 @@ theorem body_tracks_at {E : CoreEngine} {Host Result : Type} (body : P E Host Re
     (activation : Option (Option ThreadId)) (matchesThread : activation = none ∨ activation = some thread)
     (success : Plain.runBody body start.store start.host activation = (updated, host, .ok result)) :
     ∃ labels, labels.all (· matches .tau) = true ∧
-      Machine.ReturnFrame.Occurrence.RetainsActiveSlots profile ready dispatch start labels
-        { start with store := updated, host, ctl := ⟨thread, .prog (finish result), segs⟩ :: rest } := by
+      ∀ place, Machine.ReturnFrame.Occurrence.Prefix profile ready dispatch start place labels
+        { start with store := updated, host, ctl := ⟨thread, .prog (finish result), segs⟩ :: rest } place := by
   induction body generalizing start with
   | pure value =>
     simp only [Plain.runBody, Prod.mk.injEq, Except.ok.injEq] at success
@@ -91,24 +91,24 @@ theorem body_tracks_at {E : CoreEngine} {Host Result : Type} (body : P E Host Re
       obtain ⟨labels, silent, tail⟩ := ih start.store
         { start with ctl := ⟨thread, .prog (next start.store >>= finish), segs⟩ :: rest } rfl success
       exact ⟨.tau :: labels, silent, fun depth => .step (.get focused)
-        (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; rfl) (tail depth)⟩
+        (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; cases depth <;> rfl) (tail depth)⟩
     case modify update =>
       obtain ⟨labels, silent, tail⟩ := ih ()
         { start with store := update start.store, ctl := ⟨thread, .prog (next () >>= finish), segs⟩ :: rest }
         rfl success
       exact ⟨.tau :: labels, silent, fun depth => .step (.modify focused)
-        (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; rfl) (tail depth)⟩
+        (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; cases depth <;> rfl) (tail depth)⟩
     case hostGet =>
       obtain ⟨labels, silent, tail⟩ := ih start.host
         { start with ctl := ⟨thread, .prog (next start.host >>= finish), segs⟩ :: rest } rfl success
       exact ⟨.tau :: labels, silent, fun depth => .step (.hostGet focused)
-        (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; rfl) (tail depth)⟩
+        (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; cases depth <;> rfl) (tail depth)⟩
     case hostSet newHost =>
       obtain ⟨labels, silent, tail⟩ := ih ()
         { start with host := newHost, ctl := ⟨thread, .prog (next () >>= finish), segs⟩ :: rest }
         rfl success
       exact ⟨.tau :: labels, silent, fun depth => .step (.hostSet focused)
-        (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; rfl) (tail depth)⟩
+        (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; cases depth <;> rfl) (tail depth)⟩
     case currentThread =>
       rcases matchesThread with missing | known
       · rw [missing] at success
@@ -118,7 +118,7 @@ theorem body_tracks_at {E : CoreEngine} {Host Result : Type} (body : P E Host Re
           { start with ctl := ⟨thread, .prog (next thread >>= finish), segs⟩ :: rest } rfl
           (by simpa only [Plain.runBody, known] using success)
         exact ⟨.tau :: labels, silent, fun depth => .step (.currentThread focused)
-          (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; rfl) (tail depth)⟩
+          (by rw [Machine.ReturnFrame.Occurrence.transitionEdit, focused]; cases depth <;> rfl) (tail depth)⟩
     all_goals cases success
 
 theorem body_steps_at {E : CoreEngine} {Host Result : Type} (body : P E Host Result)
@@ -134,7 +134,7 @@ theorem body_steps_at {E : CoreEngine} {Host Result : Type} (body : P E Host Res
         { start with store := updated, host, ctl := ⟨thread, .prog (finish result), segs⟩ :: rest } := by
   obtain ⟨labels, silent, tracking⟩ := body_tracks_at body start updated host result finish thread segs rest
     profile ready dispatch focused activation matchesThread success
-  exact ⟨labels, silent, (Machine.ReturnFrame.Occurrence.prefix_survives (tracking 0)).1⟩
+  exact ⟨labels, silent, (Machine.ReturnFrame.Occurrence.prefix_survives (tracking (.active 0 0))).1⟩
 
 theorem body_trap_steps {E : CoreEngine} {Host Result : Type} (body : P E Host Result)
     (start : Machine.Config E Host) (updated : CStore E) (host : Host) (reason : TrapReason)

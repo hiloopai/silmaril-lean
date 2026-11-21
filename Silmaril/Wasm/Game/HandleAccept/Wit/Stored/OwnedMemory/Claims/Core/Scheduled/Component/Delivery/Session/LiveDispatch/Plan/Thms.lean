@@ -67,14 +67,18 @@ theorem ClosedCallbackPrefix.string_realloc (cx : LiftLowerContext (core3 grow))
     (path : ClosedCallbackPrefix bindings profile ready base
       (fun resume => (∃ peer, older resume peer) ∨ resume = PayloadPrefix.stringPlanResume cx steps checkNext)
       (LinkedCallback.stringReallocEntry ready bindings cx ptr oldSize alignment size steps checkNext start check) labels finish) :
-    ∃ checkedLabels canonLabels reached,
+    ∃ checkedLabels canonLabels reached mark,
       Steps profile ready (specDispatch ready base) start (.tau :: checkedLabels) finish ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming (.tau :: canonLabels) reached ∧
       HostFrame.Related.Paired (ReturnFrame.Extend older (PayloadPrefix.stringPlanResume cx steps checkNext)
         (PayloadPrefix.stringPlanResume cx steps canonNext)) finish reached ∧
       PayloadPrefix.visible checkedLabels = labels ∧ PayloadPrefix.visible canonLabels = labels ∧
       Core3.Grows start.store.core finish.store.core ∧
-      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted :=
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted ∧
+      AllocatorMark profile ready base bindings older
+        (LinkedCallback.stringReallocEntry ready bindings cx ptr oldSize alignment size steps checkNext start check)
+        (stringAllocatorEntry (specDispatch ready (LiveDispatch.host bindings base)) cx ptr oldSize alignment size incoming canon
+          (PayloadPrefix.stringPlanResume cx steps canonNext)) checkedLabels canonLabels finish reached mark :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.stringReallocPrefix
     cx ptr oldSize alignment size steps checkNext canonNext frame checkAt canonAt embedder path
 
@@ -101,15 +105,41 @@ theorem ClosedCallbackPrefix.collection_alloc (destination : RecordDestination) 
       (CanonicalTree.EntryMode.forOutput destination.width type output)
     ClosedCallbackPrefix bindings profile ready base (fun resume => (∃ peer, older resume peer) ∨ resume = first)
       (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready base) start check first) labels finish →
-    ∃ checkedLabels canonLabels reached,
+    ∃ checkedLabels canonLabels reached mark,
       Steps profile ready (specDispatch ready base) start ([.tau, .tau, .tau] ++ checkedLabels) finish ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming ([.tau, .tau] ++ canonLabels) reached ∧
       HostFrame.Related.Paired (ReturnFrame.Extend older first second) finish reached ∧
       PayloadPrefix.visible checkedLabels = labels ∧ PayloadPrefix.visible canonLabels = labels ∧
       Core3.Grows start.store.core finish.store.core ∧
-      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted :=
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted ∧
+      AllocatorMark profile ready base bindings older
+        (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready base) start check first)
+        (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+          incoming canon second) checkedLabels canonLabels finish reached mark :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.collectionPrefix
     destination inst type element entries output index checkNext canonNext frame width prepared checkAt canonAt embedder
+
+/-- Consume the installed allocator frame only at its actual top return.
+The canonical continuation is recovered by following its occurrence from the
+install, not by comparing continuation code at the reached position. -/
+theorem AllocatorMark.pop {checkEntry canonEntry : Config (core3 grow) (HostState sig)} {checkTrace canonTrace : Trace grow sig}
+    {wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {value : Ret (core3 grow)}
+    {first second : ReturnFrame.Continuation (core3 grow) (HostState sig)}
+    {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (marked : AllocatorMark profile ready base bindings older checkEntry canonEntry checkTrace canonTrace finish incoming (some (.active 0 0)))
+    (paired : HostFrame.Related.Paired wider finish incoming)
+    (returning : finish.ctl = { check with frames := .prog first :: check.frames }.control (.pure value))
+    (installed : ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage canonEntry) (.active 0 0) = some (.prog second)) :
+    ∃ canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig),
+      LinkedCallback.ChildFrameOver older finish incoming check canon ∧
+      Step profile ready (specDispatch ready base) finish .tau { finish with ctl := check.control (first value) } ∧
+      Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming .tau
+        { incoming with ctl := canon.control (second value) } ∧
+      ReturnFrame.Occurrence.RetainsBelowTop profile ready (specDispatch ready base) checkEntry (checkTrace ++ [.tau])
+        { finish with ctl := check.control (first value) } ∧
+      ReturnFrame.Occurrence.RetainsBelowTop profile ready (specDispatch ready (LiveDispatch.host bindings base))
+        canonEntry (canonTrace ++ [.tau]) { incoming with ctl := canon.control (second value) } :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix.pop marked paired returning installed
 
 theorem NestedPlan.source (plan : NestedPlan bindings profile ready base start labels finish) :
     Steps profile ready (specDispatch ready base) start labels finish :=

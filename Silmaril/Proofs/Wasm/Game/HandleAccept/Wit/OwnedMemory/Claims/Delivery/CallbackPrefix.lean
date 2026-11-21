@@ -7,6 +7,7 @@ import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Schedu
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.PayloadPrefix.Thms
 import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Occurrence.Thms
 
 public section
 
@@ -21,6 +22,7 @@ open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.Endpoints.RecordLower
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 open Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled
 open LiveDispatch ComponentCall.Delivery.FiniteSession
+open ReturnFrame.Occurrence
 
 variable {grow : SingleThreaded.GrowOracle} {sig : Signature} {profile : ProfileKind} {ready : HostReady (HostState sig)}
   {bindings : List (Binding sig)} {base : HostImpl (core3 grow) (HostState sig)}
@@ -86,20 +88,32 @@ theorem coreInternal {protectedReturn thread core next frames rest store coreNex
   · intro _ _ _ _ _; simp [focused]
   · simp [CoreUpdateGrows, focused]
 
-theorem replay {protectedReturn}
+private theorem unchangedTrail {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
+    {before after : Config (core3 grow) (HostState sig)} {trace}
+    (tracks : ∀ place, Prefix profile ready dispatch before place trace after place) (mark : Option Location) :
+    Trail profile ready dispatch before mark trace after mark := by
+  cases mark with
+  | none => exact Trail.absent (prefix_survives (tracks (.active 0 0))).1
+  | some place => exact (tracks place).toTrail
+
+theorem replayMarked {protectedReturn} {wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     (path : ClosedCallbackPrefix bindings profile ready base protectedReturn start seen finish)
     (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
-    (covers : ∀ first second, older first second → protectedReturn first)
-    (paired : HostFrame.Related.Paired older start incoming) :
-    ∃ checkedLabels canonLabels reached,
+    (covers : ∀ first second, wider first second → protectedReturn first)
+    (paired : HostFrame.Related.Paired wider start incoming) {mark : Option Location}
+    (outside : Outside older (segmentStorage start) (segmentStorage incoming) mark) :
+    ∃ checkedLabels canonLabels reached finalMark,
       Steps profile ready (specDispatch ready base) start checkedLabels finish ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming canonLabels reached ∧
-      HostFrame.Related.Paired older finish reached ∧
+      HostFrame.Related.Paired wider finish reached ∧
       PayloadPrefix.visible checkedLabels = seen ∧ PayloadPrefix.visible canonLabels = seen ∧
       Core3.Grows start.store.core finish.store.core ∧
-      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted := by
-  induction path generalizing incoming with
-  | done => exact ⟨[], [], incoming, .refl _, .refl _, paired, rfl, rfl, .refl _, rfl, rfl⟩
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted ∧
+      Outside older (segmentStorage finish) (segmentStorage reached) finalMark ∧
+      Trail profile ready (specDispatch ready base) start mark checkedLabels finish finalMark ∧
+      Trail profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming mark canonLabels reached finalMark := by
+  induction path generalizing incoming mark with
+  | done => exact ⟨[], [], incoming, mark, .refl _, .refl _, paired, rfl, rfl, .refl _, rfl, rfl, outside, .done _ _, .done _ _⟩
   | @step current next last label rest interior unchanged noAssignment grows run _ ih =>
     have live : Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) current label next := by
       rcases LiveDispatch.classify_step (bindings := bindings) run with live | install
@@ -111,28 +125,40 @@ theorem replay {protectedReturn}
     have peerStep : Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming label peer := by
       cases replay with
       | cons _ step tail => cases tail; exact step
-    obtain ⟨checkedLabels, canonLabels, reached, checked, canonical, final, checkSeen, canonSeen, growth, checkRoots, canonRoots⟩ := ih aligned
-    exact ⟨_, _, reached, .cons run checked, .cons peerStep canonical, final,
+    have edit := pair_edit paired label
+    have nextOutside : Outside older (segmentStorage next) (segmentStorage peer) (mark.bind (transitionEdit current label).follow) := by
+      rw [step_edit run, step_edit peerStep, ← edit]
+      exact outside_edit outside _
+    obtain ⟨checkedLabels, canonLabels, reached, finalMark, checked, canonical, final, checkSeen, canonSeen, growth,
+      checkRoots, canonRoots, finalOutside, checkTrail, canonTrail⟩ := ih aligned nextOutside
+    exact ⟨_, _, reached, finalMark, .cons run checked, .cons peerStep canonical, final,
       (List.filter_append [_] checkedLabels).trans (congrArg (_ ++ ·) checkSeen),
       (List.filter_append [_] canonLabels).trans (congrArg (_ ++ ·) canonSeen),
       (CoreGrowthSteps.cons grows run (.refl _)).grows.trans growth,
       checkRoots.trans (congrArg (·.writer.accepted) (stepHost noAssignment run)),
-      canonRoots.trans (congrArg (·.writer.accepted) (stepHost (noAssignmentPeer paired noAssignment) peerStep))⟩
+      canonRoots.trans (congrArg (·.writer.accepted) (stepHost (noAssignmentPeer paired noAssignment) peerStep)),
+      finalOutside, .step run checkTrail, .step peerStep (by rwa [← edit])⟩
   | confinedGive callout _ ih =>
-    obtain ⟨count, checked, _, _⟩ := Plain.parked_closed_give_steps bindings callout.name callout.type callout.args
+    obtain ⟨count, checked, _, _, checkedSlots⟩ := Plain.parked_closed_give_steps bindings callout.name callout.type callout.args
       callout.inst callout.destination callout.schema _ callout.thread profile ready callout.parked callout.calling
       callout.linked callout.caller callout.live callout.closed base embedder
-    obtain ⟨leading, peer, silent, canonical, aligned, host⟩ :=
+    obtain ⟨leading, peer, silent, canonical, aligned, host, canonSlots⟩ :=
       LiveDispatch.closed_give_paired (profile := profile) (ready := ready) (base := base) callout paired
-    obtain ⟨checkLabels, canonLabels, reached, checkTail, canonTail, final, checkSeen, canonSeen, growth, checkRoots, canonRoots⟩ := ih aligned
+    have nextOutside : Outside older (segmentStorage callout.resume) (segmentStorage peer) mark :=
+      fun place offMark first second leftAt rightAt => outside place offMark first second
+        ((prefix_survives (checkedSlots place)).2.symm.trans leftAt)
+        ((prefix_survives (canonSlots place)).2.symm.trans rightAt)
+    obtain ⟨checkLabels, canonLabels, reached, finalMark, checkTail, canonTail, final, checkSeen, canonSeen, growth,
+      checkRoots, canonRoots, finalOutside, checkTrail, canonTrail⟩ := ih aligned nextOutside
     have tau : (List.replicate count (.tau : Label (core3 grow) (HostState sig))).all (· matches .tau) = true := by
       apply List.all_eq_true.mpr
       intro label member
       rw [List.eq_of_mem_replicate member]
-    exact ⟨_, _, reached, append checked.steps checkTail, append canonical canonTail, final,
+    exact ⟨_, _, reached, finalMark, append checked.steps checkTail, append canonical canonTail, final,
       (List.filter_append _ checkLabels).trans (by rw [← PayloadPrefix.visible, invisible tau, List.nil_append]; exact checkSeen),
       (List.filter_append _ canonLabels).trans (by rw [← PayloadPrefix.visible, invisible silent, List.nil_append]; exact canonSeen),
-      growth, checkRoots, canonRoots.trans (congrArg (·.writer.accepted) host)⟩
+      growth, checkRoots, canonRoots.trans (congrArg (·.writer.accepted) host), finalOutside,
+      (unchangedTrail checkedSlots mark).append checkTrail, (unchangedTrail canonSlots mark).append canonTrail⟩
   | @syncReady current _ _ task inst thread frames rest focused agrees _ ih =>
     let residual := syncLiftCandidates (E := core3 grow) (σ := HostState sig) task
       (current.store.instCandidates (ready current.host) inst)
@@ -145,9 +171,39 @@ theorem replay {protectedReturn}
       unfold residual
       rw [candidates]
       exact .hostGet atPeer
-    obtain ⟨_, _, reached, checked, canonical, final, checkSeen, canonSeen, growth, checkRoots, canonRoots⟩ := ih aligned
-    exact ⟨_, _, reached, .cons (.hostGet focused) checked, .cons peerStep canonical, final,
-      checkSeen, canonSeen, growth, checkRoots, canonRoots⟩
+    have nextOutside : Outside older
+        (segmentStorage { current with ctl := ⟨thread, .prog residual, frames⟩ :: rest })
+        (segmentStorage { incoming with ctl := ⟨thread, .prog residual, peerFrames⟩ :: peerRest }) mark := by
+      simpa only [segmentStorage, focused, atPeer, List.map_cons, Activation.segs] using outside
+    obtain ⟨_, _, reached, finalMark, checked, canonical, final, checkSeen, canonSeen, growth,
+      checkRoots, canonRoots, finalOutside, checkTrail, canonTrail⟩ := ih aligned nextOutside
+    have unchanged : mark.bind (Edit.same (E := core3 grow) (Host := HostState sig)).follow = mark := by
+      cases mark with
+      | none => rfl
+      | some place => cases place <;> rfl
+    refine ⟨_, _, reached, finalMark, .cons (.hostGet focused) checked, .cons peerStep canonical, final,
+      checkSeen, canonSeen, growth, checkRoots, canonRoots, finalOutside, .step (.hostGet focused) ?_, .step peerStep ?_⟩
+    · rw [transitionEdit, focused]
+      exact unchanged.symm ▸ checkTrail
+    · rw [transitionEdit, atPeer]
+      exact unchanged.symm ▸ canonTrail
+
+theorem replay {protectedReturn}
+    (path : ClosedCallbackPrefix bindings profile ready base protectedReturn start seen finish)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder)
+    (covers : ∀ first second, older first second → protectedReturn first)
+    (paired : HostFrame.Related.Paired older start incoming) :
+    ∃ checkedLabels canonLabels reached,
+      Steps profile ready (specDispatch ready base) start checkedLabels finish ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming canonLabels reached ∧
+      HostFrame.Related.Paired older finish reached ∧
+      PayloadPrefix.visible checkedLabels = seen ∧ PayloadPrefix.visible canonLabels = seen ∧
+      Core3.Grows start.store.core finish.store.core ∧
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted := by
+  obtain ⟨checkedLabels, canonLabels, reached, _, checked, canonical, final, checkSeen, canonSeen, growth,
+    checkRoots, canonRoots, _, _, _⟩ := replayMarked path embedder covers paired
+      (paired_outside (left := HostFrame.replace start incoming.host) paired)
+  exact ⟨checkedLabels, canonLabels, reached, checked, canonical, final, checkSeen, canonSeen, growth, checkRoots, canonRoots⟩
 
 theorem stringReallocPrefix (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (oldSize : Option Nat)
     (alignment : Alignment) (size : Nat) (steps : List StoreStep)
@@ -162,26 +218,31 @@ theorem stringReallocPrefix (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (ol
     (path : ClosedCallbackPrefix bindings profile ready base
       (fun resume => (∃ peer, older resume peer) ∨ resume = PayloadPrefix.stringPlanResume cx steps checkNext)
       (LinkedCallback.stringReallocEntry ready bindings cx ptr oldSize alignment size steps checkNext start check) seen finish) :
-    ∃ checkedLabels canonLabels reached,
+    ∃ checkedLabels canonLabels reached mark,
       Steps profile ready (specDispatch ready base) start (.tau :: checkedLabels) finish ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming (.tau :: canonLabels) reached ∧
       HostFrame.Related.Paired (ReturnFrame.Extend older (PayloadPrefix.stringPlanResume cx steps checkNext)
         (PayloadPrefix.stringPlanResume cx steps canonNext)) finish reached ∧
       PayloadPrefix.visible checkedLabels = seen ∧ PayloadPrefix.visible canonLabels = seen ∧
       Core3.Grows start.store.core finish.store.core ∧
-      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted := by
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted ∧
+      AllocatorMark profile ready base bindings older
+        (LinkedCallback.stringReallocEntry ready bindings cx ptr oldSize alignment size steps checkNext start check)
+        (stringAllocatorEntry (specDispatch ready (LiveDispatch.host bindings base)) cx ptr oldSize alignment size incoming canon
+          (PayloadPrefix.stringPlanResume cx steps canonNext)) checkedLabels canonLabels finish reached mark := by
   obtain ⟨_, _, paired⟩ := frame.string_realloc_pair (profile := profile) (ready := ready) (bindings := bindings)
     cx ptr oldSize alignment size steps checkNext canonNext checkAt canonAt
-  obtain ⟨checkedLabels, canonLabels, reached, checked, canonical, final, checkSeen, canonSeen, growth, checkRoots, canonRoots⟩ :=
-    replay path embedder (fun _ _ edge => by cases edge with
+  obtain ⟨checkedLabels, canonLabels, reached, mark, checked, canonical, final, checkSeen, canonSeen, growth, checkRoots, canonRoots,
+    outside, checkTrail, canonTrail⟩ :=
+    replayMarked path embedder (fun _ _ edge => by cases edge with
       | existing previous => exact .inl ⟨_, previous⟩
-      | current => exact .inr rfl) paired
+      | current => exact .inr rfl) paired (frame.outside_installed (.pure .unit) (.pure .unit))
   have enterLeft := PayloadPrefix.string_realloc_install (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
     cx ptr oldSize alignment size steps checkNext start check checkAt
   have enterRight := PayloadPrefix.string_realloc_install (profile := profile) (ready := ready)
     (dispatch := specDispatch ready (LiveDispatch.host bindings base)) cx ptr oldSize alignment size steps canonNext incoming canon canonAt
-  exact ⟨checkedLabels, canonLabels, reached, .cons enterLeft checked, .cons enterRight canonical, final,
-    checkSeen, canonSeen, growth, checkRoots, canonRoots⟩
+  exact ⟨checkedLabels, canonLabels, reached, mark, .cons enterLeft checked, .cons enterRight canonical, final,
+    checkSeen, canonSeen, growth, checkRoots, canonRoots, ⟨outside, checkTrail, canonTrail⟩⟩
 
 theorem collectionPrefix (destination : RecordDestination) (inst : InstId) (type element : Stored.TypeOf)
     (entries : List Field) (output : Stored.Lower.Output) (index : Nat)
@@ -202,13 +263,17 @@ theorem collectionPrefix (destination : RecordDestination) (inst : InstId) (type
       (CanonicalTree.EntryMode.forOutput destination.width type output)
     ClosedCallbackPrefix bindings profile ready base (fun resume => (∃ peer, older resume peer) ∨ resume = first)
       (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready base) start check first) seen finish →
-    ∃ checkedLabels canonLabels reached,
+    ∃ checkedLabels canonLabels reached mark,
       Steps profile ready (specDispatch ready base) start ([.tau, .tau, .tau] ++ checkedLabels) finish ∧
       Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming ([.tau, .tau] ++ canonLabels) reached ∧
       HostFrame.Related.Paired (ReturnFrame.Extend older first second) finish reached ∧
       PayloadPrefix.visible checkedLabels = seen ∧ PayloadPrefix.visible canonLabels = seen ∧
       Core3.Grows start.store.core finish.store.core ∧
-      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted := by
+      finish.host.writer.accepted = start.host.writer.accepted ∧ reached.host.writer.accepted = incoming.host.writer.accepted ∧
+      AllocatorMark profile ready base bindings older
+        (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready base) start check first)
+        (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
+          incoming canon second) checkedLabels canonLabels finish reached mark := by
   intro area first second path
   obtain ⟨_, _, paired⟩ := frame.collection_install_pair (profile := profile) (ready := ready) (bindings := bindings)
     destination inst type element entries output index checkNext canonNext width prepared checkAt canonAt
@@ -216,16 +281,48 @@ theorem collectionPrefix (destination : RecordDestination) (inst : InstId) (type
       (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready base) start check first)
       (PayloadPrefix.collectionEntry destination inst area entries.length (specDispatch ready (LiveDispatch.host bindings base))
         incoming canon second) := paired
-  obtain ⟨checkedLabels, canonLabels, reached, checked, canonical, final, checkSeen, canonSeen, growth, checkRoots, canonRoots⟩ :=
-    replay path embedder (fun _ _ edge => by cases edge with
+  obtain ⟨checkedLabels, canonLabels, reached, mark, checked, canonical, final, checkSeen, canonSeen, growth, checkRoots, canonRoots,
+    outside, checkTrail, canonTrail⟩ :=
+    replayMarked path embedder (fun _ _ edge => by cases edge with
       | existing previous => exact .inl ⟨_, previous⟩
-      | current => exact .inr rfl) atCallback
+      | current => exact .inr rfl) atCallback (frame.outside_installed (.pure .unit) (.pure .unit))
   have enterLeft := (PayloadPrefix.collection_install_steps (profile := profile) (ready := ready) (dispatch := specDispatch ready base)
     destination inst type element entries output index start incoming check canon checkNext canonNext width prepared checkAt canonAt).1
   have enterRight := (PayloadPrefix.collection_install_steps (profile := profile) (ready := ready)
     (dispatch := specDispatch ready (LiveDispatch.host bindings base)) destination inst type element entries output index
     start incoming check canon checkNext canonNext width prepared checkAt canonAt).2
-  exact ⟨checkedLabels, canonLabels, reached, append enterLeft checked, append enterRight canonical, final,
-    checkSeen, canonSeen, growth, checkRoots, canonRoots⟩
+  exact ⟨checkedLabels, canonLabels, reached, mark, append enterLeft checked, append enterRight canonical, final,
+    checkSeen, canonSeen, growth, checkRoots, canonRoots, ⟨outside, checkTrail, canonTrail⟩⟩
+
+theorem pop {checkEntry canonEntry : Config (core3 grow) (HostState sig)} {checkTrace canonTrace : Trace grow sig}
+    {wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {value : Ret (core3 grow)}
+    {first second : ReturnFrame.Continuation (core3 grow) (HostState sig)}
+    {check : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (marked : AllocatorMark profile ready base bindings older checkEntry canonEntry checkTrace canonTrace finish incoming (some (.active 0 0)))
+    (paired : HostFrame.Related.Paired wider finish incoming)
+    (returning : finish.ctl = { check with frames := .prog first :: check.frames }.control (.pure value))
+    (installed : segmentAt (segmentStorage canonEntry) (.active 0 0) = some (.prog second)) :
+    ∃ canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig),
+      LinkedCallback.ChildFrameOver older finish incoming check canon ∧
+      Step profile ready (specDispatch ready base) finish .tau { finish with ctl := check.control (first value) } ∧
+      Step profile ready (specDispatch ready (LiveDispatch.host bindings base)) incoming .tau
+        { incoming with ctl := canon.control (second value) } ∧
+      RetainsBelowTop profile ready (specDispatch ready base) checkEntry (checkTrace ++ [.tau])
+        { finish with ctl := check.control (first value) } ∧
+      RetainsBelowTop profile ready (specDispatch ready (LiveDispatch.host bindings base))
+        canonEntry (canonTrace ++ [.tau]) { incoming with ctl := canon.control (second value) } := by
+  obtain ⟨place, eq, trail⟩ := marked.canonicalTrail.survives
+  cases eq
+  have atTop := (prefix_survives trail).2.trans installed
+  obtain ⟨canon, frame, canonAt⟩ := LinkedCallback.marked_pop_frame paired marked.outside returning atTop
+  obtain ⟨checkPlace, checkEq, checkTrail⟩ := marked.checkedTrail.survives
+  cases checkEq
+  refine ⟨canon, frame, .popProg returning, .popProg canonAt, ?_, ?_⟩
+  · intro depth
+    exact Prefix.append (by simpa only [Location.below, Nat.zero_add] using checkTrail.under (depth + 1))
+      (Prefix.pop_return returning depth)
+  · intro depth
+    exact Prefix.append (by simpa only [Location.below, Nat.zero_add] using trail.under (depth + 1))
+      (Prefix.pop_return canonAt depth)
 
 end Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackPrefix

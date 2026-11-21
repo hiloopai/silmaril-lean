@@ -18,6 +18,32 @@ variable {grow : Silmaril.Wasm.SingleThreaded.GrowOracle} {sig : Signature} {pro
   {ready : HostReady (HostState sig)} {bindings : List (Binding sig)}
   {first second : ReturnFrame.Continuation (core3 grow) (HostState sig)}
 
+/-- Installing paired allocator continuations excludes only the newly pushed
+occurrence from the older relation. The dispatched focuses need not agree for
+this storage fact. -/
+theorem ChildFrameOver.outside_installed {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : State grow sig} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : ChildFrameOver older left right check canon) (checkBody canonBody : Session grow sig (Ret (core3 grow))) :
+    ReturnFrame.Occurrence.Outside older
+      (ReturnFrame.Occurrence.segmentStorage { left with ctl := { check with frames := .prog first :: check.frames }.control checkBody })
+      (ReturnFrame.Occurrence.segmentStorage { right with ctl := { canon with frames := .prog second :: canon.frames }.control canonBody })
+      (some (.active 0 0)) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LinkedCallback.childFrameOutside frame checkBody first second
+
+/-- Expose the reached pop foci and the residual pairing before running either
+of the two continuations, independently of dispatch. -/
+theorem marked_pop_frame {older wider : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : State grow sig} {check : Cursor (E := core3 grow) (HostState sig)} {value : Ret (core3 grow)}
+    (paired : HostFrame.Related.Paired wider left right)
+    (outside : ReturnFrame.Occurrence.Outside older (ReturnFrame.Occurrence.segmentStorage left)
+      (ReturnFrame.Occurrence.segmentStorage right) (some (.active 0 0)))
+    (leftAt : left.ctl = { check with frames := .prog first :: check.frames }.control (.pure value))
+    (rightAt : ReturnFrame.Occurrence.segmentAt (ReturnFrame.Occurrence.segmentStorage right) (.active 0 0) = some (.prog second)) :
+    ∃ canon : Cursor (E := core3 grow) (HostState sig),
+      ChildFrameOver older left right check canon ∧
+      right.ctl = { canon with frames := .prog second :: canon.frames }.control (.pure value) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.LinkedCallback.markedPopFrame paired outside leftAt rightAt
+
 /-- Follow the original parked slot through an actual string allocator install,
 its marked execution, and its designated pop. Depth zero tracks the caller
 immediately beneath the allocator during that execution. -/

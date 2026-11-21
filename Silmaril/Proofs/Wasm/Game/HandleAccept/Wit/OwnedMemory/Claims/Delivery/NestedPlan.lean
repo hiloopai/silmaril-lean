@@ -565,7 +565,7 @@ theorem runs (plan : NestedPlan bindings profile ready base start labels finish)
     obtain ⟨_, replay, aligned, _, _⟩ := replayLocal (bindings := bindings) path paired
     exact ⟨_, _, replay, List.prefix_refl _, .inl ⟨rfl, aligned⟩⟩
   | @closedGive _ count callout _ =>
-    obtain ⟨trace, _, silent, path, aligned, _⟩ := LiveDispatch.closed_give_paired (profile := profile)
+    obtain ⟨trace, _, silent, path, aligned, _, _⟩ := LiveDispatch.closed_give_paired (profile := profile)
       (ready := ready) (base := base) callout paired
     have seen := (visibleTaus (grow := grow) (sig := sig) count).trans (silentVisible silent).symm
     exact ⟨_, _, path, by rw [seen], .inl ⟨seen, aligned⟩⟩

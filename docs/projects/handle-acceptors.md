@@ -1417,6 +1417,18 @@ is needed only for reached blocked threads that query host readiness. Raw
 steps can still reach open dispatch boundaries; this does not classify all
 admitted nested bodies or require a callback to return.
 
+`ClosedCallbackPrefix.string_realloc` and `collection_alloc` now carry the
+allocator occurrence installed on each side. The paths follow its active or
+saved coordinate through actual scheduler edits, including the push and pop
+of a confined give. An overwritten or discarded occurrence cannot be revived
+by an equal continuation. When the marked occurrence actually reaches a
+return at the top, `AllocatorMark.pop` executes both pops and recovers the
+older paired frames and their slot trails. The collection's allocation-time
+placement mode and the string's shorter residual plan are the actual saved
+continuations. This cut stops before their bodies: it does not establish that
+the reached address passes range checks, that the current claims are still
+live, or that a recursive give or its caller delivers a result.
+
 `LiveDispatch.linked_memory_admission` and `linked_flat_admission` join the
 actual linked root cut to the corresponding recursive body certificate. A
 checked preflight refusal resumes the checked Core caller, but the canonical

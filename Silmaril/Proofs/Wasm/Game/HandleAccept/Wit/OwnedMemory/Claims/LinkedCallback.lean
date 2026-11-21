@@ -356,7 +356,7 @@ private theorem childFrameEnter {changes : ReturnFrame.Substitutions (core3 grow
   simpa only [Cursor.control, HostFrame.Related.Paired, HostFrame.replace, ← tails.1, ← tails.2, frame.thread]
     using installed
 
-private theorem childFrameOutside {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+theorem childFrameOutside {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {left right : State grow sig} {check canon : Cursor (E := core3 grow) (HostState sig)}
     (frame : ChildFrameOver changes left right check canon)
     (body : Session grow sig (Ret (core3 grow))) (first second : ReturnFrame.Continuation (core3 grow) (HostState sig)) :
@@ -388,6 +388,28 @@ private theorem childFrameExtract {changes : ReturnFrame.Substitutions (core3 gr
   | cons head tail => cases head with
     | mk segments => exact ⟨data.1, data.2.1, data.2.2.1, data.2.2.2, blocked, rfl, segments, tail⟩
 
+theorem markedPopFrame {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : State grow sig} {check : Cursor (E := core3 grow) (HostState sig)}
+    {value : Ret (core3 grow)} {resume otherResume : ReturnFrame.Continuation (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired changes left right)
+    (outside : Occurrence.Outside older (Occurrence.segmentStorage left) (Occurrence.segmentStorage right)
+      (some (.active 0 0)))
+    (leftAt : left.ctl = { check with frames := .prog resume :: check.frames }.control (.pure value))
+    (rightMark : Occurrence.segmentAt (Occurrence.segmentStorage right) (.active 0 0) = some (.prog otherResume)) :
+    ∃ canon : Cursor (E := core3 grow) (HostState sig),
+      ChildFrameOver older left right check canon ∧
+      right.ctl = { canon with frames := .prog otherResume :: canon.frames }.control (.pure value) := by
+  obtain ⟨otherFrames, otherRest, atOther, _⟩ := paired.retarget leftAt (.prog (.pure .unit)) left.host right.host
+  cases otherFrames with
+  | nil => simp [Occurrence.segmentAt, Occurrence.segmentStorage, atOther] at rightMark
+  | cons top frames =>
+    have selected : top = .prog otherResume := by simpa [Occurrence.segmentAt, Occurrence.segmentStorage, atOther] using rightMark
+    subst top
+    let canon : Cursor (E := core3 grow) (HostState sig) := ⟨check.thread, frames, otherRest⟩
+    have retired := Occurrence.retire_top (left := HostFrame.replace left right.host) paired outside leftAt atOther
+      (.prog (.pure .unit))
+    exact ⟨canon, childFrameExtract retired, atOther⟩
+
 theorem markedReturn {older changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     {left right : State grow sig} {check : Cursor (E := core3 grow) (HostState sig)}
     {value : Ret (core3 grow)} {resume otherResume : ReturnFrame.Continuation (core3 grow) (HostState sig)}
@@ -402,16 +424,8 @@ theorem markedReturn {older changes : ReturnFrame.Substitutions (core3 grow) (Ho
       right.ctl = { canon with frames := .prog otherResume :: canon.frames }.control (.pure value) ∧
       Step profile ready dispatch left .tau { left with ctl := check.control (resume value) } ∧
       Step profile ready dispatch right .tau { right with ctl := canon.control (otherResume value) } := by
-  obtain ⟨otherFrames, otherRest, atOther, _⟩ := paired.retarget leftAt (.prog (.pure .unit)) left.host right.host
-  cases otherFrames with
-  | nil => simp [Occurrence.segmentAt, Occurrence.segmentStorage, atOther] at rightMark
-  | cons top frames =>
-    have selected : top = .prog otherResume := by simpa [Occurrence.segmentAt, Occurrence.segmentStorage, atOther] using rightMark
-    subst top
-    let canon : Cursor (E := core3 grow) (HostState sig) := ⟨check.thread, frames, otherRest⟩
-    have retired := Occurrence.retire_top (left := HostFrame.replace left right.host) paired outside leftAt atOther
-      (.prog (.pure .unit))
-    exact ⟨canon, childFrameExtract retired, atOther, .popProg leftAt, .popProg atOther⟩
+  obtain ⟨canon, frame, rightAt⟩ := markedPopFrame paired outside leftAt rightMark
+  exact ⟨canon, frame, rightAt, .popProg leftAt, .popProg rightAt⟩
 
 theorem childStringRealloc {changes : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
     (cx : LiftLowerContext (core3 grow)) (ptr : Nat) (oldSize : Option Nat)
