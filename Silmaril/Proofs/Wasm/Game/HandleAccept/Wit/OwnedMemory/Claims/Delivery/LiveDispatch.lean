@@ -5,6 +5,9 @@ public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.Correspondence.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Plain.Thms
 import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Thms
+import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Thms
+import Silmaril.Wasm.Component.Reference.Machine.ReturnFrame.Thms
+import Silmaril.Wasm.Component.Reference.Machine.CoreGrowth.Thms
 
 public section
 
@@ -125,6 +128,32 @@ theorem entry (site : Site grow sig route) (linked : site.Linked bindings) (othe
       simp only [flatCompletion]
       split <;> rfl
 
+theorem pairedEntry (site : Site grow sig route) (linked : site.Linked bindings)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : State grow sig}
+    (paired : HostFrame.Related.Paired older site.start other)
+    (selected : Stored.Endpoints.Core.childFromHistory other.host.writer.accepted site.handle = some site.tree) :
+    ∃ labels entered,
+      labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
+      HostFrame.Related.Paired older (site.reference site.referenceReply) entered := by
+  have related : ReturnFrame.Related.Paired older (HostFrame.replace site.start other.host) other := paired
+  obtain ⟨frames, rest, focused, residual⟩ := related.push_shared linked.parked
+    (.prog (site.referenceProgram >>= site.referenceReply)) (.core site.core site.resume)
+  let shadow : Site grow sig route := { site with start := HostFrame.replace other site.start.host, frames, rest }
+  have shared := paired.data.1
+  have shadowLinked : shadow.Linked bindings :=
+    { parked := focused
+      calling := shared ▸ linked.calling
+      linked := linked.linked
+      caller := shared ▸ linked.caller
+      mayLeave := shared ▸ linked.mayLeave
+      destination := shared ▸ linked.destination
+      selected := linked.selected
+      admitted := linked.admitted
+      compiled := linked.compiled }
+  obtain ⟨labels, silent, path⟩ := entry (profile := profile) (ready := ready) (base := base) shadow shadowLinked other.host selected
+  exact ⟨labels, _, silent, path, residual⟩
+
 theorem dispatchUnchanged {call : Call (core3 grow)} (unmodified : Unchanged bindings call) :
     specDispatch ready base call = specDispatch ready (LiveDispatch.host bindings base) call := by
   cases call with
@@ -184,6 +213,41 @@ theorem replay {labels} (run : Steps profile ready (specDispatch ready base) sta
     refine .cons (replayStep step (closed (leading := []) rfl (.refl _) (.cons step tail))) (ih ?_)
     intro leading cut next trailing split front back
     exact closed (leading := label :: leading) (congrArg (List.cons label) split) (.cons step front) back
+
+theorem replayGrowing {labels} (run : CoreGrowthSteps profile ready (specDispatch ready base) start labels finish)
+    (closed : UnchangedThrough bindings profile ready base start labels finish) :
+    CoreGrowthSteps profile ready (specDispatch ready (LiveDispatch.host bindings base)) start labels finish := by
+  induction run with
+  | refl => exact .refl _
+  | @cons before middle after label labels grows step tail ih =>
+    refine .cons grows (replayStep step (closed (leading := []) rfl (.refl _) (.cons step tail.steps))) (ih ?_)
+    intro leading cut next trailing split front back
+    exact closed (leading := label :: leading) (congrArg (List.cons label) split) (.cons step front) back
+
+theorem nestedReturn (site : Site grow sig route) (linked : site.Linked bindings)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other checked baseline : State grow sig}
+    (paired : HostFrame.Related.Paired older site.start other)
+    (selected : Stored.Endpoints.Core.childFromHistory other.host.writer.accepted site.handle = some site.tree)
+    {value : route.output.Result} {reached reference : State grow sig} {labels}
+    (replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline)
+    (body : CoreGrowthSteps profile ready (specDispatch ready base) (site.reference site.referenceReply) labels baseline)
+    (closed : UnchangedThrough bindings profile ready base (site.reference site.referenceReply) labels baseline) :
+    let dispatch := specDispatch ready (LiveDispatch.host bindings base)
+    ∃ installed entered, installed.all (· matches .tau) = true ∧ Steps profile ready dispatch other installed entered ∧
+      NestedReplay profile ready dispatch older (site.reference site.referenceReply) entered labels checked := by
+  dsimp only
+  obtain ⟨installed, entered, silent, install, inside⟩ := pairedEntry site linked paired selected
+  refine ⟨installed, entered, silent, install, ?_⟩
+  rcases HostFrame.Related.paired_growing_steps inside (replayGrowing (bindings := bindings) body closed) with completed | cut
+  · obtain ⟨last, path, related⟩ := completed
+    have aligned := replies.scheduler_rejoin
+    have same := congrArg (fun state => HostFrame.replace state last.host) aligned
+    change HostFrame.replace baseline last.host = HostFrame.replace checked last.host at same
+    have basePair : ReturnFrame.Related.Paired older (HostFrame.replace baseline last.host) last := related
+    have callerPair : ReturnFrame.Related.Paired older (HostFrame.replace checked last.host) last := same ▸ basePair
+    exact .rejoined path.steps callerPair
+  · obtain ⟨_, _, _, _, _, _, _, split, left, right, related, boundary, lstep, rstep, _⟩ := cut
+    exact .boundary split left.steps right.steps related boundary lstep rstep
 
 theorem append {dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow))}
     {middle : Config (core3 grow) (HostState sig)} {leading trailing}

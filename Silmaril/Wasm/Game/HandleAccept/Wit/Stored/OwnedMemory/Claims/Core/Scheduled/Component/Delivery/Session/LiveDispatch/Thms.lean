@@ -27,6 +27,36 @@ theorem LiveDispatch.entry (site : Site grow sig route) (linked : site.Linked bi
         labels (HostFrame.replace (site.reference site.referenceReply) other) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.entry site linked other selected
 
+/-- Enter a new give at a reached paired Core request. The live reference
+caller selects its current root, and both active and blocked older frame
+substitutions survive installation of the canonical body. -/
+theorem LiveDispatch.entry_paired (site : Site grow sig route) (linked : site.Linked bindings)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older site.start other)
+    (selected : Stored.Endpoints.Core.childFromHistory other.host.writer.accepted site.handle = some site.tree) :
+    ∃ labels entered,
+      labels.all (· matches .tau) = true ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other labels entered ∧
+      HostFrame.Related.Paired older (site.reference site.referenceReply) entered :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedEntry site linked paired selected
+
+/-- Compose live nested entry, a reached canonical body and its actual
+caller rejoin. A divergent host read or pop of an older substituted frame
+is reported at that step rather than being replayed as the remaining body. -/
+theorem LiveDispatch.nested_return (site : Site grow sig route) (linked : site.Linked bindings)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other checked baseline : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older site.start other)
+    (selected : Stored.Endpoints.Core.childFromHistory other.host.writer.accepted site.handle = some site.tree)
+    {value : route.output.Result} {reached reference : Config (core3 grow) (HostState sig)} {labels}
+    (replies : LinkedCallback.MemorySequence.GiveReplies site value profile ready reached reference checked baseline)
+    (body : CoreGrowthSteps profile ready (specDispatch ready base) (site.reference site.referenceReply) labels baseline)
+    (closed : LiveDispatch.UnchangedThrough bindings profile ready base (site.reference site.referenceReply) labels baseline) :
+    let dispatch := specDispatch ready (LiveDispatch.host bindings base)
+    ∃ installed entered, installed.all (· matches .tau) = true ∧ Steps profile ready dispatch other installed entered ∧
+      LiveDispatch.NestedReplay profile ready dispatch older (site.reference site.referenceReply) entered labels checked :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.nestedReturn
+    site linked paired selected replies body closed
+
 variable {start finish : Config (core3 grow) (HostState sig)}
 
 /-- Closed steps preserve their actual configurations under the reference overlay.

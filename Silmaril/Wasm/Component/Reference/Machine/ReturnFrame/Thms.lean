@@ -96,6 +96,16 @@ theorem Paired.retarget {left right : Config E Host} (paired : Paired changes le
         { right with host, ctl := ⟨thread, next, otherFrames⟩ :: otherRest } :=
   Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.retarget paired focused next host
 
+/-- Save the same caller segment on both sides (including a Core caller).
+Active and blocked frame substitutions are unchanged. -/
+theorem Paired.push_shared {left right : Config E Host} (paired : Paired changes left right)
+    {thread focus frames rest} (focused : left.ctl = ⟨thread, focus, frames⟩ :: rest)
+    (next : Focus E Host) (frame : Seg E Host) :
+    ∃ otherFrames otherRest, right.ctl = ⟨thread, focus, otherFrames⟩ :: otherRest ∧
+      Paired changes { left with ctl := ⟨thread, next, frame :: frames⟩ :: rest }
+        { right with ctl := ⟨thread, next, frame :: otherFrames⟩ :: otherRest } :=
+  Silmaril.Proofs.Wasm.Component.Reference.MachineReturnFrame.pushShared paired focused next frame
+
 /-- Push a new substituted continuation at the current focus. All already
 paired frames, including those in blocked activations, keep their relation. -/
 theorem Paired.push {left right : Config E Host} (paired : Paired changes left right)

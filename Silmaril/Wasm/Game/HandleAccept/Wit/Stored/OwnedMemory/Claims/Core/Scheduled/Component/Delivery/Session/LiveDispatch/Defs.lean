@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.Component.Delivery.Session.CanonicalEntry.Defs
+public import Silmaril.Wasm.Component.Reference.Machine.HostFrame.Defs
 
 @[expose] public section
 
@@ -85,5 +86,25 @@ def UnchangedThrough (bindings : List (Binding sig)) (profile : ProfileKind) (re
   ∀ {leading cut label trailing}, labels = leading ++ label :: trailing →
     Steps profile ready (specDispatch ready base) start leading cut →
     Steps profile ready (specDispatch ready base) cut (label :: trailing) finish → UnchangedAt bindings cut
+
+/-- A compared nested give either rejoins its local caller with the older
+frames still paired, or reaches an actual read or older-frame pop. In the
+second case only the executed prefix (including the boundary) has replayed. -/
+inductive NestedReplay (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (dispatch : Call (core3 grow) → Session grow sig (Ret (core3 grow)))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig))
+    (body incoming : Config (core3 grow) (HostState sig))
+    (labels : List (Label (core3 grow) (HostState sig))) (checked : Config (core3 grow) (HostState sig)) : Prop where
+  | rejoined {reached}
+      (run : Steps profile ready dispatch incoming labels reached)
+      (paired : HostFrame.Related.Paired older checked reached)
+  | boundary {leading label trailing beforeLeft beforeRight afterLeft afterRight}
+      (split : labels = leading ++ label :: trailing)
+      (baseline : Steps profile ready dispatch body leading beforeLeft)
+      (replay : Steps profile ready dispatch incoming leading beforeRight)
+      (paired : HostFrame.Related.Paired older beforeLeft beforeRight)
+      (boundary : HostFrame.Related.Boundary older beforeLeft beforeRight label afterLeft afterRight)
+      (baselineStep : Step profile ready dispatch beforeLeft label afterLeft)
+      (replayedStep : Step profile ready dispatch beforeRight label afterRight)
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled.LiveDispatch

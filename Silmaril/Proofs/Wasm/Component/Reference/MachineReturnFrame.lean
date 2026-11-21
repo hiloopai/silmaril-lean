@@ -99,6 +99,17 @@ theorem retarget {left right : Config E Host} (paired : PairedOf changes left ri
     obtain ⟨_, _, atRight, head, tail⟩ := activeHead control focused
     exact ⟨_, _, atRight, .mk (.cons (.mk head) tail) blocked⟩
 
+theorem pushShared {left right : Config E Host} (paired : PairedOf changes left right)
+    {thread focus frames rest} (focused : left.ctl = ⟨thread, focus, frames⟩ :: rest)
+    (next : Focus E Host) (frame : Seg E Host) :
+    ∃ otherFrames otherRest, right.ctl = ⟨thread, focus, otherFrames⟩ :: otherRest ∧
+      PairedOf changes { left with ctl := ⟨thread, next, frame :: frames⟩ :: rest }
+        { right with ctl := ⟨thread, next, frame :: otherFrames⟩ :: otherRest } := by
+  cases paired with
+  | mk control blocked =>
+    obtain ⟨_, _, atRight, head, tail⟩ := activeHead control focused
+    exact ⟨_, _, atRight, .mk (.cons (.mk (.cons (.same frame) head)) tail) blocked⟩
+
 theorem weaken {wider : Substitutions E Host} {left right : Config E Host}
     (included : ∀ {first second}, changes first second → wider first second)
     (paired : PairedOf changes left right) : PairedOf wider left right := by
