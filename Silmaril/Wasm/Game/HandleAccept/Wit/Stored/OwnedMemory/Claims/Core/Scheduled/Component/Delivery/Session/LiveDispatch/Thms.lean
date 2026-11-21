@@ -192,6 +192,45 @@ theorem LiveDispatch.CoreGiveRequest.paired_selection_or_lookup_difference (requ
         Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.classifyPairedSelection request paired
 
+/-- A typed boundary refusal takes the actual scheduler entry, including the
+confinement choice, and rejoins both parked callers with the same ABI words.
+Only the checked side journals its entry and refusal. No emitter runs. -/
+theorem LiveDispatch.CoreGiveRequest.paired_admission_refusal (request : LiveDispatch.CoreGiveRequest bindings start)
+    (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (Core.Scheduled.host (grow := grow) bindings).embedder)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) {issue : Issue}
+    (refused : Plain.runBody request.selectionProgram start.store start.host (some request.thread) =
+      (start.store, start.host, .ok (.error issue)))
+    (reads : ∀ handle, request.lookupDemand = some handle →
+      Stored.Endpoints.Core.childFromHistory start.host.writer.accepted handle =
+        Stored.Endpoints.Core.childFromHistory other.host.writer.accepted handle) :
+    ∃ leftCount rightCount checked canonical,
+      Steps profile ready (specDispatch ready impl) start (List.replicate leftCount .tau) checked ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other (List.replicate rightCount .tau) canonical ∧
+      HostFrame.Related.Paired older checked canonical ∧
+      checked.host = (start.host.enter request.name request.kind request.args).record (request.admissionReply issue).1 ∧
+      canonical.host = other.host :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedAdmissionRefusal
+    request impl embedder paired refused reads
+
+/-- A failed arena lookup while resolving the caller is a canonical trap,
+not a refusal or journal lookup. Both sides lock down the reached store;
+the checked entry remains journaled, and neither caller receives a reply. -/
+theorem LiveDispatch.CoreGiveRequest.paired_admission_trap (request : LiveDispatch.CoreGiveRequest bindings start)
+    (impl : HostImpl (core3 grow) (HostState sig))
+    (embedder : impl.embedder = (Core.Scheduled.host (grow := grow) bindings).embedder)
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)} {other : Config (core3 grow) (HostState sig)}
+    (paired : HostFrame.Related.Paired older start other) {reason : TrapReason}
+    (trapped : Plain.callerInstance start.store request.thread = .error (.trapped reason)) :
+    ∃ leftCount rightCount,
+      Steps profile ready (specDispatch ready impl) start (List.replicate leftCount .tau ++ [.trap reason])
+        (StepDefs.trapCfg { start with host := start.host.enter request.name request.kind request.args }) ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) other
+        (List.replicate rightCount .tau ++ [.trap reason]) (StepDefs.trapCfg other) :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.pairedAdmissionTrap
+    request impl embedder paired trapped
+
 /-- Enter on the live root and compare the reached prefix of the nested body,
 even if it has not returned or executes another public give. Further requests
 are exposed at their real caller and with all older frames still paired. -/
@@ -253,5 +292,24 @@ theorem LiveDispatch.entry_after_equal_roots (site : Site grow sig route) (linke
         (leading ++ middleLabels ++ labels) (HostFrame.replace (site.reference site.referenceReply) outgoing) :=
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.afterSameRoots
     site linked roots prior between
+
+/-- Closed delivery interleavings derive lookup agreement from their
+starting accepted observations, including when an intervening commit
+publishes a new root. Carry that invariant past a reached public refusal
+without assuming equal journals or live authority. -/
+theorem LiveDispatch.CoreGiveRequest.refusal_after_interleaving (request : LiveDispatch.CoreGiveRequest bindings finish)
+    (embedder : base.embedder = (Core.Scheduled.host (grow := grow) bindings).embedder)
+    {actions labels incoming outgoing} (between : JournalInterleaving profile ready base start incoming actions labels finish outgoing)
+    (roots : incoming.writer.accepted = start.host.writer.accepted) {issue : Issue}
+    (refused : Plain.runBody request.selectionProgram finish.store finish.host (some request.thread) =
+      (finish.store, finish.host, .ok (.error issue))) :
+    ∃ leftCount rightCount checked canonical,
+      Steps profile ready (specDispatch ready base) start (labels ++ List.replicate leftCount .tau) checked ∧
+      Steps profile ready (specDispatch ready (LiveDispatch.host bindings base)) (HostFrame.replace start incoming)
+        (labels ++ List.replicate rightCount .tau) canonical ∧
+      HostFrame.Related.Paired (fun _ _ => False) checked canonical ∧
+      canonical.host.writer.accepted = checked.host.writer.accepted :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.LiveDispatch.afterRefusal
+    request embedder between roots refused
 
 end Silmaril.Wasm.Game.HandleAccept.Wit.Stored.OwnedMemory.Claims.Core.Scheduled

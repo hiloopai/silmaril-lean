@@ -135,6 +135,13 @@ def CoreGiveRequest.selectionProgram {bindings : List (Binding sig)} {state : Co
   | none => admit request.inst (selectMemoryDestination request.destination request.args)
   | some schema => admit request.inst (selectFlatDestination request.destination schema request.args)
 
+/-- The checked journal records the caller's ticket; Core sees only status
+and ABI-typed padding. -/
+def CoreGiveRequest.admissionReply {bindings : List (Binding sig)} {state : Config (core3 grow) (HostState sig)}
+    (request : CoreGiveRequest bindings state) (issue : Issue) : Event × List FlatValue :=
+  request.schema.elim (completion state.host.nextTicket (.error issue))
+    (fun schema => flatCompletion state.host.nextTicket (ABI.flatten request.destination.width schema) (.error issue))
+
 /-- The one journal read actually demanded by the guarded selector. Wrong
 callers, invalid argument words and invalid destinations do not consult it.
 The flat schema check itself comes after this read. -/
