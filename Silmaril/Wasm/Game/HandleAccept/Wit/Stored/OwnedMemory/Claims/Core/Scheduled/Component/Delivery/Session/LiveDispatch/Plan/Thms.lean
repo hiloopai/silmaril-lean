@@ -331,6 +331,29 @@ theorem string_key_nominal_value (origin : CStore (core3 grow)) (destination : R
   Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.stringKeyNominalValue
     origin destination inst element output key value address issueIndex nominal matched emitted width checkNext canonNext
 
+/-- Derive the selected string key, nominal value and allocator option from
+the linked public compiler result. Compare the actual entry programs under
+the two dispatchers, after a successful root fit and reached range check. -/
+theorem linked_string_map_entry {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (index : Fin entries.length)
+    (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
+    (origin : CStore (core3 grow)) (basePtr bytes : Nat)
+    (width : (core3 grow).memAddrType? origin.core site.destination.memory = some site.destination.width)
+    (sized : (core3 grow).memSize? origin.core site.destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout site.destination.width (.record (mapEntryFields .string element))).alignment)
+    (bounds : basePtr + entries.length * (layout site.destination.width (.record (mapEntryFields .string element))).size ≤ bytes)
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {left right : Config (core3 grow) (HostState sig)} {check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    LinkedStringMapEntry profile ready base bindings older site element entries index origin basePtr left right check canon
+      checkNext canonNext :=
+  Silmaril.Proofs.Wasm.Game.HandleAccept.Wit.OwnedMemory.Claims.Delivery.CallbackRange.linkedStringMapEntry
+    site linked element entries index nominal field fits origin basePtr bytes width sized aligned bounds checkNext canonNext frame growth embedder
+
 /-- Traverse the actual map lowering for either public give after a reached allocator return.
 The compiler determines each scalar key and nominal value; successful keys
 remain written if a later value refuses or traps. Flat entries read the

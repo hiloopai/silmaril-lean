@@ -305,6 +305,51 @@ def StringKeyNominalValue (profile : ProfileKind) (ready : HostReady (HostState 
     (fun _ lhs rhs cursor _ => CollectionSegment profile ready base bindings older lhs rhs cursor checkNext canonNext 0
       (· = pending) (fun reached => Core3.Grows origin.core reached.core))
 
+/-- Cut the actual map traversal at its selected entry and preserve its exact
+remainder. Both the successful continuation and the stopped suffix retain the
+original traversal finish, which can publish the descriptor and reply. -/
+def LinkedStringMapEntry (profile : ProfileKind) (ready : HostReady (HostState sig))
+    (base : HostImpl (core3 grow) (HostState sig)) (bindings : List (Binding sig))
+    (older : ReturnFrame.Substitutions (core3 grow) (HostState sig)) {route : GiveEffectRoute}
+    (site : PayloadRoot.Site grow sig route) (element : Stored.TypeOf) (entries : List Stored.Endpoints.RecordLower.Field)
+    (index : Fin entries.length) (origin : CStore (core3 grow)) (basePtr : Nat)
+    (left right : Config (core3 grow) (HostState sig)) (check canon : PayloadPrefix.Cursor (E := core3 grow) (HostState sig))
+    (checkNext : Except Stored.Endpoints.RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow))) : Prop :=
+  open Stored.Endpoints.RecordLower ABI in
+  let destination := site.destination
+  let cx := destination.context site.inst
+  let type : Stored.TypeOf := .record (mapEntryFields .string element)
+  let stride := (layout destination.width type).size
+  let ptr := basePtr + index.val * stride
+  let mode := CanonicalTree.EntryMode.forOutput destination.width (.map .string element) route.output
+  let item := entries[index.val]
+  let rest := entries.drop (index.val + 1)
+  let checkTail := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => (match verdict with
+    | .error issue => pure (.error issue)
+    | .ok () => OwnedMemory.Claims.Record.Effects.elements recordClaims Limits.spec Quirks.none cx destination.width
+        rest stride (ptr + stride) (index.val + 1)) >>= checkNext
+  let canonTail := fun (_ : Unit) => CanonicalTree.elements Limits.spec Quirks.none cx destination.width
+    rest mode stride (ptr + stride) >>= canonNext
+  left.ctl = check.control (OwnedMemory.Claims.Record.Effects.elements recordClaims Limits.spec Quirks.none cx
+    destination.width (entries.drop index.val) stride ptr index.val >>= checkNext) →
+  right.ctl = canon.control (CanonicalTree.elements Limits.spec Quirks.none cx destination.width
+    (entries.drop index.val) mode stride ptr >>= canonNext) →
+  ∃ (key : LinkedCallback.StringField) (value : Field), item = .aggregate type [key.field, value] ∧
+    let keyArea := layout destination.width key.field.type
+    let keyPtr := alignTo ptr keyArea.alignment
+    let afterKey := keyPtr + keyArea.size
+    let pending := mapValueProgram destination site.inst mode value afterKey canonTail
+    let valuePtr := alignTo afterKey (layout destination.width value.type).alignment
+    let report := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => checkTail (verdict.mapError (.nested index.val))
+    let checked := fun verdict : Except Stored.Endpoints.RecordLower.Issue Unit => (match verdict with
+      | .error issue => pure (.error issue)
+      | .ok () => OwnedMemory.Claims.Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+          value 1 (.memory valuePtr)) >>= report
+    StringKeyThen profile ready base bindings older destination site.inst key keyPtr left right check canon checked (fun _ => pending)
+      (fun _ lhs rhs cursor _ => CollectionSegment profile ready base bindings older lhs rhs cursor checkTail canonTail 0
+        (· = pending) (fun reached => Core3.Grows origin.core reached.core))
+
 def mapValueSuffix (destination : RecordDestination) (inst : InstId)
     (mode : Stored.Endpoints.RecordLower.CanonicalTree.EntryMode)
     (keyField value : Stored.Endpoints.RecordLower.Field) (rest : List Stored.Endpoints.RecordLower.Field) (stride address : Nat)

@@ -1032,6 +1032,107 @@ private theorem mapValueLayout {key : WIT.KeyType} {element : Stored.TypeOf} {ke
       cases tail with
       | cons shape _ => exact shape
 
+private theorem preflightAllocator {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) : Field.AllocatorFor site.destination.realloc site.field := by
+  intro child desc pointer
+  obtain ⟨plan, compiled⟩ := linked.compiled
+  have rootPtr := desc.containsPtr (Record.preflightValue_layout _ _ _ _ _ plan compiled) pointer
+  cases alloc : site.destination.realloc with
+  | some addr => exact ⟨addr, rfl⟩
+  | none =>
+    have options : Stored.Lower.checkOptions (site.destination.context (grow := grow) site.inst) (sig.payload site.tag)
+        route.output = .error .reallocRequired := by
+      simp [Stored.Lower.checkOptions, RecordDestination.context, rootPtr, alloc, Option.isNone]
+      rfl
+    simp only [Record.preflightValue, bind, Except.bind, Except.mapError] at compiled
+    split at compiled
+    · contradiction
+    · simp [RecordLower.compileValue, options, bind, Except.bind, Except.mapError] at compiled
+
+theorem linkedStringMapEntry {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
+    (linked : site.Linked bindings) (element : Stored.TypeOf) (entries : List Field) (index : Fin entries.length)
+    (nominal : NominalElement element)
+    (field : site.field = .dynamic (.map .string element) (.record (mapEntryFields .string element)) entries)
+    (fits : Stored.Lower.fits Quirks.none site.destination.encoding site.destination.width (sig.payload site.tag) site.payload.val.value = true)
+    (origin : CStore (core3 grow)) (basePtr bytes : Nat)
+    (width : (core3 grow).memAddrType? origin.core site.destination.memory = some site.destination.width)
+    (sized : (core3 grow).memSize? origin.core site.destination.memory = some bytes)
+    (aligned : basePtr = alignTo basePtr (layout site.destination.width (.record (mapEntryFields .string element))).alignment)
+    (bounds : basePtr + entries.length * (layout site.destination.width (.record (mapEntryFields .string element))).size ≤ bytes)
+    (checkNext : Except RecordLower.Issue Unit → Session grow sig (Ret (core3 grow)))
+    (canonNext : Unit → Session grow sig (Ret (core3 grow)))
+    {older : ReturnFrame.Substitutions (core3 grow) (HostState sig)}
+    {left right : Config (core3 grow) (HostState sig)} {check canon : Cursor (E := core3 grow) (HostState sig)}
+    (frame : LinkedCallback.ChildFrameOver older left right check canon) (growth : Core3.Grows origin.core right.store.core)
+    (embedder : base.embedder = (Scheduled.host (grow := grow) bindings).embedder) :
+    LinkedStringMapEntry profile ready base bindings older site element entries index origin basePtr left right check canon
+      checkNext canonNext := by
+  unfold LinkedStringMapEntry
+  intro destination cx type stride ptr mode item rest checkTail canonTail checkAt canonAt
+  obtain ⟨plan, compiled⟩ := linked.compiled
+  have rootLayout := Record.preflightValue_layout _ _ _ _ _ plan compiled
+  have rootFits := Record.preflightValue_value _ _ _ _ _ plan compiled ▸ fits
+  have rootEmitted := linked.emitted
+  have childLayout := field ▸ rootLayout
+  rw [field] at rootEmitted
+  have member : item ∈ entries := List.getElem_mem _
+  cases rootEmitted with
+  | map shape emitted =>
+    obtain ⟨keyPayload, value, selected⟩ := shape item member
+    have valid := emitted keyPayload value (selected ▸ member)
+    have matched := mapValueLayout (selected ▸ entries_match_of_mem (mapEntries childLayout) member)
+    obtain ⟨str, typed⟩ := keyPayload
+    cases typed with
+    | int kind _ => cases kind
+    | string validString =>
+      let key : LinkedCallback.StringField := ⟨_, validString⟩
+      have path : Field.Descendant site.field (.aggregate type [key.field, value]) := by
+        rw [field]
+        exact .dynamic (selected ▸ member) (.self _)
+      refine ⟨key, value, selected, ?_⟩
+      have keyRun := stringMapKey (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+        destination site.inst element route.output key value site.field rootLayout rootFits (preflightAllocator site linked) path
+        origin basePtr bytes entries.length index.val index.val width sized aligned bounds index.isLt checkTail canonTail frame growth embedder
+      have selectedDrop : entries.drop index.val = .aggregate type [key.field, value] :: rest :=
+        (List.drop_eq_getElem_cons index.isLt).trans (congrArg (· :: rest) selected)
+      have atCheck : left.ctl = check.control (Record.Effects.field recordClaims Limits.spec Quirks.none cx destination.width
+          (.aggregate type [key.field, value]) index.val (.memory ptr) >>= checkTail) := by
+        rw [checkAt, selectedDrop, Record.Effects.elements]
+        congr 1
+        simp only [Prog.bind_eq, Prog.bind_assoc, checkTail]
+        congr 1
+        funext verdict
+        cases verdict with
+        | error _ => rfl
+        | ok result => cases result; rfl
+      have atCanon := canonAt
+      rw [selectedDrop] at atCanon
+      refine stringKeyNominalValue (profile := profile) (ready := ready) (base := base) (bindings := bindings)
+        origin destination site.inst element route.output key value (alignTo ptr (layout destination.width key.field.type).alignment)
+        index.val nominal matched valid width checkTail canonTail (keyRun atCheck ?_)
+      rw [atCanon]
+      apply congrArg canon.control
+      let canonRest : Session grow sig Unit := CanonicalTree.elements Limits.spec Quirks.none cx destination.width rest mode stride (ptr + stride)
+      let readWidth : Session grow sig AddrType := ptrType cx
+      let keySlot := fun reached => alignTo ptr (layout reached key.field.type).alignment
+      let keyBody : AddrType → Session grow sig Unit := fun reached =>
+        CanonicalTree.field Limits.spec Quirks.none cx destination.width key.field (.memory (keySlot reached))
+      let valueBody : AddrType → AddrType → Session grow sig Unit := fun keyWidth reached =>
+        CanonicalTree.field Limits.spec Quirks.none cx destination.width value
+          (.memory (alignTo (keySlot keyWidth + (layout keyWidth key.field.type).size) (layout reached value.type).alignment))
+      cases route with
+      | memory address =>
+        let reached := destination.width
+        change ((keyBody reached).bind (fun _ => (valueBody reached reached).bind (fun _ => canonRest))).bind canonNext =
+          (keyBody reached).bind (fun _ => (valueBody reached reached).bind (fun _ => canonRest.bind canonNext))
+        simp only [Prog.bind_assoc]
+      | flat schema =>
+        change ((readWidth.bind (fun keyWidth => (keyBody keyWidth).bind fun _ =>
+          readWidth.bind fun reached => (valueBody keyWidth reached).bind fun _ => .pure ())).bind (fun _ => canonRest)).bind canonNext =
+          readWidth.bind (fun keyWidth => (keyBody keyWidth).bind fun _ =>
+            readWidth.bind fun reached => (valueBody keyWidth reached).bind fun _ => canonRest.bind canonNext)
+        simp only [Prog.bind_assoc, Prog.pure_bind']
+
 theorem nominalMapReplies {route : GiveEffectRoute} (site : PayloadRoot.Site grow sig route)
     (linked : site.Linked bindings) (key : WIT.KeyType) (element : Stored.TypeOf) (entries : List Field)
     (keyData : LocalDataType (.prim key.toPrimitive)) (nominal : NominalElement element)
