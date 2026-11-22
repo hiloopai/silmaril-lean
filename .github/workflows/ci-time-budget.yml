@@ -15,6 +15,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The collector reads the attempt and job logs from GitHub.
+          sparse-checkout: /scripts/check-ci-time.py
+          sparse-checkout-cone-mode: false
       - name: Fail separately if this CI attempt runs jobs for over five minutes outside module compilation
         env:
           GH_TOKEN: ${{ github.token }}
