@@ -106,7 +106,7 @@ try {
   let loads = 0;
   const open = async () => {
     // a new query each time, so that it is a real page load (not a same-document hash change)
-    await p.goto(`http://127.0.0.1:${port}/index.html?cache=off&n=${++loads}#/graph`);
+    await p.goto(`http://127.0.0.1:${port}/index.html?cache=off&vfs-chunk=page&n=${++loads}#/graph`);
     await settle();
     const mode = await p.evaluate(() => window.explore.mode);
     check(/^lazy/.test(mode), "opened lazily: " + mode);
@@ -169,7 +169,7 @@ try {
   // query reports it, the version being unchanged), or in the schema (then the file is not
   // opened at all, and the page says why). Either way it is damage, not a change.
   replace(bad);
-  await p.goto(`http://127.0.0.1:${port}/index.html?cache=off&n=${++loads}#/graph`);
+  await p.goto(`http://127.0.0.1:${port}/index.html?cache=off&vfs-chunk=page&n=${++loads}#/graph`);
   await p.waitForFunction(() => window.explore && ((window.explore.ready && !window.explore.busy) || window.explore.failed), null, { timeout: 60000 });
   let t5;
   if (await p.evaluate(() => !!window.explore.failed)) {

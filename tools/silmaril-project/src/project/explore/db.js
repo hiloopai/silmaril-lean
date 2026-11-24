@@ -1,17 +1,16 @@
 // ---------- loading ----------
 function isSqlite(buf) { return buf.length >= 16 && new TextDecoder().decode(buf.slice(0, 15)) === "SQLite format 3"; }
-// A same-origin blob: URL for a CDN file checked against its SRI hash (workers must be same-origin).
-// `prefix`, when given, is prepended to the checked bytes (the worker's snapshot guard).
-async function sriBlobUrl(url, integrity, type, prefix) {
+// Worker and WASM assets are verified before they are run from same-origin blobs.
+async function sriAsset(url, integrity) {
   const r = await fetch(url, { integrity, mode: "cors" });
   if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
-  return URL.createObjectURL(new Blob([prefix || "", await r.arrayBuffer()], { type }));
+  return r;
 }
 let sqlJs = null;
 function loadSqlJs() {
   return sqlJs || (sqlJs = (async () => {
-    const wasm = await sriBlobUrl(SQLJS + "sql-wasm.wasm", SQLJS_WASM_SRI, "application/wasm");
-    return initSqlJs({ locateFile: () => wasm });
+    const r = await sriAsset(SQLJS + "sql-wasm.wasm", SQLJS_WASM_SRI);
+    return initSqlJs({ wasmBinary: await r.arrayBuffer() });
   })());
 }
 // A backend: query(sql, params) -> rows as objects; exec(sql) -> [{columns, values}]; stats().
@@ -30,143 +29,6 @@ async function wholeBackend(bytes, mode) {
     close() { d.close(); },
   };
 }
-// ---------- one snapshot per lazily read database ----------
-// A lazily read database is read one page at a time, for as long as the page is open. If the
-// file on the server is replaced meanwhile (`sil project sqlite` rewrites it, a new deploy), a
-// later read would get a page of the new file under the old version's URL, and SQLite would see
-// pages of two different files: "database disk image is malformed", or silently wrong rows.
-// So every range read is checked, in the worker, against the version the database was opened
-// at (`versionOf` its probe): the response must be a 206 of exactly the requested bytes, of a
-// file of the same length and the same validator (strong ETag, else Last-Modified). A read that
-// fails the check fails its query (it is never retried), the database is marked as changed, and
-// the page offers to open the new version. A malformed database whose version has not changed
-// is reported as damage of the file itself, not as a version change.
-// Lazy reads are used only when the server names its file by a strong ETag (see `openUrl`);
-// GitHub Pages does. Otherwise the file is read whole, in one response.
-const SNAPSHOT_CHANNEL = "silmaril-explore-snapshot";
-function versionOf(etag, lastModified, total) {
-  return ((etag && !etag.startsWith("W/") ? etag : lastModified) || "").replace(/[^A-Za-z0-9._-]/g, "") + "-" + total;
-}
-// Runs in the worker, before sql.js-httpvfs: wraps its synchronous XMLHttpRequests. Only reads
-// (GET) of version-tagged URLs (`?v=<version>&part=…`) are checked, and they must be ranges. Once one fails, every later read
-// of that version fails too, so nothing read after a change is ever used.
-function snapshotGuard(versionOf, channel) {
-  const X = self.XMLHttpRequest.prototype, open = X.open, setHeader = X.setRequestHeader, send = X.send;
-  const broken = new Map();   // version -> why
-  const fail = (v, why, now) => {
-    if (!broken.has(v)) {
-      broken.set(v, why);
-      try { const c = new BroadcastChannel(channel); c.postMessage({ v, why, now: now || null }); c.close(); } catch (e) { /* no channel */ }
-    }
-    throw new Error("silmaril snapshot: " + why);
-  };
-  X.open = function (method, url) { this.silGet = /^get$/i.test(method); this.silUrl = String(url); this.silRange = null; return open.apply(this, arguments); };
-  X.setRequestHeader = function (k, val) { if (/^range$/i.test(k)) this.silRange = String(val); return setHeader.apply(this, arguments); };
-  X.send = function () {
-    let v = null;
-    try { v = new URL(this.silUrl, self.location.href).searchParams.get("v"); } catch (e) { /* not a URL we tag */ }
-    // the library's HEAD (it asks for the length, which it was given) reads no bytes
-    if (v === null || !this.silGet) return send.apply(this, arguments);
-    if (broken.has(v)) fail(v, broken.get(v));
-    const out = send.apply(this, arguments);
-    const total = v.slice(v.lastIndexOf("-") + 1);
-    const want = /^bytes=(\d+)-(\d+)$/.exec(this.silRange || "");
-    const got = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(this.getResponseHeader("content-range") || "");
-    const enc = this.getResponseHeader("content-encoding");
-    if (this.status !== 206 || !got || (enc && enc !== "identity")) fail(v, `a range read was answered with HTTP ${this.status}` +
-      (got ? "" : " and no byte range") + (enc && enc !== "identity" ? `, ${enc}-encoded` : ""));
-    const now = versionOf(this.getResponseHeader("etag"), this.getResponseHeader("last-modified"), got[3]);
-    if (got[3] !== total) fail(v, `the file is now ${got[3]} bytes long, not ${total}`, now);
-    if (now !== v) fail(v, `the server now serves version ${now}`, now);
-    if (want && (got[1] !== want[1] || got[2] !== want[2])) fail(v, `bytes ${got[1]}-${got[2]} came back for ${want[1]}-${want[2]}`);
-    const n = this.response && this.response.byteLength;
-    if (want && n !== +want[2] - +want[1] + 1) fail(v, `${n} bytes came back for a range of ${+want[2] - +want[1] + 1}`);
-    return out;
-  };
-}
-// The database changed on the server after it was opened: `was` and `now` are versions.
-class SourceChanged extends Error {
-  constructor(url, was, now, why) {
-    super(`${url} changed on the server after this page opened it` + (now ? ` (version ${was}; the server now has ${now})` : ` (${why || "version " + was})`) +
-      ". Nothing read since was used.");
-    this.name = "SourceChanged"; Object.assign(this, { url, was, now, why });
-  }
-}
-// The version the server has now, from a fresh probe (null when it cannot be read).
-async function probeVersion(url) {
-  try {
-    const r = await fetch(url, { headers: { Range: "bytes=0-99" }, cache: "no-store" });
-    const total = Number(((r.headers.get("content-range") || "").match(/\/(\d+)$/) || [])[1]);
-    return r.status === 206 && total ? versionOf(r.headers.get("etag"), r.headers.get("last-modified"), total) : null;
-  } catch (e) { return null; }
-}
-// Lazy reads with sql.js-httpvfs. The file length and a version tag come from our own Range
-// probe, not from the library's HEAD request: some static hosts (GitHub Pages) gzip HEAD and
-// whole-file responses, which hides the real length, while they answer Range requests with the
-// identity bytes and `Content-Range: bytes a-b/<length>`. The single-chunk "chunked" mode lets us
-// give that length; the version tag (`v=`, from the strong ETag or Last-Modified, and the length)
-// is part of every range URL, so the browser's HTTP cache can reuse pages across reloads of one
-// version and can never mix pages of two versions.
-async function lazyBackend(url, pageSize, length, tag) {
-  if (typeof createDbWorker !== "function") throw new Error("sql.js-httpvfs did not load");
-  const guard = `(${snapshotGuard})(${versionOf}, ${JSON.stringify(SNAPSHOT_CHANNEL)});\n`;
-  const [worker, wasm] = await Promise.all([
-    sriBlobUrl(HTTPVFS + "sqlite.worker.js", HTTPVFS_WORKER_SRI, "text/javascript", guard),
-    sriBlobUrl(HTTPVFS + "sql-wasm.wasm", HTTPVFS_WASM_SRI, "application/wasm")]);
-  const prefix = url + (url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(tag) + "&part=";
-  const w = await createDbWorker([{ from: "inline", config: { serverMode: "chunked", urlPrefix: prefix,
-    serverChunkSize: length, databaseLengthBytes: length, suffixLength: 1, requestChunkSize: pageSize } }], worker, wasm);
-  // What the worker's guard reported for this version (it may arrive after the failed query).
-  let changed = null, guardSaid = null;
-  const ch = typeof BroadcastChannel === "function" ? new BroadcastChannel(SNAPSHOT_CHANNEL) : null;
-  if (ch) ch.onmessage = (e) => { if (e.data && e.data.v === tag && !guardSaid) guardSaid = e.data; };
-  // A failed query: a changed source (the guard said so, or the server's version differs now),
-  // or else the error as SQLite gave it, with what the version check adds to it.
-  const explain = async (e) => {
-    if (changed) return changed;
-    const now = await probeVersion(url);
-    if (!guardSaid) await sleep(50);
-    if ((now && now !== tag) || guardSaid) {
-      changed = new SourceChanged(url, tag, now && now !== tag ? now : guardSaid && guardSaid.now, guardSaid && guardSaid.why);
-      noteChanged(changed);
-      return changed;
-    }
-    if (/malformed|not a database|corrupt/i.test(String(e && e.message)) && now === tag) {
-      return new Error(`${e.message}. The server still serves the version this page opened (${tag}), and every page read ` +
-        "was checked against it, so this is not a mix of two versions: the file itself is damaged, or not a database this page can read " +
-        "(check it with `sqlite3 <file> 'PRAGMA integrity_check'`).");
-    }
-    return e;
-  };
-  const run = async (f) => {
-    if (changed) throw changed;
-    try { return await f(); } catch (e) { throw await explain(e); }
-  };
-  return {
-    mode: `lazy (HTTP Range, ${pageSize} B pages, version ${tag})`, pageSize, size: length, tag,
-    query: (sql, params) => run(() => w.db.query(sql, params)),
-    exec: (sql) => run(() => w.db.exec(sql)),
-    stats: () => w.worker.getStats(),
-    changed: () => changed,
-    close() { if (ch) ch.close(); /* the worker stays until the page closes */ },
-  };
-}
-// The service worker (explore-sw.js, written next to the page) caches lazily read pages across
-// reloads. Without it (file://, a browser without service workers, or a host that does not serve
-// the file) the page works the same and only the in-session cache of sql.js-httpvfs applies.
-async function registerPageCache() {
-  if (!("serviceWorker" in navigator) || !/^https?:$/.test(location.protocol) || PARAMS.get("cache") === "off") return false;
-  try {
-    await navigator.serviceWorker.register("explore-sw.js");
-    await navigator.serviceWorker.ready;
-    // a first registration controls this page once `clients.claim()` has run
-    if (!navigator.serviceWorker.controller) await new Promise((res) => {
-      navigator.serviceWorker.addEventListener("controllerchange", res, { once: true });
-      setTimeout(res, 1500);
-    });
-    return !!navigator.serviceWorker.controller;
-  } catch (e) { return false; }
-}
 async function sha256Hex(bytes) {
   if (!crypto.subtle) return null;
   const d = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
@@ -179,16 +41,7 @@ function metaNote(u, size, sha) {
   if (sha) return sha === DB_META.sha256 ? "; SHA-256 verified" : "; SHA-256 differs from the page's";
   return "";
 }
-// Open `u` over http(s): probe with a Range request for the 100-byte header. 206 with identity
-// bytes and a `Content-Range` total -> lazy; otherwise download the whole file (and check its
-// SHA-256 against the page's when it has one).
-// Reading lazily keeps one snapshot only when every range response names its file by a strong
-// ETag (see the snapshot guard above): a Last-Modified date has a resolution of one second and a
-// weak ETag (`W/…`) does not promise the same bytes, so a file replaced by another of the same
-// size within that second would pass for the same version. Without a strong ETag the page reads
-// the whole file in one response instead (one response is one file), up to WHOLE_LIMIT bytes;
-// a larger file is read whole only when the reader asks (`opts.whole`, or `?load=full`).
-// `?whole-limit=<bytes>` may only lower it (for tests and small devices).
+// The fallback takes a complete snapshot in one response, with a default size cap.
 const WHOLE_LIMIT = Math.min(256 * 1024 * 1024, Number(PARAMS.get("whole-limit")) || Infinity);
 class TooLarge extends Error {
   constructor(url, total, why) {
@@ -211,47 +64,56 @@ async function readCapped(r, limit, url, why) {
   for (const p of parts) { out.set(p, o); o += p.length; }
   return out;
 }
-// Open `u` over http(s): probe with a Range request for the 100-byte header. 206 with identity
-// bytes, a `Content-Range` total and a strong ETag -> lazy; otherwise read the whole file (and
-// check its SHA-256 against the page's when it has one).
 async function openUrl(u, opts) {
   const url = new URL(u, location.href).href;
-  const whole = PARAMS.get("load") === "full" || !!(opts && opts.whole);
+  const whole = PARAMS.get("load") === "full" || !!opts?.whole;
   let r;
-  try { r = await fetch(url, { headers: { Range: "bytes=0-99" }, cache: "no-store" }); }
+  try { r = await fetchDbHeader(url); }
   catch (e) { throw new Error("could not fetch (" + e.message + ")"); }
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  const enc = r.headers.get("content-encoding");
-  const total = Number(((r.headers.get("content-range") || "").match(/\/(\d+)$/) || [])[1]);
-  const ranged = r.status === 206 && (!enc || enc === "identity");
-  const etag = r.headers.get("etag");
-  const strong = !!etag && !etag.startsWith("W/");
-  let note = "", why = "";
-  if (ranged) {
-    const head = new Uint8Array(await r.arrayBuffer());
-    if (!isSqlite(head)) throw new Error("not a SQLite database");
-    const ps = (head[16] << 8) | head[17];
-    if (!whole) {
-      if (!total) why = "the server sent no Content-Range total";
-      else if (!strong) why = `the server sent no strong ETag (${etag ? "a weak one" : r.headers.get("last-modified") ? "only Last-Modified" : "no validator"}), which lazy reads need to stay on one version`;
-      else {
-        const cached = await registerPageCache();
-        try {
-          const b = await lazyBackend(url, ps === 1 ? 65536 : ps, total, versionOf(etag, null, total));
-          b.mode += (cached ? "; pages cached across reloads" : "") + metaNote(u, total);
-          return b;
-        } catch (e) { why = `lazy loading failed: ${e.message || e}`; }
+  let why = "";
+  if (r.status === 206) {
+    const meta = dbHeaderMetadata(r);
+    if (!whole && meta.size && meta.etag && meta.identity) {
+      const head = await readCapped(r, 100, url, "the database header range was not 100 bytes").catch((e) => {
+        if (e instanceof TooLarge) throw new Error("the database header range was not 100 bytes");
+        throw e;
+      });
+      if (head.length !== 100 || !isSqlite(head)) throw new Error("not a SQLite database");
+      const storedPageSize = (head[16] << 8) | head[17];
+      const pageSize = storedPageSize === 1 ? 65536 : storedPageSize;
+      if (pageSize < 512 || pageSize > 65536 || (pageSize & (pageSize - 1)) || meta.size % pageSize) {
+        throw new Error("invalid SQLite page size or file length");
       }
-      note = ` (${why})`;
-      if (total > WHOLE_LIMIT) throw new TooLarge(u, total, why);
+      const cached = await registerPageCache();
+      try {
+        const b = await lazyBackend(url, pageSize, meta);
+        b.mode += (cached ? "; ranges cached across reloads" : "") + metaNote(u, meta.size);
+        return b;
+      } catch (e) {
+        if (e instanceof SourceChanged) throw e;
+        why = `lazy loading failed: ${e.message || e}`;
+      }
+    } else {
+      r.body?.cancel().catch(() => {});
+      if (!meta.identity) why = "the server encoded its Range response";
+      else if (!meta.size) why = "the server sent no valid Content-Range total";
+      else if (!meta.etag) why = "the server sent no strong ETag, which lazy reads need to stay on one version";
     }
+    if (!whole && meta.size > WHOLE_LIMIT) throw new TooLarge(url, meta.size, why);
     r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-  } else why = "the server ignored the Range request";
+  } else {
+    why = "the server ignored the Range request";
+  }
+  if (r.status !== 200) throw new Error("HTTP " + r.status + " when opening " + u);
+  const declared = Number(r.headers.get("content-length"));
+  if (!whole && declared > WHOLE_LIMIT) {
+    r.body?.cancel().catch(() => {});
+    throw new TooLarge(url, r.headers.get("content-encoding") ? null : declared, why);
+  }
   const bytes = whole ? new Uint8Array(await r.arrayBuffer()) : await readCapped(r, WHOLE_LIMIT, u, why);
   if (!isSqlite(bytes)) throw new Error("not a SQLite database");
   const sha = await sha256Hex(bytes);
-  return wholeBackend(bytes, (ranged ? "whole file" : "whole file (the server ignored Range)") + note + metaNote(u, bytes.length, sha));
+  return wholeBackend(bytes, "whole file" + (whole ? "" : ` (${why})`) + metaNote(u, bytes.length, sha));
 }
 function pickHelp(why) {
   const def = DB_URLS[0] || "project.sqlite";
@@ -401,6 +263,8 @@ function wireTooLarge(root) {
 async function useDb(b, label) {
   if (be && be.close) try { be.close(); } catch (e) { /* ignore */ }
   be = b;
+  if (b.profile) window.explore.vfsProfile = b.profile;
+  else delete window.explore.vfsProfile;
   disposeRoute();
   routeTok++;   // whatever the old database's route still awaits is superseded
   known = Object.fromEntries(KINDS.map((k) => [k, new Map()]));
@@ -415,6 +279,7 @@ async function useDb(b, label) {
     // not readable: no database stays open (the caller says why)
     if (!(e instanceof Superseded) && be === b) {
       be = null; window.explore.ready = false;
+      delete window.explore.vfsProfile;
       try { if (b.close) b.close(); } catch (x) { /* ignore */ }
       Object.assign(source, { label: null, mode: null, schema: null, problem: null }); renderSource();
     }

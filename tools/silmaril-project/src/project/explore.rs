@@ -3,7 +3,7 @@
 //! The page (`explore.html`, next to this file) holds no data: it opens a separate SQLite file
 //! in the browser, with pinned scripts from cdnjs/jsdelivr. Over http(s) it tries `?db=<url>`,
 //! then the `db_urls` written here (relative to the page). It reads the file lazily with
-//! sql.js-httpvfs (HTTP Range requests, one SQLite page at a time) when the server supports
+//! sql.js-httpvfs (HTTP Range requests for page-aligned blocks) when the server supports
 //! Range, and downloads it whole into sql.js otherwise. Over `file://`, where browsers block
 //! `fetch`, the file is chosen with a file picker or dropped onto the page.
 //!
@@ -35,6 +35,8 @@ pub const SCRIPTS: &[(&str, &str)] = &[
     script!("lean/render.js"),
     script!("provenance.js"),
     script!("table.js"),
+    script!("vfs-transport.js"),
+    script!("vfs.js"),
     script!("db.js"),
     script!("router.js"),
     script!("graphs.js"),
@@ -260,16 +262,17 @@ mod tests {
         assert!(!p.contains("__EXPLORE_SCRIPT__"));
     }
 
-    /// The service worker caches a page only for the version the page checks every read
-    /// against: both compute it with the same `versionOf`.
+    /// The service worker and the VFS use the same strong validator and cache tag.
     #[test]
-    fn one_version_function() {
-        let def = |text: &str| {
-            let start = text.find("function versionOf(").expect("versionOf");
+    fn one_version_contract() {
+        let def = |text: &str, name: &str| {
+            let start = text.find(&format!("function {name}(")).expect("function");
             text[start..start + text[start..].find("\n}").expect("end")].to_string()
         };
-        let db = SCRIPTS.iter().find(|s| s.0 == "db.js").expect("db.js").1;
-        assert_eq!(def(db), def(SERVICE_WORKER));
+        let transport = include_str!("explore/vfs-transport.js");
+        for name in ["strongETag", "versionOf"] {
+            assert_eq!(def(transport, name), def(SERVICE_WORKER, name));
+        }
     }
 
     #[test]

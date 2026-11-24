@@ -107,38 +107,55 @@ GitHub Pages, and `tests/explore/pages_server.py`, allow lazy reads.
 The page first requests the 100-byte SQLite header with `Range: bytes=0-99` (never from the cache).
 
 - **206 Partial Content, identity bytes, `Content-Range: bytes 0-99/<length>` and a strong
-  `ETag`:** the page opens
-  the database with [sql.js-httpvfs](https://github.com/phiresky/sql.js-httpvfs). SQLite runs in
-  a web worker and reads one page at a time with HTTP Range requests, so the browser downloads
-  only the pages that the queries touch. The chunk size is the database's page size (read from
-  the header).
-- **Anything else** (200, a compressed body, no length, no ETag or only a weak one or only
-  `Last-Modified`): the page downloads the whole file in one response and opens it in plain sql.js.
-  One response is one file, so this is one snapshot whatever the server's validators. A file
-  larger than 256 MB is not read whole by default: the page says why lazy reading is not possible
-  and offers **Read it whole anyway** (and the file picker). The header says why it read the file
-  whole. `?load=full` forces this path. When the page was generated next to
-  this database, a whole download is checked against the SHA-256 written into the page
-  (`SHA-256 verified` in the header).
+  `ETag`.** SQLite runs in a worker using [sql.js-httpvfs](https://github.com/phiresky/sql.js-httpvfs).
+  Each block miss requests an aligned **1 MiB** range, shortened at EOF. Some fetched pages
+  may go unused. The loader reduces the block size for databases that would otherwise fit in
+  one block, down to a minimum of one SQLite page.
+- **Other responses.** When lazy loading is unavailable, plain sql.js opens the database
+  from a single full response. The fallback caps downloads at 256 MiB unless the reader
+  chooses **Read it whole anyway** or uses `?load=full`. When the page was generated next to the
+  database, it checks the SHA-256 of the downloaded bytes and reports the result.
 
-**The file length comes from the probe**, not from a `HEAD` request. GitHub Pages compresses
-`HEAD` and whole-file responses (`Content-Encoding: gzip`, with the compressed length), which made
-the library's own length check fail ("Length of the file not known"), while it answers Range
-requests with the identity bytes and the true length in `Content-Range`. The page passes that
-length to sql.js-httpvfs (its single-chunk mode).
+**The GET probe supplies length and identity.** The pinned VFS adapter uses the validated
+`Content-Range` length directly and skips the worker's synchronous HEAD. GitHub Pages can
+serve compressed representation metadata on HEAD, while the probe describes the raw file.
+An in-database UUID is available only after a read and cannot attest to the remaining ranges.
+A source commit identifies bytes only when all build inputs are pinned and the artifact URL
+serves immutable bytes. On the mutable Pages URL the strong ETag is checked on every read.
 
-**Versions and caching.** Every range URL carries a version tag, `?v=<strong ETag>-<length>&part=0`, taken from the probe. Pages of two versions of the database
-therefore never mix, whatever the HTTP caches hold. A service worker, `explore-sw.js`, which
-`sil project explore` writes next to the page, keeps the pages read across reloads in the browser's
-Cache Storage, keyed by path, version and range. When a new version of a file is read, it drops the
-entries of the other versions. `?cache=off` skips it. Within one visit, sql.js-httpvfs caches pages
-in memory either way. `tools/silmaril-project/tests/explore/range_cache.mjs` checks all of this in
-Chromium against `pages_server.py`, a server that compresses like GitHub Pages:
+**Versions and caching.** Tagged range requests carry the strong ETag and length.
+`explore-sw.js` caches exact ranges in Cache Storage by source URL, version and range. It
+keeps the original strong validator when it reconstructs a cached 206. When it caches a new
+version of a source, it drops previous versions. The initial 100-byte probe always goes to
+the server. `?cache=off` skips registration, so use a fresh browser context or block service
+workers to compare without an existing controller. The VFS caches blocks in memory during
+the visit. For cross-origin databases, the server must expose `Content-Range`, `ETag`, and
+`Content-Encoding` via CORS.
 
-- the first load is lazy and partial;
-- a reload transfers nothing;
-- a new version is fetched again under a new tag;
-- `?load=full` downloads the whole file and verifies its hash.
+**Experiment knobs.** Use `?vfs-chunk=page` for one physical page per demand read, or pass
+a page-aligned byte count up to 4 MiB, for example `?vfs-chunk=65536` on the Pages database.
+Invalid choices use the default. The worker caps the upstream read-ahead algorithm at one
+block and fetches only on demand. Changing this setting leaves the physical SQLite page
+size intact.
+
+To inspect reads, open with `?vfs-profile=1`, then use the browser console:
+
+```js
+const trace = await window.explore.vfsProfile();
+console.table(trace.events.filter(event => event.type === "fetch"));
+```
+
+Each call drains the worker's trace of up to 8192 events. `dropped` reports additional
+events since the previous drain. A `read` event is a SQLite request for bytes. A `fetch`
+event records the requested block, returned range, status, acceptance, byte count and
+duration. Byte offsets are zero-based with exclusive ends. Page numbers are one-based
+and inclusive. Times are milliseconds relative to the worker's `timeOrigin`.
+`cache-storage` marks an explorer service worker hit. `http` is the HTTP path, which can
+include browser and CDN caches. The trace starts with the worker and excludes the initial
+probe. Profiling is local and off by default.
+
+`tests/explore/range_cache.mjs` exercises default partial reads without HEAD, chunk overrides,
+EOF, profiling, warm cache, and replacements in Chromium against `pages_server.py`.
 
 ### One snapshot per open database
 
@@ -206,15 +223,13 @@ queried with `sqlite3`:
 `write_db` checks that the built file has exactly these indexes. They make the file about 30%
 larger (9.97 MB instead of 7.52 MB on the large project measured below).
 
-`--httpvfs` only tunes the file: `PRAGMA page_size` (`--page-size`, 4096 by default) and
-`journal_mode = DELETE`, then `VACUUM`. The SQL text, the logical dump and the indexes do not
-change. sql.js-httpvfs recommends `PRAGMA page_size = 1024`. Smaller pages read fewer bytes but
-need more requests; see the measurements below.
+`--httpvfs` tunes the file using `PRAGMA page_size` (`--page-size`, 4096 by default),
+`journal_mode = DELETE`, and `VACUUM`. This controls the database layout. The browser
+chooses its transport block size when it opens the file.
 
-sql.js-httpvfs can also split a database into fixed-size chunk files (`serverMode: "chunked"`),
-for hosts that limit file sizes or do not support Range. `sil project` does not write chunks: a server
-with Range support is enough for local and internal use, and without Range the page falls back to
-a whole download.
+sql.js-httpvfs supports fixed-size server files through `serverMode: "chunked"`.
+The explorer describes a single server file and requests byte ranges within it.
+Hosts without Range use the bounded whole-file fallback.
 
 ### Bounded queries
 
@@ -239,7 +254,8 @@ The database of a large project (3,550 problems, 6,322 edges) was built by `sil 
 served from `127.0.0.1` by a small Range-capable server. The *no indexes* row is the same file
 with every index dropped and `VACUUM`ed, for comparison. Headless Chrome loaded the summary and
 then visited the root graph, the problem list, one problem page and a second graph. These are the
-bytes of the database read (the page itself and the CDN scripts are not counted):
+database bytes read with the earlier page-sized VFS and its sequential read-ahead. The
+table excludes HTML and CDN assets.
 
 | database | mode | after the summary | after all five views |
 |---|---|---|---|
@@ -289,8 +305,9 @@ requests add latency.
 ## Pinned scripts
 
 The page loads these exact versions, each checked against an SRI hash. The worker and the WASM
-files are fetched with `fetch(…, {integrity})` and run from `blob:` URLs, because a web worker
-must have the page's origin.
+files are fetched with `fetch(…, {integrity})`. The VFS worker is adapted after integrity
+verification and runs with its WASM from `blob:` URLs. Review the exact-match adapter
+against the upstream source when changing the VFS version.
 
 | library | version | from | files |
 |---|---|---|---|
@@ -311,6 +328,8 @@ The template is `tools/silmaril-project/src/project/explore.html` (the shell and
 | `core.js` | constants, page state, small helpers |
 | `ui.js` | shared components: links, status badges, the dialog, the byte viewer and WAT highlighting |
 | `table.js` | tables and definition lists that link the names they show |
+| `vfs-transport.js` | HTTP probe, snapshot guard and service worker registration |
+| `vfs.js` | demand block policy, pinned worker adapter and opt-in trace |
 | `db.js` | opening a database (lazy, whole, local file) and the source button and dialog |
 | `router.js` | the view registry, routing and the per-route context |
 | `graphs.js` | dominators and dominator trees shared by graph views |

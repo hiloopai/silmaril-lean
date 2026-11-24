@@ -1,6 +1,6 @@
 // The page holds no data. It opens a SQLite file, in this order: `?db=<url>`, the URLs written by
 // `sil project explore` (relative to the page), a file picker or drop. Over http(s) it reads the
-// file lazily with sql.js-httpvfs (HTTP Range requests, one SQLite page at a time) when the server
+// file lazily with sql.js-httpvfs (HTTP Range requests for page-aligned blocks) when the server
 // answers a Range request with 206, and otherwise downloads the whole file into sql.js.
 // `?load=full` forces the whole download.
 const SQLJS = "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/";

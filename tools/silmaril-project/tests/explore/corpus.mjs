@@ -15,11 +15,28 @@ try{
   const consoleMessages=[];
   page.on('console',message=>consoleMessages.push({type:message.type(),text:message.text()}));
   page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:8789/index.html#/corpus');
+  const profiledUrl='http://127.0.0.1:8789/index.html?vfs-profile=1';
+  const takeTrace=()=>page.evaluate(()=>window.explore.vfsProfile());
+  const databaseHTTPBytes=()=>fs.readFileSync(requestLog,'utf8').trim().split('\n').map(JSON.parse)
+    .filter(r=>r.path==='/project.sqlite'&&r.method==='GET').reduce((n,r)=>n+r.bytes,0);
+  async function checkReadBudget(label){
+    const {events,dropped,pageSize}=await takeTrace();
+    assert.equal(dropped,0,`${label} has a complete VFS trace`);
+    // Count distinct SQLite pages touched, including pages already in memory.
+    // HTTP blocks can contain nearby pages that the query never reads.
+    const pages=new Set();
+    for(const event of events){
+      if(event.type!=='read')continue;
+      for(let p=event.firstPage;p<=event.lastPage;p++)pages.add(p);
+    }
+    const bytes=pages.size*pageSize;
+    assert.ok(bytes>0&&bytes<2*1024*1024,`${label} reads ${bytes} bytes of SQLite pages (budget < 2 MiB)`);
+    return bytes;
+  }
+  await page.goto(profiledUrl+'#/corpus');
   await page.waitForFunction(()=>window.explore?.ready&&!window.explore.busy,null,{timeout:60000});
   assert.match(await page.locator('#main').innerText(),/Software under test/);
-  const initialReads=fs.readFileSync(requestLog,'utf8').trim().split('\n').map(JSON.parse).filter(r=>r.path==='/project.sqlite');
-  assert.ok(initialReads.reduce((n,r)=>n+(r.method==='GET'?r.bytes:0),0)<2*1024*1024,'landing page reads compact indexes rather than artifact evidence payloads');
+  console.log('Corpus landing SQLite page bytes:',await checkReadBudget('Corpus landing'),'HTTP bytes:',databaseHTTPBytes());
   assert.match(await page.locator('#main').innerText(),/32 contextual C → ELF statements/);
   assert.match(await page.locator('#main').innerText(),/15 registered function-equivalence statements · 15 connected binary viewer entries/);
   const combined=Number(execFileSync('python3',['-c',
@@ -62,18 +79,19 @@ try{
   await page.waitForFunction(()=>document.querySelector('#corpus-function-count').textContent.includes('matching symbol rows'));
   await page.waitForFunction(()=>document.querySelector('#corpus-functions').innerText.includes('cJSON_Parse'));
   console.log('Navigating Timings after artifact/function search');
+  await takeTrace();
+  const beforeTimingBytes=databaseHTTPBytes();
   const timingStart=Date.now();
-  const readBytes=()=>fs.readFileSync(requestLog,'utf8').trim().split('\n').map(JSON.parse).filter(r=>r.path==='/project.sqlite'&&r.method==='GET').reduce((n,r)=>n+r.bytes,0);
-  const beforeTimingBytes=readBytes();
-  await page.goto('http://127.0.0.1:8789/index.html#/corpus-timings');
+  await page.goto(profiledUrl+'#/corpus-timings');
   try{
     await page.waitForFunction(()=>window.explore.view==='corpus-timings'&&!window.explore.busy);
   }catch(error){
     console.error(JSON.stringify({url:page.url(),errors,consoleMessages,requests:fs.readFileSync(requestLog,'utf8').trim().split('\n').slice(-20).map(JSON.parse)}));
     throw error;
   }
-  console.log('Timings navigation ms:',Date.now()-timingStart,'database bytes:',readBytes()-beforeTimingBytes);
-  assert.ok(readBytes()-beforeTimingBytes<2*1024*1024,'Timings landing uses compact summary, not full receipts');
+  const timingMs=Date.now()-timingStart;
+  console.log('Timings navigation ms:',timingMs,'SQLite page bytes:',await checkReadBudget('Timings landing'),
+    'HTTP bytes:',databaseHTTPBytes()-beforeTimingBytes);
   assert.match(await page.locator('#main').innerText(),/actual run receipts/);
   assert.ok(await page.locator('#timing-rows tr').count()<=100);
   await page.getByRole('button',{name:'Next',exact:true}).click();

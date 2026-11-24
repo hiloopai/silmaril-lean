@@ -89,7 +89,7 @@ jobs:
       matrix:
         include:
           - group: shell
-            tests: wasm_cfg wasm_cfg_variants shell snapshot provenance
+            tests: wasm_cfg wasm_cfg_variants shell snapshot range_cache provenance
           - group: languages
             tests: wasm_acceptors acceptor_runs wasm_languages languages attention
           - group: corpus-compiler
