@@ -136,6 +136,83 @@ Terms used above:
 - **Macro:** source shorthand expanded into supported Core syntax before validation.
 - **Proof root:** a Lean module selected to build a tool's correctness theorems and their dependencies.
 
+## Confidence in the Wasm semantics
+
+This is a snapshot of evidence on `main` and on separate branches as of
+2026-11-21. A theorem about one model or fragment is not a conformance claim
+for the entire toolchain. The linked ledgers give the precise domains and open goals.
+
+| Evidence on `main` | What is proved | What it does not establish |
+| --- | --- | --- |
+| [REF and IR byte reading](../../Silmaril/Wasi/Component/Accept/Ref/Bridge/Thms.lean), #709 (`532414bea`) | `bytesOf?_toRefVal`: the reference machine (REF) and the component IR read the same bytes from a converted value. | Agreement of acceptance languages or machine runs. |
+| [Direct kernel memory run](../../Silmaril/Wasi/Component/Accept/Ref/Examples.lean), #707 (`bc74e4a5f`) | `hi_mem_direct`: the kernel evaluates a direct `ByteArray` run for the concrete `"hi!"` fixture. With the fixed `accept: func(list<u8>)` logging host, `core3 neverFail`, and the deterministic component choice profile `first.prof`, invoking `run` proves membership in `bytesSystemUntyped`. | This does not transfer a `KMem` evaluation, prove general acceptance, or establish equivalence of memory engines. |
+| [Policy-parametric REF acceptance](../../Silmaril/Wasi/Component/Accept/Ref/Thms.lean), #802 (`feb9e3ce8`) | A successful finite `acceptRunWith` that records the bytes is sound for its `EnvPolicy` and the oracle's profile. For bytes that `decodeValid` accepts, the default system uses the typed policy and is contained in the untyped system. The linked host supplies `accept: func(list<u8>)`; no host waitable is ready. | Completeness of finite search, equality with the untyped language, or equivalence with the IR or arbitrary typed hosts. |
+| [Named decoder and start bridge](component-tests.md), #1020 (`568ec9b0c`) | `MultiX.startAdequacyFrag` discharges `Task.startAdequacyFrag` on `MultiImpFrag`: for the stated valid named reading, an IR ready instantiation and first-export play imply the REF outcome and ordered host log. The IR uses `profile neverFail`; REF uses `first.prof` with the logging host for the fixed `f: func(x: u32)` import. `starts_ref_of_ir'` gives the concrete `get` result `42` and log. | `Task.startAdequacyChecked` for every binary that passes the root checks. The parameter-name counterexample rules out the unguarded claim. |
+| [Quiet later-node failure](component-tests.md), #989 (`e39131465`) | For a valid P2 import-wired binary in `MultiImpFailFrag` with the fixed host import, quiet ready nodes followed by a quiet preparation or start failure at node `k ≥ 1` imply a REF instantiation trap under the bridge's `first.prof` and logging host. The guard does not require the successful-start fragment's `splitNodes` or `liftsCall` checks. | `Task.failRefWiredRest''` remains a hypothesis for the other cases. This proves neither general failure adequacy nor a broader successful-start theorem. |
+| [Typed-host acceptance sessions](../../Silmaril/Wasi/Component/Accept/Ref/HostSession/Thms.lean), #805 (`363a097a2`) | `HLinked2.sessAccepted_iff`: under `HLinked2.Adequate` and `HostTyped g`, REF sessions and IR plays answered by the same host agree on the existence of a logged `accept` carrying the bytes, for every stated Core profile and component choice profile. | Arbitrary hosts, unfinished calls, or a general equivalence from component bytes to a game denotation. |
+| [Well-typed jco adaptors](component-caveats.md#streams-async-and-jco), #1025 (`2441a12ba`) | Core 3.0 matching runs for the covered `memory.copy`, control and integer-store code with `CallsTyped`, `MemOk` and `CallsKeepMem`; the trap result also needs `CallsTrapCore`. The moving `cabi_realloc` shim agrees with allocation followed by a bounded copy when `alloc` returns one `i32`. | General adaptor correctness, including float loads/stores, or agreement with the full canonical ABI. |
+| [Core ↔ SpecTec bridge](wasm-spec-bridge.md#bridge-matrix), #1027 (`f39e5bd24`, includes #1015 and #1024) | Two-way whole-step results on typed/plain Wasm 1.0 with aligned memories and `GoodV1`, at the top-level Wasm 2.0 `growB` domain, and on selected bounded Wasm 3.0 domains (up to configuration equality and Core's choices). Round 9 lifts 140 backward cases (74 `Step_read`, 66 `Step_pure`); the matrix gives the exact profile and host hypotheses. | Whole-step equivalence on all valid configurations. Backward rule lift and provenance, broader memory/SIMD and export/host coverage, and official validation and instantiation correspondence remain separate. |
+
+### Evidence not yet on `main`
+
+- **KMem evaluator (#796, `746b31b1`):** the canonical memory-representation and
+  evaluator stack. The public `hi_mem` theorem uses a kernel run on `KMem` and
+  transfers it to the `ByteArray` REF engine (`core3 neverFail`) without a run
+  hypothesis. It is acceptance of the particular `"hi!"` fixture, not a claim
+  of general acceptance or equivalence to the specification.
+- **Selected WAST corpus (#931, `6f8c669d`, depends on #796):** at the pinned
+  `WebAssembly/spec` revision `608711107b7f1edb13efd57b7d79b49477462d36`, the
+  branch's `examples/wasm-wast/report.json` records **8,674 commands: 8,620
+  kernel-proved, 25 context, 29 unsupported, and 0 undetermined**. The
+  independent oracle (`examples/wasm-wast/oracle.json`) records Wasmtime
+  50.0.0 replay passing **8,626/8,626**: all 8,620 proved commands and six
+  native-only context actions. Script digests were rechecked; 16 wrong
+  expectations were rejected and five controls passed. This is test-wise
+  agreement, not a proof about Wasmtime or the whole spec suite.
+The WAST counts combine different kinds of evidence:
+
+- **Deterministic execution:** return and trap rows use Core reduction at
+  `profile neverFail` (canonical NaNs, nondeterministic mode off, growth fails
+  only when impossible). Unlinked rows start from valid, import-free modules
+  and use `noHost`. Linked rows resolve registered exports and names provided
+  by the concrete typed `Spectest.host`, check import types and observe the
+  host-call log. Earlier commands thread the store; a segment trap leaves a
+  residual store for the next command. Wasmtime uses its own `spectest` host.
+- **Specification-profile floating point:** the straight-line numeric rows at
+  `Profile.spec nd r` range over the specification's NaN choices, for every
+  `nd` and relaxed choice `r`. They are host-free and have no data or element
+  segments or start function. Existence of an allowed outcome, every normal
+  form satisfying the allowed set, and termination are separate claims. Native
+  replay checks one execution; it cannot prove the allowed-set or termination
+  theorem.
+- **Tool-level rejection:** decoding or validation rejects the recorded bytes
+  produced by pinned wasm-tools. This is not official-spec invalidity: the
+  project's `ModuleOk` and `Instantiate` are transcriptions whose correspondence
+  to the official rules is a separate obligation, as is the remaining
+  whole-step bridge. The upstream text-to-binary tool is outside these theorems.
+
+The next coverage step is to land the evaluator and WAST stack without losing
+the typed-host, residual-store or negative cases. General component linking and
+behavioral correspondence still need proofs for shared memories and tables,
+canonical ABI options and resources, and the outstanding adaptor, stream and
+async cases in the [component ledger](component-caveats.md).
+
+### Reuse the intrinsic Core representation
+
+[Context-indexed functions and modules](wasm-intrinsic.md) (#1170, `acc297f7a`)
+already relate checked syntax to existing Core syntax by erasure and validity,
+with existence of a lift for well-typed raw syntax, not a general executable
+elaborator.
+The [invocation theorems](../../Silmaril/Wasm/Execution/Core/Intrinsic/Invoke/Thms.lean)
+(#1242, `b2e801d63`) give a singleton behavior set and exclude divergence for a
+finite typed answer on a resolved, host-free integer direct call at `profile oracle`.
+Fuel exhaustion gives neither result. Extend these representations and their
+erasure, elaboration and execution bridges by fragment instead of adding a
+parallel typed Core. A denotational comparison must agree on observations of
+state, traps, divergence, host effects and permissible NaN and resource choices.
+[Checked component declaration wiring](wasm-components.md#checked-declaration-wiring)
+is a starting point for linking, not a component execution equivalence.
+
 ## Library entry points
 
 [WAT quotations](wasm-wat.md) let Lean programs embed module text with `wat1!`,
