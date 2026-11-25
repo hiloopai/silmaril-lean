@@ -21,13 +21,17 @@ and primitive/γ initializer. φ keeps its ordered member interfaces
 and compares its outer captures, member captures, and λ bodies.
 [Definitions](../../Silmaril/SSA/RVSDG/Interprocedural/Isomorphism/Defs.lean)
 
-The term relation looks up the actual inductive bindings and checks their
-capture and export wires. At an intraprocedural leaf it uses the existing
-typed graph isomorphism of the encoded body or initializer. The graph
-relation uses actual graph vertices, endpoints and children directly.
-The bridge transports the same proposed ω bijection in both directions
-through encoding and linearization. The existing exact round trips
-continue to describe a fixed numbering.
+The term relation reads the actual bindings in each region and checks
+its endpoint wires, node kinds and positional children directly.
+λ bodies use this relation on nested primitive, γ and θ terms. A δ
+initializer uses the inductive inclusion of primitive/γ terms into
+that nested language. Its graph renumbering both preserves and reflects
+the same endpoint evidence under this inclusion. The graph relation
+uses its own vertex tables and child graphs. The bridge transports the
+same proposed ω bijection through encoding and linearization.
+The existing exact round trips describe a fixed numbering.
+[Nested term definitions](../../Silmaril/SSA/RVSDG/NestedTheta/Isomorphism/Terms/Defs.lean) ·
+[Nested bridge](../../Silmaril/SSA/RVSDG/NestedTheta/Isomorphism/Terms/Thms.lean)
 [Theorems](../../Silmaril/SSA/RVSDG/Interprocedural/Isomorphism/Thms.lean)
 
 In this φ representation a recursion argument, the physical λ
@@ -43,7 +47,7 @@ questions.
 The fixture swaps independent δ and φ definitions in ω, swaps two
 vertices in the δ initializer, and renumbers the primitive and apply
 producers feeding a φ member's λ body. The wrapper's capture of the
-second φ output and an import re-export keep their ports. The negative
+second φ output and an import re-export keep their ports. The body witnesses start from the inductive bindings. The negative
 checks reject switching same-typed recursion arguments or export slots
 and exchanging physical φ definitions under fixed result origins.
 [Fixture](../../tests/ssa/RVSDGInterproceduralIsomorphism.lean)

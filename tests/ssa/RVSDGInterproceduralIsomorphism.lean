@@ -58,11 +58,9 @@ private def deltaL : DeltaTerm Op imports [] (.data ()) :=
 private def deltaR : DeltaTerm Op imports [groupPorts] (.data ()) :=
   ⟨imports, capturesImport, _, initR⟩
 
-private theorem deltaIso (ids : Nat → Nat) : deltaL.Renumbered ids deltaR := by
-  refine ⟨⟨rfl, rfl⟩, .intro rfl rfl (swap 0) ?_ ?_ rfl ?_⟩
-  · exact everyTwo rfl rfl
-  · exact everyTwo rfl rfl
-  · exact Fin.cases (fun j => j.elim0) (Fin.cases (fun j => j.elim0) (fun j => j.elim0))
+private theorem deltaIso (ids : Nat → Nat) : deltaL.Renumbered ids deltaR :=
+  ⟨⟨rfl, rfl⟩, .intro rfl rfl (swap 0)
+    (everyTwo (.intro rfl rfl (fun j => j.elim0)) (.intro rfl rfl (fun j => j.elim0))) rfl⟩
 
 private abbrev lambdaContext : Ports T := [datum, callable]
 private abbrev bodyArgs : Ports T := lambdaContext ++ fn.args
@@ -94,12 +92,10 @@ private def bodyR : NestedTheta.Term (Instruction Op) bodyArgs [] [[st], [datum]
         (fun j => Fin.elim0 (by change Fin 0 at j; exact j)) <|
         .ret (.cons (.output (2 : Fin 3) .head) .nil)
 
-private theorem bodyIso : NestedTheta.Graph.Isomorphic (Instruction Op) bodyL.toGraph bodyR.toGraph := by
-  refine .intro rfl rfl (swap 1) ?_ ?_ rfl ?_
-  · exact everyThree rfl rfl rfl
-  · exact everyThree rfl rfl rfl
-  · exact Fin.cases (fun j => j.elim0) (Fin.cases (fun j => j.elim0)
-      (Fin.cases (fun j => j.elim0) (fun j => j.elim0)))
+private theorem bodyIso : NestedTheta.Term.Isomorphic (Instruction Op) bodyL bodyR :=
+  .intro rfl rfl (swap 1)
+    (everyThree (.intro rfl rfl (fun j => j.elim0)) (.intro rfl rfl (fun j => j.elim0))
+      (.intro rfl rfl (fun j => j.elim0))) rfl
 
 private def memberL {entry : Ports T} {past : List (Ports T)}
     (dataSource : Origin entry past datum) (callSource : Origin entry past callable) :

@@ -17,7 +17,7 @@ variable {fn : Function V S} {value : ValueSort V S} {members : List (Function V
 theorem LambdaTerm.renumbered_toGraph_iff (ids : Nat → Nat)
     (left : LambdaTerm Op args past fn) (right : LambdaTerm Op args' past' fn) :
     left.toGraph.Renumbered ids right.toGraph ↔ left.Renumbered ids right :=
-  Iff.rfl
+  Isomorphism.Proofs.lambda_toGraph ids left right
 
 theorem Lambda.renumbered_toTerm_iff (ids : Nat → Nat)
     (left : Lambda Op args past fn) (right : Lambda Op args' past' fn) :
@@ -27,7 +27,7 @@ theorem Lambda.renumbered_toTerm_iff (ids : Nat → Nat)
 theorem DeltaTerm.renumbered_toGraph_iff (ids : Nat → Nat)
     (left : DeltaTerm Op args past value) (right : DeltaTerm Op args' past' value) :
     left.toGraph.Renumbered ids right.toGraph ↔ left.Renumbered ids right :=
-  Iff.rfl
+  Isomorphism.Proofs.delta_toGraph ids left right
 
 theorem Delta.renumbered_toTerm_iff (ids : Nat → Nat)
     (left : Delta Op args past value) (right : Delta Op args' past' value) :
@@ -37,7 +37,7 @@ theorem Delta.renumbered_toTerm_iff (ids : Nat → Nat)
 theorem PhiTerm.renumbered_toGraph_iff (ids : Nat → Nat)
     (left : PhiTerm Op args past members) (right : PhiTerm Op args' past' members) :
     left.toGraph.Renumbered ids right.toGraph ↔ left.Renumbered ids right :=
-  Iff.rfl
+  Isomorphism.Proofs.phi_toGraph ids left right
 
 theorem Phi.renumbered_toTerm_iff (ids : Nat → Nat)
     (left : Phi Op args past members) (right : Phi Op args' past' members) :

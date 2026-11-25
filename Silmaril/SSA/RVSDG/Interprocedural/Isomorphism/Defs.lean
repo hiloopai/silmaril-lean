@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.SSA.RVSDG.Interprocedural.Terms.Defs
-public import Silmaril.SSA.RVSDG.NestedTheta.Isomorphism.Defs
+public import Silmaril.SSA.RVSDG.NestedTheta.Isomorphism.Terms.Defs
 
 /-! Typed vertex renumbering for translation units and their inductive bindings. -/
 
@@ -67,19 +67,19 @@ structure Omega.RenumberedBy (left : Omega Op args outs sigs) (right : Omega Op 
 def Omega.Isomorphic (left : Omega Op args outs sigs) (right : Omega Op args outs sigs') : Prop :=
   ∃ ids, left.RenumberedBy right ids
 
-/-! The term-side view reads actual bindings and their capture edges. It
-uses the existing typed graph isomorphisms for intraprocedural bodies,
-after encoding just those bodies. -/
+/-! The term-side view reads actual bindings, capture edges and child
+terms directly. The acyclic δ initializer uses the primitive inclusion
+into the nested term language. -/
 
 def LambdaTerm.Renumbered (ids : Nat → Nat)
     (left : LambdaTerm Op args past fn) (right : LambdaTerm Op args' past' fn) : Prop :=
   CaptureRenumbered ids left.captures right.captures ∧
-    NestedTheta.Graph.Isomorphic (Instruction Op) left.body.toGraph right.body.toGraph
+    NestedTheta.Term.Isomorphic (Instruction Op) left.body right.body
 
 def DeltaTerm.Renumbered (ids : Nat → Nat)
     (left : DeltaTerm Op args past value) (right : DeltaTerm Op args' past' value) : Prop :=
   CaptureRenumbered ids left.captures right.captures ∧
-    RVSDG.Graph.Isomorphic Op left.initializer.toGraph right.initializer.toGraph
+    NestedTheta.Term.Isomorphic Op (.ofBase left.initializer) (.ofBase right.initializer)
 
 def PhiTerm.Renumbered (ids : Nat → Nat)
     (left : PhiTerm Op args past members) (right : PhiTerm Op args' past' members) : Prop :=

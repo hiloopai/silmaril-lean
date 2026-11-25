@@ -2,6 +2,7 @@ module
 
 public import Silmaril.SSA.RVSDG.Interprocedural.Isomorphism.Defs
 public import Silmaril.SSA.RVSDG.Interprocedural.Terms.Thms
+public import Silmaril.SSA.RVSDG.NestedTheta.Isomorphism.Terms.Thms
 
 public section
 
@@ -12,6 +13,27 @@ universe u v
 variable {V S : Type u} {Op : Dialect.{u, v} (ValueSort V S) S}
 variable {args args' outs outs' : Ports (Ty V S)}
 variable {past past' sigs sigs' : List (Ports (Ty V S))}
+
+theorem lambda_toGraph {fn : Function V S} (ids : Nat → Nat)
+    (left : LambdaTerm Op args past fn) (right : LambdaTerm Op args' past' fn) :
+    left.toGraph.Renumbered ids right.toGraph ↔ left.Renumbered ids right := by
+  simp only [Lambda.Renumbered, LambdaTerm.Renumbered, LambdaTerm.toGraph,
+    NestedTheta.Term.isomorphic_toGraph_iff]
+
+theorem delta_toGraph {value : ValueSort V S} (ids : Nat → Nat)
+    (left : DeltaTerm Op args past value) (right : DeltaTerm Op args' past' value) :
+    left.toGraph.Renumbered ids right.toGraph ↔ left.Renumbered ids right := by
+  simp only [Delta.Renumbered, DeltaTerm.Renumbered, DeltaTerm.toGraph,
+    NestedTheta.Term.isomorphic_ofBase_toGraph_iff]
+
+theorem phi_toGraph {members : List (Function V S)} (ids : Nat → Nat)
+    (left : PhiTerm Op args past members) (right : PhiTerm Op args' past' members) :
+    left.toGraph.Renumbered ids right.toGraph ↔ left.Renumbered ids right := by
+  constructor
+  · rintro ⟨captures, definitions⟩
+    exact ⟨captures, fun i => (lambda_toGraph id _ _).1 (definitions i)⟩
+  · rintro ⟨captures, definitions⟩
+    exact ⟨captures, fun i => (lambda_toGraph id _ _).2 (definitions i)⟩
 
 private theorem vertex_roundtrip (vertex : VertexTerm Op args past outs) : vertex.toGraph.toTerm = vertex := by
   cases vertex with
@@ -25,15 +47,15 @@ private theorem vertex_toTerm {ids : Nat → Nat} {left : Vertex Op args past ou
   cases related with
   | @lambda fn left right related =>
     apply VertexTerm.Renumbered.lambda
-    change left.toTerm.toGraph.Renumbered ids right.toTerm.toGraph
+    apply (lambda_toGraph ids left.toTerm right.toTerm).1
     rwa [left.toGraph_toTerm, right.toGraph_toTerm]
   | @delta value left right related =>
     apply VertexTerm.Renumbered.delta
-    change left.toTerm.toGraph.Renumbered ids right.toTerm.toGraph
+    apply (delta_toGraph ids left.toTerm right.toTerm).1
     rwa [left.toGraph_toTerm, right.toGraph_toTerm]
   | @phi members left right related =>
     apply VertexTerm.Renumbered.phi
-    change left.toTerm.toGraph.Renumbered ids right.toTerm.toGraph
+    apply (phi_toGraph ids left.toTerm right.toTerm).1
     rwa [left.toGraph_toTerm, right.toGraph_toTerm]
 
 theorem vertex_toGraph (ids : Nat → Nat)
@@ -44,9 +66,9 @@ theorem vertex_toGraph (ids : Nat → Nat)
     simpa only [vertex_roundtrip] using vertex_toTerm related
   · intro related
     cases related with
-    | lambda h => exact .lambda h
-    | delta h => exact .delta h
-    | phi h => exact .phi h
+    | lambda h => exact .lambda ((lambda_toGraph ids _ _).2 h)
+    | delta h => exact .delta ((delta_toGraph ids _ _).2 h)
+    | phi h => exact .phi ((phi_toGraph ids _ _).2 h)
 
 theorem bindingAt_toGraph (term : ModuleTerm Op args past sigs outs) (i : Fin sigs.length) :
     (term.bindingAt i).toGraph = term.vertices i := by

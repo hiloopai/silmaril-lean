@@ -1,6 +1,7 @@
 module
 
 import Silmaril.SSA.RVSDG.NestedTheta.Isomorphism.Thms
+import Silmaril.SSA.RVSDG.NestedTheta.Isomorphism.Terms.Thms
 
 namespace Silmaril.SSA.RVSDG.NestedTheta.Isomorphism.Tests
 
@@ -123,6 +124,9 @@ private theorem renumbered : Graph.Isomorphic Op left right := by
   · intro i
     exact Fin.cases (fun j => j.elim0)
       (Fin.cases (fun j => j.elim0) (Fin.cases childIso (fun j => j.elim0))) i
+
+example : Term.Isomorphic Op leftTerm rightTerm :=
+  (leftTerm.isomorphic_toGraph_iff rightTerm).1 renumbered
 
 example (m : Model Op) (fuel : Nat) (input : Tuple m.Val entryPorts) :
     left.run m fuel input = right.run m fuel input := renumbered.run_eq m fuel input
