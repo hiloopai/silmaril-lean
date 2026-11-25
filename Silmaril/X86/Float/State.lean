@@ -3,7 +3,7 @@ module
 public import Silmaril.X86.Float.Instr
 public import Silmaril.X86.Encoding
 public import Silmaril.Numeric.Float
-import Std.Tactic.BVDecide
+import Silmaril.Prelude.BVDecide.Defs
 
 /-!
 # XMM registers and MXCSR for the scalar SSE subset
@@ -106,16 +106,16 @@ def zeroLane : (p : Precision) → Bits p.fmt → BitVec 128
   | .double, x => (x : BitVec 64).setWidth 128
 
 private theorem setLane32_lane (v : BitVec 128) (x : BitVec 32) :
-    (v.extractLsb' 32 96 ++ x : BitVec 128).extractLsb' 0 32 = x := by bv_decide
+    (v.extractLsb' 32 96 ++ x : BitVec 128).extractLsb' 0 32 = x := by bv_decide_kernel
 
 private theorem setLane64_lane (v : BitVec 128) (x : BitVec 64) :
-    (v.extractLsb' 64 64 ++ x : BitVec 128).extractLsb' 0 64 = x := by bv_decide
+    (v.extractLsb' 64 64 ++ x : BitVec 128).extractLsb' 0 64 = x := by bv_decide_kernel
 
 private theorem zeroLane32_lane (x : BitVec 32) : (x.setWidth 128).extractLsb' 0 32 = x := by
-  bv_decide
+  bv_decide_kernel
 
 private theorem zeroLane64_lane (x : BitVec 64) : (x.setWidth 128).extractLsb' 0 64 = x := by
-  bv_decide
+  bv_decide_kernel
 
 @[simp] theorem lane_setLane (p : Precision) (v : BitVec 128) (x : Bits p.fmt) :
     lane p (setLane p v x) = x := by
@@ -205,11 +205,11 @@ def ofLe128? (bytes : List Byte) : Option (BitVec 128) :=
 
 @[simp] theorem ofLe32?_le32 (v : BitVec 32) : ofLe32? (le32 v) = some v := by
   simp only [le32, ofLe32?, Option.some.injEq]
-  bv_decide
+  bv_decide_kernel
 
 @[simp] theorem ofLe64?_le64 (v : BitVec 64) : ofLe64? (le64 v) = some v := by
   simp only [le64, ofLe64?, Option.some.injEq]
-  bv_decide
+  bv_decide_kernel
 
 theorem ofLe32?_isSome {bytes : List Byte} (h : bytes.length = 4) :
     ∃ v, ofLe32? bytes = some v := by
