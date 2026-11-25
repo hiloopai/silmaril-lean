@@ -697,6 +697,32 @@ root = "tests.cerberus.ParameterCallRuntime"
 name = "ci_cerberus_integer_cast"
 root = "tests.cerberus.IntegerCastRuntime"
 
+# Optional native runtime drivers for the unchanged corpus observation checks.
+# Building these executables does not run their main functions or prove semantics.
+[[lean_exe]]
+name = "ci_corpus_cjson_array_item_core"
+root = "tests.cerberus.CjsonArrayItemContext"
+supportInterpreter = true
+
+[[lean_exe]]
+name = "ci_corpus_cjson_array_item_machine"
+root = "tests.cerberus.CjsonArrayItemMachine"
+supportInterpreter = true
+
+# Separate per-case transcript audit. Generate these instrumentation-only copies
+# with tools/corpus/replay_observation_audit.py before building these targets.
+[[lean_exe]]
+name = "ci_corpus_replay_audit_core"
+root = "ReplayAuditCore"
+srcDir = "build/corpus-replay-audit"
+supportInterpreter = true
+
+[[lean_exe]]
+name = "ci_corpus_replay_audit_machine"
+root = "ReplayAuditMachine"
+srcDir = "build/corpus-replay-audit"
+supportInterpreter = true
+
 # The worked example of the System V translation-validation shapes (docs/projects/sysv-tv.md):
 # it reads the records and the registry under `silmaril/` and the objects it registers.
 [[lean_lib]]
