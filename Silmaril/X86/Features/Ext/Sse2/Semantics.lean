@@ -3,6 +3,7 @@ module
 public import Silmaril.X86.Features.Ext.Sse2.Syntax
 public import Silmaril.X86.Features.Extension
 public import Silmaril.X86.Float.Semantics
+public import Silmaril.X86.Sse9.Logical.Defs
 
 /-!
 # Semantics of the SSE/SSE2 integer and move lane
@@ -60,7 +61,7 @@ def Logic.eval : Logic → BitVec 128 → BitVec 128 → BitVec 128
   | .and, a, b => a &&& b
   | .andn, a, b => ~~~a &&& b
   | .or, a, b => a ||| b
-  | .xor, a, b => a ^^^ b
+  | .xor, a, b => Sse9.Logical.Op.eval .pxor a b
 
 /-- PUNPCKL (`hi = false`) or PUNPCKH: interleave the low (high) halves of the
 destination and the source, the destination's lanes first. -/

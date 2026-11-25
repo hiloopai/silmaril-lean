@@ -62,7 +62,7 @@ def checkVector (i : Instr) (a b rax off mem ra rax' mem' : Nat) : Bool :=
 /-! ## Representative instances -/
 
 theorem pxor_self (a : BitVec 128) : (BinOp.logic .xor).eval a a = 0 := by
-  simp [BinOp.eval, Logic.eval]
+  simp [BinOp.eval, Logic.eval, Sse9.Logical.Op.eval]
 
 theorem pandn_self (a : BitVec 128) : (BinOp.logic .andn).eval a a = 0 := by
   simp [BinOp.eval, Logic.eval]
