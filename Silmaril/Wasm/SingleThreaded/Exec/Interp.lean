@@ -25,7 +25,8 @@ imported together). `stepI o := step? (interpHead o)` is the interpreter step.
 * `stepI_sound`, `stepI_complete`: hypothesis-free apart from `StoreOk` and
   `DeepAll IHeadInv` (the cast-target side conditions).
 * `interpHead_exact`: at a valid store, the head step returns every non-context
-  head step exactly.
+  head step exactly (`interpHead_exact_of_ty`: already when the store's principal
+  types are closed-valid, all it reads of `StoreOk`).
 * `runI o := run? (interpHead o)`; `runI_steps`, `runI_stopped_no_step`,
   `runI_complete` under a configuration invariant `I` (`InterpInv`) that implies
   `StoreOk` and `DeepAll IHeadInv` and is preserved by reduction. `typedInv`
@@ -380,9 +381,10 @@ theorem controlStep?_nest {o : GrowOracle} {s : Store H} {f : Frame} {vs : List 
     (hn : Adm.IsNest e) : controlStep? refOk? o s f vs e = none := by
   cases e <;> simp_all [Adm.IsNest, controlStep?, Admin.isCallRef]
 
-/-- **Exactness** of the head step at a valid store (the per-store form of
-`HeadExact`). -/
-theorem interpHead_exact (hs : StoreOk s) :
+/-- **Exactness** of the head step at a store whose principal types are closed-valid (the
+per-store form of `HeadExact`; all it reads of `StoreOk`). -/
+theorem interpHead_exact_of_ty
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀) :
     ∀ f vs args e c, IHeadInv f e → Head (profile o) s f args e c → (∃ q, vs = q ++ args) →
       interpHead o s f vs e = some (args.length, c) ∨
         (interpHead o s f vs e = none ∧ IsCtxtHead (profile o) s f e c) := by
@@ -396,7 +398,7 @@ theorem interpHead_exact (hs : StoreOk s) :
   · exact .inl (variableStep?_complete h hf hq)
   · exact .inl (tableStep?_complete h hf hq)
   · exact .inl (memoryStep?_complete h hf hq)
-  · exact .inl (referenceStep?_complete hs hinv.1 h hf hq)
+  · exact .inl (referenceStep?_complete_of_ty hs hinv.1 h hf hq)
   · left
     by_cases hi : AggNewInstr e
     · exact orElse_of_some (aggNewStep?_complete h hi hq)
@@ -417,18 +419,31 @@ theorem interpHead_exact (hs : StoreOk s) :
         obtain ⟨rfl, rfl⟩ := Adm.adminStep?_exact ha h
         exact .inl rfl
     · left
-      exact orElse_of_some (controlStep?_complete (refOk?_iff hs) hinv.2 h hf
+      exact orElse_of_some (controlStep?_complete (refOk?_iff_of_ty hs) hinv.2 h hf
         (by rintro n cont is rfl; exact hn trivial)
         (by rintro n cs is rfl; exact hn trivial)
         (by rintro n fi is rfl; exact hn trivial) hq)
 
-theorem interpHead_complete (hs : StoreOk s) :
+/-- **Exactness** of the head step at a valid store. -/
+theorem interpHead_exact (hs : StoreOk s) :
+    ∀ f vs args e c, IHeadInv f e → Head (profile o) s f args e c → (∃ q, vs = q ++ args) →
+      interpHead o s f vs e = some (args.length, c) ∨
+        (interpHead o s f vs e = none ∧ IsCtxtHead (profile o) s f e c) :=
+  interpHead_exact_of_ty (fun _ _ e => Ref.type?_tyOk hs e)
+
+theorem interpHead_complete_of_ty
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀) :
     ∀ f vs args e c, IHeadInv f e → Head (profile o) s f args e c → (∃ q, vs = q ++ args) →
       interpHead o s f vs e = none → IsCtxtHead (profile o) s f e c := by
   intro f vs args e c hi hH hq hn
-  rcases interpHead_exact hs f vs args e c hi hH hq with h | ⟨-, h⟩
+  rcases interpHead_exact_of_ty hs f vs args e c hi hH hq with h | ⟨-, h⟩
   · rw [h] at hn; cases hn
   · exact h
+
+theorem interpHead_complete (hs : StoreOk s) :
+    ∀ f vs args e c, IHeadInv f e → Head (profile o) s f args e c → (∃ q, vs = q ++ args) →
+      interpHead o s f vs e = none → IsCtxtHead (profile o) s f e c :=
+  interpHead_complete_of_ty (fun _ _ e => Ref.type?_tyOk hs e)
 
 /-- **Soundness** of the interpreter step. -/
 theorem stepI_sound {c c' : Config H} (hs : StoreOk c.store)

@@ -86,7 +86,9 @@ theorem refOk?_sound {s : Store H} {r : Ref} {rt : CRefType} (hrt : TyOk {} rt) 
       refine (RefOk.iff_principal s _ rt hrt).mpr ⟨rt₀, e, Sub.check_sound (by simpa using h), ?_⟩
       intro r' e'; cases e'
 
-theorem refOk?_complete {s : Store H} {r : Ref} {rt : CRefType} (hs : StoreOk s)
+/-- Completeness of `refOk?` needs of the store only that principal types are closed-valid. -/
+theorem refOk?_complete_of_ty {s : Store H} {r : Ref} {rt : CRefType}
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀)
     (hrt : TyOk {} rt) : RefOk s r rt → refOk? s r rt = true := by
   intro h
   induction r generalizing rt with
@@ -95,13 +97,22 @@ theorem refOk?_complete {s : Store H} {r : Ref} {rt : CRefType} (hs : StoreOk s)
     obtain ⟨hr', hn⟩ := hx r' rfl
     unfold refOk?
     simp only [e, Bool.and_eq_true, decide_eq_true_eq]
-    exact ⟨(Sub.check_iff TypeCtx.ok_empty rfl (Ref.type?_tyOk hs e) hrt).mpr hsub,
+    exact ⟨(Sub.check_iff TypeCtx.ok_empty rfl (hs _ _ e) hrt).mpr hsub,
       ih Ref.tyOk_any hr', hn⟩
   | _ =>
     obtain ⟨rt₀, e, hsub, -⟩ := (RefOk.iff_principal s _ rt hrt).mp h
     unfold refOk?
     simp only [e, Bool.and_true]
-    exact (Sub.check_iff TypeCtx.ok_empty rfl (Ref.type?_tyOk hs e) hrt).mpr hsub
+    exact (Sub.check_iff TypeCtx.ok_empty rfl (hs _ _ e) hrt).mpr hsub
+
+theorem refOk?_complete {s : Store H} {r : Ref} {rt : CRefType} (hs : StoreOk s)
+    (hrt : TyOk {} rt) : RefOk s r rt → refOk? s r rt = true :=
+  refOk?_complete_of_ty (fun _ _ e => Ref.type?_tyOk hs e) hrt
+
+theorem refOk?_iff_of_ty {s : Store H}
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀) :
+    ∀ r rt, TyOk {} rt → (refOk? s r rt = true ↔ RefOk s r rt) :=
+  fun _ _ hrt => ⟨refOk?_sound hrt, refOk?_complete_of_ty hs hrt⟩
 
 theorem refOk?_iff {s : Store H} (hs : StoreOk s) :
     ∀ r rt, TyOk {} rt → (refOk? s r rt = true ↔ RefOk s r rt) :=
@@ -229,8 +240,9 @@ theorem referenceStep?_sound {o : GrowOracle} {s : Store H} {f : Frame} {vs : Li
   rw [hd]
   exact .reference hstep
 
-theorem referenceStep?_complete {o : GrowOracle} {s : Store H} {f : Frame} {vs args : List Val}
-    {e : Admin} {c : Config H} (hs : StoreOk s)
+theorem referenceStep?_complete_of_ty {o : GrowOracle} {s : Store H} {f : Frame}
+    {vs args : List Val} {e : Admin} {c : Config H}
+    (hs : ∀ (r : Ref) (rt₀ : CRefType), Ref.type? s r = some rt₀ → TyOk {} rt₀)
     (hcast : ∀ rt, (e = .plain (.refTest rt) ∨ e = .plain (.refCast rt)) →
       TyOk {} (f.module.instRef rt)) :
     Head (profile o) s f args e c → famOf e = .reference → (∃ q, vs = q ++ args) →
@@ -250,10 +262,18 @@ theorem referenceStep?_complete {o : GrowOracle} {s : Store H} {f : Frame} {vs a
     | obtain ⟨rfl, rfl⟩ := Ref.snoc_eq (l := [.ref _, .ref _]) hl
   all_goals first
     | (simp [refStepRev?, *]; done)
-    | simp [refStepRev?, refOk?_complete hs (hcast _ (.inl rfl)) ‹_›]
-    | simp [refStepRev?, refOk?_complete hs (hcast _ (.inr rfl)) ‹_›]
+    | simp [refStepRev?, refOk?_complete_of_ty hs (hcast _ (.inl rfl)) ‹_›]
+    | simp [refStepRev?, refOk?_complete_of_ty hs (hcast _ (.inr rfl)) ‹_›]
     | simp [refStepRev?, Bool.eq_false_iff.mpr (fun h => ‹¬_› (refOk?_sound (hcast _ (.inl rfl)) h))]
     | simp [refStepRev?, Bool.eq_false_iff.mpr (fun h => ‹¬_› (refOk?_sound (hcast _ (.inr rfl)) h))]
     | rfl
+
+theorem referenceStep?_complete {o : GrowOracle} {s : Store H} {f : Frame} {vs args : List Val}
+    {e : Admin} {c : Config H} (hs : StoreOk s)
+    (hcast : ∀ rt, (e = .plain (.refTest rt) ∨ e = .plain (.refCast rt)) →
+      TyOk {} (f.module.instRef rt)) :
+    Head (profile o) s f args e c → famOf e = .reference → (∃ q, vs = q ++ args) →
+      referenceStep? o s f vs e = some (args.length, c) :=
+  referenceStep?_complete_of_ty (fun _ _ e => Ref.type?_tyOk hs e) hcast
 
 end Silmaril.Wasm.SingleThreaded.Exec

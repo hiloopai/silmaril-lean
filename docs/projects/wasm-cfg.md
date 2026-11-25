@@ -1170,8 +1170,11 @@ The plain graph stays an over-approximation, and claims about it say so.
              - `through` for invariants whose store is not `StoreOk`: `BackInv.diverges_through_of`
                (invariant kept by host-free steps, stores with closed-valid principal types `StoreTy`, code
                with the interpreter's cast side conditions); the interpreter's exactness reads `StoreOk`
-               only through `Ref.type?_tyOk` (`interpHead_exact'`, `refOk?_complete'`,
-               `referenceStep?_complete'` in `Proofs/Wasm/Abstract/BackInv/Through`).
+               only through `Ref.type?_tyOk`, and is stated at that minimal hypothesis in place
+               (`SingleThreaded.Exec.interpHead_exact_of_ty`/`interpHead_complete_of_ty`,
+               `referenceStep?_complete_of_ty`, `refOk?_complete_of_ty`/`refOk?_iff_of_ty`;
+               `Execution.Core.refOk?_complete_of_ty`/`refOk?_iff_of_ty`/`RefOk.principal'_of_ty`),
+               the `StoreOk` statements being their corollaries with unchanged statements.
              - Relaxed instance `DanglingBack.backD`: `ConfigOkD` against `HostTypedD` hosts. Fields:
                `ConfigOkD.suffix`/`label`/`handler`/`frameHole` (the hole of a supported context is
                supported), `ConfigOkD.step`, `ConfigOkD.wit` (`refOk_gst_iff`: defined-type casts are
