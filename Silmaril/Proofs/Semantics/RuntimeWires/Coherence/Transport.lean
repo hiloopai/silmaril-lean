@@ -118,7 +118,8 @@ theorem inv {i : A ≅ B} {j : A' ≅ B'} (e : i.hom ≈ₐ j.hom) : i.inv ≈�
   cases Iso.ext (eq_of_heq e)
   exact refl _
 
-variable [MonoidalCategory C]
+section
+variable [MonoidalCategoryStruct C]
 
 theorem tensor {X Y X' Y' : C} {k : X ⟶ Y} {l : X' ⟶ Y'}
     (e : f ≈ₐ g) (d : k ≈ₐ l) : f ⊗ₘ k ≈ₐ g ⊗ₘ l := by
@@ -129,10 +130,20 @@ theorem tensor {X Y X' Y' : C} {k : X ⟶ Y} {l : X' ⟶ Y'}
   exact refl _
 
 theorem whiskerLeft (e : f ≈ₐ g) {X X' : C} (p : X = X') : X ◁ f ≈ₐ X' ◁ g := by
-  simpa only [← MonoidalCategory.id_tensorHom] using (id p).tensor e
+  subst p
+  obtain ⟨rfl, rfl, ef⟩ := e
+  cases eq_of_heq ef
+  exact refl _
 
 theorem whiskerRight (e : f ≈ₐ g) {X X' : C} (p : X = X') : f ▷ X ≈ₐ g ▷ X' := by
-  simpa only [← MonoidalCategory.tensorHom_id] using e.tensor (id p)
+  subst p
+  obtain ⟨rfl, rfl, ef⟩ := e
+  cases eq_of_heq ef
+  exact refl _
+
+end
+
+variable [MonoidalCategory C]
 
 theorem join_whiskerRight {X : C} (f : A ⟶ B) (k : X ⟶ D) (p : B = X) (Y : C) :
     (join f k p) ▷ Y = join (f ▷ Y) (k ▷ Y) (congrArg (· ⊗ Y) p) :=
