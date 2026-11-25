@@ -57,7 +57,7 @@ deps = ["Prelude", "Semantics", "Logic", "Formats", "SSA"]
 [[region]]
 name = "Machine"
 scope = "Instruction sets (x86, RISC-V, AArch64), machine IRs, memory models, processes."
-deps = ["Prelude", "Semantics", "Numeric", "Crypto", "Formats", "SSA"]
+deps = ["Prelude", "Semantics", "Numeric", "Crypto", "Formats", "SSA", "Parse"]
 
 [[region]]
 name = "Process"
@@ -144,7 +144,7 @@ deps = ["Prelude", "Semantics", "Logic", "Project", "Machine"]
 [[region]]
 name = "Parse"
 scope = "Byte-level parsing: a combinator core for binary formats, with its laws, shared by the Wasm binary codecs and other formats."
-deps = ["Wasm"]
+deps = ["Prelude", "Wasm"]
 
 [[region]]
 name = "Cerberus"
