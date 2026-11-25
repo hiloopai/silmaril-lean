@@ -6,6 +6,18 @@
       "sha256": "87439ae537d09b428a316998ef9d07b223b1b03c12b6b66fe667ef70599c6ad5",
       "size": 6101
     },
+    "compact": {
+      "media": "text/x-lisp",
+      "path": "examples/compiles-to/straight/compact.sexp",
+      "sha256": "2073af22edb110eb357af78adcb830073c64159548f616d17e88975bd8ca07ae",
+      "size": 99
+    },
+    "compact_origins": {
+      "media": "text/x-lisp",
+      "path": "examples/compiles-to/straight/compact-origins.sexp",
+      "sha256": "87a4fea4ba2631df6037f074ccb92e6421cbe1ca2912994075d57b99ab02c593",
+      "size": 735
+    },
     "core": {
       "media": "text/x-lisp",
       "path": "examples/compiles-to/straight/core.sexp",
@@ -688,15 +700,26 @@
       [
         "decoded",
         "Silmaril.Project.CompilesTo.Probe.listingText CompilesToExamples.Straight.O0.add3Listing \"CompilesToExamples.Straight.O0.add3Listing\""
+      ],
+      [
+        "compact",
+        "CompilesToExamples.Explorer.Compact.add3.fn.encode"
+      ],
+      [
+        "compact_origins",
+        "CompilesToExamples.Explorer.Compact.add3.originText"
       ]
     ],
     "definitions": [
+      "CompilesToExamples.Explorer.Compact.add3",
       "CompilesToExamples.Straight.O0.add3",
       "CompilesToExamples.Straight.O0.add3Listing",
       "CompilesToExamples.Straight.ail",
       "CompilesToExamples.Straight.cText",
       "CompilesToExamples.Straight.core",
       "CompilesToExamples.Straight.elab_eq",
+      "Silmaril.Compiler.C.Compact.ExprProjection.eval_eq",
+      "Silmaril.Compiler.C.Compact.project",
       "Silmaril.Project.CompilesTo.FnData.Holds",
       "Silmaril.Project.CompilesTo.FnData.mapping",
       "Silmaril.Project.CompilesTo.FnData.source",
@@ -710,7 +733,8 @@
     "modules": [
       "CompilesToExamples.Explorer.Builds",
       "CompilesToExamples.Explorer.Code",
-      "Silmaril.Project.CompilesTo.Probe.Defs"
+      "Silmaril.Project.CompilesTo.Probe.Defs",
+      "CompilesToExamples.Explorer.Compact.Checks"
     ],
     "registry": {
       "source": "silmaril.compiles_to.straight.source",
@@ -720,6 +744,7 @@
       "ail": "CompilesToExamples.Straight.ail",
       "cname": "add3",
       "comorphism": "Silmaril.Project.CompilesTo.dwarf",
+      "compact": "CompilesToExamples.Explorer.Compact.add3",
       "fn": "CompilesToExamples.Straight.O0.add3",
       "isa": "Silmaril.X86.Open.isa",
       "listing": "CompilesToExamples.Straight.O0.add3Listing",
@@ -872,6 +897,12 @@
       "id": "nonvacuity/universal",
       "kind": "nonvacuity_universal",
       "statement": "CompilesToExamples.Straight.O0.add3.cfn.meaning.Inhabited"
+    },
+    {
+      "decl": "CompilesToExamples.Explorer.Compact.add3_project",
+      "id": "compact_projection",
+      "kind": "compact_projection",
+      "statement": "Silmaril.Compiler.C.Compact.project CompilesToExamples.Straight.ail = .ok CompilesToExamples.Explorer.Compact.add3"
     }
   ],
   "problem_form": "semantic",
@@ -901,6 +932,19 @@
       "obligation": "core_elaboration",
       "output": "core",
       "output_decl": "CompilesToExamples.Straight.core",
+      "side": "source",
+      "trust": "verified"
+    },
+    {
+      "evidence": "Kernel projection equality, including preorder source origins. Expression evaluation is related to C0; this is not a general Core simulation.",
+      "input": "ail",
+      "input_decl": "CompilesToExamples.Straight.ail",
+      "model": "Silmaril.Compiler.C.Compact.project",
+      "name": "Typed Ail → compact signed int",
+      "obligation": "compact_projection",
+      "origin_table": "compact_origins",
+      "output": "compact",
+      "output_decl": "CompilesToExamples.Explorer.Compact.add3",
       "side": "source",
       "trust": "verified"
     },
@@ -938,6 +982,10 @@
         {
           "label": "Core",
           "role": "core"
+        },
+        {
+          "label": "Compact C (signed int)",
+          "role": "compact"
         }
       ],
       "target": [

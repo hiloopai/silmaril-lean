@@ -436,6 +436,79 @@ recorded `correspondence.json` bytes, compiler profile and function. A wrong off
 the statement or the relation it proves; proving a statement about the chosen offsets does not
 validate the extractor. Facts are shown as "extracted", never as checked.
 
+### Compact signed-int view
+
+For `add3` and `max2`, choose **Compact C (signed int)** in the source selector. This is a
+separate projection of the exact typed Ail, not an intermediate input to Core elaboration.
+`Exact text` shows the canonical `compact-c-i32-v1` S-expression. Download the source-origin
+sidecar from the stage card: its IDs are zero-based preorder occurrences in the compact tree.
+The sidecar stores the Ail location and, on a `let`, the name of the new slot. Parameters
+occupy the initial slots. These coordinates are not C lines, DWARF offsets or Core program
+points; the explorer disables primary fragment links for both compact displays.
+
+The compact tree represents an unqualified LP64 signed-`int` leaf function: nonnegative
+decimal `int` literals, reads from initialized slots, checked addition, signed `>`, and
+initialized locals before a return or a terminal `if`. It refuses other statements and types,
+including uninitialized locals, assignments, loops, calls and pointers. There is no memory,
+aliasing, global state or I/O in the model. The function checks argument count, signed range
+and slot scope; signed addition overflow stops with UB, including in initialization.
+Evaluation reads left to right without side effects. Only the chosen branch runs.
+
+The evidence has four distinct scopes:
+
+- **Extraction.** The badge checks equality of the projection and binds both exact byte
+  streams. `project_sound` shows that every successful recognizer result is scoped and
+  structurally corresponds to the sole original Ail function body.
+- **Generic C0 semantics.** `ExprProjection.eval_eq` preserves expression results and stops.
+  `FunctionProjects.activation` extends this compositionally to declarations, branches and
+  returns for the original body. It starts after argument setup, with related initialized
+  in-range parameter slots and the matching C0 body, local types and return type. For fuel
+  at least `body.fuel + 2`, it gives the same in-range return without observable effects on
+  globals or output, or the same signed overflow stop. No other stop or exhaustion occurs
+  in that model under those hypotheses. This does not prove that `C0.prepare` or `callFn`
+  establish those hypotheses for every accepted program.
+- **Elaboration.** The existing exact Ail → Core equalities bind each original typed Ail
+  program to its Core result; the compact tree is not an input to that elaborator.
+- **Concrete Core behavior.** `add3_agrees` and `max2_agrees` compare compact and C0
+  returns to a forced Core run on `add3(1,2,3)` and `max2(1,2)` respectively. To generalize
+  this would require a relation between initialized slots and Core object state, showing
+  that all admissible executions of the elaborated body preserve returns/effects and
+  safe termination on compact success, with a separate account of overflow and stops.
+  Neither elaboration equality nor the closed runs supply that result.
+
+C text → Ail remains a compiled frontend evaluation, not a parser theorem.
+
+**Design and provenance.** Earlier MiniC work uses named state and checked arithmetic,
+and separates shape recognition of elaborated Core from closed validation. This view
+adapts those ideas, not that language or implementation. It projects directly from typed
+Ail and reuses C0's integer domain and stop model; a second named-state interpreter or
+the unsigned wrapping WordC representation would not provide that bridge. Dense slots
+and a separate origin table remove repeated metadata without conflating node identity
+with storage identity. Arena allocation and interning are deferred: the example trees
+are small, and sharing repeated metadata in larger programs needs separate measurements.
+
+```sh
+lake build Silmaril.Compiler.C.Compact.Codec
+for item in straight branch; do
+  dir=examples/compiles-to/$item
+  lake env lean --run tools/compiler-explorer/compact_fixture.lean \
+    "$dir/typed-ail.sexp" "$dir/compact.sexp" "$dir/compact-origins.sexp"
+done
+python3 -I tools/compiler-explorer/fixtures.py manifests
+make compiler-explorer-check
+```
+
+`node tools/compiler-explorer/compact_sizes.mjs` counts expanded wire lists, semantic
+constructor occurrences, and exact and formatted UTF-8 bytes. For `add3`, exact Ail/Core
+files are 6,101/21,231 bytes and compact tree + origins are 99 + 735 bytes. For `max2` they
+are 4,024/17,927 and 85 + 573 bytes. This removes repeated metadata and narrows scope;
+it does not measure shared heap objects or compress the full Ail or Core AST. `sum_to`
+is 8,664/36,729 Ail/Core bytes; the `callee`/`caller` unit is 4,867/18,619. Both elaborate
+but have no compact projection. For these baselines, run `compact_baseline.lean` on
+`examples/compiles-to/loop/loop.c` or a caller/callee source and pass the output directory to
+`compact_sizes.mjs`. `compact_fixture.lean bench <typed-ail.sexp> <calls>` compares
+warm evaluator calls with checked equal returns, not parser, elaborator or native build times.
+
 ## More general problems, and negative results
 
 **C ⇒ C translations** (`Silmaril.Project.Shapes.CompilesTo.Translate`).

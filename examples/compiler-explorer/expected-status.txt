@@ -41,6 +41,7 @@ compiles-to/branch/O0/max2  [compiled]  branch.c, gcc 13.3.0 -O0, max2 (object c
   artifact               proved       CompilesToExamples.Explorer.branch_O0_code
   nonvacuity/canonical   proved       CompilesToExamples.Explorer.BranchO0.canonical
   nonvacuity/universal   open         
+  compact_projection     proved       CompilesToExamples.Explorer.Compact.max2_project
 compiles-to/branch/O2/max2  [compiled]  branch.c, gcc 13.3.0 -O2, max2 (object code)
   edge/0                 open         
   point/0                proved       CompilesToExamples.Branch.O2.max2_point_0
@@ -55,6 +56,7 @@ compiles-to/branch/O2/max2  [compiled]  branch.c, gcc 13.3.0 -O2, max2 (object c
   artifact               proved       CompilesToExamples.Explorer.branch_O2_code
   nonvacuity/canonical   open         
   nonvacuity/universal   open         
+  compact_projection     proved       CompilesToExamples.Explorer.Compact.max2_project
 compiles-to/loop/O0/sum_to  [compiled]  loop.c, gcc 13.3.0 -O0, sum_to (object code)
   translation            unsupported  
   mapping                unsupported  
@@ -89,6 +91,7 @@ compiles-to/straight/O0/add3  [compiled]  straight.c, gcc 13.3.0 -O0, add3 (obje
   artifact               proved       CompilesToExamples.Explorer.straight_O0_code
   nonvacuity/canonical   proved       CompilesToExamples.Explorer.StraightO0.canonical
   nonvacuity/universal   open         
+  compact_projection     proved       CompilesToExamples.Explorer.Compact.add3_project
 compiles-to/straight/O2/add3  [compiled]  straight.c, gcc 13.3.0 -O2, add3 (object code)
   edge/0                 proved       CompilesToExamples.Explorer.StraightO2.edge_0
   point/0                proved       CompilesToExamples.Straight.O2.add3_point_0
@@ -103,6 +106,7 @@ compiles-to/straight/O2/add3  [compiled]  straight.c, gcc 13.3.0 -O2, add3 (obje
   artifact               proved       CompilesToExamples.Explorer.straight_O2_code
   nonvacuity/canonical   proved       CompilesToExamples.Explorer.StraightO2.canonical
   nonvacuity/universal   open         
+  compact_projection     proved       CompilesToExamples.Explorer.Compact.add3_project
 decompiled/scale  [decompiled]  scale.o (gcc 13.3.0 -O2) decompiled to C by SemLift + WordC
   decompilation          proved       CompilesToExamples.Explorer.Decompiled.scale
   translation            unsupported  

@@ -644,6 +644,10 @@ def compiles_to_manifests() -> list[dict]:
                                           f"CompilesToExamples.{cname}.{opt}.{fname}_point_{k}", eid, k, p["line"]))
                 if pts:
                     model = f"CompilesToExamples.{cname}"
+                    compact = (name, fname) in (("straight", "add3"), ("branch", "max2"))
+                    compact_ns = "CompilesToExamples.Explorer.Compact"
+                    if compact:
+                        lean_vars["compact"] = f"{compact_ns}.{fname}"
                     stages = cx.frontend_stages("c-function-x86", lean_vars)
                     obligations += [
                         ob("translation", "translation", f"{X}.translation" if proved else None),
@@ -665,6 +669,12 @@ def compiles_to_manifests() -> list[dict]:
                                            [stage["model"] for stage in stages],
                             "registry": {"source": f"silmaril.compiles_to.{name}.source",
                                          "target": f"silmaril.compiles_to.{name}.{opt.lower()}.object"}}
+                    if compact:
+                        lean["modules"].append(f"{compact_ns}.Checks")
+                        lean["definitions"] += [lean_vars["compact"],
+                                               "Silmaril.Compiler.C.Compact.ExprProjection.eval_eq"]
+                        obligations.append(ob("compact_projection", "compact_projection",
+                                              f"{compact_ns}.{fname}_project"))
                     ctx = {
                         "source_model": {"family": "cerberus-core",
                                          "decl": "Silmaril.Project.CompilesTo.FnData.source",
@@ -681,6 +691,7 @@ def compiles_to_manifests() -> list[dict]:
                                        "version": "C objects at their DWARF DW_OP_fbreg frame slots"},
                     }
                 else:
+                    compact = False
                     stages = []
                     reason = unsupported_reason or "c-tv produced no program points for this function"
                     for k in ["translation", "mapping", "refinement", "abi", "nonvacuity"]:
@@ -704,11 +715,15 @@ def compiles_to_manifests() -> list[dict]:
                                   "macros": file_ref(ENV / f"compiles-to-{opt}.macros.txt", "text/x-c")},
                                   **({"decoded": file_ref(LISTINGS / name / opt / "decoded.txt", "text/plain"),
                                       **frontend_artifacts(COMPILES_TO / name)}
-                                     if pts else {})},
+                                     if pts else {}),
+                                  **({"compact": file_ref(COMPILES_TO / name / "compact.sexp", "text/x-lisp"),
+                                      "compact_origins": file_ref(COMPILES_TO / name / "compact-origins.sexp", "text/x-lisp")}
+                                     if compact else {})},
                     "view": {"source": "source", "target": "listing", "target_map": listing_map,
                              "alternatives": {
                                  "source": [{"role": "source", "label": "C source"}]
-                                 + (frontend_alternatives() if pts else []),
+                                 + (frontend_alternatives() if pts else [])
+                                 + ([{"role": "compact", "label": "Compact C (signed int)"}] if compact else []),
                                  "target": [{"role": "listing", "label": "objdump (unverified)"},
                                             {"role": "target", "label": "Raw ELF bytes"}]
                                  + ([{"role": "decoded", "label": "Lean decoder listing"}] if pts else [])}},

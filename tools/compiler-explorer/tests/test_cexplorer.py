@@ -147,6 +147,8 @@ class Ingest(Base):
         for edge in manifest["edges"]:
             edge["source"], edge["target"] = edge["target"], edge["source"]
         arts.pop("listing_receipt")
+        arts.pop("compact")
+        arts.pop("compact_origins")
         for field in ("dwarf_extraction", "dwarf_facts", "include_env"):
             manifest.pop(field)
         block, = manifest["blocks"]
@@ -662,7 +664,7 @@ class Polish(Base):
         cx.ingest_manifest(self.db, STRAIGHT_O0)
         v = cx.problem_view(self.db, "compiles-to/straight/O0/add3")
         alts = {a["role"] for side in ("source", "target") for a in v["view"]["alternatives"][side]}
-        self.assertEqual(alts, {"source", "ail", "core", "target", "listing", "decoded"})
+        self.assertEqual(alts, {"source", "ail", "core", "compact", "target", "listing", "decoded"})
         self.assertTrue(v["alt_texts"]["ail"].startswith("($tuple "))
         self.assertTrue(v["alt_texts"]["core"].startswith("($document "))
         self.assertNotEqual(v["artifacts"]["ail"]["sha256"], v["artifacts"]["core"]["sha256"])
@@ -677,6 +679,10 @@ class Polish(Base):
         self.assertEqual((stages["core"]["input"], stages["core"]["trust"]), ("ail", "verified"))
         equality = next(obl for obl in v["obligations"] if obl["id"] == stages["core"]["obligation"])
         self.assertEqual(equality["statement"], cx.core_equality("CompilesToExamples.Straight"))
+        self.assertEqual((stages["compact"]["input"], stages["compact"]["origin_table"]), ("ail", "compact_origins"))
+        projection = next(obl for obl in v["obligations"] if obl["id"] == "compact_projection")
+        self.assertEqual(projection["status"], "unchecked")
+        self.assertTrue(v["alt_texts"]["compact"].startswith("(compact-c-i32-v1 3 "))
         facts = v["extra"]["dwarf_facts"]
         self.assertTrue(any(f["kind"] == "frame_slot" and "refinement" in f["used_by"] for f in facts))
 
@@ -691,6 +697,10 @@ class Polish(Base):
         bindings["decoded"] += "\n"
         with self.assertRaisesRegex(cx.Rejected, "decoded: artifact bytes differ"):
             cx.check_rendered_artifacts(self.db, STRAIGHT_O0, manifest, {"artifacts": bindings})
+        bindings["decoded"] = bindings["decoded"].removesuffix("\n")
+        with self.assertRaisesRegex(cx.Rejected, "compact_origins: artifact bytes differ"):
+            cx.check_rendered_artifacts(self.db, STRAIGHT_O0, manifest,
+                                        {"artifacts": {**bindings, "compact_origins": bindings["compact"]}})
         with self.assertRaisesRegex(cx.Rejected, "exactly the named artifact bindings"):
             cx.check_rendered_artifacts(self.db, STRAIGHT_O0, manifest, {"artifacts": {}})
 
@@ -715,6 +725,7 @@ class Polish(Base):
             (STRAIGHT_O0, lambda m: m["stages"][0].update(trust="verified", obligation="core_elaboration"), "scoped evidence"),
             (STRAIGHT_O0, lambda m: m["stages"][1].update(input="source"), "scoped evidence"),
             (STRAIGHT_O0, lambda m: m["stages"][1].update(obligation="elaboration"), "scoped evidence"),
+            (STRAIGHT_O0, lambda m: m["stages"][2].update(origin_table="source"), "scoped evidence"),
             (self.C2C_DROP, lambda m: m["stages"][3].update(obligation="core_elaboration"), "scoped evidence"),
             (self.C2C_DROP, lambda m: m["view"]["alternatives"]["target"].append({"role": "ail"}), "only on its own side"),
             (STRAIGHT_O0, lambda m: m["dwarf_extraction"].update(profile="O2"), "target and profile"),
@@ -793,7 +804,7 @@ class Binding(Base):
             e = next((e for e in m["edges"] if e["id"] == o.get("edge")), None)
             o["statement"] = cx.statement_for("c-function-x86", m["lean"]["vars"], o["kind"],
                                               e and e["point"], e and e.get("line"))
-            if o["kind"] != "core_elaboration":
+            if o["kind"] not in cx.ARTIFACT_STAGE_KINDS:
                 o["decl"] = decls.get(o["id"])
         p = self.write("m.json", m)
         cx.ingest_manifest(self.db, p)
@@ -803,7 +814,8 @@ class Binding(Base):
         st = self.statuses("compiles-to/branch/O2/max2")
         self.assertEqual(st["artifact"], "rejected")
         self.assertEqual(st["translation"], "unbound")
-        self.assertEqual([key for key, status in st.items() if status == "proved"], ["core_elaboration"])
+        self.assertEqual([key for key, status in st.items() if status == "proved"],
+                         ["core_elaboration", "compact_projection"])
 
 
 class Evidence(Base):
