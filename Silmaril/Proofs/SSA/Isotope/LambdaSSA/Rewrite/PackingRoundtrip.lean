@@ -116,7 +116,7 @@ theorem unpack_packExits {Γ : VCtx τ} {L : LCtx τ} {r : Region Φ}
   | zero => rfl
   | succ i ih => exact congrArg Tm.inr ih
 
-private theorem packFamily_liftVars :
+theorem packFamily_liftVars :
     liftLSubstVars (Φ := Φ) (fun i => .br 0 (packedExitArg i (.var 0))) =
       fun i => .br 0 (packedExitArg i (.var 0)) := by
   funext i
