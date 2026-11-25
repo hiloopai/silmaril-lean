@@ -102,8 +102,9 @@ Not needed: `Adequate`, determinism (except for the composition forms).
 
 * **A plain passthrough for the realizable object.** `compTripleS` is not the restricted
   passthrough link `linkO` for any store map: such a link shows forced refusals (item 4); item 6
-  is the correct generic form, with the stateful `hostTripleR`, which is not a handler. No
-  concrete component is exhibited whose open and realizable objects differ.
+  is the correct generic form, with the stateful `hostTripleR`, which is not a handler. A
+  concrete pair whose realizable objects agree and whose open objects differ is `HLinkedSep`'s
+  (`HLinkedSep.compSession_eq`, `HLinkedSep.compSessionO_ne`); it is not used here.
 * The composition forms on the legal interface (`linkS` commuting with `StratLegal.restrict`),
   and composition forms at nondeterministic profiles.
 * Nested or n-ary components with host imports; the relation to `SessionHost.hostLinkS` (host
