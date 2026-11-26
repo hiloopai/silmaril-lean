@@ -16,6 +16,7 @@ allocation premises.
 | [Scalar blocks](../../Silmaril/Wasm/Institution/Operational/Blocks/Native/Thms.lean) and [nested branch exits](../../Silmaril/Wasm/Institution/Operational/BranchExit/Native/Thms.lean) | An isolated scalar block with flat locals and normal exit. A separate guard covers `br 1` followed by `br 0` under two already-entered block labels. | Nested source entry, `br_if`, `br_table`, and loop continuations. |
 | [Checked indexed blocks](../../Silmaril/Wasm/Institution/Operational/Blocks/Indexed/Native/Thms.lean) | Core and Lime1 resolve a numeric signature in the current frame module. The standalone slice covers flat local code, immediate `br 0`, and immediate function return. The ranked graph below also checks indexed blocks, conditionals, and loops. | Nonnumeric signatures and whole-module validation. V1 admits only unindexed, parameterless structured labels with at most one result. |
 | [Memory32 queries](../../Silmaril/Wasm/Institution/Operational/MemoryQuery/Native/Thms.lean) and [writes](../../Silmaril/Wasm/Institution/Operational/MemoryWrite/Native/Thms.lean) | Isolated `memory.size`, full-width `i32.load`, and full-width `i32.store` at index zero and static offset zero. The bounds trap preserves the store. | Packed and floating accesses, other offsets, Lime1 bulk operations, and Core memory64 or multiple memories. |
+| [Memory32 in checked direct calls](../../Silmaril/Wasm/Institution/Operational/Memory32Graph/Thms.lean) | Core and Lime1 thread one allocated Memory32 instance through typed numeric prefixes, full-width zero-offset `i32.load` and `i32.store`, direct calls, fallthrough and trap. Every function module resolves memory slot zero to the same store address. Exact successors and finite runs include nested frames, caller reads of callee writes, and trap cleanup with earlier writes retained. | Explicit structured control and returns in this memory profile, growth, packed and floating accesses, other offsets, multiple mutable memories, indirect or host calls, V1, and infinite-run correspondence. |
 | [Memory32 growth](../../Silmaril/Wasm/Institution/Operational/MemoryGrow/Native/Thms.lean) | An isolated `memory.grow` at index zero. The Core spec profile agrees on aligned buffers and representable maxima. Success appends zero-filled pages and returns the old size. Failure returns all ones and preserves the store. | Oracle-controlled growth, multiple memories, and memory64. |
 | [Direct-call resolution](../../Silmaril/Wasm/Institution/Operational/CallResolution/Native/Thms.lean) and [typed callee frames](../../Silmaril/Wasm/Institution/Operational/CallFrame/Native/Thms.lean) | Individually checked resolution and resolved invocation of one allocated non-host function. Numeric locals, at most one result, explicit return, fallthrough, and trap propagation. The typed caller keeps its value prefix. | Indirect calls, host contracts and divergence, and composition with caller continuations. |
 | [Checked indirect-call resolution](../../Silmaril/Wasm/Institution/Operational/CallResolution/Indirect/Native/Thms.lean) | Core and Lime1 read a fixed allocated Table32 at module slot zero. Exact successors consume the unsigned i32 selector while retaining the numeric operands and pending continuation. Bounds, null, and signature mismatch have separate checked outcomes. Successful lookup enters the allocated graph function on its ordered numeric argument suffix. | The separate contextual theorem below applies after successful resolution. Other table profiles, host targets, and V1 remain open. |
@@ -257,6 +258,32 @@ always calls itself. The generic theorem uses exact allocation and typing for
 every function in the admitted graph. Indirect calls inside graph bodies, host calls, mutable stores,
 whole-module validation, and infinite-run correspondence are separate.
 [Native graph theorems](../../Silmaril/Wasm/Institution/Operational/CallContinuation/OuterCall/Ranked/Graph/Native/Thms.lean)
+
+## Memory32 effects through direct calls
+
+The memory profile uses an independent typed straight-line opcode grammar for
+local reads, integer binary operations, Memory32 accesses, direct calls and
+`unreachable`. A function starts with a literal operand prefix. Each source call
+has an exact module link to the declared non-host function, with its argument
+and result suffix in delivery order. Core and Lime1 share the checked frame
+judgment and preserve their native call resolution and invocation steps.
+The allocated slot fixes memory metadata. A store changes only that instance's
+bytes and preserves its extent. The native renderer reconstructs the full store,
+including the other memories, and the byte update commutes with the
+Lime1-to-Core store projection at the original extent.
+
+The fixtures enter through an ordinary typed call. One caller loads a word
+written two frames below it. A bounds trap after the same write discards the
+active operands and pending code before unwinding each function label and
+frame. The unwound native configurations keep the previously written bytes.
+Another fixture enters a self-call and observes a finite prefix through the
+second activation's store. The graph theorem ranges over finite traces without
+a bound on the call depth or an assumption of termination. The profile uses
+the current native memory model and supplies no whole-module or page-alignment
+validation.
+[Memory32 graph theorems](../../Silmaril/Wasm/Institution/Operational/Memory32Graph/Thms.lean)
+
+## Checked indirect calls
 
 Lime1 resolves the indirect call in one native step. Core unfolds it into
 `table.get`, a nullable cast, and `call_ref`. The exact resolution trace ends at
