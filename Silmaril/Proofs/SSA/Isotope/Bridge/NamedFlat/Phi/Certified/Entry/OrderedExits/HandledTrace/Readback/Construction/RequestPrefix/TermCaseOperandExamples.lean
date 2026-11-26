@@ -47,17 +47,61 @@ example : built.code.block 0 = .case (.bv 0)
     (.case (.bv 0) (.br 1 (.bv 0)) (.br 2 (.bv 0))) :=
   by decide +kernel
 
-/-- Both bare injection arms need the written exit type. The source
-check can use it, while the emitted let result has to synthesize a type. -/
+/-- Both bare injection arms get their sum type from the exit. -/
 private def injected : FiniteCFG (Fin 3) 0 1 1 where
   entry := .br 0 (.case (.bv 0) (.inl .unit) (.inr .unit))
   block := Fin.elim0
 
+private def injectionInputs : BoundCtx PacketType 1 := .snoc .nil bit
+private def injectionOutputs (_ : Fin 1) : PacketType := bit
+private def buildInjected := compileNative sig injectionInputs Fin.elim0 injectionOutputs injected
+private def builtInjected : Scheduled sig injectionInputs Fin.elim0 injectionOutputs injected :=
+  buildInjected.get (by decide +kernel)
+
+example : builtInjected.code.entry =
+    .let₁ (.case (.bv 0) (.inl .unit) (.inr .unit)) (.br 0 (.bv 0)) := by decide +kernel
+
+-- The same emitted code still needs the scheduler's binder ascription.
 example : let _ := sig.typing
-    NamedFlat.checkExpected injected (.snoc .nil bit) Fin.elim0 (fun _ => bit) = true :=
+    NamedFlat.checkExpected builtInjected.code injectionInputs Fin.elim0 injectionOutputs = false :=
   by decide +kernel
-example : (compileNative sig (.snoc .nil bit) Fin.elim0 (fun _ => bit) injected).isNone = true :=
+
+private def heterogeneous (_ : Fin 1) : PacketType := .coprod .unit bit
+
+-- The right arm of the written case provides unit where the exit expects bit.
+example : (compileNative sig injectionInputs Fin.elim0 heterogeneous injected).isNone = true :=
   by decide +kernel
+
+-- Even an explicit ascription is checked against both written arms.
+example : let _ := sig.typing
+    NamedFlat.checkWithBindings builtInjected.code injectionInputs Fin.elim0 heterogeneous
+      (.node (some (heterogeneous 0)) .empty .empty .empty) Fin.elim0 = false :=
+  by decide +kernel
+
+-- The inner ascription is needed within the selected arm of the outer case,
+-- at a position inside the outer let's initializer.
+private def nestedInjection : FiniteCFG (Fin 3) 0 1 1 where
+  entry := .br 0 (.case (.bv 0) (.case (.bv 1) (.inl .unit) (.inr .unit)) (.inr .unit))
+  block := Fin.elim0
+
+example : (compileNative sig injectionInputs Fin.elim0 injectionOutputs nestedInjection).isSome = true :=
+  by decide +kernel
+
+private def injectedValue (left : Bool) : Denote bit :=
+  if left then .inl ⟨⟩ else .inr ⟨⟩
+
+private def injectedEnv (left : Bool) : Env Atom := fun _ => bit.encode (injectedValue left)
+
+/-- The original term case and actual packed runner agree on both input tags,
+including the tag in the value returned at the ordered exit. -/
+theorem packed_injected (left : Bool) :
+    builtInjected.observe sig.primitive (fun _ => .unit) (NamedFlat.Capture.packEnv 1 (injectedEnv left)) =
+      pure (FiniteCFG.packedTreeOutput (0, bit.encode (injectedValue left))) := by
+  rw [builtInjected.packed_run]
+  have entry : injected.entry.erase = .br 0 (.case (.var 0) (.inl .unit) (.inr .unit)) := rfl
+  cases left <;>
+    simp [FiniteCFG.erase, entry, region, LambdaSSA.Semantics.Interaction.term, injectedEnv, injectedValue,
+      Silmaril.SSA.LambdaRTL.CFG.Cyclic.Link.Fields.Typed.Visible.PacketType.encode, splitTransfer]
 
 private def first : Denote bit := .inl ⟨⟩
 private def saved : Denote bit := .inr ⟨⟩

@@ -755,7 +755,8 @@ theorem compiled_seed {A : Type 1} {Events : Type → Type}
 namespace Computed
 
 open Silmaril.Isotope.Bridge.NamedFlat.Phi.Certified.Entry.OrderedExits.Readback.RequestPrefix.EffectfulEntry.Multiple.Computed
-  (Residual Operand Requests Scheduled Substitution Boundary Lifted scheduleCase scheduleCases substExpr renameExpr bindSubstitution liftSubstitution hoist scheduleJump)
+  (Residual Operand Requests Scheduled Substitution Boundary Lifted scheduleCase scheduleCases scheduleWithBindings
+    scheduleCaseWithBindings scheduleJumpWithBindings hoistWithBindings substExpr renameExpr bindSubstitution liftSubstitution hoist scheduleJump)
 
 variable {Δ Θ : List PacketType}
 
@@ -1113,7 +1114,7 @@ private theorem schedule_case_run (instr : Primitive E F α) (env : Env α) {a b
     | .inr payload => region instr (extend env payload) right
     | _ => diverge
   let scheduled := arg.schedule
-  rw [scheduleCase, region_wrap]
+  rw [scheduleCase, scheduleCaseWithBindings, Scheduled.wrapRegion, region_wrap]
   calc
     _ = bindRequests instr scheduled.requests env
         (fun final => finish (Residual.eval (readSlots position final) scheduled.value)) :=
@@ -1141,7 +1142,7 @@ private theorem hoist_run (instr : Primitive E F α) (env : Env α) (outer : F)
     (argument : Operand sig Γ (sig.argument outer)) (tail : Region F) :
     region instr env (.let₁ (.op outer argument.written) tail) =
       region instr env (hoist outer argument tail) := by
-  rw [hoist, region_wrap]
+  rw [hoist, hoistWithBindings, Scheduled.wrapRegion, region_wrap]
   let s := argument.schedule
   calc
     _ = bindRequests instr s.requests env (fun final =>
@@ -1167,7 +1168,7 @@ private theorem hoist_run (instr : Primitive E F α) (env : Env α) (outer : F)
 private theorem schedule_jump_run (instr : Primitive E F α) (env : Env α) (label : Nat)
     {ty : PacketType} (argument : Operand sig Γ ty) :
     region instr env (.br label argument.written) = region instr env (scheduleJump label argument) := by
-  rw [scheduleJump, region_wrap]
+  rw [scheduleJump, scheduleJumpWithBindings, Scheduled.wrapRegion, region_wrap]
   calc
     _ = bindRequests instr argument.schedule.requests env (fun final =>
         pure (label, Residual.eval (readSlots position final) argument.schedule.value)) := by
@@ -1180,13 +1181,14 @@ private theorem schedule_jump_run (instr : Primitive E F α) (env : Env α) (lab
       simp only [region, residual_tree instr position final (readSlots position final)
         argument.schedule.value (fun _ => rfl), pure_bind]
 
-theorem schedule_cases_run [DecidableEq F] (instr : Primitive E F α) (env : Env α)
-    {labels : Nat} {types : Fin labels → PacketType} (Γ : List PacketType) (written prepared : Region F)
-    (accepted : scheduleCases sig types Γ written = some prepared) :
-    region instr env written = region instr env prepared := by
+private theorem schedule_with_bindings_run [DecidableEq F] (instr : Primitive E F α) (env : Env α)
+    {labels : Nat} {types : Fin labels → PacketType} (Γ : List PacketType) (written : Region F)
+    (prepared : Region F × Silmaril.Isotope.Bridge.NamedFlat.BindingTypes PacketType)
+    (accepted : scheduleWithBindings sig types Γ written = some prepared) :
+    region instr env written = region instr env prepared.1 := by
   induction written generalizing Γ env prepared with
   | br label arg =>
-    simp only [scheduleCases] at accepted
+    simp only [scheduleWithBindings] at accepted
     split at accepted
     · obtain ⟨⟨argument, sourceEq⟩, _, rfl⟩ := Option.map_eq_some_iff.mp accepted
       change _ = region instr env (scheduleJump label argument)
@@ -1196,19 +1198,22 @@ theorem schedule_cases_run [DecidableEq F] (instr : Primitive E F α) (env : Env
   | let₁ value tail ih =>
     cases value
     case op op argument =>
-      simp only [scheduleCases, Option.bind_eq_some_iff, Option.map_eq_some_iff] at accepted
+      simp only [scheduleWithBindings, Option.bind_eq_some_iff, Option.map_eq_some_iff] at accepted
       obtain ⟨⟨arg, sourceEq⟩, _, next, checked, rfl⟩ := accepted
-      rw [← hoist_run instr env op arg next, ← sourceEq]
+      change _ = region instr env (hoist op arg next.1)
+      rw [← hoist_run instr env op arg next.1, ← sourceEq]
       simp only [region]
       exact bind_congr fun reply => ih (extend env reply) (sig.reply op :: Γ) next checked
     all_goals
-      simp only [scheduleCases, Option.bind_eq_some_iff, Option.map_eq_some_iff] at accepted
+      simp only [scheduleWithBindings, Option.bind_eq_some_iff, Option.map_eq_some_iff] at accepted
       obtain ⟨⟨ty, _⟩, _, next, checked, rfl⟩ := accepted
+      change _ = region instr env (.let₁ _ next.1)
       simp only [region]
       exact bind_congr fun reply => ih (extend env reply) (ty :: Γ) next checked
   | let₂ value tail ih =>
-    simp only [scheduleCases, Option.bind_eq_some_iff, Option.map_eq_some_iff] at accepted
+    simp only [scheduleWithBindings, Option.bind_eq_some_iff, Option.map_eq_some_iff] at accepted
     obtain ⟨⟨a, b⟩, _, next, checked, rfl⟩ := accepted
+    change _ = region instr env (.let₂ _ next.1)
     simp only [region]
     apply bind_congr
     intro result
@@ -1216,9 +1221,10 @@ theorem schedule_cases_run [DecidableEq F] (instr : Primitive E F α) (env : Env
     | pair left right => exact ih (extend (extend env left) right) (b :: a :: Γ) next checked
     | atom _ | unit | inl _ | inr _ => rfl
   | case test left right ihLeft ihRight =>
-    simp only [scheduleCases, Option.bind_eq_some_iff, Option.map_eq_some_iff] at accepted
+    simp only [scheduleWithBindings, Option.bind_eq_some_iff, Option.map_eq_some_iff] at accepted
     obtain ⟨found, _, left', hl, right', hr, rfl⟩ := accepted
-    rw [← schedule_case_run instr env found.operand left' right', ← found.source_eq]
+    change _ = region instr env (scheduleCase found.operand left'.1 right'.1)
+    rw [← schedule_case_run instr env found.operand left'.1 right'.1, ← found.source_eq]
     simp only [region]
     apply bind_congr
     intro result
@@ -1227,6 +1233,13 @@ theorem schedule_cases_run [DecidableEq F] (instr : Primitive E F α) (env : Env
     | inr payload => exact ihRight (extend env payload) _ right' hr
     | atom _ | unit | pair _ _ => rfl
   | cfg _ _ _ _ _ => cases accepted
+
+theorem schedule_cases_run [DecidableEq F] (instr : Primitive E F α) (env : Env α)
+    {labels : Nat} {types : Fin labels → PacketType} (Γ : List PacketType) (written prepared : Region F)
+    (accepted : scheduleCases sig types Γ written = some prepared) :
+    region instr env written = region instr env prepared := by
+  obtain ⟨result, checked, rfl⟩ := Option.map_eq_some_iff.mp accepted
+  exact schedule_with_bindings_run instr env Γ written result checked
 
 private theorem boundary_run {labels : Nat} {types : Fin labels → PacketType}
     (boundary : Boundary sig context types) (instr : Primitive E F α) (env : Env α) :

@@ -21,16 +21,25 @@ variable {F : Type} {labels blocks exits captures : Nat}
   {packets : Fin blocks → PacketType} {outputs : Fin exits → PacketType}
   {source : FiniteCFG F blocks exits captures}
 
-/-- Check the scheduled syntax in the original bound-variable and label
-scope, retaining the exact scheduling equation. -/
+/-- Reconstruct the scheduled syntax with its original finite scopes.
+Ascriptions are indexed by syntax positions, so scoping keeps them in place. -/
+def scheduleFlatWithBindings [DecidableEq F] (sig : PrimitiveSignature F)
+    (types : Fin labels → PacketType) (context : BoundCtx PacketType captures)
+    (written : Flat F labels captures) :
+    Option ({row : Flat F labels captures // scheduleCases sig types context.toList written.erase = some row.erase}
+      × NamedFlat.BindingTypes PacketType) :=
+  match accepted : scheduleWithBindings sig types context.toList written.erase with
+  | none => none
+  | some (prepared, bindings) => (scopedRow labels captures prepared).map fun row =>
+    have scheduled : scheduleCases sig types context.toList written.erase = some prepared :=
+      congrArg (Option.map Prod.fst) accepted
+    (⟨row.val, scheduled.trans (congrArg some row.property.symm)⟩, bindings)
+
 def scheduleFlat [DecidableEq F] (sig : PrimitiveSignature F)
     (types : Fin labels → PacketType) (context : BoundCtx PacketType captures)
     (written : Flat F labels captures) :
     Option {row : Flat F labels captures // scheduleCases sig types context.toList written.erase = some row.erase} :=
-  match scheduleCases sig types context.toList written.erase with
-  | none => none
-  | some prepared => (scopedRow labels captures prepared).map fun row =>
-    ⟨row.val, congrArg some row.property.symm⟩
+  (scheduleFlatWithBindings sig types context written).map Prod.fst
 
 structure Compiled (sig : PrimitiveSignature F) (context : BoundCtx PacketType captures)
     (packets : Fin blocks → PacketType) (outputs : Fin exits → PacketType)
@@ -53,12 +62,14 @@ def compile [DecidableEq F] (sig : PrimitiveSignature F) (context : BoundCtx Pac
   letI := sig.typing
   if original : NamedFlat.checkExpected source context packets outputs = true then do
     let types := SSA.FiniteSum.append packets outputs
-    let entry ← scheduleFlat sig types context source.entry
-    let rows ← tabulateDependent blocks fun i => scheduleFlat sig types (.snoc context (packets i)) (source.block i)
-    let code : FiniteCFG F blocks exits captures := ⟨entry.val, fun i => (rows i).val⟩
-    if typed : NamedFlat.checkExpected code context packets outputs = true then
-      return ⟨code, ⟨inferInstance, entry.property⟩, fun i => ⟨inferInstance, (rows i).property⟩,
-        NamedFlat.checkExpected_sound _ _ _ _ original, NamedFlat.checkExpected_sound _ _ _ _ typed⟩
+    let (entry, entryBindings) ← scheduleFlatWithBindings sig types context source.entry
+    let rows ← tabulateDependent blocks fun i =>
+      scheduleFlatWithBindings sig types (.snoc context (packets i)) (source.block i)
+    let code : FiniteCFG F blocks exits captures := ⟨entry.val, fun i => (rows i).1.val⟩
+    let rowBindings := fun i => (rows i).2
+    if typed : NamedFlat.checkWithBindings code context packets outputs entryBindings rowBindings = true then
+      return ⟨code, ⟨inferInstance, entry.property⟩, fun i => ⟨inferInstance, (rows i).1.property⟩,
+        NamedFlat.checkExpected_sound _ _ _ _ original, NamedFlat.checkWithBindings_sound _ _ _ _ _ _ typed⟩
     else none
   else none
 

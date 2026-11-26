@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.SSA.Isotope.Bridge.NamedFlat.Phi.Certified.Entry.OrderedExits.HandledTrace.Readback.Construction.RequestPrefix.EffectfulEntry.Multiple.Defs
+public import Silmaril.SSA.Isotope.Bridge.NamedFlat.Typing.Expected.Defs
 
 /-! # Schedule the effects in a written request operand -/
 
@@ -10,6 +11,7 @@ namespace Silmaril.Isotope.Bridge.NamedFlat.Phi.Certified.Entry.OrderedExits.Rea
 
 open LambdaSSA (FiniteCFG Flat Region Tm)
 open Morphism.CaseSSA (erase)
+open NamedFlat (BindingTypes)
 open Silmaril.SSA.LambdaRTL.CFG.Cyclic.Link.Fields.Typed.Visible
   (PacketType PrimitiveSignature Slot slotAt)
 
@@ -144,6 +146,17 @@ def Requests.wrap : {A : Type} → (bind destruct : Tm F → A → A) →
     bind (.case (test.erase position) (left.wrap Tm.let₁ Tm.let₂ (l.erase position))
       (right.wrap Tm.let₁ Tm.let₂ (r.erase position))) (next.wrap bind destruct body)
 
+/-- Record only the case-result types. Branch-local binders are addressed
+inside the initializer, and the shared continuation is the second child. -/
+def Requests.bindings : {Γ Δ : List PacketType} → Requests sig Γ Δ →
+    BindingTypes PacketType → BindingTypes PacketType
+  | _, _, .done, tail => tail
+  | _, _, .request _ _ next, tail | _, _, .unpack _ next, tail =>
+    .node none .empty (next.bindings tail) .empty
+  | _, _, .choose (c := c) _ left _ right _ next, tail =>
+    let arms := BindingTypes.node none .empty (left.bindings .empty) (right.bindings .empty)
+    .node (some c) arms (next.bindings tail) .empty
+
 structure Scheduled (sig : PrimitiveSignature F) (Γ : List PacketType) (ty : PacketType) where
   scope : List PacketType
   requests : Requests sig Γ scope
@@ -195,6 +208,10 @@ def Operand.schedule (arg : Operand sig Γ ty) : Scheduled sig Γ ty :=
 def Scheduled.term (scheduled : Scheduled sig Γ ty) : Tm F :=
   scheduled.requests.wrap Tm.let₁ Tm.let₂ (scheduled.value.erase position)
 
+def Scheduled.wrapRegion (scheduled : Scheduled sig Γ ty) (body : Region F)
+    (bindings : BindingTypes PacketType) : Region F × BindingTypes PacketType :=
+  (scheduled.requests.wrap Region.let₁ Region.let₂ body, scheduled.requests.bindings bindings)
+
 /-- Synthesize slots and replies. Propagate a known product or sum type
 to its fields and a known result type to a let body. -/
 def readOperandAt (sig : PrimitiveSignature F) :
@@ -240,18 +257,25 @@ def readOperand (sig : PrimitiveSignature F) (Γ : List PacketType) (written : T
     Option (Σ ty : PacketType, Operand sig Γ ty) :=
   readOperandAt sig Γ none written
 
-/-- Execute the schedule before the outer request. Shift the older
-slots in its continuation while keeping the outer reply at slot zero. -/
-def hoist (outer : F) (arg : Operand sig Γ (sig.argument outer)) (tail : Region F) : Region F :=
+/-- Execute the schedule before the outer request. Shift older slots under
+its reply, retaining the binder types at their original syntax positions. -/
+def hoistWithBindings (outer : F) (arg : Operand sig Γ (sig.argument outer))
+    (tail : Region F × BindingTypes PacketType) : Region F × BindingTypes PacketType :=
   let scheduled := arg.schedule
-  scheduled.requests.wrap Region.let₁ Region.let₂
-    (.let₁ (.op outer (scheduled.value.erase position))
-      (tail.renameVars (Silmaril.DeBruijn.lift scheduled.requests.shift)))
+  scheduled.wrapRegion (.let₁ (.op outer (scheduled.value.erase position))
+      (tail.1.renameVars (Silmaril.DeBruijn.lift scheduled.requests.shift)))
+    (.node none .empty tail.2 .empty)
+
+def hoist (outer : F) (arg : Operand sig Γ (sig.argument outer)) (tail : Region F) : Region F :=
+  (hoistWithBindings outer arg (tail, .empty)).1
 
 /-- Execute the operand schedule and send its residual to the same label. -/
-def scheduleJump (label : Nat) (arg : Operand sig Γ ty) : Region F :=
+def scheduleJumpWithBindings (label : Nat) (arg : Operand sig Γ ty) : Region F × BindingTypes PacketType :=
   let scheduled := arg.schedule
-  scheduled.requests.wrap Region.let₁ Region.let₂ (.br label (scheduled.value.erase position))
+  scheduled.wrapRegion (.br label (scheduled.value.erase position)) .empty
+
+def scheduleJump (label : Nat) (arg : Operand sig Γ ty) : Region F :=
+  (scheduleJumpWithBindings label arg).1
 
 /-- An exact written entry boundary and its operand type. Jumps use the
 same positional block and exit profile as the shared CFG checker. -/
