@@ -1,5 +1,6 @@
 module
 
+public import Silmaril.Logic.ACL2.Equational.Thms
 public import Silmaril.Logic.Abstraction.Propositional.Thms
 public import Silmaril.Logic.Algebraic.DependentFamily
 public import Silmaril.Logic.Algebraic.DependentFamily.Category
@@ -1409,6 +1410,10 @@ silmaril morphism inst.morphism.of_obs := Silmaril.Inst.Morphism.ofObs (facts :=
 silmaril morphism logic.abstraction.first_order.to_abstraction := Silmaril.Logic.Abstraction.FirstOrder.toAbstraction
   (title := "Canonical first-order models into Abstraction Logic")
 
+silmaril morphism logic.acl2.to_equational := Silmaril.Logic.ACL2.Equational.toEquational
+  (from := logic.acl2.inst) («to» := logic.institution.examples.eq.inst)
+silmaril morphism logic.acl2.forget_definitions := Silmaril.Logic.ACL2.forgetDefinitions
+  (from := logic.acl2.presented_inst) («to» := logic.acl2.inst)
 silmaril morphism logic.algebraic.dependent_family.equational.morphism := Silmaril.Logic.Algebraic.DependentFamily.Equational.morphism
 silmaril morphism logic.algebraic.initial.matching.global_presented.compiler_hom := Silmaril.Logic.Algebraic.Initial.Matching.GlobalPresented.compilerHom
 silmaril morphism logic.algebraic.order_sorted.to_equational := Silmaril.Logic.Algebraic.OrderSorted.toEquational

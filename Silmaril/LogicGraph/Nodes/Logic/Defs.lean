@@ -1,5 +1,6 @@
 module
 
+public import Silmaril.Logic.ACL2.Consequence.Defs
 public import Silmaril.LogicGraph.Nodes.Logic.Abstraction.Defs
 public import Silmaril.Logic.Algebraic.DependentFamily.Defs
 public import Silmaril.Logic.Algebraic.Initial.Defs
@@ -184,6 +185,10 @@ Registrations of the institution and room declarations of the `Logic` tree (`doc
 -/
 
 silmaril institution inst.institution.of_obs := Silmaril.Inst.Institution.ofObs
+silmaril institution logic.acl2.inst := Silmaril.Logic.ACL2.inst
+  (title := "ACL2 fragment over arity signatures")
+silmaril institution logic.acl2.presented_inst := Silmaril.Logic.ACL2.presentedInst
+  (title := "ACL2 fragment over signatures with definitions")
 silmaril institution logic.algebraic.initial.matching.finite_sorted_compiler.institution.source_inst := Silmaril.Logic.Algebraic.Initial.Matching.FiniteSortedCompiler.Institution.sourceInst
 silmaril institution logic.algebraic.initial.matching.finite_sorted_compiler.institution.theory_inst := Silmaril.Logic.Algebraic.Initial.Matching.FiniteSortedCompiler.Institution.theoryInst
 silmaril institution logic.algebraic.initial.matching.global_presented.source_inst := Silmaril.Logic.Algebraic.Initial.Matching.GlobalPresented.sourceInst
@@ -336,6 +341,10 @@ silmaril institution logic.reachability.inst := Silmaril.Logic.Reachability.inst
 silmaril institution logic.temporal.ctl_star.inst := Silmaril.Logic.Temporal.CTLStar.inst
 silmaril institution logic.temporal.ctl_star.rich_inst := Silmaril.Logic.Temporal.CTLStar.richInst
 silmaril institution logic.type_theory.lambda_pi.equality_institution.inst := Silmaril.Logic.TypeTheory.LambdaPi.EqualityInstitution.inst
+
+silmaril room logic.acl2.room := Silmaril.Logic.ACL2.room (institution := logic.acl2.inst)
+silmaril room logic.acl2.presented_room := Silmaril.Logic.ACL2.Consequence.presentationRoom
+  (institution := logic.acl2.presented_inst)
 silmaril room logic.algebraic.initial.matching.finite_sorted_compiler.institution.source_room := Silmaril.Logic.Algebraic.Initial.Matching.FiniteSortedCompiler.Institution.sourceRoom
 silmaril room logic.algebraic.initial.matching.finite_sorted_compiler.institution.theory_room := Silmaril.Logic.Algebraic.Initial.Matching.FiniteSortedCompiler.Institution.theoryRoom
 silmaril room logic.algebraic.initial.matching.global_presented.native_room := Silmaril.Logic.Algebraic.Initial.Matching.GlobalPresented.nativeRoom
