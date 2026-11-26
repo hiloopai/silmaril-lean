@@ -50,6 +50,7 @@ structure Wrapper where
   legalAlias := wrapper.legalAlias
   parameters := ⟨[], []⟩
   keywordOnly := []
+  varargs := none
   arguments := wrapper.arguments
   codes := wrapper.codes
   reads := wrapper.reads

@@ -504,6 +504,7 @@ private def relayDeclaration (second bad : Bool) : Imports.WrapperDeclaration "l
   legalAlias := by decide
   parameters := ⟨[], []⟩
   keywordOnly := []
+  varargs := none
   arguments := []
   codes := []
   reads := []
@@ -1378,7 +1379,7 @@ private def forwardingWrapper : Imports.WrapperDeclaration "loaded" forwardingLo
 example (x y : Lists.Value) (checked : forwardingWrapper.site.declaration.signature.validate = .ok ()) :
     Functions.bindArguments forwardingWrapper.site.declaration.signature [] ⟨[x, y], []⟩ =
       .ok ⟨[(fileSlot "x", x), (fileSlot "y", y)], [], []⟩ :=
-  Imports.wrapper_positional_binding forwardingWrapper rfl rfl checked (.success (.cons (.cons .nil)))
+  Imports.wrapper_positional_binding forwardingWrapper rfl rfl rfl checked (.success (.cons (.cons .nil)))
 
 private def forwarder : OrderedConsumer where
   imports := [forwardingLoad]
@@ -1883,44 +1884,64 @@ private def keywordDownstream (test : KeywordTest) : OrderedConsumer where
      .assign "after" (by decide) (.list (.int 198)) .forget]
   declared := rfl
 
+private def checkedRelayWithSetup
+    (declaration : Imports.WrapperDeclaration "loaded" forwardingLoad.aliases savedGlobals)
+    (name : declaration.name = "relay") (consumerPlan : OrderedConsumer)
+    (loads : consumerPlan.imports = [downstreamLoad]) {producer middle consumer : ResolvedModule}
+    (prod : resolve positionalCommands #[] = .ok producer)
+    (mid : resolve (relayWithSetup declaration name).commands producer.program = .ok middle)
+    (top : resolve consumerPlan.commands middle.program = .ok consumer)
+    (ready : Imports.Chain.OrderedReady consumerPlan middle.program
+      (some (Imports.initial "bound" (.wrapper declaration producer.program.size (.regular pickRoot.callable))))
+      (fun _ => none)) :
+    Imports.Chain.Graph producer.program (positionalManifest producer middle consumer) := by
+  let middlePlan := relayWithSetup declaration name
+  let wrapper := Callee.wrapper declaration producer.program.size (.regular pickRoot.callable)
+  let env : Loader.ModuleId → Imports.Tracked
+    | 0 => Imports.Chain.rootExports positionalExports
+    | 1 => fun exportName => if exportName ∈ middlePlan.globals then
+        Imports.trackSuite producer.program forwardingEnv middlePlan.body exportName else none
+    | _ => fun _ => none
+  have throughMiddle := Imports.ordered_preserves middlePlan mid
+  have throughTop := Imports.ordered_preserves consumerPlan top
+  have producerSize : producer.program.size = 2 := by rw [(plan_code positionalPlan prod).2]; rfl
+  refine ⟨consumerPlan.commands, middle.program, consumer, top,
+    fun index decl found => throughTop _ _ (throughMiddle index decl found), env, ?_⟩
+  intro id bound
+  have range : id = 0 ∨ id = 1 ∨ id = 2 := by change id < 3 at bound; omega
+  rcases range with rfl | rfl | rfl
+  · exact .root positionalPlan rfl prod (fun _ _ found => found) rfl
+  · refine .ordered (finalEnv := some forwardingEnv) middlePlan mid (fun _ _ found => found)
+      throughTop rfl ?_ ?_
+    · exact .load (dependency := 0) (by decide) rfl
+        (.found (.regular pickRoot.callable) rfl (.found (.regular spareRoot.callable) rfl (.done _)))
+        (fun _ equal => by cases equal; exact .done _) (by simp)
+    · exact ⟨⟨.regular pickRoot.callable, rfl, by change 1 < producer.program.size; omega, trivial⟩, rfl⟩
+  · refine .ordered (finalEnv := some (Imports.initial "bound" wrapper)) consumerPlan top throughMiddle
+      (fun _ _ found => found) rfl ?_ ready
+    have exported : env 1 "relay" = some wrapper := by
+      simp [env, middlePlan, relayWithSetup, savedGlobals, Imports.trackSuite, Imports.Step.advance,
+        Imports.Step.emit, Imports.initial, Imports.track, Imports.Copy.track, forwardingEnv, name, wrapper]
+      rfl
+    rw [loads]
+    exact .load (dependency := 1) (by decide) rfl (.found wrapper exported (.done _))
+      (fun _ equal => by cases equal; exact .done _) (by simp)
+
 private def checkedKeywordWrapper (test : KeywordTest) {producer middle consumer : ResolvedModule}
     (prod : resolve positionalCommands #[] = .ok producer)
     (mid : resolve keywordForwarder.commands producer.program = .ok middle)
     (top : resolve (keywordDownstream test).commands middle.program = .ok consumer) :
     Imports.Chain.Graph producer.program (positionalManifest producer middle consumer) := by
   let wrapper := Callee.wrapper keywordWrapper producer.program.size (.regular pickRoot.callable)
-  let env : Loader.ModuleId → Imports.Tracked
-    | 0 => Imports.Chain.rootExports positionalExports
-    | 1 => fun name => if name ∈ keywordForwarder.globals then
-        Imports.trackSuite producer.program forwardingEnv keywordForwarder.body name else none
-    | _ => fun _ => none
-  have throughMiddle := Imports.ordered_preserves keywordForwarder mid
-  have throughTop := Imports.ordered_preserves (keywordDownstream test) top
-  have producerSize : producer.program.size = 2 := by rw [(plan_code positionalPlan prod).2]; rfl
-  refine ⟨(keywordDownstream test).commands, middle.program, consumer, top,
-    fun index decl found => throughTop _ _ (throughMiddle index decl found), env, ?_⟩
-  intro id bound
-  have range : id = 0 ∨ id = 1 ∨ id = 2 := by change id < 3 at bound; omega
-  rcases range with rfl | rfl | rfl
-  · exact .root positionalPlan rfl prod (fun _ _ found => found) rfl
-  · refine .ordered (finalEnv := some forwardingEnv) keywordForwarder mid (fun _ _ found => found)
-      throughTop rfl ?_ ?_
-    · exact .load (dependency := 0) (by decide) rfl
-        (.found (.regular pickRoot.callable) rfl (.found (.regular spareRoot.callable) rfl (.done _)))
-        (fun _ equal => by cases equal; exact .done _) (by simp)
-    · exact ⟨⟨.regular pickRoot.callable, rfl, by change 1 < producer.program.size; omega, trivial⟩, rfl⟩
-  · refine .ordered (finalEnv := some (Imports.initial "bound" wrapper)) (keywordDownstream test) top throughMiddle
-      (fun _ _ found => found) rfl ?_ ?_
-    · exact .load (dependency := 1) (by decide) rfl (.found wrapper rfl (.done _))
-        (fun _ equal => by cases equal; exact .done _) (by simp)
-    · refine ⟨⟨wrapper, rfl, wrapper, rfl, wrapper, rfl, trivial⟩, ?_⟩
-      funext name
-      change (none : Option Callee) = _
-      by_cases isAlias : name = "bound"
-      · subst name
-        rfl
-      · simp [keywordDownstream, savedDownstreamGlobals, keywordCall, Imports.trackSuite, Imports.Step.advance,
-          Imports.Copy.track, Imports.initial, Imports.track, isAlias, wrapper, Callee.returned, Root.callable, pickRoot]
+  apply checkedRelayWithSetup keywordWrapper rfl (keywordDownstream test) rfl prod mid top
+  refine ⟨⟨wrapper, rfl, wrapper, rfl, wrapper, rfl, trivial⟩, ?_⟩
+  funext name
+  change (none : Option Callee) = _
+  by_cases isAlias : name = "bound"
+  · subst name
+    rfl
+  · simp [keywordDownstream, savedDownstreamGlobals, keywordCall, Imports.trackSuite, Imports.Step.advance,
+      Imports.Copy.track, Imports.initial, Imports.track, isAlias, Callee.returned, Root.callable, pickRoot]
 
 example (test : KeywordTest) {producer middle consumer : ResolvedModule}
     (prod : resolve positionalCommands #[] = .ok producer)
@@ -1939,11 +1960,11 @@ example (test : KeywordTest) {producer middle consumer : ResolvedModule}
   obtain ⟨out, source, _, meaning, reached⟩ := Imports.Chain.agrees graph 2 (by change 2 < 3; decide) entered valid
   exact ⟨entered, out, requests, source, meaning, reached⟩
 
-private def keywordRun (test : KeywordTest) (warm : Bool) :
+private def runRelayWithSetup (wrapper consumerPlan : OrderedConsumer) (warm : Bool) :
     Option (Loader.Result Modules.Published × Lists.State × Lists.State) := do
   let producer ← (resolve positionalCommands).toOption
-  let middle ← (resolve keywordForwarder.commands producer.program).toOption
-  let consumer ← (resolve (keywordDownstream test).commands middle.program).toOption
+  let middle ← (resolve wrapper.commands producer.program).toOption
+  let consumer ← (resolve consumerPlan.commands middle.program).toOption
   let manifest := positionalManifest producer middle consumer
   let cold : Loader.Session := {runtime := forwardingCaller}
   let entry ← if warm then
@@ -1953,12 +1974,15 @@ private def keywordRun (test : KeywordTest) (warm : Bool) :
     else some cold
   some (Loader.load consumer.program manifest 2 entry, enter consumer.source entry.runtime, entry.runtime)
 
-private def keywordRecord (session : Loader.Session) : Bool :=
+private def keywordRun (test : KeywordTest) (warm : Bool) :=
+  runRelayWithSetup keywordForwarder (keywordDownstream test) warm
+
+private def relayDefaultRecord (session : Loader.Session) (defaultValue : Int := 27) : Bool :=
   match (session.cache.lookup 1).bind (fun value => value.exports.lookup "relay") with
   | some (.function address) =>
     match session.runtime.heap[address]? with
     | some ⟨.function { defaults := [(slot, .list saved)], .. }, true⟩ =>
-      slot == fileSlot "key" && session.runtime.heap[saved]? == some ⟨.list [.scalar (.int 27)], true⟩ &&
+      slot == fileSlot "key" && session.runtime.heap[saved]? == some ⟨.list [.scalar (.int defaultValue)], true⟩ &&
         forwardingRecord session
     | _ => false
   | _ => false
@@ -1970,7 +1994,7 @@ private def keywordSuccess (warm : Bool) : Bool :=
       published.exports.lookup "out" == some (.scalar (.int 53)) &&
       published.exports.lookup "again" == some (.scalar (.int 27)) &&
       singletonInts final.runtime == [76, 27, 199, 27, 88, 53, 53, 27, 198] &&
-      final.cache.map Prod.fst == [2, 1, 0] && keywordRecord final &&
+      final.cache.map Prod.fst == [2, 1, 0] && relayDefaultRecord final &&
       callerRestored caller final.runtime && (final.runtime.slots (fileSlot "bound")).isNone
   | _ => false
 
@@ -1993,7 +2017,7 @@ private def keywordFailure (test : KeywordTest) (warm : Bool) : Bool :=
         importCell frame final.runtime slot == some ⟨.binding none, false⟩) &&
       singletonInts final.runtime == [76, 27, 199, 27, 88] ++ operands &&
       final.runtime.heap.size == 29 + operands.length &&
-      final.cache.map Prod.fst == [1, 0] && keywordRecord final &&
+      final.cache.map Prod.fst == [1, 0] && relayDefaultRecord final &&
       callerRestored caller final.runtime && (final.runtime.slots (fileSlot "bound")).isNone
   | _ => false
 
@@ -2008,5 +2032,159 @@ private def keywordFailure (test : KeywordTest) (warm : Bool) : Bool :=
       [("at", starlark%[0]), ("at", starlark%[[64][1]])] none none)] with
   | .error (.validation (.syntax (.duplicateExplicitKeyword "at"))) => true
   | _ => false
+
+private def collectorWrapper : Imports.WrapperDeclaration "loaded" forwardingLoad.aliases savedGlobals where
+  name := "relay"
+  target := by decide
+  visible := by decide
+  legalAlias := by decide
+  parameters := ⟨["x"], []⟩
+  keywordOnly := [.required "at", .defaulted ⟨"key", starlark%[[0]], boxed 0, []⟩]
+  varargs := some "rest"
+  unshadowed := by decide
+  keywordLexical := .cons (.list (.int 0)) .nil
+  arguments := [starlark%[rest], .index starlark%[key] (.scalar (.read "at"))]
+  codes := [localRead "rest", .index (localRead "key") (localRead "at")]
+  reads := [fileSlot "rest", fileSlot "key", fileSlot "at"]
+  operands := .cons (.read (by decide) (.owned (by decide)) (.owned (by decide)))
+    (.cons (.index (.read (by decide) (.owned (by decide)) (.owned (by decide)))
+      (.read (by decide) (.owned (by decide)) (.owned (by decide)))) .nil)
+  keywords := .empty
+  selects := .enclosing (.enclosing (by decide) (by decide))
+    (.owned (.owned (by decide)) (.owned (.owned (by decide)) (.owned (.owned (by decide)) .nil)))
+
+private def collectorForwarder : OrderedConsumer := relayWithSetup collectorWrapper rfl
+
+private inductive CollectorTest where
+  | success | missing | unknown | operandError
+  deriving DecidableEq
+
+private def collectorCall (destination : String) (declared : destination ∈ savedDownstreamGlobals)
+    (test : Option CollectorTest) : Imports.Invocation downstreamLoad.aliases savedDownstreamGlobals where
+  callee := "bound"
+  declared := .inl (by decide)
+  legal := by decide
+  destination := destination
+  destinationGlobal := declared
+  arguments := starlark%[91] :: match test with
+    | none => []
+    | some .success => [starlark%[17], starlark%[marker], starlark%[18]]
+    | some .missing => [starlark%[[63]]]
+    | _ => [starlark%[17]]
+  codes := int 91 :: match test with
+    | none => []
+    | some .success => [int 17, globalRead "marker", int 18]
+    | some .missing => [boxed 63]
+    | _ => [int 17]
+  reads := if test = some .success then [globalSlot "marker"] else []
+  operands := by
+    cases test with
+    | none => exact .cons (.int 91) .nil
+    | some test =>
+      cases test with
+      | success =>
+        exact .cons (.int 91) (.cons (.int 17) (.cons (.read (by decide)
+          (.global (by decide) (by decide) (by decide)) (.module (by decide) (by decide) (by decide)))
+          (.cons (.int 18) .nil)))
+      | missing => exact .cons (.int 91) (.cons (.list (.int 63)) .nil)
+      | unknown | operandError => exact .cons (.int 91) (.cons (.int 17) .nil)
+  keywords := match test with
+    | none => ⟨[("at", starlark%[0])], [("at", int 0)], [], .cons (.int 0) .nil, by decide⟩
+    | some .success =>
+      ⟨[("key", .list [.scalar (.int (-1))]), ("at", starlark%[0])], [("key", boxed (-1)), ("at", int 0)], [],
+        .cons (.list (.int (-1))) (.cons (.int 0) .nil), by decide⟩
+    | some .missing => .empty
+    | some .unknown => keywordArguments .unknown
+    | some .operandError => keywordArguments .operandError
+
+private def collectorDownstream (test : CollectorTest) : OrderedConsumer where
+  imports := [downstreamLoad]
+  globals := savedDownstreamGlobals
+  body :=
+    [.invoke (collectorCall "firstResult" (by decide) none),
+     .assign "marker" (by decide) (.list (.int 88)) .forget,
+     .invoke (collectorCall "out" (by decide) (some test)),
+     .invoke (collectorCall "again" (by decide) none),
+     .assign "after" (by decide) (.list (.int 198)) .forget]
+  declared := rfl
+
+private def checkedCollectorWrapper (test : CollectorTest) {producer middle consumer : ResolvedModule}
+    (prod : resolve positionalCommands #[] = .ok producer)
+    (mid : resolve collectorForwarder.commands producer.program = .ok middle)
+    (top : resolve (collectorDownstream test).commands middle.program = .ok consumer) :
+    Imports.Chain.Graph producer.program (positionalManifest producer middle consumer) := by
+  let wrapper := Callee.wrapper collectorWrapper producer.program.size (.regular pickRoot.callable)
+  apply checkedRelayWithSetup collectorWrapper rfl (collectorDownstream test) rfl prod mid top
+  refine ⟨⟨wrapper, rfl, wrapper, rfl, wrapper, rfl, trivial⟩, ?_⟩
+  funext name
+  change (none : Option Callee) = _
+  by_cases isAlias : name = "bound"
+  · subst name
+    rfl
+  · simp [collectorDownstream, savedDownstreamGlobals, collectorCall, Imports.trackSuite, Imports.Step.advance,
+      Imports.Copy.track, Imports.initial, Imports.track, isAlias, Callee.returned, Root.callable, pickRoot]
+
+example (test : CollectorTest) {producer middle consumer : ResolvedModule}
+    (prod : resolve positionalCommands #[] = .ok producer)
+    (mid : resolve collectorForwarder.commands producer.program = .ok middle)
+    (top : resolve (collectorDownstream test).commands middle.program = .ok consumer)
+    (caller : Lists.State) (history : List Nat) (bounded : ∀ id ∈ history, id < 3) :
+    let graph := checkedCollectorWrapper test prod mid top
+    ∃ entered out, Imports.Chain.Requests graph history ⟨caller, []⟩ entered ∧
+      Imports.Chain.TraceRun (positionalManifest producer middle consumer) 2 entered out ∧
+      Loader.load consumer.program (positionalManifest producer middle consumer) 2 entered = out ∧
+      Imports.Chain.Reached producer.program consumer.program (positionalManifest producer middle consumer)
+        graph.exports 2 entered out := by
+  intro graph
+  obtain ⟨entered, requests, valid⟩ := Imports.Chain.requests graph history bounded ⟨caller, []⟩
+    (fun _ _ impossible => nomatch impossible)
+  obtain ⟨out, source, _, meaning, reached⟩ := Imports.Chain.agrees graph 2 (by change 2 < 3; decide) entered valid
+  exact ⟨entered, out, requests, source, meaning, reached⟩
+
+private def tupleCount (state : Lists.State) : Nat :=
+  (state.heap.toList.filter (fun cell => match cell.contents with | .tuple .. => true | _ => false)).length
+
+private def emptyTupleCell (state : Lists.State) (address : Nat) (frozen : Bool) : Bool :=
+  state.heap[address]? == some ⟨.tuple [] (some [.openTuple, .closeTuple]), frozen⟩
+
+private def collectorSuccess (warm : Bool) : Bool :=
+  match runRelayWithSetup collectorForwarder (collectorDownstream .success) warm with
+  | some (.ok published final, _, caller) =>
+    match published.exports.lookup "firstResult", published.exports.lookup "out",
+        published.exports.lookup "again", published.exports.lookup "marker" with
+    | some (.tuple first), some (.tuple ordered), some (.tuple again), some (.list marker) =>
+      emptyTupleCell final.runtime first true && emptyTupleCell final.runtime again true && first != again &&
+      final.runtime.heap[ordered]? == some ⟨.tuple [.scalar (.int 17), .list marker, .scalar (.int 18)] none, true⟩ &&
+      tupleCount final.runtime == 3 &&
+      final.runtime.heap.any (fun cell => cell.contents == .binding (some (.scalar (.int (-1))))) &&
+      final.cache.map Prod.fst == [2, 1, 0] && relayDefaultRecord final 0 &&
+      callerRestored caller final.runtime && (final.runtime.slots (fileSlot "bound")).isNone
+    | _, _, _, _ => false
+  | _ => false
+
+private def collectorFailure (test : CollectorTest) (warm : Bool) : Bool :=
+  match runRelayWithSetup collectorForwarder (collectorDownstream test) warm with
+  | some (.error (.initialization 2 (.runtime error)) final, frame, caller) =>
+    let correct := match test, error with
+      | .missing, .missingArguments ["at"] | .unknown, .unexpectedKeyword "extra"
+      | .operandError, .indexRange 1 1 => true
+      | _, _ => false
+    let operands := if test == .missing then [63] else [64, 65]
+    match importCell frame final.runtime (globalSlot "firstResult") with
+    | some ⟨.binding (some (.tuple address)), false⟩ =>
+      correct && emptyTupleCell final.runtime address false && tupleCount final.runtime == 1 &&
+      [globalSlot "out", globalSlot "again", globalSlot "after"].all (fun slot =>
+        importCell frame final.runtime slot == some ⟨.binding none, false⟩) &&
+      singletonInts final.runtime == [76, 0, 199, 88] ++ operands &&
+      final.runtime.heap.size == 31 + operands.length &&
+      final.cache.map Prod.fst == [1, 0] && relayDefaultRecord final 0 &&
+      callerRestored caller final.runtime && (final.runtime.slots (fileSlot "bound")).isNone
+    | _ => false
+  | _ => false
+
+#guard collectorSuccess false
+#guard collectorSuccess true
+#guard [.missing, .unknown, .operandError].all (fun test =>
+  collectorFailure test false && collectorFailure test true)
 
 end Silmaril.Languages.Starlark.Modules.Resolve.Capture.Trace.Published

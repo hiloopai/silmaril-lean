@@ -3,6 +3,7 @@ module
 public import Silmaril.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.Call.Named.Defs
 public import Silmaril.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.Call.Thms
 import Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.Call.Named.Mapping
+import Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.Call.Named.Binder
 import Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.Call.Named.Execution
 
 public section
@@ -10,6 +11,8 @@ public section
 namespace Silmaril.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.Call.Named
 
 open Assignment (LexicalBlock)
+open Recursive (Site)
+open Recursive.Call (ClosureAt)
 open Functions
 open Functions.Lowering.Resolve (resolveTracked)
 open Lists (State Outcome)
@@ -42,6 +45,34 @@ theorem packs_total (signature : Signature)
       packArgs signature bound caller = .ok assigned packed :=
   Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.Call.Named.packs_total
     signature caller bound
+
+/-- Preparation uses the reached record, performs the ordinary binder and
+packs its result before activation. Binding failure leaves the operand state intact. -/
+theorem prepare_exact {parent : LexicalBlock} {formals : List PlainKeywordParameter}
+    {varargs kwargs : Option String} {scope : Scope} (site : Site parent formals varargs kwargs scope)
+    (program : Program) (available : List DeclarationId) (id : DeclarationId) (permitted : id ∈ available)
+    (found : program[id]? = some site.declaration)
+    {defining state : State} {address : Nat} (record : ClosureAt site id defining state address)
+    (actual : Actual) {result : Except Error BoundArguments} (binding : SiteBinding site record.defaults actual result) :
+    match result with
+    | .error error => prepareExpanded program available actual (.function address) state = .error error state
+    | .ok bound =>
+      ∃ assigned packed, Packs site.declaration.signature.varargs site.declaration.signature.kwargs state bound assigned packed ∧
+        Body.Keeps state.heap.size state packed ∧ packed.bindings = state.bindings ∧
+        prepareExpanded program available actual (.function address) state =
+          .ok (.closure ⟨id, permitted, site.declaration.body⟩)
+            (activate packed site.declaration record.captures assigned) := by
+  have agreement := Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.Call.Named.prepare_exact
+    site program available id permitted found record actual binding
+  cases result <;> exact agreement
+
+/-- The tuple payload starts after the ordinary positional parameters. -/
+theorem binding_positional_surplus {positional named : List Parameter} {varargs kwargs : Option Binding}
+    {saved : Bindings} {actual : Actual} {assigned : BoundArguments}
+    (binding : Binds positional named varargs kwargs saved actual (.ok assigned)) :
+    assigned.surplusPositional = actual.positional.drop positional.length := by
+  cases binding
+  rfl
 
 /-- The collector gets the exact ordered surplus at a fresh tuple address. -/
 theorem packed_tuple {slot : Binding} {caller packed : State} {bound : BoundArguments} {assigned : Bindings}

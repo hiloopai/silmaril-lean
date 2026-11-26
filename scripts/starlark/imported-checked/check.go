@@ -616,6 +616,70 @@ out = bound(0, at=0, at=[64][1])
 	require(err != nil && strings.Contains(err.Error(), "keyword argument \"at\" is repeated"), err)
 }
 
+func checkCollectorWrapper(warm bool, failure string) {
+	const forwarding = `load("positional.star", ignored="spare", loaded="pick")
+seed = 27
+before = [76]
+def relay(x, *rest, at, key=[0]):
+    return loaded(rest, key[at])
+later = [199]
+`
+	call := "bound(91, 17, marker, 18, key=[-1], at=0)"
+	message := ""
+	operandEvents := ""
+	switch failure {
+	case "missing":
+		call = "bound(91, mark([63]))"
+		message = "missing 1 argument (at)"
+		operandEvents = ",63"
+	case "unknown":
+		call = "bound(91, 17, extra=mark([64]), at=mark([65])[0])"
+		message = `unexpected keyword argument "extra"`
+		operandEvents = ",64,65"
+	case "operand":
+		call = "bound(91, 17, extra=mark([64]), at=mark([65])[1], key=mark([66]))"
+		message = "index 1 out of range"
+		operandEvents = ",64,65"
+	}
+	source := fmt.Sprintf(`load("forwarder.star", bound="relay")
+def mark(xs):
+    print(xs[0])
+    return xs
+firstResult = bound(91, at=0)
+marker = [88]
+out = %s
+again = bound(91, at=0)
+after = [198]
+`, call)
+	preload := ""
+	if warm {
+		preload = "forwarder.star"
+	}
+	run := initPositionalWrapper(preload, forwarding, source)
+	relay := run.cache["forwarder.star"]["relay"].(*starlark.Function)
+	require(relay.HasVarargs() && !relay.HasKwargs() && relay.NumKwonlyParams() == 2 &&
+		relay.ParamDefault(1) == nil && relay.ParamDefault(3) == nil, relay)
+	saved := relay.ParamDefault(2).(*starlark.List)
+	require(saved == run.savedDefaults[2] && saved.String() == "[0]" &&
+		saved.SetIndex(0, starlark.MakeInt(7)) != nil, saved)
+	partial := run.consumer
+	first, firstOK := partial["firstResult"].(starlark.Tuple)
+	require(firstOK && len(first) == 0 && partial["marker"].String() == "[88]" && partial["bound"] == nil, partial)
+	if failure == "" {
+		require(run.err == nil, run.err)
+		ordered, orderedOK := partial["out"].(starlark.Tuple)
+		again, againOK := partial["again"].(starlark.Tuple)
+		require(orderedOK && len(ordered) == 3 && ordered[0] == starlark.MakeInt(17) &&
+			ordered[1] == partial["marker"] && ordered[2] == starlark.MakeInt(18) &&
+			againOK && len(again) == 0 && partial["after"].String() == "[198]", partial)
+		require(strings.Join(run.events, ",") == "() 0,(17, [88], 18) -1,() 0", run.events)
+		return
+	}
+	require(run.err != nil && strings.Contains(run.err.Error(), message), run.err)
+	require(partial["out"] == nil && partial["again"] == nil && partial["after"] == nil &&
+		strings.Join(run.events, ",") == "() 0"+operandEvents, run.events)
+}
+
 func main() {
 	checkRepeatedKeyword()
 	for _, warm := range []bool{false, true} {
@@ -636,6 +700,9 @@ func main() {
 		}
 		for _, failure := range []string{"", "missing", "surplus", "unknown", "duplicate", "operand"} {
 			checkKeywordWrapper(warm, failure)
+		}
+		for _, failure := range []string{"", "missing", "unknown", "operand"} {
+			checkCollectorWrapper(warm, failure)
 		}
 		for _, failure := range []string{"", "first", "last", "both", "dependency"} {
 			checkDiamond(warm, failure)
@@ -660,4 +727,5 @@ func main() {
 	fmt.Println("PASS published positional wrappers call the second alias in operand order and stop at arity or reached body errors")
 	fmt.Println("PASS wrapper defaults are saved through cache hits and overrides, and a reached default error prevents publication")
 	fmt.Println("PASS keyword-only wrappers preserve saved defaults and operand order across binding errors and cache hits")
+	fmt.Println("PASS positional wrapper collectors preserve empty and ordered tuple payloads, defaults, and reached errors")
 }

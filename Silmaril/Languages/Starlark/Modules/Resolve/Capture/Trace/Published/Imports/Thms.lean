@@ -24,14 +24,14 @@ open Loader (Session)
 in declaration order. Required positional formals introduce no defaults. -/
 theorem wrapper_positional_binding {importName aliases globals}
     (relay : WrapperDeclaration importName aliases globals) (positionalOnly : relay.keywordOnly = [])
-    (requiredOnly : relay.parameters.optional = [])
+    (noVarargs : relay.varargs = none) (requiredOnly : relay.parameters.optional = [])
     {values : List Lists.Value}
     {result : Except Lists.Error (List (Binding × Lists.Value))}
     (checked : relay.site.declaration.signature.validate = .ok ())
     (source : Entry.Binds relay.parameters.required values result) :
     Functions.bindArguments relay.site.declaration.signature [] ⟨values, []⟩ =
       result.map (fun bound => ⟨bound, [], []⟩) := by
-  rw [Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Published.Imports.wrapper_required_signature relay positionalOnly requiredOnly] at checked ⊢
+  rw [Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Published.Imports.wrapper_required_signature relay positionalOnly noVarargs requiredOnly] at checked ⊢
   exact Entry.required_binds checked source
 
 /-- Preparing a positional call uses the actual saved values of the reached
@@ -39,7 +39,7 @@ wrapper. Omitted arguments, explicit overrides and arity failures use the
 ordinary binder, with the original capture vector on success. -/
 theorem wrapper_prepare_saved {importName aliases globals}
     (relay : WrapperDeclaration importName aliases globals) (positionalOnly : relay.keywordOnly = [])
-    {commands : List Command} {seed : Program} {resolved : ResolvedModule}
+    (noVarargs : relay.varargs = none) {commands : List Command} {seed : Program} {resolved : ResolvedModule}
     (checked : resolve commands seed = .ok resolved) (id : DeclarationId)
     (available : List DeclarationId) (permitted : id ∈ available)
     (found : resolved.program[id]? = some relay.site.declaration)
@@ -52,13 +52,13 @@ theorem wrapper_prepare_saved {importName aliases globals}
       | .ok assigned => .ok (.closure ⟨id, permitted, relay.site.declaration.body⟩)
         (activate state relay.site.declaration record.captures assigned) :=
   Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Published.Imports.wrapper_prepare_saved
-    relay positionalOnly checked id available permitted found record source
+    relay positionalOnly noVarargs checked id available permitted found record source
 
 /-- The ordinary named binder prepares the reached wrapper using its saved
 defaults. A binding failure leaves the operand state intact. Success
 activates the original capture vector without either collector allocation. -/
 theorem wrapper_prepare_named {importName aliases globals}
-    (relay : WrapperDeclaration importName aliases globals) (program : Program)
+    (relay : WrapperDeclaration importName aliases globals) (noVarargs : relay.varargs = none) (program : Program)
     (id : DeclarationId) (available : List DeclarationId) (permitted : id ∈ available)
     (found : program[id]? = some relay.site.declaration)
     {state defining : State} {address : Nat} (record : ClosureAt relay.site id defining state address)
@@ -70,7 +70,34 @@ theorem wrapper_prepare_named {importName aliases globals}
       | .ok assigned => .ok (.closure ⟨id, permitted, relay.site.declaration.body⟩)
         (activate state relay.site.declaration record.captures assigned.named) :=
   Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Published.Imports.wrapper_prepare_named
-    relay program id available permitted found record actual binding
+    relay noVarargs program id available permitted found record actual binding
+
+/-- After ordinary positional and named binding, pack the exact surplus
+in encounter order at a fresh address. The empty tuple has its canonical
+key. Preparation preserves the original capture vector and retains the
+operand heap, including on binding failure. -/
+theorem wrapper_prepare_varargs {importName aliases globals}
+    (relay : WrapperDeclaration importName aliases globals) {collector : String}
+    (positionalCollector : relay.varargs = some collector) (program : Program)
+    (id : DeclarationId) (available : List DeclarationId) (permitted : id ∈ available)
+    (found : program[id]? = some relay.site.declaration)
+    {state defining : State} {address : Nat} (record : ClosureAt relay.site id defining state address)
+    (actual : Actual) {result : Except Lists.Error BoundArguments}
+    (binding : SiteBinding relay.site record.defaults actual result) :
+    match result with
+    | .error error => prepareExpanded program available actual (.function address) state = .error error state
+    | .ok bound =>
+      let surplus := actual.positional.drop relay.site.declaration.signature.positional.length
+      let assigned := (fileSlot collector, .tuple state.heap.size) :: bound.named
+      ∃ packed, Defaults.Body.Keeps state.heap.size state packed ∧ packed.bindings = state.bindings ∧
+        Lists.tupleElements state.heap.size packed = .ok surplus packed ∧
+        (surplus = [] → packed.heap[state.heap.size]? = some ⟨.tuple [] (some [.openTuple, .closeTuple]), false⟩) ∧
+        prepareExpanded program available actual (.function address) state =
+          .ok (.closure ⟨id, permitted, relay.site.declaration.body⟩)
+            (activate packed relay.site.declaration record.captures assigned) := by
+  have prepared := Silmaril.Proofs.Languages.Starlark.Modules.Resolve.Capture.Trace.Published.Imports.wrapper_prepare_varargs
+    relay positionalCollector program id available permitted found record actual binding
+  cases result <;> exact prepared
 
 /-- The importer elaborates in source order and appends each declaration to the linked table. -/
 theorem consumer_layout (plan : Consumer) {program : Program} {consumer : ResolvedModule}

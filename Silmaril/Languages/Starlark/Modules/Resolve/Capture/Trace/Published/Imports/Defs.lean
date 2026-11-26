@@ -53,8 +53,8 @@ structure Invocation (aliases : List String) (globals : List String) where
 /-- The wrapper owns its parameter slots, with no body
 locals, and resolves the imported callee in the enclosing alias block. -/
 @[expose] def wrapperBlock (parameters : Parameters) (keywordOnly : List PlainKeywordParameter)
-    (aliases globals : List String) : LexicalBlock :=
-  ⟨parameterNames parameters keywordOnly none none ++ [], aliases ++ [], globals⟩
+    (varargs : Option String) (aliases globals : List String) : LexicalBlock :=
+  ⟨parameterNames parameters keywordOnly varargs none ++ [], aliases ++ [], globals⟩
 
 /-- An importer declaration returns a checked call through the immutable
 file-local import. Its only capture is that binding's address. -/
@@ -65,7 +65,8 @@ structure WrapperDeclaration (alias : String) (aliases globals : List String) wh
   legalAlias : alias.toList.head? ≠ some '$'
   parameters : Parameters := ⟨[], []⟩
   keywordOnly : List PlainKeywordParameter := []
-  unshadowed : alias ∉ parameterNames parameters keywordOnly none none := by
+  varargs : Option String := none
+  unshadowed : alias ∉ parameterNames parameters keywordOnly varargs none := by
     simp [Silmaril.Languages.Starlark.Modules.Resolve.Capture.Trace.Defaults.Nested.Sequence.Recursive.parameterNames, Parameters.names]
   defaults : List PlainPositionalDefault := []
   lexical : Lexical.Elaborates (block aliases globals) parameters.optional defaults := by exact .nil
@@ -73,11 +74,11 @@ structure WrapperDeclaration (alias : String) (aliases globals : List String) wh
   arguments : List Expr
   codes : List Lowering.Expr
   reads : List Binding
-  operands : Arguments (wrapperBlock parameters keywordOnly aliases globals) arguments codes reads
-  keywords : Operands (wrapperBlock parameters keywordOnly aliases globals)
-  star : Option (Spread (wrapperBlock parameters keywordOnly aliases globals)) := none
-  mapping : Option (Mapping (wrapperBlock parameters keywordOnly aliases globals)) := none
-  selects : Selects (wrapperBlock parameters keywordOnly aliases globals)
+  operands : Arguments (wrapperBlock parameters keywordOnly varargs aliases globals) arguments codes reads
+  keywords : Operands (wrapperBlock parameters keywordOnly varargs aliases globals)
+  star : Option (Spread (wrapperBlock parameters keywordOnly varargs aliases globals)) := none
+  mapping : Option (Mapping (wrapperBlock parameters keywordOnly varargs aliases globals)) := none
+  selects : Selects (wrapperBlock parameters keywordOnly varargs aliases globals)
     (fileSlot alias :: (reads ++ keywords.reads ++ spreadReads star ++ mappingReads mapping))
     [⟨fileSlot alias, fileSlot alias⟩]
 
@@ -88,7 +89,7 @@ structure WrapperDeclaration (alias : String) (aliases globals : List String) wh
 @[expose] def WrapperDeclaration.code {alias aliases globals} (relay : WrapperDeclaration alias aliases globals) : Lowering.Expr :=
   expressionAt (fileSlot alias) relay.codes relay.keywords.codes (relay.star.map Spread.code) (relay.mapping.map Mapping.code)
 
-@[expose] def WrapperDeclaration.site {alias aliases globals} (relay : WrapperDeclaration alias aliases globals) : Site (block aliases globals) relay.keywordOnly none none .global where
+@[expose] def WrapperDeclaration.site {alias aliases globals} (relay : WrapperDeclaration alias aliases globals) : Site (block aliases globals) relay.keywordOnly relay.varargs none .global where
   name := relay.name
   target := relay.target
   parameters := relay.parameters
@@ -121,7 +122,7 @@ inductive Callee where
 @[expose] def Callee.layout : Callee → Callable
   | .regular callee => callee
   | .wrapper (aliases := aliases) (globals := globals) declaration id _ =>
-    ⟨block aliases globals, .global, declaration.keywordOnly, none, none, declaration.site, id, none⟩
+    ⟨block aliases globals, .global, declaration.keywordOnly, declaration.varargs, none, declaration.site, id, none⟩
 
 @[expose] def Callee.BodyRuns : Callee → State → Outcome Flow → Prop
   | .regular callee => callee.BodyRuns

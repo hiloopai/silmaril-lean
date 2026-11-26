@@ -1338,10 +1338,11 @@ through the consumer wrapper.
 The UTF-8 adapter compiles normalized modules in manifest order and feeds
 the final linked table to the loader. The source theorem starts at
 normalized commands. The checked wrapper header admits required and
-defaulted positional parameters and required and defaulted keyword-only
-formals. Defaults use the existing lexical operand profile of reads,
-integer literals, singleton list allocation and indexing. Definition-time
-calls, collectors and broader wrapper bodies remain separate.
+defaulted positional parameters, a named positional collector, and
+required and defaulted keyword-only formals. Defaults use the existing
+lexical operand profile of reads, integer literals, singleton list
+allocation and indexing. Definition-time calls, keyword collectors and
+broader wrapper bodies remain separate.
 [Suite theorems](../../Silmaril/Languages/Starlark/Modules/Resolve/Capture/Trace/Published/Imports/Thms.lean) · [Lean controls](../../Silmaril/Languages/Starlark/Modules/Resolve/Capture/Trace/Published/ReturnChecks.lean) · [Pinned Go controls](../../scripts/starlark/imported-checked/check.go)
 
 ### Composing checked imports
@@ -1425,11 +1426,31 @@ a list-valued keyword default. They cover both kinds of duplicate, unknown
 and missing names, positional overflow, and a later operand error that
 preempts an unknown-name error. Go instruments reached operands to observe
 their order. Lean checks the exact retained allocations and restored caller
-state. This tranche uses normalized keyword-only headers. The UTF-8
-frontend accepts named call arguments and currently rejects the bare
-`*` header. Arbitrary incoming caches, calls in defaults, collectors,
-untracked exports and calls through parameter values remain outside this proof.
-[Pinned compiler](https://github.com/google/starlark-go/blob/4f4267fb140d1e8b91c9bce55cee2f809e8840dd/internal/compile/compile.go#L1223-L1237) · [Pinned interpreter](https://github.com/google/starlark-go/blob/4f4267fb140d1e8b91c9bce55cee2f809e8840dd/starlark/interp.go#L580-L617)
+state. The wrapper proof starts at normalized keyword-only headers. The
+frontend guide tracks which headers and call arguments the UTF-8 adapter accepts.
+[Frontend coverage](starlark-frontend.md) · [Pinned compiler](https://github.com/google/starlark-go/blob/4f4267fb140d1e8b91c9bce55cee2f809e8840dd/internal/compile/compile.go#L1223-L1237) · [Pinned interpreter](https://github.com/google/starlark-go/blob/4f4267fb140d1e8b91c9bce55cee2f809e8840dd/starlark/interp.go#L580-L617)
+
+With named `*args`, the ordinary binder assigns the positional prefix to
+ordinary parameters and places the remaining values in encounter order in
+the collector tuple, preserving their references. Successful preparation
+allocates the tuple at a fresh address, including a tuple with the canonical
+empty key when there is no surplus. Activation uses the reached closure's
+original captures and saved defaults. The declaration-index guard and loader
+agreement apply to the same normalized wrapper suite. Cold and wrapper-preloaded
+controls check an empty collector, an ordered nonempty collector with a list
+alias, keyword override and omission, binding failures and a later operand
+error. The Lean controls check cache reuse, caller restoration and the
+retained heap, including the absence of a new tuple on binding failure.
+Pinned Go constructs its private tuple during binding before keyword
+validation. Failed binding exposes no tuple through the Go API, so the Go
+controls compare observable outcomes and reached operand effects.
+[Wrapper preparation theorem](../../Silmaril/Languages/Starlark/Modules/Resolve/Capture/Trace/Published/Imports/Thms.lean) · [Pinned Go binder](https://github.com/google/starlark-go/blob/4f4267fb140d1e8b91c9bce55cee2f809e8840dd/starlark/eval.go#L1430-L1499)
+
+The normalized collector header is exercised directly in Lean. The UTF-8
+frontend currently reports an unsupported parameter header for `*rest`.
+Arbitrary incoming caches, calls in defaults, `**kwargs` collectors,
+untracked exports and calls through parameter values remain outside the
+checked wrapper profile.
 
 [Chain theorems](../../Silmaril/Languages/Starlark/Modules/Resolve/Capture/Trace/Published/Imports/Chain/Thms.lean)
 
