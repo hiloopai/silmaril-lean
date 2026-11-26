@@ -46,7 +46,7 @@ finitely many values, so this is every run. The litmus checker fixes one domain.
 ## Lowering to candidate-execution events
 
 `Lab.acts` lowers a label to litmus memory actions (`X86.Litmus.Act`), and `units` turns those
-into herd-style access units (`Axiomatic.Ev`), so CIR runs are judged by exactly the stage-1
+into herd-style access units (`Axiomatic.Ev`), so CIR runs are judged by exactly the
 SC/TSO/XL machinery:
 
 * loads/stores: one plain access; `rmw`: one locked RMW (read and write units, paired by
@@ -519,7 +519,7 @@ def Stmt.posSizes : Stmt → Bool
 
 /-! ## Frozen statements -/
 
-/-- **Single-thread lift** (stage 3; PROVED: `Silmaril.X86.Concurrency.Cir.Seq.cirSeqSc`, in
+/-- **Single-thread lift** (PROVED: `Silmaril.X86.Concurrency.Cir.Seq.cirSeqSc`, in
 `Cir/Seq/Thms.lean`): the SC behaviours of a one-thread, spawn-free program are
 its sequential runs from the initial memory. Proof idea: from an SC execution, `po` is total and
 `acyclic (po ∪ com;sm)` forces every read byte to come from the `po`-latest write of that byte
@@ -631,7 +631,7 @@ def Prog.preClosedB (P : Prog) (dom : List Nat) : Bool :=
     (P.threads.all (·.body.futexFree) ||
       (Silmaril.X86.MemoryModel.Litmus.memB 0 dom && Silmaril.X86.MemoryModel.Litmus.memB 1 dom))
 
-/-- **Domain closure** (a statement; it is not proved in this library):
+/-- **Domain closure** (proved as `Cir.cirDomain` in `Cir/Domain/Thms.lean`):
 for a uniform program and a domain closed under partial runs (`preClosedB`), with closed local
 blocks, every behaviour under SC, TSO or XL is a behaviour over that domain, by the same
 choice of runs and the same candidate execution. Proof: in a well-formed candidate of a uniform

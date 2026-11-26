@@ -24,6 +24,15 @@
 //!
 //! Objects with a form outside the table (the unlocked `addl $1, m` of `Counter+na@gcc`) are
 //! skipped and listed in the generated module.
+//!
+//! One `decide +kernel` of `C11Test.check` holds the whole enumeration in kernel memory (about
+//! 15 GB for `SB+fences+sc@gcc`). A test with more than [`SLICE_CANDIDATES`] candidates is
+//! checked in slices instead: `preOk`, the flags of consecutive choices of runs with at most that
+//! many candidates (`flagsSlice`), and their number, each its own kernel check, joined by
+//! `Silmaril.Proofs.X86.Concurrency.Cir.C11Slice`. The flags and candidate counts per choice of
+//! runs come from `export/c11-slices.json` (written by `lean/C11Slices.lean`; a test it does not
+//! list gets one check); they only choose and state the slices, and a wrong number fails its
+//! kernel check.
 
 use std::fmt::Write as _;
 
@@ -38,6 +47,8 @@ const SCRATCH: [u8; 8] = [11, 10, 9, 8, 15, 14, 13, 12];
 const RSP: u8 = 4;
 const SLOT_BASE: u64 = 0x10800;
 const SLOT_STRIDE: u64 = 0x40;
+/// The most candidates one kernel check of the corpus enumerates (about 2 GB of kernel memory).
+const SLICE_CANDIDATES: u128 = 8;
 
 /// A memory operand: RIP-relative (resolved to an absolute address) or `[rsp + disp]`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -668,8 +679,88 @@ struct Rendered {
     n: usize,
 }
 
+/// A slice of a test's choices of runs: the first, how many, their flags.
+type Slice = (usize, usize, u128);
+
+/// The slices `(first, count, flags)` of a test's choices of runs, from its
+/// `[flags, candidates]` rows: consecutive runs with at most [`SLICE_CANDIDATES`] candidates in
+/// all (or a single run). `None` when the whole test fits in one check.
+fn slices(rows: &[Value]) -> Result<Option<Vec<Slice>>, Error> {
+    let mut rs = Vec::new();
+    for r in rows {
+        let r = r.arr()?;
+        if r.len() != 2 {
+            return Err(Error(
+                "c11cir: a slice row is not [flags, candidates]".into(),
+            ));
+        }
+        rs.push((r[0].uint()?, r[1].uint()?));
+    }
+    if rs.iter().map(|r| r.1).sum::<u128>() <= SLICE_CANDIDATES {
+        return Ok(None);
+    }
+    let mut out: Vec<Slice> = Vec::new();
+    let mut cands = 0;
+    for (i, (f, c)) in rs.iter().enumerate() {
+        match out.last_mut() {
+            Some(last) if cands + c <= SLICE_CANDIDATES => {
+                last.1 += 1;
+                last.2 |= f;
+                cands += c;
+            }
+            _ => {
+                out.push((i, 1, *f));
+                cands = *c;
+            }
+        }
+    }
+    Ok(Some(out))
+}
+
+/// The kernel checks of one test: one `decide +kernel` of its check, or its slices.
+fn render_checks(text: &mut String, id: &str, sl: Option<&[Slice]>) {
+    let bare = id.trim_start_matches('«').trim_end_matches('»');
+    let Some(sl) = sl else {
+        let _ = writeln!(
+            text,
+            "theorem «ok_{bare}» : Corpus.{id}.check = true := by decide +kernel\n"
+        );
+        return;
+    };
+    let _ = writeln!(
+        text,
+        "theorem «pre_{bare}» : Corpus.{id}.preOk = true := by decide +kernel\n"
+    );
+    for (j, (i, k, f)) in sl.iter().enumerate() {
+        let _ = writeln!(
+            text,
+            "theorem «flags_{bare}_{j}» : Corpus.{id}.flagsSlice {i} {k} = {f} := by decide +kernel\n"
+        );
+    }
+    let n: usize = sl.iter().map(|s| s.1).sum();
+    let _ = writeln!(
+        text,
+        "theorem «runs_{bare}» : Corpus.{id}.combos.length ≤ {n} := by decide +kernel\n"
+    );
+    let _ = write!(
+        text,
+        "theorem «ok_{bare}» : Corpus.{id}.check = true := by\n  rw [C11Slice.check_eq, «pre_{bare}»"
+    );
+    for (j, (i, k, _)) in sl.iter().enumerate() {
+        let _ = write!(
+            text,
+            ",\n    C11Slice.flagsFrom_split (j := {}) «flags_{bare}_{j}» rfl",
+            i + k
+        );
+    }
+    let _ = writeln!(
+        text,
+        ",\n    C11Slice.flagsFrom_end «runs_{bare}»]\n  decide +kernel\n"
+    );
+}
+
 /// Render the Lean modules.
-fn render(export: &Value, meta: &Value) -> Result<Rendered, Error> {
+fn render(export: &Value, meta: &Value, sliced: &Value) -> Result<Rendered, Error> {
     let tests = export.get("tests")?.arr()?;
     let metas = meta.get("tests")?.arr()?;
     let mut body = String::new();
@@ -731,24 +822,33 @@ fn render(export: &Value, meta: &Value) -> Result<Rendered, Error> {
             .iter_mut()
             .find(|p| &p.0 == sh)
             .ok_or_else(|| Error("c11cir: shape".into()))?;
+        let bare = id.trim_start_matches('«').trim_end_matches('»');
+        // a test without an entry (new, before `lean/C11Slices.lean` ran) gets one check
+        let sl = match sliced
+            .get("tests")?
+            .arr()?
+            .iter()
+            .find(|t| t.get("name").and_then(Value::str).ok() == Some(bare))
+        {
+            Some(t) => slices(t.get("combos")?.arr()?)?,
+            None => None,
+        };
         if text.is_empty() {
             text.push_str(
-                "module\n\npublic import Silmaril.X86.Concurrency.Cir.C11.Corpus.Defs\n\n",
+                "module\n\npublic import Silmaril.X86.Concurrency.Cir.C11.Corpus.Defs\n\
+                 public import Silmaril.Proofs.X86.Concurrency.Cir.C11Slice\n\n",
             );
             let _ = write!(
                 text,
                 "/-!\n# C11 litmus objects: kernel checks, shape `{sh}` (generated)\n\n\
                  GENERATED by `tools/litmus-x86` (`cargo run --release -- c11 cir`); do not edit.\n\
-                 One `decide +kernel` of `C11Test.check` per test (kernel-checked).\n-/\n\n@[expose] public section\n\n\
+                 One `decide +kernel` of `C11Test.check` per test (kernel-checked); a test with more \
+                 than {SLICE_CANDIDATES}\ncandidates is checked in slices (`C11Slice`).\n-/\n\n@[expose] public section\n\n\
                  namespace Silmaril.Proofs.X86.Concurrency.Cir.C11Corpus\n\n\
                  open Silmaril.X86.Concurrency.Cir.C11\n\nset_option maxRecDepth 100000\n\n"
             );
         }
-        let bare = id.trim_start_matches('«').trim_end_matches('»');
-        let _ = writeln!(
-            text,
-            "theorem «ok_{bare}» : Corpus.{id}.check = true := by decide +kernel\n"
-        );
+        render_checks(text, id, sl.as_deref());
     }
     for (_, text) in &mut shapes {
         text.push_str("end Silmaril.Proofs.X86.Concurrency.Cir.C11Corpus\n");
@@ -764,7 +864,7 @@ fn render(export: &Value, meta: &Value) -> Result<Rendered, Error> {
     p.push_str("\n/-!\n# C11 litmus objects: every kernel check (generated)\n\n");
     p.push_str(
         "GENERATED by `tools/litmus-x86` (`cargo run --release -- c11 cir`); do not edit.\n\n\
-         The per-shape modules hold one `decide +kernel` per test; \
+         The per-shape modules hold the `decide +kernel` checks of each test; \
          this collects them.\nWhat they give is stated in \
          `Silmaril.X86.Concurrency.Cir.C11.Corpus.Thms`.\n-/\n\n",
     );
@@ -823,7 +923,8 @@ pub fn run(check: bool) -> Result<(), Error> {
     };
     let export = read(root.join("export/c11.json"))?;
     let meta = read(root.join("export/c11-meta.json"))?;
-    let r = render(&export, &meta)?;
+    let sliced = read(root.join("export/c11-slices.json"))?;
+    let r = render(&export, &meta, &sliced)?;
     for (path, body) in files(root, &r) {
         if check {
             let old = std::fs::read_to_string(&path)
@@ -909,7 +1010,12 @@ mod tests {
     fn c11_cir_modules_up_to_date() {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
         let rd = |p: &str| json::parse(&std::fs::read_to_string(root.join(p)).unwrap()).unwrap();
-        let r = render(&rd("export/c11.json"), &rd("export/c11-meta.json")).unwrap();
+        let r = render(
+            &rd("export/c11.json"),
+            &rd("export/c11-meta.json"),
+            &rd("export/c11-slices.json"),
+        )
+        .unwrap();
         assert_eq!(r.n, 63);
         assert_eq!(r.shapes.len(), 8);
         for (path, body) in files(root, &r) {
