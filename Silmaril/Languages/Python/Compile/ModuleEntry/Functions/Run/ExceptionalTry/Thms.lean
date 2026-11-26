@@ -124,6 +124,17 @@ theorem exceptionInstance_transport (value : Core.Closure.ExceptionInstance) :
     Seeded.ordinaryValue? (.exceptionInstance value) = some (.exceptionInstance value) ∧
       Seeded.seededValue (.exceptionInstance value) = .exceptionInstance value := ⟨rfl, rfl⟩
 
+theorem ordinary_module_raise {scope : Source.Scope} (table : CodeTable) (session : Session)
+    (operand : RaiseName scope) (rest : List (Instruction scope)) :
+    advance table (.ready session (.exceptionalTry operand.plan :: rest)) =
+      ([], .finished session (.raised (operand.error session.globals raiseValue))) := rfl
+
+theorem seeded_module_raise {scope : Source.Scope} (space : Namespace) (context : Seeded.CallContext)
+    (operand : RaiseName scope) (rest : List (Instruction scope)) (lists : ListHeap) :
+    Seeded.runInstructionsIn space context (.exceptionalTry operand.plan :: rest) lists =
+      ⟨space, .error (.raised (.runtime (operand.error space.lookupGlobal Seeded.raiseValue))),
+        [], context.heap, lists⟩ := seeded_settlement space context operand.plan rest lists
+
 theorem ordinary_handler_stock (session : Session) (name : String) (error : Core.Closure.RuntimeError)
     (kind : Core.Closure.ExceptionClass) (found : session.globals name = some (.exceptionClass kind)) :
     matchHandler session (.raised error) name = .ok (decide (kind.catches error.classify)) := by

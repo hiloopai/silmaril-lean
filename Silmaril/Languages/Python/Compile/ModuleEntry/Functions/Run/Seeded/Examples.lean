@@ -278,4 +278,26 @@ private def handlerTargetEvidence (abrupt : Bool) : Bool := Id.run do
 #guard handlerTargetEvidence false
 #guard handlerTargetEvidence true
 
+private def moduleRaiseEvidence : Bool := Id.run do
+  let source : Source.Module := ⟨[
+    .assign "s" (.integer 1),
+    .raise_ (some (.name "TypeError")) none,
+    .assign "late" (.integer 2)]⟩
+  let .ok compiled := Run.compile source | return false
+  let error : Core.Closure.RuntimeError := .raisedInstance (.empty .typeError)
+  let ordinarySeed := (Run.seed .empty).bindGlobal "TypeError" (.exceptionClass .typeError)
+  let (events, state) := Run.runPrefix compiled.table 10 (.ready ordinarySeed compiled.instructions)
+  let .finished ordinary completion := state | return false
+  let space : Namespace := ⟨[], [("TypeError", .exceptionClass .typeError)]⟩
+  let seeded := run space compiled
+  let missing := run .empty compiled
+  return events.isEmpty && completion == .raised error &&
+    (ordinary.globals "s").map seededValue == some (.int 1) && (ordinary.globals "late").isNone &&
+    seeded.completion == .error (.raised (.runtime error)) &&
+    seeded.residual.moduleGlobals == [("s", .int 1)] && seeded.residual.builtins == space.builtins &&
+    seeded.calls.isEmpty && missing.residual.moduleGlobals == [("s", .int 1)] &&
+    missing.completion == .error (.raised (.runtime (.nameError "TypeError"))) && missing.calls.isEmpty
+
+#guard moduleRaiseEvidence
+
 end Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded

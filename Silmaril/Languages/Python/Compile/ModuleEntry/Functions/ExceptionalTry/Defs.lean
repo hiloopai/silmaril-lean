@@ -345,7 +345,14 @@ def handlers? (scope : Scope) :
     else none
   | _ => none
 
+/-- An unconditional named raise uses the same reached-state transfer with no
+handler, else suite, or cleanup. -/
+def RaiseName.plan {scope : Scope} (operand : RaiseName scope) : Plan (Step scope) :=
+  ⟨[.raiseName operand], [], [], []⟩
+
 inductive Translation (scope : Scope) : Stmt → Plan (Step scope) → Prop where
+  | namedRaise {statement operand} (checked : RaiseName.Translation scope statement operand) :
+      Translation scope statement operand.plan
   | checked {body handlers otherwise cleanup first handler normal final}
       (present : body.isEmpty = false)
       (shape : (!handlers.isEmpty || (otherwise.isEmpty && !cleanup.isEmpty)) = true)
@@ -365,6 +372,7 @@ def check (scope : Scope) : (source : Stmt) → Option {plan // Translation scop
           .checked present shape first.property handler.property normal.property final.property⟩
       else none
     else none
-  | _ => none
+  | statement =>
+    (raiseName? scope statement).map fun checked => ⟨checked.val.plan, .namedRaise checked.property⟩
 
 end Silmaril.Languages.Python.Compile.ModuleEntry.Functions.ExceptionalTry

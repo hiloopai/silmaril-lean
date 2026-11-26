@@ -184,6 +184,69 @@ def unchanged(upstream):
   [("AssertionError", .exceptionClass .assertionError), ("x", .int 5)] .normal"""
 
 
+def module_controls(upstream):
+    yield check("""
+saved = C
+C = None
+reached = 7
+raise saved
+skipped = missing
+""", {"saved": TypeError, "C": None, "reached": 7}, ("instance", TypeError()), seed={"C": TypeError})
+
+    yield check("""
+C = None
+reached = 7
+raise C
+skipped = missing
+""", {"C": None, "reached": 7}, ("invalid", None), seed={"C": TypeError})
+
+    value = Exception("é😀\ud800")
+    yield check("""
+saved = supplied
+supplied = None
+raise saved
+skipped = missing
+""", {"saved": value, "supplied": None}, ("instance", value),
+        seed={"supplied": value}, supplied_instance=value)
+
+    source = """___assertTrue(True)
+reached = 7
+raise C
+skipped = missing
+"""
+    truth = SUITE["pinned_truth_helper"](upstream)
+    calls = []
+
+    def traced(value):
+        result = truth(value)
+        calls.append((type(value), value, result))
+        return result
+
+    expected = {"reached": 7}
+    execute(source.encode(), expected, ("instance", TypeError()), seed={"___assertTrue": traced, "C": TypeError})
+    assert calls == [(bool, True, None)]
+    yield source, f"""#guard seededRaise pythonSource ⟨[], [("___assertTrue", .helper .assertTrue), ("C", .exceptionClass .typeError)]⟩
+  {bindings(expected)} (.error (.raised (.runtime (.raisedInstance (.empty .typeError))))) [("___assertTrue", .ok .none)]"""
+
+
+def unchanged_module_raise(upstream):
+    path = "tests/python/programs/original/lambda-py/modules/support_exception.py"
+    source = SUITE["pinned_source"](upstream, path, "707e76ee92054f0dc049fa3661bfb6340b02c6f4cf4911a21fc88b440e058e9a")
+    raw = (upstream / path).read_bytes()
+    assert source.encode() == raw
+    expected = {"s": 1}
+    execute(raw, expected, ("name", "TypeError"))
+    for preamble in (False, True):
+        execute(raw, expected, ("instance", TypeError()), seed={"TypeError": TypeError}, preamble=preamble)
+    ordinary, seeded = completions(("name", "TypeError"))
+    entries = bindings(expected)
+    fixed = [f"#guard ordinaryRaise pythonSource [] {entries} ({ordinary})"]
+    for profile in (".empty", 'initial "legacy_builtin"', 'initial "legacy_preamble"'):
+        fixed.append(f"#guard let space : Namespace := {profile}; seededRaise pythonSource space "
+                     f"({entries} ++ space.moduleGlobals) ({seeded}) []")
+    return source, "\n".join([*fixed, guards(expected, ("instance", TypeError()), {"TypeError": TypeError})])
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--upstream", type=Path, required=True)
@@ -191,9 +254,10 @@ if __name__ == "__main__":
     assert sys.version_info[:3] == (3, 13, 5)
     revision = subprocess.check_output(["git", "-C", str(args.upstream), "rev-parse", "HEAD"], text=True).strip()
     assert revision == SUITE["UPSTREAM_REVISION"]
-    reached = list(controls(args.upstream))
+    reached = [*controls(args.upstream), *module_controls(args.upstream)]
+    pins = [unchanged(args.upstream), unchanged_module_raise(args.upstream)]
     with tempfile.TemporaryDirectory() as scratch:
         source = Path(scratch) / "Fixture.py"
-        INTAKE["check_lean_batch"](source, source.with_suffix(".lean"), [unchanged(args.upstream), *reached], LEAN,
+        INTAKE["check_lean_batch"](source, source.with_suffix(".lean"), pins + reached, LEAN,
                                    extra_imports=SUITE["IMPORTS"])
-    print(json.dumps({"cpython": "3.13.5", "unchanged_pins": 1, "reached_controls": len(reached)}))
+    print(json.dumps({"cpython": "3.13.5", "unchanged_pins": len(pins), "reached_controls": len(reached)}))

@@ -354,6 +354,12 @@ Exception identity and traceback observations are outside this profile.
 The runner saves the live callee before evaluating any argument. A module
 binding masks the builtin fallback, and a saved alias survives rebinding.
 A missing name or invalid named raise operand produces its defined error.
+A standalone module-level `raise name` uses the same live lookup and
+normalization and delivers its exact error with the reached namespace.
+In unchanged `support_exception.py`, each fixed profile retains `s = 1`
+and reports missing `TypeError`. Supplying the stock class separately
+delivers a `TypeError` with empty arguments. The raise emits no call
+receipt.
 An explicit call to a known noncallable value produces the call's own
 defined error. Immediate constructors emit no separate module receipt.
 General callable constructors, standalone instance construction, nontext
