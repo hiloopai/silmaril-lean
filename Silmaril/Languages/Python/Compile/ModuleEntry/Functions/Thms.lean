@@ -62,12 +62,22 @@ theorem lowerPlan_literalIf {tree : Source.ScopeTree} {index : Nat}
     Except.mapError, Except.toOption]
   rfl
 
+/-- The linked variadic destinations follow declaration order, including the final rest slot. -/
+theorem DefinitionTranslation.variadicOrder {tree : Source.ScopeTree} {index declaration body child
+    signature code} (definition : DefinitionTranslation tree index declaration body child signature code)
+    {rest : Variadic signature.parameters} (_selected : signature.variadic = some rest) :
+    rest.val.fixed.slots.map (Compile.Closure.parameterName child.scope) ++
+      [Compile.Closure.parameterName child.scope rest.val.rest] = declaration.map Source.Parameter.name := by
+  have order := congrArg (fun slots : Core.Closure.Parameters (Compile.Closure.frameLayout child.scope) =>
+    slots.slots.map (Compile.Closure.parameterName child.scope)) rest.property
+  simpa [Core.Closure.Call.VariadicParameters.destinations] using order.trans definition.parameterOrder
+
 /-- The adjacent keyword proof supplies exactly the one slot of the checked definition. -/
 theorem AdjacentKeywordDiscard.parameterCount {tree : Source.ScopeTree} {index name declaration body child
-    parameters code statement value}
+    signature code statement value}
     (shape : AdjacentKeywordDiscard name declaration statement value)
-    (definition : DefinitionTranslation tree index declaration body child parameters code) :
-    parameters.slots.length = 1 := by
+    (definition : DefinitionTranslation tree index declaration body child signature code) :
+    signature.parameters.slots.length = 1 := by
   cases shape
   simpa using congrArg List.length definition.parameterOrder
 

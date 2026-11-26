@@ -172,10 +172,18 @@ positional list.
 The variadic binder sends the fixed prefix to its declared slots and
 collects overflow into an exact scalar tuple. Its distinct rest
 destination can be a local or an owned cell. Core and Finite use the
-existing positional frame writer. The compiler and module dispatch still
-select fixed signatures. Source integration needs a variadic signature
-guard and a checked starred operand adapter. Saved defaults, keyword
-binding, and typed callback dispatch are separate prerequisites.
+existing positional frame writer. The module compiler accepts fixed
+signatures and signatures with one final unannotated variadic positional
+parameter and a required fixed prefix. The linked definition preserves
+the declaration order and the rest slot. Direct module calls spread
+flat tuple literals and reads of flat tuple values. A modeled
+noniterable raises TypeError when its spread is reached. Tuple literal
+items and the nonstarred arguments use checked scalar literals and
+module reads. The seeded runner settles calls to same-run published
+functions with the ordinary executor and uses the reached heap. Argument
+failure contributes no call receipt. Saved defaults, general keyword
+binding, typed callback dispatch and nested tuple results need their
+own profiles.
 
 CPython accepts the list, string and range operands in
 `non_tuple_starag.py`. They require other iterable value profiles,
@@ -183,11 +191,12 @@ and the full input also needs string tuple items and a tuple-aware
 helper. The first stop for both defaulted lambda pins is saved-default
 publication. Whole execution also needs nested tuple results, tuple
 equality in the helper, and `___assertRaises(TypeError, ...)` with
-positional callback arguments. `lambda_stararg.py` additionally needs
-starred source lowering. CPython reaches a missing `TypeError` when
+positional callback arguments. `lambda_stararg.py` also spreads tuples
+in a call nested inside the equality helper's argument. CPython reaches a
+missing `TypeError` when
 given only the helper names. Both inputs complete once that class is
 supplied. Run the focused comparison with CPython 3.13.5 using
-`python3 -I scripts/check-python-variadic-positional.py`.
+`python3 -I scripts/check-python-source-tuple-spread.py`.
 
 The decorator row completes normally in CPython with no helpers. Its
 closures require call results as arithmetic operands and subtraction.

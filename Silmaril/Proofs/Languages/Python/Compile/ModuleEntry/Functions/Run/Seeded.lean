@@ -61,6 +61,7 @@ theorem preserves_builtins {scope : Languages.Python.Source.Scope} (space : Name
 
 theorem run_directDiscard {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name : String} {closure : Function} {rest : List (Instruction scope)}
+    (fixed : context.isVariadic (.function closure) = false)
     (found : space.lookupGlobal name = some (.function closure))
     (admitted : context.acceptsPublishedCall closure = true) :
     runInstructionsIn space context (.call .discard name [] :: rest) =
@@ -77,7 +78,7 @@ theorem run_directDiscard {scope : Source.Scope} {space : Namespace} {context : 
         ⟨space, .error .directCallFuelExhausted, [], heap, Core.Module.ListHeap.empty⟩ := by
   simp [runInstructionsIn, effectWithLists, effect, Core.Module.SeededCall.resolveCall,
     Core.Module.SeededCall.Operand.eval, found, Core.Module.SeededCall.Operand.evalList,
-    Except.bind, Except.map, invokeFlatCall, admitted]
+    Except.bind, Except.map, invokeModuleCall, fixed, Bool.false_eq_true, invokeFlatCall, admitted]
   generalize (callbackInvocation space context.heap closure |>.runPrefix context.table context.fuel).2.state =
     state
   cases state with
@@ -86,13 +87,14 @@ theorem run_directDiscard {scope : Source.Scope} {space : Namespace} {context : 
 
 theorem run_directDiscard_unsupported {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name : String} {closure : Function} {rest : List (Instruction scope)}
+    (fixed : context.isVariadic (.function closure) = false)
     (found : space.lookupGlobal name = some (.function closure))
     (rejected : context.acceptsPublishedCall closure = false) :
     runInstructionsIn space context (.call .discard name [] :: rest) =
       ⟨space, .error .unsupported, [⟨name, ⟨.error .unsupported, none⟩⟩], context.heap, Core.Module.ListHeap.empty⟩ := by
   simp [runInstructionsIn, effectWithLists, effect, Core.Module.SeededCall.resolveCall,
     Core.Module.SeededCall.Operand.eval, found, Core.Module.SeededCall.Operand.evalList,
-    Except.bind, Except.map, Except.mapError, invokeFlatCall, rejected, acceptObservation, ModuleFailure.ofCall]
+    Except.bind, Except.map, Except.mapError, invokeModuleCall, fixed, Bool.false_eq_true, invokeFlatCall, rejected, acceptObservation, ModuleFailure.ofCall]
 
 theorem factoryOperands_iff {values : List Value} {operands : List Core.Module.Functions.Operand} :
     factoryOperands values = some operands ↔
@@ -144,6 +146,7 @@ theorem factoryOperands_iff {values : List Value} {operands : List Core.Module.F
 theorem run_factory_unrecorded {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name target : String} {closure : Function} {arguments : List Core.Module.Functions.Operand}
     {values : List Value} {rest : List (Instruction scope)}
+    (fixed : context.isVariadic (.function closure) = false)
     (resolved : Core.Module.SeededCall.resolveCall space #v[] (.global name)
       (arguments.map lowerCallOperand) = .ok (.function closure, values))
     (unpublished : closure ∉ context.published) (unescaped : closure ∉ context.escaped) :
@@ -154,12 +157,13 @@ theorem run_factory_unrecorded {scope : Source.Scope} {space : Namespace} {conte
   have deniedTuple (arity : Nat) : context.acceptsTupleResult closure arity = false := by
     simp [CallContext.acceptsTupleResult, CallContext.acceptsPublishedCall, CallContext.acceptsCallFrom, unpublished]
   cases operands : factoryOperands values <;>
-    simp [runInstructionsIn, effectWithLists, effect, resolved, invokeFlatCall, operands, denied, deniedTuple,
+    simp [runInstructionsIn, effectWithLists, effect, resolved, invokeModuleCall, fixed, Bool.false_eq_true, invokeFlatCall, operands, denied, deniedTuple,
       acceptObservation, ModuleFailure.ofCall, Except.bind, Except.mapError]
 
 theorem run_factory {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name target : String} {closure : Function} {arguments operands : List Core.Module.Functions.Operand}
     {values : List Value} {rest : List (Instruction scope)}
+    (fixed : context.isVariadic (.function closure) = false)
     (resolved : Core.Module.SeededCall.resolveCall space #v[] (.global name)
       (arguments.map lowerCallOperand) = .ok (.function closure, values))
     (profile : factoryOperands values = some operands)
@@ -178,7 +182,7 @@ theorem run_factory {scope : Source.Scope} {space : Namespace} {context : CallCo
       | .faulted heap _ fault => ⟨space, .error (.directCallFault fault), [], heap, Core.Module.ListHeap.empty⟩
       | .running heap .. | .delivering heap .. | .receiving heap .. =>
         ⟨space, .error .directCallFuelExhausted, [], heap, Core.Module.ListHeap.empty⟩ := by
-  simp only [runInstructionsIn, effectWithLists, effect, resolved, invokeFlatCall, profile, admitted, ite_true]
+  simp only [runInstructionsIn, effectWithLists, effect, resolved, invokeModuleCall, fixed, Bool.false_eq_true, ite_false, invokeFlatCall, profile, admitted, ite_true]
   generalize ordinaryCall space context closure operands = state
   cases state with
   | finished heap result =>

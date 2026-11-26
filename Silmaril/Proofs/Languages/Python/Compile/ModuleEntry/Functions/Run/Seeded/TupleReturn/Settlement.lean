@@ -14,6 +14,7 @@ theorem run_result {scope : Source.Scope} {space : Namespace} {context : CallCon
     {name target : String} {closure : Core.Closure.Function}
     {arguments operands : List Core.Module.Functions.Operand}
     {values : List Value} {rest : List (Instruction scope)} {lists : Core.Module.ListHeap}
+    (fixed : context.isVariadic (.function closure) = false)
     (resolved : Core.Module.SeededCall.resolveCall space #v[] (.global name)
       (arguments.map lowerCallOperand) = .ok (.function closure, values))
     (profile : factoryOperands values = some operands)
@@ -32,7 +33,7 @@ theorem run_result {scope : Source.Scope} {space : Namespace} {context : CallCon
       | .faulted heap _ fault => ⟨space, .error (.directCallFault fault), [], heap, lists⟩
       | .running heap .. | .delivering heap .. | .receiving heap .. =>
         ⟨space, .error .directCallFuelExhausted, [], heap, lists⟩ := by
-  simp only [runInstructionsIn, effectWithLists, effect, resolved, invokeFlatCall, profile, notFactory,
+  simp only [runInstructionsIn, effectWithLists, effect, resolved, invokeModuleCall, fixed, Bool.false_eq_true, ite_false, invokeFlatCall, profile, notFactory,
     admitted, Bool.false_eq_true, ite_false, ite_true]
   generalize ordinaryCall space context closure operands = state
   cases state with

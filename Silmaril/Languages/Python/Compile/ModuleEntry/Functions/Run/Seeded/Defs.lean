@@ -229,7 +229,7 @@ def CallContext.acceptsCallFrom (context : CallContext) (ledger : List Function)
     (closure : Function) (arity : Nat) : Bool :=
   if closure ∈ ledger then
     match Core.Closure.Dispatch.resolve context.table closure.code with
-    | .ok definition => definition.parameters.slots.length == arity
+    | .ok definition => definition.variadic.isNone && (definition.parameters.slots.length == arity)
     | .error _ => true
   else false
 
@@ -343,6 +343,28 @@ def observeTupleResult (space : Namespace) (state : Core.Closure.Executor.State)
   | .finished heap (.ok _) => (.ok ⟨.error .unsupported, none⟩, heap)
   | _ => observeDirectCall space state
 
+def invokeCheckedPositionals (space : Namespace) (context : CallContext)
+    (callee : Value) (arguments : List Core.Closure.Value) :
+    Except ModuleFailure CallObservation × Heap :=
+  match ordinaryValue? callee with
+  | some value =>
+    let authorized := match value with
+      | .function closure => decide (closure ∈ context.published)
+      | _ => true
+    if authorized then
+      let invocation := spreadInvocation (callbackSession space context.heap) .discard value arguments
+      observeDirectCall space (invocation.runPrefix context.table context.fuel).2.state
+    else (.ok ⟨.error .unsupported, none⟩, context.heap)
+  | none => (.ok ⟨.error .unsupported, none⟩, context.heap)
+
+def CallContext.isVariadic (context : CallContext) (callee : Value) : Bool :=
+  match callee with
+  | .function closure =>
+    match Core.Closure.Dispatch.resolve context.table closure.code with
+    | .ok definition => definition.variadic.isSome
+    | .error _ => false
+  | _ => false
+
 /-- Dispatch an already resolved flat call. Factory binding uses the current
 run's recorded descriptors and the bounded fixed integer argument profile. -/
 def invokeFlatCall (space : Namespace) (context : CallContext)
@@ -365,6 +387,15 @@ def invokeFlatCall (space : Namespace) (context : CallContext)
     | none => (.ok ⟨.error .unsupported, none⟩, context.heap)
   | _, _, _ => invokeCall space context callee arguments
 
+def invokeModuleCall (space : Namespace) (context : CallContext)
+    (destination : Core.Module.Functions.Destination) (callee : Value) (arguments : List Value) :
+    Except ModuleFailure CallObservation × Heap :=
+  if context.isVariadic callee then
+    match arguments.mapM ordinaryValue? with
+    | some values => invokeCheckedPositionals space context callee values
+    | none => (.ok ⟨.error .unsupported, none⟩, context.heap)
+  else invokeFlatCall space context destination callee arguments
+
 /-- The adjacent source guard establishes the name-to-slot mapping. Read the
 live module-first binding once and enter only a published one-slot function. -/
 def invokeAdjacentKeywordDiscard (space : Namespace) (context : CallContext)
@@ -382,6 +413,35 @@ def invokeAdjacentKeywordDiscard (space : Namespace) (context : CallContext)
 def acceptObservation (destination : Core.Module.Functions.Destination)
     (name : String) (observed : CallObservation) : Effect :=
   ⟨(observed.result.bind (acceptCall destination)).mapError ModuleFailure.ofCall, [⟨name, observed⟩]⟩
+
+def spreadLookup (space : Namespace) (name : String) : Except Core.Closure.Failure Core.Closure.Value :=
+  match space.lookupGlobal name with
+  | none => .error (.defined (.nameError name))
+  | some value =>
+    match ordinaryValue? value with
+    | some projected => .ok projected
+    | none => .error .unsupportedTupleElement
+
+def spreadModuleFailure : Core.Closure.Call.PositionalInputFailure → ModuleFailure
+  | .notIterable => .raised (.runtime .unpackNonIterable)
+  | .operand (.defined error) => .raised (.runtime error)
+  | .operand .unsupportedTupleElement => .unsupported
+  | .operand (.danglingCell identity) => .directCallFault (.danglingCell identity)
+
+def observeSpreadCall (space : Namespace) (context : CallContext)
+    (destination : Core.Module.Functions.Destination) (name : String) (arguments : List SpreadPart) :
+    Effect × Heap :=
+  match space.lookupGlobal name with
+  | none => (⟨.error (.raised (.runtime (.nameError name))), []⟩, context.heap)
+  | some callee =>
+    let (collected, heap) :=
+      Core.Closure.Call.collectPositionals (readSpreadInput (spreadLookup space)) arguments context.heap
+    match collected with
+    | .error failure => (⟨.error (spreadModuleFailure failure), []⟩, heap)
+    | .ok values =>
+      match invokeCheckedPositionals space { context with heap } callee values with
+      | (.ok observed, reached) => (acceptObservation destination name observed, reached)
+      | (.error error, reached) => (⟨.error error, []⟩, reached)
 
 def observeNamedCall (space : Namespace) (name : String)
     (arguments : List Core.Module.Functions.Operand) : CallEvent :=
@@ -639,10 +699,11 @@ def effect {scope : Scope} (space : Namespace) (context : CallContext) (instruct
     match Core.Module.SeededCall.resolveCall space #v[] (.global name) (arguments.map lowerCallOperand) with
     | .error error => (acceptObservation destination name ⟨.error error, none⟩, context.heap)
     | .ok (callee, values) =>
-      let (observed, heap) := invokeFlatCall space context destination callee values
+      let (observed, heap) := invokeModuleCall space context destination callee values
       match observed with
       | .ok result => (acceptObservation destination name result, heap)
       | .error error => (⟨.error error, []⟩, heap)
+  | .spreadCall destination name arguments => observeSpreadCall space context destination name arguments
   | .adjacentKeywordDiscard name value =>
     match invokeAdjacentKeywordDiscard space context name value with
     | (.ok observed, heap) => (acceptObservation .discard name observed, heap)
@@ -680,7 +741,8 @@ def runInstructionsIn {scope : Scope} (space : Namespace) (context : CallContext
         | .publish _ function => function.closure :: context.published
         | _ => context.published
       let escaped := match instruction, binding with
-        | .call (.bindGlobal _) _ _, some (_, .function closure) => closure :: context.escaped
+        | .call (.bindGlobal _) _ _, some (_, .function closure)
+        | .spreadCall (.bindGlobal _) _ _, some (_, .function closure) => closure :: context.escaped
         | _, _ => context.escaped
       let tail := runInstructionsIn updated { context with heap, published, escaped } rest updatedLists
       { tail with calls := item.calls ++ tail.calls }

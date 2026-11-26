@@ -23,6 +23,12 @@ inductive Argument where
   | scalar (operand : Core.Module.Functions.Operand)
   | call (name : String) (arguments : List Core.Module.Functions.Operand)
 
+inductive SpreadInput where
+  | scalar (operand : Core.Module.Functions.Operand)
+  | tuple (items : List Core.Module.Functions.Operand)
+
+abbrev SpreadPart := Core.Closure.Call.PositionalOperand SpreadInput
+
 inductive Instruction (scope : Scope) where
   | scalar (action : ModuleEntry.Action scope)
   | assertNot (condition : Operand scope)
@@ -33,6 +39,8 @@ inductive Instruction (scope : Scope) where
   | assertVarNames (receiver : String) (needle : List UInt32)
   | publish (name : String) (function : TopFunction)
   | call (destination : Core.Module.Functions.Destination) (name : String) (operands : List Core.Module.Functions.Operand)
+  | spreadCall (destination : Core.Module.Functions.Destination) (name : String)
+      (operands : List SpreadPart)
   /-- The source plan places this call immediately after the matching publication. -/
   | adjacentKeywordDiscard (name : String) (value : Int)
   | nestedCall (destination : Core.Module.Functions.Destination) (name : String) (arguments : List Argument)
@@ -49,6 +57,20 @@ def callOperand? {scope : Scope} : Operand scope → Option Core.Module.Function
   | .boolean value => some (.literal (.bool value))
   | .read name _ => some (.readGlobal name)
   | .none_ | .binary .. | .identityChain .. => none
+
+def spreadScalar? {scope : Scope} (operand : Operand scope) : Option Core.Module.Functions.Operand :=
+  match operand with
+  | .none_ => some (.literal .none)
+  | _ => callOperand? operand
+
+def spreadInput? {scope : Scope} : SpreadOperand scope → Option SpreadInput
+  | .scalar operand => (spreadScalar? operand).map .scalar
+  | .tuple items => (items.mapM spreadScalar?).map .tuple
+
+def spreadPart? {scope : Scope} :
+    Core.Closure.Call.PositionalOperand (SpreadOperand scope) → Option SpreadPart
+  | .single operand => (spreadInput? operand).map .single
+  | .starred operand => (spreadInput? operand).map .starred
 
 def callArgument? {scope : Scope} : CallArgument scope → Option Argument
   | .scalar operand => (callOperand? operand).map .scalar
@@ -94,6 +116,10 @@ def lowerInstructions {scope : Scope} (tree : Source.ScopeTree) (next : Nat) : L
     let some arguments := operands.mapM callOperand? | throw .callOperand
     let (instructions, blocks) ← lowerInstructions tree next rest
     return (.call (destination target) name arguments :: instructions, blocks)
+  | .spreadCall target name _ operands :: rest => do
+    let some arguments := operands.mapM spreadPart? | throw .callOperand
+    let (instructions, blocks) ← lowerInstructions tree next rest
+    return (.spreadCall (destination target) name arguments :: instructions, blocks)
   | .adjacentKeywordDiscard name _ value :: rest => do
     let (instructions, blocks) ← lowerInstructions tree next rest
     return (.adjacentKeywordDiscard name value :: instructions, blocks)
@@ -101,13 +127,13 @@ def lowerInstructions {scope : Scope} (tree : Source.ScopeTree) (next : Nat) : L
     let some arguments := operands.mapM callArgument? | throw .callOperand
     let (instructions, blocks) ← lowerInstructions tree next rest
     return (.nestedCall (destination target) name arguments :: instructions, blocks)
-  | .define name _ child parameters code keywordDefault :: rest => do
+  | .define name _ child parameters code keywordDefault variadic :: rest => do
     let layout := frameLayout child.scope
     if captures : layout.captures = 0 then
       let nested := Compile.Closure.Link.linkBody (next + 1) tree (initializeKeywordDefault code keywordDefault)
       let (instructions, blocks) ← lowerInstructions tree (next + 1 + nested.children.length) rest
       let root : Compile.Closure.Link.Block :=
-        ⟨child.scope.context.path, ⟨layout, { parameters, body := nested.code }⟩⟩
+        ⟨child.scope.context.path, ⟨layout, { parameters, body := nested.code, variadic }⟩⟩
       let profiled := match keywordDefault with
         | none => ((root.withFreeVars tree).withCellVars tree).withCodeNames tree
         | some _ => root
@@ -217,6 +243,38 @@ def prepareNestedCall (session : Session) (destination : Core.Module.Functions.D
   let frame : Frame layout := ⟨fun _ => none, Fin.elim0, Fin.elim0⟩
   ⟨session.globals, destination, .running session.heap frame (.store callee (.readGlobal name) body) []⟩
 
+def readSpreadInput (lookup : String → Except Core.Closure.Failure Value) :
+    Core.Closure.Call.ReadOperand SpreadInput Heap :=
+  let read : Core.Module.Functions.Operand → Except Core.Closure.Failure Value
+    | .literal value => .ok value
+    | .readGlobal name => lookup name
+  fun input heap =>
+    let result := match input with
+      | .scalar value => read value
+      | .tuple items => do
+        let values ← items.mapM read
+        let some scalars := values.mapM Value.scalar? | throw .unsupportedTupleElement
+        return .tuple scalars
+    (result, heap)
+
+def prepareSpread (session : Session) (name : String) (parts : List SpreadPart) :
+    Except Core.Closure.Call.PositionalInputFailure (Value × List Value) × Heap :=
+  let read := readSpreadInput fun query =>
+    match session.globals query with
+    | some value => .ok value
+    | none => .error (.defined (.nameError query))
+  Core.Closure.Call.preparePositionalCall read (.scalar (.readGlobal name)) parts session.heap
+
+def spreadInvocation (session : Session) (destination : Core.Module.Functions.Destination)
+    (callee : Value) (arguments : List Value) : Invocation :=
+  session.prepareCall destination (.literal callee) (arguments.map .literal)
+
+def spreadFailure : Core.Closure.Call.PositionalInputFailure → Completion
+  | .notIterable => .raised .unpackNonIterable
+  | .operand (.defined error) => .raised error
+  | .operand .unsupportedTupleElement => .executorFault .unsupportedTupleElement
+  | .operand (.danglingCell identity) => .executorFault (.danglingCell identity)
+
 inductive State (scope : Scope) where
   | ready (session : Session) (instructions : List (Instruction scope))
   | calling (invocation : Invocation) (remaining : List (Instruction scope))
@@ -297,6 +355,12 @@ def advance {scope : Scope} (table : CodeTable) : State scope → List Event × 
       | .ok updated => .ready updated rest
       | .error fault => .finished session (.codeFault fault))
     | .call destination name arguments => ([], .calling (session.prepareCall destination (.readGlobal name) arguments) rest)
+    | .spreadCall destination name arguments =>
+      let (prepared, heap) := prepareSpread session name arguments
+      let reached := { session with heap }
+      ([], match prepared with
+        | .ok (callee, values) => .calling (spreadInvocation reached destination callee values) rest
+        | .error failure => .finished reached (spreadFailure failure))
     | .adjacentKeywordDiscard name value =>
       ([], .calling (session.prepareCall .discard (.readGlobal name) [.literal (.int value)]) rest)
     | .nestedCall destination name arguments =>

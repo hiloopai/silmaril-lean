@@ -12,6 +12,7 @@ theorem run_tuple_result {scope : Source.Scope} {space : Core.Module.SeededCall.
     {name target : String} {closure : Core.Closure.Function}
     {arguments operands : List Core.Module.Functions.Operand}
     {values : List Core.Module.SeededCall.Value} {rest : List (Run.Instruction scope)} {lists : Core.Module.ListHeap}
+    (fixed : context.isVariadic (.function closure) = false)
     (resolved : Core.Module.SeededCall.resolveCall space #v[] (.global name)
       (arguments.map lowerCallOperand) = .ok (.function closure, values))
     (profile : factoryOperands values = some operands)
@@ -31,6 +32,6 @@ theorem run_tuple_result {scope : Source.Scope} {space : Core.Module.SeededCall.
       | .running heap .. | .delivering heap .. | .receiving heap .. =>
         ⟨space, .error .directCallFuelExhausted, [], heap, lists⟩ :=
   Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.TupleReturn.run_result
-    resolved profile notFactory admitted
+    fixed resolved profile notFactory admitted
 
 end Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded

@@ -98,6 +98,25 @@ def destinations (parameters : VariadicParameters layout) : Parameters layout :=
       fun _ present _ tail equal =>
         parameters.restDistinct ((equal.trans (List.mem_singleton.mp tail)) ▸ present)⟩⟩
 
+/-- Recover a fixed prefix and its distinct final rest slot from the
+checked declaration-order destinations. -/
+def ofDestinations (parameters : Parameters layout) :
+    Option { signature : VariadicParameters layout // signature.destinations = parameters } := do
+  match found : parameters.slots.getLast? with
+  | none => none
+  | some rest =>
+    have split : parameters.slots.dropLast ++ [rest] = parameters.slots := by
+      obtain ⟨prefixSlots, exactSlots⟩ := List.getLast?_eq_some_iff.mp found
+      simp [exactSlots]
+    have distinct := List.nodup_append.mp (split.symm ▸ parameters.distinct :
+      (parameters.slots.dropLast ++ [rest]).Nodup)
+    let signature : VariadicParameters layout :=
+      ⟨⟨parameters.slots.dropLast, distinct.1⟩, rest, fun present => distinct.2.2 rest present rest (by simp) rfl⟩
+    return ⟨signature, by
+      cases parameters
+      simp only [destinations, signature, Parameters.mk.injEq]
+      exact split⟩
+
 /-- The fixed prefix is copied as supplied. The overflow list is stored as
 one exact scalar tuple, including the empty tuple. -/
 def complete (parameters : VariadicParameters layout) (supplied : List Value) :

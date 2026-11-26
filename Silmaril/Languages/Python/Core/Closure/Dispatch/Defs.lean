@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Languages.Python.Core.Closure.Call.Defs
+public import Silmaril.Languages.Python.Core.Closure.Call.Variadic.Defs
 
 /-! # Checked dispatch of a resolved positional call -/
 
@@ -30,6 +30,16 @@ structure Definition (Body : Layout → Type) (layout : Layout) where
   codeNames : Option ProfiledCodeNames := none
   /-- Exact profiled CPython 3.13.5 fast-local tuple for a module code read. -/
   varnames : Option (List String) := none
+  /-- If present, the final destination receives the scalar tuple of excess arguments. -/
+  variadic : Option { signature : Call.VariadicParameters layout // signature.destinations = parameters } := none
+
+def Definition.prepare {Body : Layout → Type} {layout : Layout}
+    (definition : Definition Body layout) (supplied : List Value) : Except Closure.Failure (List Value) :=
+  match definition.variadic with
+  | some signature => signature.val.complete supplied
+  | none =>
+    if supplied.length = definition.parameters.slots.length then .ok supplied
+    else .error (.defined (.positionalArity definition.parameters.slots.length supplied.length))
 
 structure Entry (Body : Layout → Type) where
   layout : Layout
@@ -74,9 +84,15 @@ def dispatch (table : CodeTable Body) (callee : Value) (arguments : List Value)
     match resolve table fn.code with
     | .error error => .error error
     | .ok definition =>
-      match Call.enter fn definition.parameters arguments heap caller stack with
-      | .error error => .error (.call error)
-      | .ok entered => .ok ⟨fn.code.layout, definition, entered⟩
+      match Call.firstDangling fn heap with
+      | some identity => .error (.call (.danglingCell identity))
+      | none =>
+        match definition.prepare arguments with
+        | .error error => .error (.call error)
+        | .ok bound =>
+          match Call.enter fn definition.parameters bound heap caller stack with
+          | .error error => .error (.call error)
+          | .ok entered => .ok ⟨fn.code.layout, definition, entered⟩
 
 /-- A successful dispatch reads a well-typed code entry and binds the
 positional arguments by the ordered write relation. -/
@@ -84,11 +100,11 @@ inductive Dispatches (table : CodeTable Body) (arguments : List Value) (heap : H
     (caller : Call.Saved Continuation) (stack : List (Call.Saved Continuation)) :
     Value → Active Body Continuation → Prop where
   | function {fn : Function} {definition : Definition Body fn.code.layout}
-      {environment : Call.Environment fn.code.layout}
+      {environment : Call.Environment fn.code.layout} {bound : List Value}
       (code : Resolves table fn.code definition)
-      (arity : arguments.length = definition.parameters.slots.length)
+      (prepared : definition.prepare arguments = .ok bound)
       (captures : ∀ identity ∈ fn.captures.toList, identity.address < heap.next)
-      (writes : Call.Writes (definition.parameters.slots.zip arguments) (fn.freshFrame heap) environment) :
+      (writes : Call.Writes (definition.parameters.slots.zip bound) (fn.freshFrame heap) environment) :
       Dispatches table arguments heap caller stack (.function fn)
         ⟨fn.code.layout, definition, ⟨environment, caller :: stack⟩⟩
 

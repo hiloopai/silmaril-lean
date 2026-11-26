@@ -43,7 +43,8 @@ theorem Compiled.resolve_reference {source : Source.Module} (compiled : Compiled
           freevars := definition.freevars
           cellvars := definition.cellvars
           codeNames := definition.codeNames
-          varnames := definition.varnames } :=
+          varnames := definition.varnames
+          variadic := definition.variadic } :=
   Proofs.Languages.Python.Compile.Closure.Run.resolve_reference compiled emitted
 
 theorem run_path {source : Source.Module} {compiled : Compiled source} {arguments : List Value}

@@ -3,6 +3,7 @@ module
 public import Silmaril.Languages.Python.Compile.Closure.Body.Defs
 public import Silmaril.Languages.Python.Compile.ModuleEntry.Defs
 public import Silmaril.Languages.Python.Compile.ModuleEntry.Functions.TupleChain.Defs
+public import Silmaril.Languages.Python.Core.Closure.Call.Variadic.Defs
 
 /-! # Lower module function bindings and positional call sites
 
@@ -99,6 +100,45 @@ def lowerArguments (scope : Scope) : (source : List (Source.ArgumentKind × Sour
     return ⟨operand.val :: tail.val, .cons operand.property tail.property⟩
   | _ => .error .argumentProfile
 
+inductive SpreadOperand (scope : Scope) where
+  | scalar (operand : Operand scope)
+  | tuple (items : List (Operand scope))
+
+inductive SpreadOperands (scope : Scope) :
+    List (Source.ArgumentKind × Source.Expr) → List (Core.Closure.Call.PositionalOperand (SpreadOperand scope)) → Prop where
+  | nil : SpreadOperands scope [] []
+  | single {source operand rest operands} (first : OperandTranslation scope source operand)
+      (tail : SpreadOperands scope rest operands) :
+      SpreadOperands scope ((.positional, source) :: rest) (.single (.scalar operand) :: operands)
+  | starredScalar {source operand rest operands} (first : OperandTranslation scope source operand)
+      (tail : SpreadOperands scope rest operands) :
+      SpreadOperands scope ((.unpackIterable, source) :: rest) (.starred (.scalar operand) :: operands)
+  | starredTuple {items values rest operands} (first : Positional scope (items.map (.positional, ·)) values)
+      (tail : SpreadOperands scope rest operands) :
+      SpreadOperands scope ((.unpackIterable, .tuple items) :: rest) (.starred (.tuple values) :: operands)
+
+def hasSpread (arguments : List (Source.ArgumentKind × Source.Expr)) : Bool :=
+  arguments.any fun
+    | (.unpackIterable, _) => true
+    | _ => false
+
+def lowerSpreadOperands (scope : Scope) : (source : List (Source.ArgumentKind × Source.Expr)) →
+    Except Error {operands // SpreadOperands scope source operands}
+  | [] => .ok ⟨[], .nil⟩
+  | (.positional, source) :: rest => do
+    let operand ← (lowerOperand scope source).mapError .scalar
+    let tail ← lowerSpreadOperands scope rest
+    return ⟨.single (.scalar operand.val) :: tail.val, .single operand.property tail.property⟩
+  | (.unpackIterable, .tuple items) :: rest => do
+    let operands ← lowerArguments scope (items.map (.positional, ·))
+    let tail ← lowerSpreadOperands scope rest
+    return ⟨.starred (.tuple operands.val) :: tail.val, .starredTuple operands.property tail.property⟩
+  | (.unpackIterable, source) :: rest => do
+    let operand ← (lowerOperand scope source).mapError .scalar
+    let tail ← lowerSpreadOperands scope rest
+    return ⟨.starred (.scalar operand.val) :: tail.val, .starredScalar operand.property tail.property⟩
+  | _ => .error .argumentProfile
+
 /-- A module argument can contain one direct call with scalar arguments. -/
 inductive CallArgument (scope : Scope) where
   | scalar (operand : Operand scope)
@@ -183,14 +223,56 @@ def literalKeywordDefault? : (declaration : List Source.Parameter) → (body : L
   | _, _ => none
 
 /-- The ordinary definition checks used with or without an adjacent call. -/
+abbrev Variadic {layout : Core.Closure.Layout} (parameters : Core.Closure.Parameters layout) :=
+  { signature : Core.Closure.Call.VariadicParameters layout // signature.destinations = parameters }
+
+def restParameter (parameter : Source.Parameter) : Bool :=
+  parameter.defaultValue.isNone && parameter.annotation.isNone &&
+    match parameter.kind with
+    | .varPositional => true
+    | _ => false
+
+def variadicProfile (declaration : List Source.Parameter) : Bool :=
+  declaration.dropLast.all Compile.Closure.Body.fixed &&
+    declaration.getLast?.any restParameter
+
+structure DefinitionSignature (scope : Scope) where
+  parameters : Core.Closure.Parameters (frameLayout scope)
+  variadic : Option (Variadic parameters)
+
+inductive SignatureTranslation (declaration : List Source.Parameter) {scope : Scope} :
+    DefinitionSignature scope → Prop where
+  | fixed {parameters} (profile : declaration.all Compile.Closure.Body.fixed = true) :
+      SignatureTranslation declaration ⟨parameters, none⟩
+  | variadic {parameters} (profile : variadicProfile declaration = true) (signature : Variadic parameters) :
+      SignatureTranslation declaration ⟨parameters, some signature⟩
+
+def checkDefinitionSignature (scope : Scope) (declaration : List Source.Parameter) :
+    Except Compile.Closure.Body.Error {target : DefinitionSignature scope //
+      SignatureTranslation declaration target ∧
+      target.parameters.slots.map (Compile.Closure.parameterName scope) = declaration.map Source.Parameter.name} := do
+  if profile : variadicProfile declaration = true then
+    if names : scope.context.parameters = declaration.map Source.Parameter.name then
+      let some checked := Source.Closure.Frame.parameterLayout? scope
+        | throw (.parameterLayout scope.context.path)
+      let parameters := Compile.Closure.parameters checked
+      let some signature := Core.Closure.Call.VariadicParameters.ofDestinations parameters
+        | throw (.parameterLayout scope.context.path)
+      return ⟨⟨parameters, some signature⟩, .variadic profile signature,
+        (Compile.Closure.parameters_order checked).trans names⟩
+    else throw (.scopeTree scope.context.path)
+  else
+    let checked ← Compile.Closure.Body.checkParameters scope declaration
+    return ⟨⟨checked.val, none⟩, .fixed checked.property.1, checked.property.2⟩
+
 structure DefinitionTranslation (tree : ScopeTree) (index : Nat) (declaration : List Source.Parameter)
-    (body : List Source.Stmt) (child : ScopeTree) (parameters : Core.Closure.Parameters (frameLayout child.scope))
+    (body : List Source.Stmt) (child : ScopeTree) (signature : DefinitionSignature child.scope)
     (code : Code (frameLayout child.scope)) : Prop where
   located : tree.children[index]? = some child
   path : child.scope.context.path = tree.scope.context.path ++ [index]
   kind : child.scope.context.kind = .function
-  fixed : declaration.all Compile.Closure.Body.fixed = true
-  parameterOrder : parameters.slots.map (Compile.Closure.parameterName child.scope) =
+  parameters : SignatureTranslation declaration signature
+  parameterOrder : signature.parameters.slots.map (Compile.Closure.parameterName child.scope) =
     declaration.map Source.Parameter.name
   functionBody : Compile.Closure.Body.Translation child 0 body code
 
@@ -360,6 +442,9 @@ inductive Action (scope : Scope) where
   | define (name : Name) (reference : GlobalReference scope name) (child : ScopeTree)
       (parameters : Core.Closure.Parameters (frameLayout child.scope)) (code : Code (frameLayout child.scope))
       (keywordDefault : Option (Fin (frameLayout child.scope).locals × Int) := none)
+      (variadic : Option (Variadic parameters) := none)
+  | spreadCall (destination : Destination scope) (name : Name) (reference : GlobalReference scope name)
+      (arguments : List (Core.Closure.Call.PositionalOperand (SpreadOperand scope)))
   | call (destination : Destination scope) (name : Name) (reference : GlobalReference scope name)
       (arguments : List (Operand scope))
   | adjacentKeywordDiscard (name : Name) (reference : GlobalReference scope name) (value : Int)
@@ -401,20 +486,25 @@ inductive Translation (tree : ScopeTree) : Nat → List Source.Stmt → List (Ac
       (site : CallSite statement target name arguments) (result : destination.placement = target)
       (operandOrder : Positional tree.scope arguments values) (remaining : Translation tree index rest tail) :
       Translation tree index (statement :: rest) (.call destination name reference values :: tail)
+  | spreadCall {index statement rest target name arguments destination reference values tail}
+      (site : CallSite statement target name arguments) (result : destination.placement = target)
+      (spread : hasSpread arguments = true) (operandOrder : SpreadOperands tree.scope arguments values)
+      (remaining : Translation tree index rest tail) :
+      Translation tree index (statement :: rest) (.spreadCall destination name reference values :: tail)
   | nestedCall {index statement rest target name arguments destination reference values tail}
       (site : CallSite statement target name arguments) (result : destination.placement = target)
       (operandOrder : CallArguments tree.scope arguments values) (remaining : Translation tree index rest tail) :
       Translation tree index (statement :: rest) (.nestedCall destination name reference values :: tail)
-  | define {index name declaration body rest child reference parameters code tail}
-      (definition : DefinitionTranslation tree index declaration body child parameters code)
+  | define {index name declaration body rest child reference signature code tail}
+      (definition : DefinitionTranslation tree index declaration body child signature code)
       (remaining : Translation tree (index + 1) rest tail) :
       Translation tree index (.functionDef name declaration body [] none :: rest)
-        (.define name reference child parameters code :: tail)
-  | defineLambda {index statement name declaration body rest child reference parameters code tail}
+        (.define name reference child signature.parameters code none signature.variadic :: tail)
+  | defineLambda {index statement name declaration body rest child reference signature code tail}
       (binding : Compile.Closure.Body.Assignment statement name (.lambda declaration body))
-      (definition : DefinitionTranslation tree index declaration [.return_ (some body)] child parameters code)
+      (definition : DefinitionTranslation tree index declaration [.return_ (some body)] child signature code)
       (remaining : Translation tree (index + 1) rest tail) :
-      Translation tree index (statement :: rest) (.define name reference child parameters code :: tail)
+      Translation tree index (statement :: rest) (.define name reference child signature.parameters code none signature.variadic :: tail)
   | defineLiteralKeywordDefault {index name declaration body rest child reference parameter slot value code tail}
       (located : tree.children[index]? = some child)
       (path : child.scope.context.path = tree.scope.context.path ++ [index])
@@ -425,12 +515,12 @@ inductive Translation (tree : ScopeTree) : Nat → List Source.Stmt → List (Ac
       (remaining : Translation tree (index + 1) rest tail) :
       Translation tree index (.functionDef name declaration body [] none :: rest)
         (.define name reference child ⟨[], .nil⟩ code (some (slot, value)) :: tail)
-  | defineThenKeywordDiscard {index name declaration body statement rest child reference parameters code value tail}
-      (definition : DefinitionTranslation tree index declaration body child parameters code)
+  | defineThenKeywordDiscard {index name declaration body statement rest child reference signature code value tail}
+      (definition : DefinitionTranslation tree index declaration body child signature code)
       (call : AdjacentKeywordDiscard name declaration statement value)
       (remaining : Translation tree (index + 1) rest tail) :
       Translation tree index (.functionDef name declaration body [] none :: statement :: rest)
-        (.define name reference child parameters code :: .adjacentKeywordDiscard name reference value :: tail)
+        (.define name reference child signature.parameters code none signature.variadic :: .adjacentKeywordDiscard name reference value :: tail)
 
 def lowerPlan (tree : ScopeTree) (index : Nat) : (source : List Source.Stmt) →
     Except Error {actions // Translation tree index source actions}
@@ -454,11 +544,11 @@ def lowerPlan (tree : ScopeTree) (index : Nat) : (source : List Source.Stmt) →
               .defineLiteralKeywordDefault located scopeMatches.1 scopeMatches.2 checked.property
                 (bound ▸ destination.property) code.property tail.property⟩
           | _ => throw (.functionBody .parameterProfile)
-        let parameters ← (Compile.Closure.Body.checkParameters child.scope declaration).mapError .functionBody
+        let signature ← (checkDefinitionSignature child.scope declaration).mapError .functionBody
         let code ← (Compile.Closure.Body.lowerBodyWith child true 0 body).mapError .functionBody
-        let definition : DefinitionTranslation tree index declaration body child parameters.val code.val :=
-          ⟨located, scopeMatches.1, scopeMatches.2, parameters.property.1, parameters.property.2, code.property⟩
-        let action := Action.define name reference child parameters.val code.val
+        let definition : DefinitionTranslation tree index declaration body child signature.val code.val :=
+          ⟨located, scopeMatches.1, scopeMatches.2, signature.property.1, signature.property.2, code.property⟩
+        let action := Action.define name reference child signature.val.parameters code.val none signature.val.variadic
         match adjacent : rest with
         | statement :: remaining =>
           if let some call := adjacentKeywordDiscard? name declaration statement then
@@ -494,25 +584,31 @@ def lowerPlan (tree : ScopeTree) (index : Nat) : (source : List Source.Stmt) →
       let tail ← lowerPlan tree index rest
       return ⟨.assertTupleChain test.val :: tail.val, .assertTupleChain test.property tail.property⟩
     else if let some ⟨(name, .lambda declaration body), binding⟩ := Compile.Closure.Body.assignment? statement then
-      unless declaration.all Compile.Closure.Body.fixed do throw (.functionBody .parameterProfile)
+      unless declaration.all Compile.Closure.Body.fixed || variadicProfile declaration do
+        throw (.functionBody .parameterProfile)
       let path := tree.scope.context.path ++ [index]
       match located : tree.children[index]? with
       | none => throw (.functionScope path)
       | some child =>
         if scopeMatches : child.scope.context.path = path ∧ child.scope.context.kind = .function then
           let some reference := globalReference? tree.scope name | throw (.unresolvedGlobal name)
-          let parameters ← (Compile.Closure.Body.checkParameters child.scope declaration).mapError .functionBody
+          let signature ← (checkDefinitionSignature child.scope declaration).mapError .functionBody
           let code ← (Compile.Closure.Body.lowerBodyWith child true 0 [.return_ (some body)]).mapError .functionBody
           let tail ← lowerPlan tree (index + 1) rest
           let definition : DefinitionTranslation tree index declaration [.return_ (some body)] child
-              parameters.val code.val :=
-            ⟨located, scopeMatches.1, scopeMatches.2, parameters.property.1, parameters.property.2, code.property⟩
-          return ⟨.define name reference child parameters.val code.val :: tail.val,
+              signature.val code.val :=
+            ⟨located, scopeMatches.1, scopeMatches.2, signature.property.1, signature.property.2, code.property⟩
+          return ⟨.define name reference child signature.val.parameters code.val none signature.val.variadic :: tail.val,
             .defineLambda binding definition tail.property⟩
         else throw (.functionScope path)
     else if let some ⟨(target, name, arguments), site⟩ := callSite? statement then
       let destination ← lowerDestination tree.scope target
       let some reference := globalReference? tree.scope name | throw (.unresolvedGlobal name)
+      if spread : hasSpread arguments = true then
+        let operands ← lowerSpreadOperands tree.scope arguments
+        let tail ← lowerPlan tree index rest
+        return ⟨.spreadCall destination.val name reference operands.val :: tail.val,
+          .spreadCall site destination.property spread operands.property tail.property⟩
       match lowerArguments tree.scope arguments with
       | .ok operands =>
         let tail ← lowerPlan tree index rest

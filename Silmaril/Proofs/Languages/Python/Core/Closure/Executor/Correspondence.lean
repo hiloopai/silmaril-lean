@@ -151,10 +151,9 @@ private theorem rejected_eq (rejected : Rejects table args heap callee failure) 
   | nonCallableTuple items => rfl
   | missing fn absent => simp [Dispatch.dispatch, Dispatch.resolve_missing absent]
   | mismatch fn entry found different => simp [Dispatch.dispatch, Dispatch.resolve_layout_mismatch found different]
-  | dangling found first => simp [Dispatch.dispatch, Dispatch.resolve_iff.mpr found, Call.enter, first]
-  | arity found live wrong =>
-    simp [Dispatch.dispatch, Dispatch.resolve_iff.mpr found, Call.enter, live,
-      Call.bind_arity_error _ _ _ wrong, Except.map]
+  | dangling found first => simp [Dispatch.dispatch, Dispatch.resolve_iff.mpr found, first]
+  | preparation found live wrong =>
+    simp [Dispatch.dispatch, Dispatch.resolve_iff.mpr found, live, wrong]
 
 private theorem captures_live {fn : Function} (valid : Call.firstDangling fn heap = none) :
     ∀ identity ∈ fn.captures.toList, identity.address < heap.next := by
@@ -197,18 +196,19 @@ private theorem rejected_rule (rejected : Dispatch.dispatch table callee args he
         have resolved := Dispatch.resolve_iff.mpr member
         cases check : Call.firstDangling fn heap with
         | some identity =>
-          simp [Dispatch.dispatch, resolved, Call.enter, check] at rejected
+          simp [Dispatch.dispatch, resolved, check] at rejected
           subst failure
           exact .dangling member check
         | none =>
-          by_cases arity : args.length = definition.parameters.slots.length
-          · obtain ⟨entered, success⟩ := Call.enter_complete (caller := caller) (stack := stack)
-              arity (captures_live check)
-            simp [Dispatch.dispatch, resolved, success] at rejected
-          · simp [Dispatch.dispatch, resolved, Call.enter, check, Call.bind_arity_error _ _ _ arity,
-              Except.map] at rejected
+          cases prepared : definition.prepare args with
+          | error error =>
+            simp [Dispatch.dispatch, resolved, check, prepared] at rejected
             subst failure
-            exact .arity member check arity
+            exact .preparation member check prepared
+          | ok bound =>
+            obtain ⟨entered, success⟩ := Call.enter_complete (caller := caller) (stack := stack)
+              (Dispatch.Definition.prepare_length prepared) (captures_live check)
+            simp [Dispatch.dispatch, resolved, check, prepared, success] at rejected
       · simp [Dispatch.dispatch, Dispatch.resolve_layout_mismatch found same] at rejected
         subst failure
         exact .mismatch fn entry found same

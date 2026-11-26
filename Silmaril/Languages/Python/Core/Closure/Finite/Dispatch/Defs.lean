@@ -56,9 +56,15 @@ def dispatch (rows : CodeRows Body) (callee : Value) (arguments : List Value)
     match Closure.Dispatch.resolve rows.project fn.code with
     | .error error => .error error
     | .ok definition =>
-      match enter fn definition.parameters arguments heap with
-      | .error error => .error (.call error)
-      | .ok environment => .ok ⟨fn.code.layout, definition, environment, caller :: stack⟩
+      match Call.firstDangling fn heap.project with
+      | some identity => .error (.call (.danglingCell identity))
+      | none =>
+        match definition.prepare arguments with
+        | .error error => .error (.call error)
+        | .ok bound =>
+          match enter fn definition.parameters bound heap with
+          | .error error => .error (.call error)
+          | .ok entered => .ok ⟨fn.code.layout, definition, entered, caller :: stack⟩
   | _ => .error (.call (.defined .notCallable))
 
 structure Exit (Continuation : Layout → Type) where

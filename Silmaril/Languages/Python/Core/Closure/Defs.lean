@@ -110,6 +110,7 @@ inductive RuntimeError where
   | nameError (name : String)
   | positionalArity (expected actual : Nat)
   | notCallable
+  | unpackNonIterable
   | additionTypeError
   | multiplicationTypeError
   | assertionError

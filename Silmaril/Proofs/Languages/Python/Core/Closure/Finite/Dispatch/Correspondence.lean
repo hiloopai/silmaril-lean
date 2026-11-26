@@ -69,13 +69,24 @@ theorem dispatch_project (rows : CodeRows Body) (callee : Value) (arguments : Li
       Silmaril.Languages.Python.Core.Closure.Dispatch.dispatch rows.project callee arguments heap.project caller stack := by
   cases callee with
   | function fn =>
-    simp only [dispatch, Silmaril.Languages.Python.Core.Closure.Dispatch.dispatch]
-    cases Silmaril.Languages.Python.Core.Closure.Dispatch.resolve rows.project fn.code with
-    | error failure => rfl
+    cases resolved : Silmaril.Languages.Python.Core.Closure.Dispatch.resolve rows.project fn.code with
+    | error failure =>
+      simp only [dispatch, Silmaril.Languages.Python.Core.Closure.Dispatch.dispatch, resolved]
+      rfl
     | ok definition =>
-      simp only
-      rw [← enter_project fn definition.parameters arguments heap caller stack]
-      cases enter fn definition.parameters arguments heap <;> rfl
+      cases live : Call.firstDangling fn heap.project with
+      | some identity =>
+        simp only [dispatch, Silmaril.Languages.Python.Core.Closure.Dispatch.dispatch, resolved, live]
+        rfl
+      | none =>
+        cases prepared : definition.prepare arguments with
+        | error error =>
+          simp only [dispatch, Silmaril.Languages.Python.Core.Closure.Dispatch.dispatch, resolved, live, prepared]
+          rfl
+        | ok bound =>
+          simp only [dispatch, Silmaril.Languages.Python.Core.Closure.Dispatch.dispatch, resolved, live, prepared]
+          rw [← enter_project fn definition.parameters bound heap caller stack]
+          cases enter fn definition.parameters bound heap <;> rfl
   | _ => rfl
 
 theorem finish_project (heap : HeapTable) (stack : List (Call.Saved Continuation)) (result : Result) :

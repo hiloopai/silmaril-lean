@@ -64,6 +64,7 @@ structure Evidence (tree : ScopeTree) (blocks : List Link.Block) (ref : CodeRef)
   located : tree.atPath block.path = some scope
   scopeLayout : block.entry.layout = frameLayout scope
   profile : Profile scope
+  fixed : block.entry.definition.variadic.isNone = true
   parameterOrder : linkedParameterNames block scope scopeLayout = scope.context.parameters
   emittedSlots : List (Fin block.entry.layout.locals)
   emitted : emittedSlots? block.entry.definition.body = some emittedSlots
@@ -90,11 +91,12 @@ def checked? (tree : ScopeTree) (blocks : List Link.Block) (ref : CodeRef) :
   | some block =>
     if layout : block.entry.layout = ref.layout then
       let ⟨scope, located, scopeLayout⟩ ← Link.blockScope? tree block
-      if profile : Profile scope ∧ linkedParameterNames block scope scopeLayout = scope.context.parameters then
+      if profile : Profile scope ∧ block.entry.definition.variadic.isNone = true ∧
+          linkedParameterNames block scope scopeLayout = scope.context.parameters then
         match emitted : emittedSlots? block.entry.definition.body with
         | none => none
         | some slots =>
-          return ⟨block, found, layout, scope, located, scopeLayout, profile.1, profile.2, slots, emitted⟩
+          return ⟨block, found, layout, scope, located, scopeLayout, profile.1, profile.2.1, profile.2.2, slots, emitted⟩
       else none
     else none
 

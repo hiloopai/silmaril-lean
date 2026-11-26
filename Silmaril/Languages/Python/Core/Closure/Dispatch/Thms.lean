@@ -22,6 +22,11 @@ theorem resolve_layout_mismatch {ref : CodeRef} {entry : Entry Body}
     resolve table ref = .error (.layoutMismatch ref.layout entry.layout) := by
   simp [resolve, found, different]
 
+theorem Definition.prepare_length {layout : Layout} {definition : Definition Body layout}
+    {arguments bound : List Value} (prepared : definition.prepare arguments = .ok bound) :
+    bound.length = definition.parameters.slots.length :=
+  Proofs.Languages.Python.Core.Closure.Dispatch.prepare_length prepared
+
 theorem dispatch_iff {callee : Value} {arguments : List Value} {heap : Heap}
     {caller : Call.Saved Continuation} {stack : List (Call.Saved Continuation)}
     {active : Active Body Continuation} :

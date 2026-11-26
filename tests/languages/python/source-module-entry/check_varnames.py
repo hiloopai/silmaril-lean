@@ -311,7 +311,8 @@ private def parameterProfile (source : Module) : Bool := Id.run do
   let some first := Compile.Closure.VarNames.checked? compiled.checked.tree blocks ⟨0, unread.entry.layout⟩ | return false
   let some second := Compile.Closure.VarNames.checked? compiled.checked.tree blocks ⟨1, ordered.entry.layout⟩ | return false
   let emptyParameters : Core.Closure.Parameters unread.entry.layout := ⟨[], by simp⟩
-  let badEntry := { unread.entry with definition := { unread.entry.definition with parameters := emptyParameters } }
+  let badEntry := { unread.entry with definition := {
+    unread.entry.definition with parameters := emptyParameters, variadic := none } }
   let badBlocks := { unread with entry := badEntry } :: blocks.drop 1
   return first.emittedNames.isEmpty && first.tuple == ["parameter"] &&
     second.emittedNames == ["later", "first", "later", "initial", "changed", "initial", "later", "value", "first"] &&
@@ -376,7 +377,7 @@ if __name__ == "__main__":
         if version == "3.13.5":
             assert json.loads(result.stdout) == [version, PARAMETER_TUPLES]
         shared["check_lean"](destination, PARAMETERS_LEAN, extra_imports=IMPORTS)
-        for declaration in ("value=0", "*value", "*, value", "value: int"):
+        for declaration in ("value=0", "*value, option", "*, value", "value: int"):
             shared["emit"](source, destination, f"def inspect({declaration}): pass\n")
             shared["check_lean"](destination, """
 open Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run
@@ -384,6 +385,18 @@ open Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run
 #guard (match compile pythonSource with
   | .error (.source (.functionBody .parameterProfile)) => true
   | _ => false)
+""", extra_imports=IMPORTS)
+        shared["emit"](source, destination,
+                       'def inspect(*value): pass\nassert "value" in inspect.__code__.co_varnames\n')
+        shared["check_lean"](destination, """
+open Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run
+
+#guard (match compile pythonSource with
+  | .ok compiled => match (runPrefix compiled.table 20 compiled.start).2 with
+    | .finished _ (.unprofiledVarNames _) =>
+      (Seeded.run .empty compiled).completion == .error .unsupported
+    | _ => false
+  | .error _ => false)
 """, extra_imports=IMPORTS)
         for statement, diagnostic in (
             ('assert "x" not in inspect.__code__.co_varnames', ".expressionProfile"),

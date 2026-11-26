@@ -66,6 +66,20 @@ theorem invoke_current_globals {scope : Source.Scope} (session : Core.Module.Fun
     advance table (.ready session (.call target name arguments :: remaining)) =
       ([], .calling (session.prepareCall target (.readGlobal name) arguments) remaining) := rfl
 
+theorem prepareSpread_missing {session : Core.Module.Functions.Session}
+    {name : String} {parts : List SpreadPart} (missing : session.globals name = none) :
+    prepareSpread session name parts = (.error (.operand (.defined (.nameError name))), session.heap) := by
+  simp [prepareSpread, Core.Closure.Call.preparePositionalCall, readSpreadInput, missing]
+
+theorem advance_spread_prepared {scope : Source.Scope} (table : Core.Closure.Executor.CodeTable)
+    {session : Core.Module.Functions.Session} {target : Core.Module.Functions.Destination}
+    {name : String} {parts : List SpreadPart} {callee : Core.Closure.Value}
+    {values : List Core.Closure.Value} {heap : Core.Closure.Heap} {rest : List (Instruction scope)}
+    (prepared : prepareSpread session name parts = (.ok (callee, values), heap)) :
+    advance table (.ready session (.spreadCall target name parts :: rest)) =
+      ([], .calling (spreadInvocation { session with heap } target callee values) rest) := by
+  simp [advance, prepared]
+
 theorem advance_literalArmBoolean {scope : Source.Scope} (table : Core.Closure.Executor.CodeTable)
     (session : Core.Module.Functions.Session) (value : Bool) (rest : List (Instruction scope)) :
     advance table (.ready session (.scalar (ModuleEntry.Action.assertion (.boolean value)).inLiteralArm :: rest)) =

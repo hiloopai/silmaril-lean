@@ -397,11 +397,10 @@ inductive Rejects (table : CodeTable) (arguments : List Value) (heap : Heap) :
   | dangling {fn : Function} {definition : Dispatch.Definition Body fn.code.layout} {identity : CellId}
       (found : Dispatch.Resolves table fn.code definition) (first : Call.firstDangling fn heap = some identity) :
       Rejects table arguments heap (.function fn) (.call (.danglingCell identity))
-  | arity {fn : Function} {definition : Dispatch.Definition Body fn.code.layout}
+  | preparation {fn : Function} {definition : Dispatch.Definition Body fn.code.layout} {failure : Failure}
       (found : Dispatch.Resolves table fn.code definition) (live : Call.firstDangling fn heap = none)
-      (wrong : arguments.length ≠ definition.parameters.slots.length) :
-      Rejects table arguments heap (.function fn)
-        (.call (.defined (.positionalArity definition.parameters.slots.length arguments.length)))
+      (wrong : definition.prepare arguments = .error failure) :
+      Rejects table arguments heap (.function fn) (.call failure)
 
 /-- Assignment and successful return delivery use the same frame-write relation. -/
 inductive Stores (heap : Heap) (frame : Frame layout) (destination : Slot layout) (value : Value)

@@ -22,6 +22,40 @@ open Core.Closure (Function Heap)
 open Core.Module (ListHeap ListObject)
 open Core.Closure.Executor (Fault labelledIn)
 
+theorem observeSpreadCall_missing {space : Namespace} {context : CallContext}
+    {destination : Core.Module.Functions.Destination} {name : String} {parts : List SpreadPart}
+    (missing : space.lookupGlobal name = none) :
+    observeSpreadCall space context destination name parts =
+      (⟨.error (.raised (.runtime (.nameError name))), []⟩, context.heap) := by
+  simp [observeSpreadCall, missing]
+
+theorem run_spread_argument_failure {scope : Source.Scope} {space : Namespace} {context : CallContext}
+    {target : Core.Module.Functions.Destination} {name : String} {parts : List SpreadPart}
+    {callee : Value} {failure : Core.Closure.Call.PositionalInputFailure} {heap : Heap}
+    {rest : List (Instruction scope)} {lists : ListHeap}
+    (selected : space.lookupGlobal name = some callee)
+    (failed : Core.Closure.Call.collectPositionals (readSpreadInput (spreadLookup space)) parts context.heap =
+      (.error failure, heap)) :
+    runInstructionsIn space context (.spreadCall target name parts :: rest) lists =
+      ⟨space, .error (spreadModuleFailure failure), [], heap, lists⟩ := by
+  simp [runInstructionsIn, effectWithLists, effect, observeSpreadCall, selected, failed]
+
+theorem run_spread_tuple {scope : Source.Scope} {space : Namespace} {context : CallContext}
+    {target name : String} {parts : List SpreadPart} {callee : Value}
+    {values : List Core.Closure.Value} {items : List Core.Module.Value} {prepared reached : Heap}
+    {rest : List (Instruction scope)} {lists : ListHeap}
+    (selected : space.lookupGlobal name = some callee)
+    (collected : Core.Closure.Call.collectPositionals (readSpreadInput (spreadLookup space)) parts context.heap =
+      (.ok values, prepared))
+    (finished : invokeCheckedPositionals space { context with heap := prepared } callee values =
+      (.ok ⟨.ok (.returnedTuple items), none⟩, reached)) :
+    runInstructionsIn space context (.spreadCall (.bindGlobal target) name parts :: rest) lists =
+      let tail := runInstructionsIn (space.bindGlobal target (.returnedTuple items))
+        { context with heap := reached } rest lists
+      { tail with calls := ⟨name, ⟨.ok (.returnedTuple items), none⟩⟩ :: tail.calls } := by
+  simp [runInstructionsIn, effectWithLists, effect, observeSpreadCall, selected, collected, finished,
+    acceptObservation, acceptCall, Except.bind, Except.mapError]
+
 theorem observeArguments_iff {space : Namespace} {arguments : List Argument}
     {values : Except Failure (List Value)} {calls : List CallEvent} :
     observeArguments space arguments = (values, calls) ↔ EvaluatesArguments space arguments values calls :=
@@ -207,9 +241,15 @@ theorem invokeCall_published {space : Namespace} {context : CallContext} {closur
     invokeCall space context (.helper (.assertRaises expectation.onReturn))
         [.exceptionClass expectation.expected, .function closure] =
       invokeCallback space context expectation closure := by
+  have fixed : definition.variadic = none := by
+    cases present : definition.variadic with
+    | none => rfl
+    | some signature =>
+      have slots := congrArg Core.Closure.Parameters.slots signature.property
+      simp [Core.Closure.Call.VariadicParameters.destinations, noParameters] at slots
   cases expectation
   simp [invokeCall, CallContext.acceptsPublishedCall, CallContext.acceptsCallFrom, Core.Module.SeededCall.Request.decode, published, resolved,
-    noParameters]
+    noParameters, fixed]
 
 theorem callback_fault (space : Namespace) (expectation : Expectation) (heap : Heap)
     (stack : Core.Closure.Executor.Stack) (fault : Fault) :
@@ -356,6 +396,7 @@ theorem run_assertTupleChain {scope : Source.Scope} (space : Namespace) (context
 finished call emits one receipt before its tail, and a failed call skips the tail. -/
 theorem run_directDiscard {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name : String} {closure : Function} {rest : List (Instruction scope)}
+    (fixed : context.isVariadic (.function closure) = false)
     (found : space.lookupGlobal name = some (.function closure))
     (admitted : context.acceptsPublishedCall closure = true) :
     runInstructionsIn space context (.call .discard name [] :: rest) =
@@ -370,15 +411,16 @@ theorem run_directDiscard {scope : Source.Scope} {space : Namespace} {context : 
       | .faulted heap _ fault => ⟨space, .error (.directCallFault fault), [], heap, Core.Module.ListHeap.empty⟩
       | .running heap .. | .delivering heap .. | .receiving heap .. =>
         ⟨space, .error .directCallFuelExhausted, [], heap, Core.Module.ListHeap.empty⟩ :=
-  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.run_directDiscard found admitted
+  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.run_directDiscard fixed found admitted
 
 theorem run_directDiscard_unsupported {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name : String} {closure : Function} {rest : List (Instruction scope)}
+    (fixed : context.isVariadic (.function closure) = false)
     (found : space.lookupGlobal name = some (.function closure))
     (rejected : context.acceptsPublishedCall closure = false) :
     runInstructionsIn space context (.call .discard name [] :: rest) =
       ⟨space, .error .unsupported, [⟨name, ⟨.error .unsupported, none⟩⟩], context.heap, Core.Module.ListHeap.empty⟩ :=
-  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.run_directDiscard_unsupported found rejected
+  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.run_directDiscard_unsupported fixed found rejected
 
 theorem run_publication {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name : String} {function : TopFunction} {rest : List (Instruction scope)}
@@ -419,21 +461,23 @@ theorem acceptsFactory_escaped {context : CallContext} {closure : Function} {ari
     {definition : Core.Closure.Dispatch.Definition Core.Closure.Executor.Body closure.code.layout}
     (recorded : closure ∈ context.escaped)
     (resolved : Core.Closure.Dispatch.resolve context.table closure.code = .ok definition)
+    (fixed : definition.variadic = none)
     (slots : definition.parameters.slots.length = arity)
     (shape : factoryCode context.table closure.code 2 = true) :
     context.acceptsFactory closure arity = true := by
   have known : closure ∈ context.published ++ context.escaped := List.mem_append_right _ recorded
-  simp [CallContext.acceptsFactory, CallContext.acceptsCallFrom, known, resolved, slots, shape]
+  simp [CallContext.acceptsFactory, CallContext.acceptsCallFrom, known, resolved, fixed, slots, shape]
 
 theorem acceptsFactory_returnClosure {context : CallContext} {closure : Function} {arity : Nat}
     {definition : Core.Closure.Dispatch.Definition Core.Closure.Executor.Body closure.code.layout}
     {ref : Core.Closure.CodeRef} {captures : Fin ref.layout.captures → Core.Closure.CaptureSlot closure.code.layout}
     (recorded : closure ∈ context.published ++ context.escaped)
     (resolved : Core.Closure.Dispatch.resolve context.table closure.code = .ok definition)
+    (fixed : definition.variadic = none)
     (slots : definition.parameters.slots.length = arity)
     (body : definition.body = .ret (.closure ref captures)) :
     context.acceptsFactory closure arity = true := by
-  simp [CallContext.acceptsFactory, CallContext.acceptsCallFrom, recorded, resolved, slots,
+  simp [CallContext.acceptsFactory, CallContext.acceptsCallFrom, recorded, resolved, fixed, slots,
     factoryCode, body, returnsClosure]
 
 theorem acceptsFactory_returnClosureCall {context : CallContext} {closure : Function} {arity : Nat}
@@ -442,26 +486,29 @@ theorem acceptsFactory_returnClosureCall {context : CallContext} {closure : Func
     {arguments : List (Core.Closure.Executor.Operand closure.code.layout)}
     (recorded : closure ∈ context.published ++ context.escaped)
     (resolved : Core.Closure.Dispatch.resolve context.table closure.code = .ok definition)
+    (fixed : definition.variadic = none)
     (slots : definition.parameters.slots.length = arity)
     (body : definition.body = .returnCall (.closure ref captures) arguments)
     (bounded : arguments.length ≤ 1) (child : factoryCode context.table ref 1 = true) :
     context.acceptsFactory closure arity = true := by
-  simpa [CallContext.acceptsFactory, CallContext.acceptsCallFrom, recorded, resolved, slots,
+  simpa [CallContext.acceptsFactory, CallContext.acceptsCallFrom, recorded, resolved, fixed, slots,
     factoryCode, body, returnsClosure, bounded] using child
 
 theorem run_factory_unrecorded {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name target : String} {closure : Function} {arguments : List Core.Module.Functions.Operand}
     {values : List Value} {rest : List (Instruction scope)}
+    (fixed : context.isVariadic (.function closure) = false)
     (resolved : Core.Module.SeededCall.resolveCall space #v[] (.global name)
       (arguments.map lowerCallOperand) = .ok (.function closure, values))
     (unpublished : closure ∉ context.published) (unescaped : closure ∉ context.escaped) :
     runInstructionsIn space context (.call (.bindGlobal target) name arguments :: rest) =
       ⟨space, .error .unsupported, [⟨name, ⟨.error .unsupported, none⟩⟩], context.heap, Core.Module.ListHeap.empty⟩ :=
-  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.run_factory_unrecorded resolved unpublished unescaped
+  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.run_factory_unrecorded fixed resolved unpublished unescaped
 
 theorem run_factory {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name target : String} {closure : Function} {arguments operands : List Core.Module.Functions.Operand}
     {values : List Value} {rest : List (Instruction scope)}
+    (fixed : context.isVariadic (.function closure) = false)
     (resolved : Core.Module.SeededCall.resolveCall space #v[] (.global name)
       (arguments.map lowerCallOperand) = .ok (.function closure, values))
     (profile : factoryOperands values = some operands)
@@ -480,7 +527,7 @@ theorem run_factory {scope : Source.Scope} {space : Namespace} {context : CallCo
       | .faulted heap _ fault => ⟨space, .error (.directCallFault fault), [], heap, Core.Module.ListHeap.empty⟩
       | .running heap .. | .delivering heap .. | .receiving heap .. =>
         ⟨space, .error .directCallFuelExhausted, [], heap, Core.Module.ListHeap.empty⟩ :=
-  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.run_factory resolved profile admitted
+  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.run_factory fixed resolved profile admitted
 
 theorem run_adjacentKeywordDiscard {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name : String} {closure : Function} {value : Int} {rest : List (Instruction scope)}
