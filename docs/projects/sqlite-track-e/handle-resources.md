@@ -21,6 +21,15 @@ declarations and documentation also appear in its pinned source header.
 | `sqlite3_close` and `sqlite3_close_v2` | Both accept null and immediately retire an idle owned connection. When busy, legacy close returns `BUSY` with the same resource history and deferred close returns `OK` and leaves a zombie. Error strings, tracing and virtual-table effects are outside that equality. [Close API][close] · [Busy check and close][close-src] |
 | `sqlite3_finalize`, `sqlite3_blob_close`, `sqlite3_backup_finish` | Null is a no-op. An admitted non-null release retires its child even when the reported SQLite status is an error. Release checks the child's linked parent, permits a zombie, and retires an idle zombie. The optional reaped token is an extra observation of the Lean relation. [Finalize API][finalize] · [Finalize implementation][finalize-src] · [Blob close API][blob] · [Blob close implementation][blob-src] · [Backup finish API][backup] · [Zombie cleanup][reap-src] |
 
+`ReleaseStatus` maps `SQLITE_OK` to `.ok` and all other codes actually
+returned by a release to `.error`, including any `SQLITE_BUSY` or
+`SQLITE_LOCKED` returned by that release. Legacy close has the distinct
+`.busy` observation above. For backup, transient `BUSY` and `LOCKED` from
+`sqlite3_backup_step` have no effect on the finish result. A stored fatal
+error, such as an I/O or out-of-memory error, can surface as `.error` at
+finish. The model abstracts the finish status and leaves step outcomes and
+the derivation of the finish code outside the relation. [Backup finish API][backup] · [Backup finish implementation][backup-finish-src]
+
 A connection's ownership controls its close and command admission. A child's
 ownership controls its release. Its connection links identify the participants
 whose state must be consulted. Reachability along a link grants no ownership.
@@ -43,12 +52,15 @@ becoming fresh across later admitted calls.
 
 The busy predicate observes public statement Vdbes, a selected live blob's
 private Vdbe, and an unfinished backup's **source** B-tree membership. The
-profile models successful blob and external backup creation. For a blob it
-starts at successful opening with an attached private Vdbe and ends at close.
-Operations that invalidate or replace the private Vdbe,
-such as blob reopen, are outside this profile. The source edge of each backup
-contributes to `Busy`. This abstracts the source B-tree count to existence
-in the selected handle graph. The destination edge separately records a borrow.
+blob edge represents its attached private Vdbe with a single blocker carried
+by the blob token. Statement tokens represent independently prepared public
+statements. The profile covers successful `sqlite3_blob_open` and external
+`sqlite3_backup_init` calls. Their failure replies and partial cleanup are
+outside the relation. The blob profile ends at close and omits operations
+that can invalidate or replace the private Vdbe, such as blob reopen. The
+source edge of each backup contributes to `Busy`. This abstracts the source
+B-tree count to existence in the selected handle graph. The destination edge
+separately records a borrow.
 [SQLite busy loop][close-src] · [Blob close implementation][blob-src] ·
 [Backup initialization and source count][backup-init-src]
 
@@ -74,6 +86,13 @@ law. `registered_preserved` requires that the registered keys are outside
 the transition's writes. Registration, unregistration, named search and
 subsequent VFS operations are outside this lookup contract.
 [VFS registry API][vfs] · [Default lookup implementation][vfs-src]
+
+To compare with `GlobalState.VfsRoots`, take `history.toObjects.toKinds` as
+its kind store and require `roots.registered.map Subtype.val = registry`.
+Then `roots.defaultVfs.map Subtype.val` and the borrowed reply both select
+`registry.head?`. The kind references in `VfsRoots` certify membership at
+kind `.vfs`. `Registered` also requires each referenced entry to be live in
+the full history. [Kind store and ordered roots](global-object-state.md#object-store)
 
 `lookup_frame` and `frames` preserve the full history lookup outside the
 declared writes. `Contract.seq_frames` composes handle calls and allocator

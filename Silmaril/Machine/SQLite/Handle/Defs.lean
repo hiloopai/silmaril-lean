@@ -38,8 +38,9 @@ def Payload (Id Owner : Type u) (Other : ObjectKind → Type u) : ObjectKind →
   | .backup => Backup Id Owner
   | kind => Other kind
 
-/-- A blob represents the handle together with its private Vdbe. A backup's
-source controls its contribution to SQLite's busy check. -/
+/-- A blob entry represents the handle and its private Vdbe as one blocker.
+Statement entries represent public statements. A backup's source controls
+its contribution to SQLite's busy check. -/
 inductive Child (Id Owner : Type u) where
   | statement (entry : Dependent Id Owner)
   | blob (entry : Dependent Id Owner)
@@ -151,11 +152,18 @@ inductive PrepareInput where
   | statement
   deriving DecidableEq, Repr
 
-/-- Abstract API status. Error codes, error strings and database contents
-are outside the resource observation. -/
+/-- Abstract open, prepare and close status. Legacy close has a distinct
+`busy` outcome. -/
 inductive Status where
   | ok
   | busy
+  | error
+  deriving DecidableEq, Repr
+
+/-- Abstract a concrete release reply to `ok` for `SQLITE_OK` or `error` for
+any other code. Disposal is independent of this status. -/
+inductive ReleaseStatus where
+  | ok
   | error
   deriving DecidableEq, Repr
 
@@ -174,12 +182,12 @@ inductive Reply (Id : Type u) where
   | prepared (status : Status) (stmt : Option Id)
   | created (id : Id)
   | status (status : Status)
-  | released (status : Status) (reaped : Option Id)
+  | released (status : ReleaseStatus) (reaped : Option Id)
   | borrowedVfs (id : Option Id)
   deriving DecidableEq, Repr
 
-/-- Resource transitions. Release observations record zombie destruction
-separately from the SQLite result code. -/
+/-- Resource transitions. Blob and backup creation cover successful calls.
+Release observations record zombie destruction separately from the status. -/
 inductive Step (actor : Owner) (registry : List Id) :
     Call Id → HistoryOf Id Owner Other → Reply Id → HistoryOf Id Owner Other → Prop
   | openReady {history id} (vacant : Vacant history id) :

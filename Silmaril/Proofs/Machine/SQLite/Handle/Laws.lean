@@ -173,7 +173,7 @@ theorem release_requires_owner {kind : ChildKind}
   cases step with
   | release present allowed _ => exact ⟨_, present, rfl, allowed⟩
 
-theorem release_disposes {kind : ChildKind} {status : Status} {reaped : Option Id}
+theorem release_disposes {kind : ChildKind} {status : ReleaseStatus} {reaped : Option Id}
     (step : Step actor registry (.release kind (some id)) before (.released status reaped) after) :
     after.lookup id = some (.freed kind.objectKind) := by
   cases step with
@@ -188,7 +188,7 @@ theorem release_disposes {kind : ChildKind} {status : Status} {reaped : Option I
       have conflict := (History.lookup_free_self before id present).symm.trans connection
       cases conflict
 
-theorem final_dependent_reaps_zombie {child : Child Id Owner} {owner : Owner} {status : Status}
+theorem final_dependent_reaps_zombie {child : Child Id Owner} {owner : Owner} {status : ReleaseStatus}
     (present : ChildAt before id child) (allowed : MayRelease actor before child)
     (zombie : ConnectionAt before child.parent.source .zombie ⟨owner, .ready⟩)
     (last : ∀ other entry, ChildAt before other entry → entry.parent.source = child.parent.source →

@@ -214,8 +214,10 @@ example (mode : CloseMode) (result : Reply Nat) (after : H) :
     ¬ Step actor registry (.close mode (some 2)) withBackup result after :=
   close_borrowed_inapplicable destination_borrowed
 
-example : ∃ after owner, Step actor registry (.release .backup (some 3)) withBackup
-    (.released .ok none) after ∧ ConnectionAt after 2 .live ⟨owner, .ready⟩ := by
+example (status : ReleaseStatus) :
+    ∃ after owner, Step actor registry (.release .backup (some 3)) withBackup
+      (.released status none) after ∧ ConnectionAt after 2 .live ⟨owner, .ready⟩ ∧
+      after.lookup 3 = some (.freed .backup) := by
   have destination : ConnectionAt withBackup 2 .live readyData :=
     (History.lookup_allocate_of_ne before (by decide) _ _ fresh3).trans ready2.present
   have allowed : MayRelease actor withBackup (.backup backup) := by
@@ -232,7 +234,10 @@ example : ∃ after owner, Step actor registry (.release .backup (some 3)) withB
     (History.lookup_free_of_ne withBackup (by decide) backup_at).trans
       ((History.lookup_allocate_of_ne before (by decide) _ _ fresh3).trans ready1.present)
   obtain ⟨owner, _, liveAfter⟩ := backup_finish_destination backup_at allowed (.ready src)
-  exact ⟨_, owner, .release backup_at allowed (.ready src), liveAfter⟩
+  have finish : Step actor registry (.release .backup (some 3)) withBackup
+      (.released status none) (withBackup.free 3 backup_at) :=
+    .release backup_at allowed (.ready src)
+  exact ⟨_, owner, finish, liveAfter, release_disposes finish⟩
 
 private theorem registry_valid : Registered registry initial := by
   refine ⟨by decide, ?_⟩

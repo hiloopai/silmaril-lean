@@ -89,14 +89,14 @@ theorem release_requires_owner {kind : ChildKind}
   Proofs.Machine.SQLite.Handle.release_requires_owner step
 
 /-- Release retires the named handle independently of its SQLite status. -/
-theorem release_disposes {kind : ChildKind} {status : Status} {reaped : Option Id}
+theorem release_disposes {kind : ChildKind} {status : ReleaseStatus} {reaped : Option Id}
     (step : Step actor registry (.release kind (some id)) before (.released status reaped) after) :
     after.lookup id = some (.freed kind.objectKind) :=
   Proofs.Machine.SQLite.Handle.release_disposes step
 
 /-- Releasing the last blocker of a zombie can complete with both IDs retired.
 The status is independent of disposal. -/
-theorem final_dependent_reaps_zombie {child : Child Id Owner} {owner : Owner} {status : Status}
+theorem final_dependent_reaps_zombie {child : Child Id Owner} {owner : Owner} {status : ReleaseStatus}
     (present : ChildAt before id child) (allowed : MayRelease actor before child)
     (zombie : ConnectionAt before child.parent.source .zombie ⟨owner, .ready⟩)
     (last : ∀ other entry, ChildAt before other entry → entry.parent.source = child.parent.source →
