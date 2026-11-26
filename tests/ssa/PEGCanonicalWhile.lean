@@ -7,7 +7,7 @@ import Silmaril.SSA.PEG.Simple.Revert.While.Pair.Thms
 import Silmaril.SSA.PEG.Simple.Revert.While.Nested.Projected.Thms
 import Silmaril.SSA.PEG.Simple.Revert.While.Nested.Region.Automatic.Thms
 import Silmaril.SSA.PEG.Simple.Revert.Schedule.Thms
-import Silmaril.SSA.PEG.Simple.Revert.Schedule.Automatic.Cuts.Thms
+import Silmaril.SSA.PEG.Simple.Revert.Schedule.Automatic.Regions.Thms
 import Silmaril.SSA.PEG.Semantics.Reindex.Defs
 import Silmaril.SSA.PEG.Rules.Thms
 import Mathlib.Data.Fin.Embedding
@@ -17,6 +17,8 @@ import Silmaril.SSA.PEG.Simple.Thms
 meta import Silmaril.SSA.PEG.Simple.Revert.Schedule.Defs
 meta import Silmaril.SSA.PEG.Simple.Revert.Schedule.Automatic.Defs
 meta import Silmaril.SSA.PEG.Simple.Revert.Schedule.Automatic.Cuts.Defs
+meta import Silmaril.SSA.PEG.Simple.Revert.Schedule.Automatic.Regions.Defs
+meta import Silmaril.SSA.PEG.Builder
 meta import Silmaril.SSA.PEG.Simple.Revert.While.Defs
 meta import Silmaril.SSA.PEG.Simple.Revert.While.Pair.Defs
 meta import Silmaril.SSA.PEG.Simple.Revert.While.Nested.Projected.Defs
@@ -980,6 +982,9 @@ private inductive Op : InstructionSet Unit where
   | pred : Op [.count] .count
   | add : Op [.count, .count] .count
   | not : Op [.bool] .bool
+  | zero : Op [] .count
+  | tick : Op [.count] .count
+  | atLeast : Op [.count, .count] .bool
   deriving DecidableEq
 
 private def model : Interpretation Op where
@@ -989,6 +994,9 @@ private def model : Interpretation Op where
     | .pred, .cons count .nil => some ⟨count.down - 1⟩
     | .add, .cons a (.cons b .nil) => some ⟨a.down + b.down⟩
     | .not, .cons b .nil => some ⟨!b.down⟩
+    | .zero, .nil => some ⟨0⟩
+    | .tick, .cons x .nil => some ⟨x.down + 1⟩
+    | .atLeast, .cons x (.cons y .nil) => some ⟨decide (y.down ≤ x.down)⟩
 
 private abbrev state := ([.count, .count] : List (Ty Unit))
 
@@ -1110,6 +1118,9 @@ private theorem total : ∀ {ins out} (op : Op ins out) args, ∃ val, model.run
   | _, _, .pred, .cons _ .nil => ⟨_, rfl⟩
   | _, _, .add, .cons _ (.cons _ .nil) => ⟨_, rfl⟩
   | _, _, .not, .cons _ .nil => ⟨_, rfl⟩
+  | _, _, .zero, .nil => ⟨_, rfl⟩
+  | _, _, .tick, .cons _ .nil => ⟨_, rfl⟩
+  | _, _, .atLeast, .cons _ (.cons _ .nil) => ⟨_, rfl⟩
 
 private theorem setTwice (idx : Index 2) (key : Fin 2) (j k : Nat) :
     (idx.set key j).set key k = idx.set key k := by
@@ -1305,5 +1316,92 @@ private def runFromNestedCut :
   | _ => none
 
 #guard runFromNestedCut.isSome
+
+private def discoverNested (original : Graph Op state [.count] 16 2) (ranking : DemandRank 16 2) :=
+  Regions.discover original (.nestedOnly Op.not) ranking 1
+
+private def runGraphOnly (original : Graph Op state [.count] 16 2) (ranking : DemandRank 16 2) :
+    Option {a : Found original (.nestedOnly Op.not) ranking //
+      Exec model a.gate.val.plan.revert (input 2) (some (.cons ⟨4⟩ .nil)) ∧
+      ∀ i, original.observe model (original.denote model (input 2) a.gate.val.demandWellFounded) i =
+        .cons (some ⟨4⟩) .nil} := do
+  let .ok a := discoverNested original ranking | none
+  match ran : a.gate.val.plan.runFuel model 2 (input 2) with
+  | some (.cons ⟨4⟩ .nil) =>
+    let exec := a.gate.val.plan.exec_of_runFuel 2 ran
+    return ⟨a, exec, fun i => (a.observations_of_exec (fun _ => rfl) (input 2) i exec).2⟩
+  | _ => none
+
+#guard (runGraphOnly (graph false) rank).isSome
+#guard (runGraphOnly moved (rank.reindex relocation loopRelocation)).isSome
+#guard match discoverNested (graph true) rank with
+  | .error (.checkedCuts (.unsupported 0 .leafCheck)) => true
+  | _ => false
+
+private def mixedSort (i : Fin 23) : Ty Unit :=
+  if h : i.val < 16 then sort ⟨i.val, h⟩ else if i = 19 then .bool else .count
+
+-- The final unit-counter sibling uses row 0, the completed outer
+-- return, as its limit. Selecting child eval 1 instead is a frame leak.
+private def mixedRaw (leak : Bool) : RawGraph Op state [.count, .count, .count] 23 3 where
+  forest := ⟨fun key => if key = 1 then some 0 else none⟩
+  sort := mixedSort
+  node i :=
+    if h : i.val < 16 then
+      let row := (graph false).node ⟨i.val, h⟩
+      have typed : (graph false).sort ⟨i.val, h⟩ = mixedSort i := by
+        simp only [mixedSort, dite_eq_left h]
+        rfl
+      typed ▸ ⟨row.inputs, row.label.map (fun op => op) (fun key => key.castLE (by decide)),
+        refNumbers row.args⟩
+    else if flag : i = 19 then
+      have typed : mixedSort i = .bool := by simp only [mixedSort, dite_eq_right h, ite_eq_left flag]
+      typed.symm ▸ (⟨_, .op .atLeast, [16, if leak then 1 else 0]⟩ : RawNode Op state 3 .bool)
+    else
+      have typed : mixedSort i = .count := by simp only [mixedSort, dite_eq_right h, ite_eq_right flag]
+      let row : RawNode Op state 3 .count := match i.val with
+        | 16 => ⟨_, .theta 2, [17, 18]⟩
+        | 17 => ⟨_, .op .zero, []⟩
+        | 18 => ⟨_, .op .tick, [16]⟩
+        | 20 => ⟨_, .pass 2, [19]⟩
+        | 21 => ⟨_, .eval 2, [16, 20]⟩
+        | _ => ⟨_, .op .tick, [21]⟩
+      typed.symm ▸ row
+  roots := [22, 0, 22]
+
+private def mixed (leak : Bool) : Graph Op state [.count, .count, .count] 23 3 :=
+  (mixedRaw leak).check.get (by cases leak <;> decide)
+
+private def mixedRank : DemandRank 23 3 :=
+  [.phase (fun i => if 16 ≤ i.val then 1 else 0),
+   .phase (fun i => if i = 22 then 3 else if i = 21 then 2 else if i = 20 then 1 else 0),
+   .counter 2, .phase (fun i => if i = 18 ∨ i = 19 then 2 else if i = 16 then 1 else 0)] ++
+  rank.map (fun component => match component with
+    | .phase heights => .phase (fun i => if h : i.val < 16 then heights ⟨i.val, h⟩ else 0)
+    | .counter key => .counter (key.castLE (by decide)))
+
+private def countedRoles : CountedRoles Op := ⟨.zero, .tick, .not⟩
+private theorem countedLaws : countedRoles.Laws model := ⟨rfl, fun _ => rfl, fun _ => rfl⟩
+
+private def mixedRun :
+    Option {a : Found (mixed false) (.counted countedRoles) mixedRank //
+      Exec model a.gate.val.plan.revert (input 2) (some (.cons ⟨5⟩ (.cons ⟨4⟩ (.cons ⟨5⟩ .nil)))) ∧
+      ∀ i, (mixed false).observe model ((mixed false).denote model (input 2) a.gate.val.demandWellFounded) i =
+        .cons (some ⟨5⟩) (.cons (some ⟨4⟩) (.cons (some ⟨5⟩) .nil))} := do
+  let .ok a := Regions.discover (mixed false) (.counted countedRoles) mixedRank 2 | none
+  match ran : a.gate.val.plan.runFuel model 4 (input 2) with
+  | some (.cons ⟨5⟩ (.cons ⟨4⟩ (.cons ⟨5⟩ .nil))) =>
+    let exec := a.gate.val.plan.exec_of_runFuel 4 ran
+    return ⟨a, exec, fun i => (a.observations_of_exec countedLaws (input 2) i exec).2⟩
+  | _ => none
+
+#guard match Regions.inferBoundaries (mixed false) with
+  | .ok [outer, next] => refNumbers outer.outputs == [0] && refNumbers next.inputs == [0]
+  | _ => false
+#guard mixedRun.isSome
+#guard mixedRank.check (mixed true)
+#guard match Regions.discover (mixed true) (.counted countedRoles) mixedRank 2 with
+  | .error (.iterationValue 1) => true
+  | _ => false
 
 end Silmaril.SSA.PEG.Simple.Revert.While.Nested.Region.Tests
