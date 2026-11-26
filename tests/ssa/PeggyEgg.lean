@@ -1,10 +1,13 @@
 module
 
 import Silmaril.SSA.PEG.Builder
+import Silmaril.SSA.Peggy.Optimizer.Cyclic.Thms
+import Silmaril.SSA.PEG.Rules.Thms
 import Silmaril.SSA.PEG.Semantics.Thms
 import Silmaril.SSA.Peggy.Bridge.Figure11.Thms
 import Silmaril.SSA.Peggy.EPEG.Saturation.Thms
 import Silmaril.SSA.Peggy.EPEG.Selection.Thms
+meta import Silmaril.SSA.Peggy.Optimizer.Cyclic.Defs
 meta import Silmaril.SSA.Peggy.Bridge.Egg.Defs
 meta import Silmaril.SSA.Peggy.Bridge.Figure11.Defs
 meta import Silmaril.SSA.Peggy.Acyclic.Defs
@@ -444,3 +447,137 @@ example : ¬changedInitializer.Solves arithmetic .nil (wrong.inherit streams) :=
   cases eq
 
 end Silmaril.SSA.Peggy.EPEG.Tests
+
+namespace Silmaril.SSA.Peggy.Optimizer.Cyclic.Tests
+
+open PEG
+open RVSDG (Tuple)
+
+private inductive Op : List (Ty Unit) → Ty Unit → Type where
+  | zero : Op [] .count
+  | bad : Op [] .count
+  | succ : Op [.count] .count
+  | add : Op [.count, .count] .count
+
+private inductive Seed where
+  | parameter
+  | bottom
+  | changing
+
+private def Seed.address : Seed → Fin 7
+  | .parameter => 3
+  | .bottom => 6
+  | .changing => 0
+
+private abbrev params : List (Ty Unit) := [.count]
+private abbrev results : List (Ty Unit) := [.count, .count, .count, .count]
+
+/-- The live counter has θ/succ feedback. A second θ self-feeds its
+initializer, is referenced by the add, and occurs twice at the boundary. -/
+private abbrev countSort (_ : Fin 7) : Ty Unit := .count
+
+private def countRef (i : Fin 7) : Ref countSort .count := ⟨i, rfl⟩
+
+private def pair (a b : Fin 7) : Tuple (Ref countSort) [.count, .count] :=
+  .cons (countRef a) (.cons (countRef b) .nil)
+
+private def graph (seed : Seed) : Graph Op params results 7 1 where
+  forest := ⟨fun _ => none⟩
+  sort := countSort
+  node i := match i with
+    | 0 => .ofLabel (.theta 0) (pair 2 1)
+    | 1 => .ofLabel (.op .succ) (.cons (countRef 0) .nil)
+    | 2 => .ofLabel (.op .zero) .nil
+    | 3 => .ofLabel (.param .head) .nil
+    | 4 => .ofLabel (.theta 0) (pair seed.address 4)
+    | 5 => .ofLabel (.op .add) (pair 4 0)
+    | 6 => .ofLabel (.op .bad) .nil
+  roots := .cons (countRef 4) (.cons (countRef 5) (pair 0 4))
+
+private def nodeCount {n : Nat} (_ : Graph Op params results n 1) : Nat := n
+
+private def optimizedRoots (seed : Seed) : Option (Nat × Nat × List Nat) :=
+  (optimize (graph seed)).map fun result =>
+    (result.site.val, nodeCount result.matched.extract, refNumbers result.matched.extract.roots)
+
+#guard (optimize (graph .parameter)).isSome
+#guard optimizedRoots .parameter == some (4, 6, [3, 4, 0, 3])
+#guard optimizedRoots .bottom == some (4, 6, [5, 4, 0, 5])
+#guard (admit (graph .changing)).isSome
+#guard (matchAt (graph .changing) (show Fin 7 from 4)).isNone
+#guard (optimize (graph .changing)).isNone
+
+private def compactedEdges : Bool :=
+  match optimize (graph .parameter) with
+  | none => false
+  | some result =>
+    let target := result.matched.extract
+    (target.node 0).label.thetaLoop == some 0 &&
+      refNumbers (target.node 0).args == [2, 1] && refNumbers (target.node 1).args == [0] &&
+      refNumbers (target.node 4).args == [3, 0]
+
+#guard compactedEdges
+
+private def arithmetic : Interpretation.{0,0,0} Op where
+  carrier _ := Unit
+  run
+    | .zero, .nil => some ⟨0⟩
+    | .bad, .nil => none
+    | .succ, .cons a .nil => some ⟨a.down + 1⟩
+    | .add, .cons a (.cons b .nil) => some ⟨a.down + b.down⟩
+
+private def input : Tuple arithmetic.Value params := .cons ⟨7⟩ .nil
+private def clock (k : Nat) : Index 1 := fun _ => k
+
+private def admitted (seed : Seed) : Admission (graph seed) :=
+  (admit (graph seed)).get (by cases seed <;> decide)
+
+private noncomputable def streams (seed : Seed) : (graph seed).Valuation arithmetic :=
+  (graph seed).denote arithmetic input (admitted seed).demandWellFounded
+
+private theorem equations (seed : Seed) : (graph seed).Solves arithmetic input (streams seed) :=
+  (graph seed).denote_solves arithmetic input (admitted seed).demandWellFounded
+
+private theorem previous : (clock 1).set 0 0 = clock 0 := by
+  funext loop
+  have h : loop = 0 := Subsingleton.elim _ _
+  subst loop
+  rfl
+
+private theorem counterZero (seed : Seed) : streams seed (0, clock 0) = some ⟨0⟩ := by
+  have init : streams seed (2, clock 0) = some ⟨0⟩ := equations seed (2, clock 0)
+  exact (equations seed (0, clock 0)).trans init
+
+private def ref (seed : Seed) (i : Fin 7) : Ref (graph seed).sort .count := ⟨i, rfl⟩
+
+private theorem counterOne (seed : Seed) : streams seed (0, clock 1) = some ⟨1⟩ := by
+  have count := equations seed (0, clock 1)
+  change streams seed (0, clock 1) = streams seed (1, (clock 1).set 0 0) at count
+  have step := Rules.unary_at (equations seed) (r := ref seed 1) (arg := ref seed 0)
+    (op := Op.succ) HEq.rfl (clock 0)
+  change streams seed (1, clock 0) =
+    (streams seed (0, clock 0)).bind (fun x => some ⟨x.down + 1⟩) at step
+  rw [counterZero] at step
+  exact count.trans (previous ▸ step)
+
+private theorem selfStep (seed : Seed) :
+    streams seed (4, clock 1) = streams seed (4, clock 0) := by
+  have eq := equations seed (4, clock 1)
+  change streams seed (4, clock 1) = streams seed (4, (clock 1).set 0 0) at eq
+  rwa [previous] at eq
+
+-- The near miss retains zero while its initializer has advanced to one.
+example : streams .changing (4, clock 1) ≠ streams .changing (0, clock 1) := by
+  have zero : streams .changing (4, clock 0) = streams .changing (0, clock 0) :=
+    equations .changing (4, clock 0)
+  rw [selfStep, zero, counterZero, counterOne]
+  intro impossible
+  exact Nat.noConfusion (congrArg ULift.down (Option.some.inj impossible))
+
+example : streams .bottom (4, clock 1) = none := by
+  have bad : streams .bottom (6, clock 0) = none := equations .bottom (6, clock 0)
+  have init : streams .bottom (4, clock 0) = streams .bottom (6, clock 0) :=
+    equations .bottom (4, clock 0)
+  exact (selfStep .bottom).trans (init.trans bad)
+
+end Silmaril.SSA.Peggy.Optimizer.Cyclic.Tests

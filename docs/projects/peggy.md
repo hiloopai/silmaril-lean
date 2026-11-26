@@ -110,8 +110,10 @@ guard makes the evaluation demands well founded. [Definition 5.1 and Fig. 11](ht
    classes of a proposed extraction. The
    [finite worklist](peggy-saturation.md) proves least closure and
    order independence for a fixed table of ground reasons. It derives
-   candidate equations for same-label rewiring. Add node extension,
-   rule-schema validation and matching, and reversion. The
+   candidate equations for same-label rewiring. The
+   [cyclic optimizer](peggy-cyclic-optimizer.md) discovers guarded θ
+   self-feedback and checks the compacted candidate on a one-loop profile.
+   Extend rule matching and validation, node extension, and reversion. The
    [acyclic bridge](peggy-egg.md) reuses sorted Egg replay. The full
    node-generating form of §4 remains a separate proof obligation. Use an independent graph and
    CFG-like check on extracted representatives. The displayed Boolean
