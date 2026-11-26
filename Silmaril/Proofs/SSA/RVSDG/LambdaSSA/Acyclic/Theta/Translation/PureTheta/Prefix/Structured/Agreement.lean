@@ -16,10 +16,12 @@ open Isotope.LambdaSSA.Semantics.Agreement (RegionCoherent)
 open OrderedTheta (point packChoice carriedData resultData)
 open OrderedRuntime.Structured (RuntimeValues)
 open TwoBlock.TwoExit (enter callCase)
-open PureGamma (Choice model OrderedModel)
+open PureGamma (Choice model OrderedModel evalValue)
 open Sequential
 open NestedTheta.Partial (observe)
-open NestedTheta.ExplicitRuntime.PurePrefix (gamma_denote primitive_denote)
+open Silmaril.Elgot (iter)
+open NestedTheta.ExplicitRuntime.PurePrefix.Splice (append_denote)
+open NestedTheta.ExplicitRuntime.PurePrefix (gamma_denote primitive_denote theta_denote)
 
 set_option backward.isDefEq.respectTransparency false
 set_option backward.isDefEq.respectTransparency.types false
@@ -76,6 +78,81 @@ private theorem choice_observe (gate : TwoBlock.Instruction Φ A (Choice A)) (le
     exact forward (σ := σ) (A := A)
       (right.1.denoteOpenWith (model (Φ := Φ) (ε := ε) (σ := σ)) (point a final) PUnit.unit)
 
+private theorem decision_denote (decide : TwoBlock.Instruction Φ A (Choice A)) (x : TyDen A) (token : σ) :
+    (decisionCode decide).1.denoteOpenWith
+        (OrderedModel (τ := τ) (Φ := Φ) (ε := ε) (σ := σ)) (point x token) PUnit.unit =
+      Part.map (fun (v, final) => OrderedRuntime.Structured.decode (packChoice (A := A) v, final))
+        ((callCase (ε := ε) (m := StateT σ Part.{u}) decide x).run token) := by
+  simp only [decisionCode, NestedTheta.Term.denoteOpenWith, NestedTheta.Kind.denoteWith, Part.bind_eq_bind]
+  change ((OrderedModel (τ := τ) (Φ := Φ) (ε := ε) (σ := σ)).primitive
+    (.ordered (carriedData A) (resultData A) (.effect (.classifyPayload decide))) (point x token)).bind
+      (fun result => Part.some (Tuple.cons (result.get .head)
+        (.cons (result.get (.tail .head)) (.cons (result.get (.tail (.tail .head))) .nil)))) = _
+  rw [classifier, Part.bind_some_eq_map]
+  apply Part.map_id'
+  intro r
+  cases r with
+  | cons tag tail =>
+    cases tail with
+    | cons payload tail =>
+      cases tail with
+      | cons final tail => cases tail; rfl
+
+private noncomputable def feedbackStep (body : RawCode Φ ε A ps) (decide : TwoBlock.Instruction Φ A (Choice A)) :=
+  NestedTheta.stepWith (fun x =>
+    (feedbackBody body decide).1.denoteOpenWith (model (Φ := Φ) (ε := ε) (σ := σ)) x PUnit.unit)
+
+private theorem feedback_observe (body : RawCode Φ ε A ps) (source : Flat.Fragment Φ A A A)
+    (decide : TwoBlock.Instruction Φ A (Choice A))
+    (coherent : RegionCoherent (τ := τ) (Φ := Φ) (ε := ε) (m := StateT σ Part.{u}))
+    (agrees : ∀ (x : TyDen A) (token : σ),
+      observe (model (Φ := Φ) (ε := ε) (σ := σ)) body.1.toGraph (point x token) =
+        Part.map (fun p => point (merge p.1) p.2)
+          ((Region.denote (ε := ε) (m := StateT σ Part.{u}) source.typing (PUnit.unit,x)).run token))
+    (env : Env [A]) (token : σ) :
+    observe (model (Φ := Φ) (ε := ε) (σ := σ)) (feedbackCode body decide).1.toGraph (point env.2 token) =
+      Part.map (fun p => point (merge p.1) p.2)
+        ((Region.denote (ε := ε) (m := StateT σ Part.{u})
+          (Flat.link source (.classify decide)).feedback.typing env).run token) := by
+  let p := Flat.link source (.classify decide)
+  let route := (⟨.first, .consumer⟩ : Flat.ExitRouting A A A A A).select
+  let step (x : TyDen A) : StateT σ Part.{u} (LabelDen [A,A] ⊕ TyDen A) :=
+    Region.denote (ε := ε) (m := StateT σ Part.{u}) p.typing (PUnit.unit,x) >>= pure ∘ route
+  let output (p : LabelDen [A,A] × σ) := point (merge p.1) p.2
+  let input (p : TyDen A × σ) := point p.1 p.2
+  have commute (state : TyDen A × σ) :
+      feedbackStep body decide (input state) =
+        Elgot.StateT.body step state >>= fun r => pure (Sum.map output input r) := by
+    obtain ⟨x, now⟩ := state
+    unfold feedbackStep NestedTheta.stepWith feedbackBody
+    rw [Bind.kleisliRight, append_denote (OrderedModel (Φ := Φ) (ε := ε) (σ := σ)) evalValue]
+    have bodyAgrees := agrees x now
+    simp only [observe, NestedTheta.Term.toTerm_toGraph] at bodyAgrees
+    rw [show input (x,now) = point x now from rfl, bodyAgrees]
+    simp only [Elgot.StateT.body, step, p, Flat.denote_link _ _ coherent,
+      Flat.Fragment.classify_denote _ coherent, StateT.run_bind, StateT.run_pure, Function.comp_apply,
+      Part.bind_eq_bind, Part.pure_eq_some, Part.bind_assoc, Part.bind_map, Part.bind_some]
+    congr 1
+    funext result
+    rcases result with ⟨label, final⟩
+    rw [decision_denote, Part.bind_map]
+    congr 1
+    funext result
+    rcases result with ⟨tag, final⟩
+    cases tag <;> rfl
+  have normalized :
+      observe (model (Φ := Φ) (ε := ε) (σ := σ)) (feedbackCode body decide).1.toGraph (point env.2 token) =
+        iter (feedbackStep body decide) (point env.2 token) := by
+    simp only [observe, NestedTheta.Term.toTerm_toGraph, feedbackCode, theta_denote, NestedTheta.Term.denoteOpenWith]
+    change (iter (feedbackStep body decide) (point env.2 token)).bind
+      (fun r => Part.some (point (r.get .head) (r.get (.tail .head)))) = _
+    apply forward
+  rw [normalized, Flat.Fragment.feedback_denote _ coherent, Elgot.StateT.run_iter]
+  change iter (feedbackStep body decide) (input (env.2,token)) =
+    Part.map output (iter (Elgot.StateT.body step) (env.2,token))
+  rw [OrderedTheta.iter_boundary _ _ input output commute]
+  exact Part.bind_some_eq_map _ _
+
 theorem tree_observe (tree : Tree Φ ε A rows)
     (coherent : RegionCoherent (τ := τ) (Φ := Φ) (ε := ε) (m := StateT σ Part.{u}))
     (env : Env [A]) (token : σ) :
@@ -90,6 +167,8 @@ theorem tree_observe (tree : Tree Φ ε A rows)
     simp only [StateT.run_bind, StateT.run_pure, Part.bind_eq_bind, Part.pure_eq_some,
       Part.bind_some_eq_map, Part.map_map]
     rfl
+  | feedback body decide ih =>
+    exact feedback_observe body.code body.fragment decide coherent (fun x t => ih (PUnit.unit,x) t) env token
   | choice gate left right ihLeft ihRight =>
     rw [Tree.graph, Tree.code, choice_observe, Tree.fragment, Flat.denote_forkCase _ _ _ coherent]
     simp only [StateT.run_bind, Part.bind_eq_bind, Part.map_bind]

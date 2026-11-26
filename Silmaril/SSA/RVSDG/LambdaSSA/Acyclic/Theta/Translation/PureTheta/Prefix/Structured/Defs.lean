@@ -5,8 +5,8 @@ public import Silmaril.SSA.RVSDG.LambdaSSA.Acyclic.Theta.Sequential.Flat.Fork.De
 
 /-! # Recursively structured mixed prefixes
 
-Mixed θ leaves and homogeneous binary choices produce a raw payload with
-one live token. The typed carrier conversion joins the resulting tree to
+Mixed θ leaves, recursive feedback and homogeneous binary choices produce
+a raw payload with one live token. The typed carrier conversion joins the resulting tree to
 any admitted ordered recursive suffix. The same parser reads root and
 child scopes and discovers the cut from the actual leading vertices.
 -/
@@ -18,6 +18,7 @@ namespace Silmaril.SSA.RVSDG.LambdaSSA.Acyclic.Theta.Translation.PureTheta.Prefi
 open Sequential
 open Flat.Serial (WirePorts)
 open OrderedTheta (carried carriedData results resultData)
+open NestedTheta.ExplicitRuntime.PurePrefix.Splice (appendOrdered)
 open OrderedRuntime.Structured (Threaded runtimePort nextRuntime)
 open LinearChain.Wiring (newest)
 open NestedTheta.ExplicitRuntime.PurePrefix (Code EntryChecked)
@@ -37,11 +38,15 @@ abbrev ChoiceRows (A : τ) := [Threaded (results A), InputPorts A]
 inductive Tree (Φ ε : Type u) [HasTy Φ τ] [HasEff Φ ε] [Bot ε] (A : τ) :
     List (Ports (OrderedRuntime.Structured.Ty τ)) → Type u where
   | theta (s : Loop Φ ε A) (pureFirst : Bool) : Tree Φ ε A [InputPorts A]
+  | feedback {ps : List (Ports (OrderedRuntime.Structured.Ty τ))}
+      (body : Tree Φ ε A ps) (decide : TwoBlock.Instruction Φ A (Choice A)) :
+      Tree Φ ε A [InputPorts A]
   | choice {ps qs : List (Ports (OrderedRuntime.Structured.Ty τ))} (gate : TwoBlock.Instruction Φ A (Choice A)) :
       Tree Φ ε A ps → Tree Φ ε A qs → Tree Φ ε A (ChoiceRows A)
 
 def Tree.fragment : {rows : List (Ports (OrderedRuntime.Structured.Ty τ))} → Tree Φ ε A rows → Flat.Fragment Φ A A A
   | _, .theta s _ => s.fragment
+  | _, .feedback body decide => (Flat.link body.fragment (.classify decide)).feedback
   | _, .choice gate left right => Flat.forkCase left.fragment right.fragment gate
 
 abbrev RawCode (Φ ε : Type u) [HasTy Φ τ] [HasEff Φ ε] [Bot ε] (A : τ) (rows : List (Ports (OrderedRuntime.Structured.Ty τ))) :=
@@ -61,8 +66,31 @@ def choiceCode (gate : TwoBlock.Instruction Φ A (Choice A)) (left : RawCode Φ 
         (children := fun j => (arms j).2.1) (fun j => (arms j).2.2)
         (.ret (nextRuntime past (carried A)) (.cons (newest .head past) .nil))⟩
 
+/-- Route the body's returned value using one ordered classifier. Its data
+and token are read from the same checked return of the body. -/
+def decisionCode (decide : TwoBlock.Instruction Φ A (Choice A)) :
+    Wires.Code Φ (carriedData A) (resultData A) (.arg (runtimePort (carried A)))
+      (past := []) [Threaded (results A)] :=
+  ⟨_, .primitive (.arg (runtimePort (carried A))) (carriedData A) (resultData A)
+    (.effect (.classifyPayload decide)) (.cons (.arg .head) .nil) <|
+      .ret (nextRuntime [] (results A))
+        (.cons (newest .head []) (.cons (newest (.tail .head) []) .nil))⟩
+
+def feedbackBody (body : RawCode Φ ε A ps) (decide : TwoBlock.Instruction Φ A (Choice A)) :
+    Code (past := []) (TwoBlock.TwoExit.Pure τ) (Wires.Effect Φ) (ValueOp Φ ε)
+      (carriedData A) (resultData A) (.arg (runtimePort (carried A))) (ps ++ [Threaded (results A)]) :=
+  appendOrdered (decisionCode decide).2 body.2
+
+def feedbackCode (body : RawCode Φ ε A ps) (decide : TwoBlock.Instruction Φ A (Choice A)) :
+    RawCode Φ ε A [InputPorts A] :=
+  let child := feedbackBody body decide
+  ⟨_, .theta (.arg (runtimePort (carried A))) (carriedData A) (.cons (.arg .head) .nil)
+    _ (children := fun _ => child.1) (fun _ => child.2)
+    (.ret (nextRuntime [] (carried A)) (.cons (newest .head []) .nil))⟩
+
 def Tree.code : {rows : List (Ports (OrderedRuntime.Structured.Ty τ))} → Tree Φ ε A rows → RawCode Φ ε A rows
   | _, .theta s order => s.code order
+  | _, .feedback body decide => feedbackCode body.code decide
   | _, .choice gate left right => choiceCode gate left.code right.code
 
 def Tree.graph (tree : Tree Φ ε A rows) := tree.code.1.toGraph
@@ -104,8 +132,15 @@ def readGate {ins outs : Ports (OrderedRuntime.Structured.Ty τ)} (kind : Nested
     | _ => none
   | _ => none
 
+def readDecision {args outs : Ports (OrderedRuntime.Structured.Ty τ)} {past rows : List (Ports (OrderedRuntime.Structured.Ty τ))} :
+    NestedTheta.Term (PureGamma.Op (τ := τ) Φ ε) args past rows outs →
+      Option (TwoBlock.Instruction Φ A (Choice A))
+  | .bind node _ (.ret _) => readGate node.kind
+  | _ => none
+
 /-- Read a tree from a scope. Child scopes must end at the tree's result.
-At the root, return the remaining numbered rows for suffix recovery. -/
+A feedback child consists of a tree followed by one classifier. At the root,
+return the remaining numbered rows for suffix recovery. -/
 def read (A : τ) : {args outs : Ports (OrderedRuntime.Structured.Ty τ)} →
     {past rows : List (Ports (OrderedRuntime.Structured.Ty τ))} →
     NestedTheta.Term (PureGamma.Op (τ := τ) Φ ε) args past rows outs → Option (Cut Φ ε A args past rows outs)
@@ -120,10 +155,17 @@ def read (A : τ) : {args outs : Ports (OrderedRuntime.Structured.Ty τ)} →
         some (Cut.make (.choice gate left.tree right.tree) (List.append_assoc past [first] [second] ▸ tail) types)
       else none
     else none
-  | _, _, _, _, .bind (head := first) node children tail => do
-    let (loop, order) ← (PureTheta.Reverse.readTheta node.kind children).bind PureTheta.Reverse.decode
+  | _, _, _, _, .bind (head := first) node children tail =>
     if types : [first] = [InputPorts A] then
-      some (Cut.make (.theta loop order) tail types)
+      match (PureTheta.Reverse.readTheta node.kind children).bind PureTheta.Reverse.decode with
+      | some (loop, order) => some (Cut.make (.theta loop order) tail types)
+      | none =>
+        match node with
+        | ⟨_, .theta _, _, _⟩ => do
+          let cut ← read A (children (0 : Fin 1))
+          let decide ← readDecision cut.remaining
+          some (Cut.make (.feedback cut.tree decide) tail types)
+        | _ => none
     else none
 
 structure Candidate (Φ ε : Type u) [HasTy Φ τ] [HasEff Φ ε] [Bot ε] (A L E D : τ)
@@ -177,7 +219,8 @@ def certify (g : Graph Φ ε A L E D rows) (c : Candidate Φ ε A L E D rows) : 
   if same : c.emit = g then some ⟨c, same⟩ else none
 
 /-- Discover the mixed tree and its recursive continuation from one
-numbered table, then certify every operand and result address. -/
+numbered table, then certify every operand and result address, including
+nested feedback tokens, against the canonical emission. -/
 def recover (g : Graph Φ ε A L E D rows) : Option (Fibre g) :=
   candidate g >>= certify g
 

@@ -77,6 +77,34 @@ theorem Fragment.typing (p : Fragment Φ A E D) :
     Region.HasType [A] p.region [E,D] :=
   .cfg p.localTypes (p.entry.typing []) (fun i => (p.blocks i).typing [A])
 
+/-- Dispatch on the typed result of one instruction. The block table is
+unreachable because the entry branches directly to an external label. -/
+def Fragment.classify (op : TwoBlock.Instruction Φ A (Silmaril.coprod E D)) :
+    Fragment Φ A E D where
+  extra := 0
+  localTypes := fun _ => A
+  entry := .choose op (.jump (externalSite _ _ 0)) (.jump (externalSite _ _ 1))
+  blocks i := .jump (localSite _ _ i)
+
+def Fragment.feedbackTypes (p : Fragment Φ A E A) : Fin (p.count + 1) → τ :=
+  Fin.cons A p.localTypes
+
+def Fragment.feedbackSite (p : Fragment Φ A E A) (site : Site p.Labels X) :
+    Site (List.ofFn p.feedbackTypes ++ [E,D]) X :=
+  redirect (R := p.localTypes) (L := [E,A]) (fun i => localSite p.feedbackTypes [E,D] i.succ)
+    (Fin.cases (motive := fun i => Site _ ([E,A].get i))
+      (externalSite p.feedbackTypes [E,D] 0)
+      (Fin.cases (localSite p.feedbackTypes [E,D] 0) (fun i => i.elim0))) site
+
+/-- Add an outer header while preserving the body's local blocks. The body's
+first exit returns; its second exit re-enters the header with its payload.
+The second external label of the resulting fragment is unreachable. -/
+def Fragment.feedback (p : Fragment Φ A E A) : Fragment Φ A E D where
+  extra := p.count
+  localTypes := p.feedbackTypes
+  entry := .jump (localSite p.feedbackTypes [E,D] 0)
+  blocks := Fin.cases (p.entry.rename p.feedbackSite) (fun i => (p.blocks i).rename p.feedbackSite)
+
 /-- A single-header loop with an independently bound payload. The classifier's
 left arm returns the binding and its right arm feeds it back. -/
 def Fragment.bindChooseLoop {B C : τ} (value : TwoBlock.Instruction Φ A A)

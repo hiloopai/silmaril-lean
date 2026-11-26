@@ -519,6 +519,151 @@ private theorem fragment_run (p : Fragment Φ A E D) {I : Type u}
     simpa only [Bind.kleisliRight, liftPure, Function.comp_apply, pure_bind, raw, loc, Sum.elim_inr, Sum.map_inr] using
       congrFun loop i
 
+theorem flat_classify_denote (op : TwoBlock.Instruction Φ A (Silmaril.coprod E D))
+    (coherent : RegionCoherent (τ := τ) (Φ := Φ) (ε := ε) (m := m)) (env : Env [A]) :
+    Region.denote (ε := ε) (m := m) (Fragment.classify op).typing env =
+      callCase (ε := ε) op env.2 >>= fun result => pure (TwoBlock.TwoExit.exitLabel result) := by
+  let p := Fragment.classify op
+  rw [fragment_run p id (fragStep (ε := ε) p) (fun _ _ => rfl) coherent]
+  simp only [p, Fragment.classify, runBlock, bind_assoc]
+  congr 1
+  funext result
+  cases result
+  · simp only [Sum.elim_inl, pure_bind]
+    rw [route_external]
+    rfl
+  · simp only [Sum.elim_inr, pure_bind]
+    rw [route_external]
+    rfl
+
+section Feedback
+
+variable (p : Fragment Φ A E A)
+
+private abbrev BodyState := FiniteLabelDen p.localTypes
+private abbrev FeedbackState := TyDen A ⊕ BodyState p
+
+private def feedbackState (i : Fin (p.count + 1)) : TyDen (p.feedbackTypes i) → FeedbackState p :=
+  Fin.cases (motive := fun i => TyDen (p.feedbackTypes i) → FeedbackState p)
+    Sum.inl (fun j x => .inr ⟨j, x⟩) i
+
+private def feedbackEncode (i : FiniteLabelDen p.feedbackTypes) : FeedbackState p :=
+  feedbackState p i.1 i.2
+
+private def feedbackExit : LabelDen [E,A] → LabelDen [E,D] ⊕ TyDen A :=
+  (⟨.first, .consumer⟩ : ExitRouting E A A E D).select
+
+/-- Local branches stay in the inner iterator. A body exit completes the
+inner iterator and either returns or restarts at the outer header. -/
+private def feedbackGroup : LabelDen [E,A] ⊕ BodyState p →
+    (LabelDen [E,D] ⊕ FeedbackState p) ⊕ FeedbackState p :=
+  Sum.elim (Sum.inl ∘ Sum.map id Sum.inl ∘ feedbackExit) (Sum.inr ∘ Sum.inr)
+
+private noncomputable def bodyEntry (x : TyDen A) : m (LabelDen [E,A] ⊕ BodyState p) :=
+  runBlock (ε := ε) (route p.localTypes [E,A] id) p.entry x
+
+private noncomputable def groupedFeedback : FeedbackState p →
+    m ((LabelDen [E,D] ⊕ FeedbackState p) ⊕ FeedbackState p) :=
+  fun x => Sum.elim (bodyEntry (ε := ε) p) (fragStep (ε := ε) p) x >>= pure ∘ feedbackGroup p
+
+private theorem feedback_route (site : Site p.Labels X) (x : TyDen X) :
+    route p.feedbackTypes [E,D] (feedbackEncode p) (p.feedbackSite site) x =
+      flatten (feedbackGroup p (route p.localTypes [E,A] id site x)) := by
+  unfold Fragment.feedbackSite redirect
+  generalize h : splitSite p.localTypes [E,A] site = dest
+  obtain ⟨dest, eq⟩ := dest
+  subst site
+  cases dest with
+  | «local» i =>
+    change route _ _ _ (localSite p.feedbackTypes [E,D] i.succ) x =
+      flatten (feedbackGroup p (route _ _ id (localSite _ _ i) x))
+    rw [route_local, route_local]
+    rfl
+  | external i =>
+    change route _ _ _ (Fin.cases (motive := fun i => Site _ ([E,A].get i))
+      (externalSite p.feedbackTypes [E,D] 0)
+      (Fin.cases (localSite p.feedbackTypes [E,D] 0) (fun j => j.elim0)) i) x =
+        flatten (feedbackGroup p (route _ _ id (externalSite _ _ i) x))
+    rw [route_external]
+    revert x
+    refine Fin.cases (fun x => ?_) (Fin.cases (fun x => ?_) (fun j => j.elim0)) i
+    · rw [Fin.cases_zero, route_external]
+      rfl
+    · rw [Fin.cases_succ, Fin.cases_zero, route_local]
+      rfl
+
+omit [Iterate m] [LawfulElgotMonad m] in
+private theorem feedback_map {Z : τ} (b : Flat.Block Φ p.Labels Z) (x : TyDen Z) :
+    runBlock (ε := ε) (m := m) (route p.feedbackTypes [E,D] (feedbackEncode p))
+        (b.rename p.feedbackSite) x =
+      runBlock (ε := ε) (route p.localTypes [E,A] id) b x >>=
+        fun r => pure (flatten (feedbackGroup p r)) :=
+  runBlock_map (ε := ε) b x p.feedbackSite _ _ _ (feedback_route p)
+
+private theorem feedback_fold
+    (coherent : RegionCoherent (τ := τ) (Φ := Φ) (ε := ε) (m := m)) (a : TyDen A) :
+    iter (flattenBody (groupedFeedback (ε := ε) (m := m) (D := D) p)) (.inl a) =
+      iter (fun x => Region.denote (ε := ε) (m := m) p.typing (PUnit.unit, x) >>=
+        pure ∘ feedbackExit (D := D)) a := by
+  let routeExit : LabelDen [E,A] → LabelDen [E,D] ⊕ FeedbackState p :=
+    Sum.map id Sum.inl ∘ feedbackExit
+  have square : (mapReturn (fragStep (ε := ε) (m := m) p) (liftPure routeExit) >=>
+        liftPure (Sum.map id Sum.inr)) =
+      (liftPure Sum.inr >=> groupedFeedback (ε := ε) p) := by
+    funext i
+    simp only [Bind.kleisliRight, liftPure, Function.comp_apply, pure_bind, groupedFeedback,
+      Sum.elim_inr, mapReturn, bind_assoc]
+    congr 1
+    funext r
+    cases r <;> simp [feedbackGroup, routeExit, pure_bind]
+  have localIteration (i : BodyState p) :
+      iter (groupedFeedback (ε := ε) (m := m) p) (.inr i) =
+        iter (fragStep (ε := ε) (m := m) p) i >>= liftPure routeExit := by
+    have h := congrFun (LawfulElgotMonad.uniformity _ _ _ square) i
+    rw [← LawfulElgotMonad.naturality] at h
+    simpa only [Bind.kleisliRight, liftPure, Function.comp_apply, pure_bind] using h.symm
+  have headerIteration (x : TyDen A) :
+      iter (groupedFeedback (ε := ε) (m := m) p) (.inl x) =
+        Region.denote (ε := ε) (m := m) p.typing (PUnit.unit,x) >>= liftPure routeExit := by
+    rw [congrFun (LawfulElgotMonad.fixpoint (groupedFeedback (ε := ε) p)) (.inl x),
+      fragment_run p id (fragStep (ε := ε) p) (fun _ _ => rfl) coherent]
+    simp only [groupedFeedback, Sum.elim_inl, bodyEntry, bind_assoc, Function.comp_apply, pure_bind]
+    congr 1
+    funext r
+    cases r <;> simp [feedbackGroup, routeExit, liftPure, localIteration]
+  have outerSquare :
+      ((fun x => Region.denote (ε := ε) (m := m) p.typing (PUnit.unit,x) >>= pure ∘ feedbackExit (D := D)) >=>
+        liftPure (Sum.map id Sum.inl)) =
+      (liftPure Sum.inl >=> iter (groupedFeedback (ε := ε) (m := m) p)) := by
+    funext x
+    simp only [Bind.kleisliRight, liftPure, Function.comp_apply, pure_bind, bind_assoc, headerIteration]
+    rfl
+  rw [← LawfulElgotMonad.codiagonal]
+  simpa only [Bind.kleisliRight, liftPure, Function.comp_apply, pure_bind] using
+    (congrFun (LawfulElgotMonad.uniformity _ _ _ outerSquare) a).symm
+
+theorem flat_feedback_denote
+    (coherent : RegionCoherent (τ := τ) (Φ := Φ) (ε := ε) (m := m)) (env : Env [A]) :
+    Region.denote (ε := ε) (m := m) (p.feedback (D := D)).typing env =
+      iter (fun x => Region.denote (ε := ε) (m := m) p.typing (PUnit.unit,x) >>=
+        fun r => pure ((⟨.first, .consumer⟩ : ExitRouting E A A E D).select r)) env.2 := by
+  let step := flattenBody (groupedFeedback (ε := ε) (m := m) (D := D) p)
+  rw [fragment_run p.feedback (feedbackEncode p) step ?_ coherent]
+  · change (pure (route p.feedbackTypes [E,D] (feedbackEncode p)
+      (localSite p.feedbackTypes [E,D] 0) env.2) >>= _) = _
+    rw [route_local, pure_bind, Sum.elim_inr]
+    exact feedback_fold p coherent env.2
+  · intro i
+    refine Fin.cases (fun x => ?_) (fun j x => ?_) i
+    · simpa only [Fragment.feedback, feedbackEncode, feedbackState, Fin.cases_zero, step,
+        flattenBody, Bind.kleisliRight, liftPure, groupedFeedback, Sum.elim_inl, bodyEntry,
+        bind_assoc, Function.comp_apply, pure_bind] using feedback_map (ε := ε) (m := m) p p.entry x
+    · simpa only [Fragment.feedback, feedbackEncode, feedbackState, Fin.cases_succ, step,
+        flattenBody, Bind.kleisliRight, liftPure, groupedFeedback, Sum.elim_inr, fragStep,
+        bind_assoc, Function.comp_apply, pure_bind] using feedback_map (ε := ε) (m := m) p (p.blocks j) x
+
+end Feedback
+
 theorem flat_splitReturn_denote (p : Fragment Φ A E D)
     (coherent : RegionCoherent (τ := τ) (Φ := Φ) (ε := ε) (m := m))
     (env : Env [Silmaril.coprod A E]) :

@@ -94,13 +94,13 @@ local instance : TypeModel Ty where
   coe := coerceValue
 
 private inductive Op | enter | inner | finish | tailHeader | tailBody | forkGate
-  | routingHeader | routingJoin | consumeBody | addOne | stamp | loopDecision
+  | routingHeader | routingJoin | consumeBody | addOne | stamp | loopDecision | outerDecision
   deriving DecidableEq
 
 local instance : HasTy Op Ty :=
   ⟨fun | .inner => innerPayload | _ => number,
    fun | .enter => innerPayload | .inner => .coprod number innerPayload
-       | .finish | .tailHeader | .routingJoin | .loopDecision => .coprod number number
+       | .finish | .tailHeader | .routingJoin | .loopDecision | .outerDecision => .coprod number number
        | .tailBody | .consumeBody | .addOne | .stamp => number
        | .routingHeader => .coprod .unit number
        | .forkGate => .coprod (.coprod number number) number⟩
@@ -130,6 +130,8 @@ private def instruction : (op : Op) → Value (instrSrc op) → Runtime (Value (
   | .loopDecision, n => StateT.mk fun token =>
     if (show Nat from n) = 99 then Part.none
     else Part.some (if token < 200 then .inr n else .inl n, 10 * token + 7)
+  | .outerDecision, n => StateT.mk fun token =>
+    Part.some (if token < 5000 then .inr n else .inl ((show Nat from n) + token), 10 * token + 3)
 
 local instance : InstructionModel Op Ty Bool Runtime where
   denote := instruction
@@ -2084,6 +2086,106 @@ private def staleSeam (g : PipelineGraph) : PipelineGraph :=
     | _, _ => throw (IO.userError "the selected branch lost its payload or live token at the serial suffix")
     unless (run 98 0).isNone do
       throw (IO.userError "the late undefined action in the selected mixed leaf returned")
+
+private def nestedTree (order : Bool) : Tree Op Bool number [Threaded (carried number)] :=
+  .feedback (.theta mixedLoop order) (op .outerDecision)
+
+private abbrev NestedPipeline := Translation.PureTheta.Prefix.Structured.Graph Op Bool number number number number
+  (([Threaded (carried number)] ++ [WirePorts number number number]) ++ TailRows)
+
+private def nestedGraph (order : Bool) : NestedPipeline := compile (nestedTree order) orderedTailSyntax
+
+private def outerBody := Flat.link mixedLoop.fragment (.classify (op .outerDecision))
+
+private noncomputable def outerStep (x : Nat) : Runtime (LabelDen [number,number] ⊕ Nat) :=
+  Region.denote (ε := Bool) (m := Runtime) outerBody.typing (PUnit.unit,x) >>= fun result =>
+    pure ((⟨.first, .consumer⟩ : Flat.ExitRouting number number number number number).select result)
+
+private theorem outerStep_run (coherent : Coherent) (input token value live : Nat)
+    (inner : (iter (mixedLoop.step (σ := Nat)) input).run token = Part.some (value,live)) :
+    Elgot.StateT.body outerStep (input,token) =
+      Part.some (if live < 5000 then .inr (value, 10 * live + 3)
+        else .inl (.inl (value + live), 10 * live + 3)) := by
+  have decide : callCase (ε := Bool) (m := Runtime) (op .outerDecision) value =
+      instruction .outerDecision value := by
+    unfold callCase
+    rw [call_eq]
+    exact bind_pure _
+  simp only [Elgot.StateT.body, outerStep, outerBody,
+    Flat.denote_link _ _ coherent, mixedLoop.fragment_denote coherent, Flat.Fragment.classify_denote _ coherent,
+    StateT.run_bind, StateT.run_pure, Part.bind_eq_bind, Part.pure_eq_some, inner, Part.bind_some, merge, decide]
+  by_cases repeatOuter : live < 5000 <;> simp [instruction, repeatOuter, Elgot.StateT.distribute] <;> rfl
+
+private theorem outerReturns (coherent : Coherent) :
+    (iter outerStep 0).run 2 = Part.some ((.inl (277741 : Nat) : LabelDen [number,number]), 2777373) := by
+  have secondInner : (iter (mixedLoop.step (σ := Nat)) (3 : Nat)).run 27773 =
+      Part.some ((4 : Nat),277737) := by
+    rw [Elgot.StateT.run_iter, Part.eq_some_iff, Elgot.Part.mem_iter_iff]
+    apply Elgot.Part.Runs.done
+    rw [thetaStep_run]
+    exact Part.mem_some _
+  rw [Elgot.StateT.run_iter, Part.eq_some_iff, Elgot.Part.mem_iter_iff]
+  apply Elgot.Part.Runs.more (a' := (3,27773))
+  · rw [outerStep_run coherent 0 2 3 2777 theta_return]
+    exact Part.mem_some _
+  · apply Elgot.Part.Runs.done
+    rw [outerStep_run coherent 3 27773 4 277737 secondInner]
+    exact Part.mem_some _
+
+example (coherent : Coherent) (order : Bool) (f : Fibre (nestedGraph order)) :
+    (Region.denote (ε := Bool) (m := Runtime) f.fragment.typing (PUnit.unit, (0 : Nat))).run 2 =
+      Part.some ((.inl (30828848 : Nat) : LabelDen [number,number]), 277737344) := by
+  rw [f.compiled_denote (nestedTree order) orderedTailSyntax coherent, Flat.denote_link _ _ coherent]
+  change (Region.denote (ε := Bool) (m := Runtime) outerBody.feedback.typing (PUnit.unit, (0 : Nat)) >>= _).run 2 = _
+  rw [Flat.Fragment.feedback_denote _ coherent, StateT.run_bind]
+  change ((iter outerStep 0).run 2).bind _ = _
+  rw [outerReturns coherent, Part.bind_some]
+  change (Region.denote (ε := Bool) (m := Runtime)
+    (Flat.link (.loop tailLoop) (.loop tailLoop)).typing (PUnit.unit, (277741 : Nat))).run 2777373 = _
+  rw [Flat.denote_link _ _ coherent]
+  simp only [Flat.Fragment.loop_denote, ExplicitRuntime.denote_rounds _ coherent,
+    StateT.run_bind, tailReturns, Part.bind_eq_bind, Part.bind_some, merge]
+
+private def staleBodyResult {args outs : Ports (OrderedRuntime.Structured.Ty Ty)}
+    (token : Port args runtime) {past rows : List (Ports (OrderedRuntime.Structured.Ty Ty))} :
+    NestedTheta.Term (Translation.PureGamma.Op Op Bool) args past rows outs →
+      NestedTheta.Term (Translation.PureGamma.Op Op Bool) args past rows outs
+  | .ret results => .ret (results.map fun sort origin =>
+      if h : runtime = sort then h ▸ .arg token else origin)
+  | .bind node children tail => .bind node children (staleBodyResult token tail)
+
+private def staleOuterTerm {args outs : Ports (OrderedRuntime.Structured.Ty Ty)}
+    {rows : List (Ports (OrderedRuntime.Structured.Ty Ty))} :
+    NestedTheta.Term (Translation.PureGamma.Op Op Bool) args [] rows outs →
+      NestedTheta.Term (Translation.PureGamma.Op Op Bool) args [] rows outs
+  | .bind ⟨_, .theta ports, inputs, childSigs⟩ children tail =>
+    let node := ⟨_, NestedTheta.Kind.theta ports, inputs, childSigs⟩
+    if typed : Threaded (carried number) = ports then
+      .bind node (fun j => staleBodyResult (args := ports) (typed ▸ runtimePort (carried number)) (children j)) tail
+    else .bind node children tail
+  | other => other
+
+private def staleOuterFeedback (g : NestedPipeline) : NestedPipeline :=
+  (staleOuterTerm g.toTerm).toGraph
+
+-- The inner θ returns (3, 2777). The first outer classifier sends (3, 27773)
+-- back, so the next inner θ receives that token before the outer loop exits.
+#eval show IO Unit from do
+  for order in [false,true] do
+    let graph := nestedGraph order
+    unless (recover graph).isSome do
+      throw (IO.userError "could not recover the nested mixed loop")
+    let stale := staleOuterFeedback graph
+    unless (candidate stale).isSome && (recover stale).isNone do
+      throw (IO.userError "the nested loop accepted a stale body-result token")
+    let run := fun (fuel input : Nat) =>
+      (NestedTheta.Partial.Executable.run gammaActions graph fuel (point input 2)).map fun output =>
+        (show (Nat ⊕ Nat) ⊕ Nat from output.get .head, show Nat from output.get (.tail .head))
+    unless (run 1 0).isNone && (run 10 98).isNone do
+      throw (IO.userError "a short or undefined nested iteration returned")
+    match run 10 0 with
+    | some (.inl (.inl 30828848), 277737344) => pure ()
+    | result => throw (IO.userError s!"the nested loop lost its feedback or final token: {repr result}")
 
 end StructuredPrefix
 

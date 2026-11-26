@@ -23,6 +23,23 @@ variable {m : Type u → Type u} [Monad m] [LawfulMonad m] [Iterate m] [LawfulEl
   [InstructionModel Φ τ ε m]
 variable {A P Q M E D : τ}
 
+theorem Fragment.classify_denote (op : TwoBlock.Instruction Φ A (Silmaril.coprod E D))
+    (coherent : RegionCoherent (τ := τ) (Φ := Φ) (ε := ε) (m := m)) (env : Env [A]) :
+    Region.denote (ε := ε) (m := m) (Fragment.classify op).typing env =
+      TwoBlock.TwoExit.callCase (ε := ε) op env.2 >>= fun result =>
+        pure (TwoBlock.TwoExit.exitLabel result) :=
+  Proofs.flat_classify_denote op coherent env
+
+/-- An arbitrary admitted flat body can return at its first exit or restart
+from its second exit. Each restart receives the new payload through the
+relocated header, with the effects sequenced by the ambient Elgot monad. -/
+theorem Fragment.feedback_denote (p : Fragment Φ A E A)
+    (coherent : RegionCoherent (τ := τ) (Φ := Φ) (ε := ε) (m := m)) (env : Env [A]) :
+    Region.denote (ε := ε) (m := m) (p.feedback (D := D)).typing env =
+      iter (fun x => Region.denote (ε := ε) (m := m) p.typing (PUnit.unit,x) >>=
+        fun r => pure ((⟨.first, .consumer⟩ : ExitRouting E A A E D).select r)) env.2 :=
+  Proofs.flat_feedback_denote p coherent env
+
 /-- A routed producer exit either returns its typed payload immediately or
 starts the relocated consumer. Ordered bind carries the state across the cut. -/
 theorem denote_linkBy (p : Fragment Φ A P Q) (q : Fragment Φ M E D) (routing : ExitRouting P Q M E D)
