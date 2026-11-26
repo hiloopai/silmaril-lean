@@ -42,7 +42,7 @@ theorem raw_eqv_iff_normalized {Γ : VCtx τ} {r s : Region Φ} {L : LCtx τ}
   Silmaril.Proofs.SSA.Isotope.LambdaSSA.Rewrite.Paper.ComputedProductRawBranchBinding.raw_eqv_iff_normalized pe hr hs
 
 /-- Use the literal raw generators with the existing singleton operations. -/
-def singletonSeed : NormalizedSeed τ Φ where
+@[expose] def singletonSeed : NormalizedSeed τ Φ where
   step := JoinedStep pe
   rawStep := RawJoinedStep pe
   eqv_iff_normalized := raw_eqv_iff_normalized pe
