@@ -27,6 +27,14 @@ lambda_result = via_lambda(*(None,))
 dynamic_result = saved(5, *answer)
 """
 
+LIST = """def collect(first, *tail):
+    def keep():
+        return tail
+    return tail
+first = 3
+answer = collect(*[first, False, None], *[], True, *(7,))
+"""
+
 FIXED = """answer = 77
 def fixed(one):
     return one
@@ -57,6 +65,8 @@ FAILURES = (
      '.nameError "later"', (), ()),
     (FIXED + "fixed = 0\nanswer = fixed(*())\n", TypeError, None,
      ".notCallable", (), ("fixed",)),
+    (FIXED + "answer = fixed(*[item_missing, second_missing], later)\n", NameError, "item_missing",
+     '.nameError "item_missing"', (), ()),
     (REACHED, NameError, "body_missing", '.nameError "body_missing"', ((False, None),), ("reached",)),
 )
 
@@ -177,6 +187,18 @@ private def checkFuel (source : Source.Module) : Bool := Id.run do
 """
 
 
+def list_checks():
+    result = cpython(LIST)["answer"]
+    assert type(result) is tuple
+    assert [(type(value), value) for value in result] == [(bool, False), (type(None), None), (bool, True), (int, 7)]
+    expected = lean_tuple(result)
+    return f"""
+#guard checkRunners pythonSource .normal (.ok ()) [("answer", {expected})]
+  [.int 37, {expected}] [("collect", .ok ({expected}))]
+#guard checkFinite pythonSource 3 (.ok ({lean_tuple(result, seeded=False)})) [.int 37, {expected}]
+"""
+
+
 def failure_checks(source, kind, name, runtime_error, reached_cells, receipts):
     scope = cpython(source, kind, name)
     assert scope["answer"] == 77
@@ -204,7 +226,7 @@ def main():
         "meta import Silmaril.Languages.Python.Core.Closure.Finite.Defs",
         "meta import Mathlib.Data.List.AList",
     )
-    fixtures = [(SUCCESS, success_checks())]
+    fixtures = [(SUCCESS, success_checks()), (LIST, list_checks())]
     fixtures.extend((case[0], failure_checks(*case)) for case in FAILURES)
     with tempfile.TemporaryDirectory() as tmp:
         source, lean = Path(tmp) / "TupleSpread.py", Path(tmp) / "TupleSpread.lean"
@@ -215,7 +237,7 @@ def main():
             declarations.append(f"namespace Case{i}\npublic def pythonSource{declaration}\n{guards}\nend Case{i}")
         lean.write_text(header + HELPERS + "\n".join(declarations))
         shared["check_lean"](lean, "", extra_imports=imports)
-    print("CPython 3.13.5 controls and ordinary, Finite, and seeded tuple-spread guards passed.")
+    print("CPython 3.13.5 controls and ordinary, Finite, and seeded tuple/list spread guards passed.")
 
 
 if __name__ == "__main__":

@@ -117,6 +117,11 @@ inductive SpreadOperands (scope : Scope) :
       (tail : SpreadOperands scope rest operands) :
       SpreadOperands scope ((.unpackIterable, .tuple items) :: rest) (.starred (.tuple values) :: operands)
 
+  | starredList {items values rest operands} (first : Positional scope (items.map (.positional, ·)) values)
+      (tail : SpreadOperands scope rest operands) :
+      SpreadOperands scope ((.unpackIterable, .list_ items) :: rest)
+        ((values.map fun value => .single (.scalar value)) ++ operands)
+
 def hasSpread (arguments : List (Source.ArgumentKind × Source.Expr)) : Bool :=
   arguments.any fun
     | (.unpackIterable, _) => true
@@ -133,6 +138,12 @@ def lowerSpreadOperands (scope : Scope) : (source : List (Source.ArgumentKind ×
     let operands ← lowerArguments scope (items.map (.positional, ·))
     let tail ← lowerSpreadOperands scope rest
     return ⟨.starred (.tuple operands.val) :: tail.val, .starredTuple operands.property tail.property⟩
+  | (.unpackIterable, .list_ items) :: rest => do
+    let operands ← lowerArguments scope (items.map (.positional, ·))
+    let tail ← lowerSpreadOperands scope rest
+    -- An exact list literal used only for spreading contributes its items in order.
+    return ⟨(operands.val.map fun value => .single (.scalar value)) ++ tail.val,
+      .starredList operands.property tail.property⟩
   | (.unpackIterable, source) :: rest => do
     let operand ← (lowerOperand scope source).mapError .scalar
     let tail ← lowerSpreadOperands scope rest
