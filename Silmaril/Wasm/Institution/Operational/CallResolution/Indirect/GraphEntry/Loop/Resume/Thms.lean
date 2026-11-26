@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Wasm.Institution.Operational.CallResolution.Indirect.GraphEntry.Loop.Resume.Defs
 public import Silmaril.Wasm.Institution.Operational.CallResolution.Indirect.GraphEntry.Loop.Thms
+import Silmaril.Proofs.Wasm.Institution.Operational.CallResolution.Indirect.GraphEntry.Loop.Resume.Common
 import Silmaril.Proofs.Wasm.Institution.Operational.CallResolution.Indirect.GraphEntry.Loop.Resume.Core
 import Silmaril.Proofs.Wasm.Institution.Operational.CallResolution.Indirect.GraphEntry.Loop.Resume.Lime1
 
@@ -18,6 +19,26 @@ open Wasm.SingleThreaded.Det (noHost)
 
 variable {entry : Entry} {program : Graph.Program} {tables : Source.Tables}
   {outerFrame : Runtime.Frame} {index : FuncIdx} {args : List Value} {call : Context.Invocation}
+
+theorem split_run {S C : Type} {edge : S → S → Prop} {native : C → C → Prop}
+    (render : S → C) (live : S → Prop) (next : S → C → Prop) {start : S}
+    (step : ∀ {a dst}, Relation.ReflTransGen edge start a → live a →
+      (native (render a) dst ↔ ∃ b, edge a b ∧ dst = render b))
+    (source : ∀ {a b}, Relation.ReflTransGen edge start a → edge a b → live a)
+    (handoff : ∀ {a dst}, Relation.ReflTransGen edge start a → ¬ live a →
+      (Relation.ReflTransGen native (render a) dst ↔ next a dst)) {dst : C} :
+    Relation.ReflTransGen native (render start) dst ↔
+      (∃ a, Relation.ReflTransGen edge start a ∧ dst = render a) ∨
+      (∃ a, Relation.ReflTransGen edge start a ∧ ¬ live a ∧ next a dst) :=
+  Proofs.split_run render live next step source handoff
+
+theorem edge_preserves {A : Type} {entry : Entry} {a b : Phase A} (ready : Admitted entry a)
+    (move : Edge a b) : Admitted entry b :=
+  Proofs.preserve ready move
+
+theorem empty_stack {A : Type} {entry : Entry} {locals stack : List Value}
+    (ready : Admitted entry (A := A) (.write locals stack [])) : stack = [] :=
+  Proofs.empty_stack ready
 
 section Core
 
@@ -89,6 +110,26 @@ theorem core_run_through_site (ready : entry.Checked program tables outerFrame i
         site dst :=
   Proofs.Core.through_site (P := P) ready allocated links site read
 
+theorem core_callee_step (checked : call.Checked program) (links : program.CoreLinksAllocated s)
+    {a : Graph.Phase} {dst : Config H} (typed : Graph.Admitted program call.callee a) (live : a.LabelOutcome) :
+    Step P noHost (coreCallee entry s outerFrame call a) dst ↔
+      ∃ b, program.FrameEdge call.address a b ∧ dst = coreCallee entry s outerFrame call b :=
+  Proofs.Core.callee_step (P := P) checked links typed live
+
+theorem core_enter_allocated {active : Source.Activation} (invoked : active.invocation program = some call)
+    (checked : call.Checked program) (targets : active.binding.site.CoreAllocated program s)
+    (dst : Config H) :
+    Step P noHost (entry.coreLookup s outerFrame active (.call (some call.address))) dst ↔
+      dst = coreCallee entry s outerFrame call call.entered :=
+  Proofs.Core.enter_allocated (P := P) invoked checked targets dst
+
+theorem core_set_step (locals stack : List Value) (i : LocalIdx) (pending : List Admin) (dst : Config H) :
+    Step P noHost (entry.coreArmWrap outerFrame
+      ⟨s, (entry.frame locals).toCore, coreValues stack ++ .plain (.localSet i) :: pending⟩) dst ↔
+      ∃ saved value next, stack = saved ++ [value] ∧ Locals.Edge ⟨locals, [.value value, .set i]⟩ ⟨next, []⟩ ∧
+        dst = entry.coreArmWrap outerFrame ⟨s, (entry.frame next).toCore, coreValues saved ++ pending⟩ :=
+  Proofs.Core.set_step (P := P) locals stack i pending dst
+
 end Core
 
 section Lime1
@@ -159,6 +200,26 @@ theorem lime_run_through_site (ready : entry.Checked program tables outerFrame i
           Graph.Admitted program entry.owner phase ∧ out = Graph.limeConfig s outerFrame entry.cont.target phase)
         site dst :=
   Proofs.Lime1.through_site ready allocated links site read
+
+theorem lime_callee_step (checked : call.Checked program) (links : program.LimeLinksAllocated s)
+    {a : Graph.Phase} {dst : Config H} (typed : Graph.Admitted program call.callee a) (live : a.LabelOutcome) :
+    Step CallFrame.limeNoHost (limeCallee entry s outerFrame call a) dst ↔
+      ∃ b, program.FrameEdge call.address a b ∧ dst = limeCallee entry s outerFrame call b :=
+  Proofs.Lime1.callee_step checked links typed live
+
+theorem lime_enter_allocated {active : Source.Activation} (invoked : active.invocation program = some call)
+    (checked : call.Checked program) (targets : active.binding.site.LimeAllocated program s)
+    (dst : Config H) :
+    Step CallFrame.limeNoHost (entry.limeLookupResult s outerFrame active (.resolved call.address)) dst ↔
+      dst = limeCallee entry s outerFrame call call.entered :=
+  Proofs.Lime1.enter_allocated invoked checked targets dst
+
+theorem lime_set_step (locals stack : List Value) (i : LocalIdx) (pending : List Admin) (dst : Config H) :
+    Step CallFrame.limeNoHost (entry.limeArmWrap outerFrame
+      ⟨s, entry.frame locals, values stack ++ .source (.localSet i) :: pending⟩) dst ↔
+      ∃ saved value next, stack = saved ++ [value] ∧ Locals.Edge ⟨locals, [.value value, .set i]⟩ ⟨next, []⟩ ∧
+        dst = entry.limeArmWrap outerFrame ⟨s, entry.frame next, values saved ++ pending⟩ :=
+  Proofs.Lime1.set_step locals stack i pending dst
 
 end Lime1
 

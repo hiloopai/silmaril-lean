@@ -405,6 +405,16 @@ private theorem invoke_iff (ready : entry.Checked program tables outer index arg
   rw [Entry.limeFunc, expression_prefix entry.owner, expression_loop] at enter
   exact enter
 
+theorem entry_chain (ready : entry.Checked program tables outer index args)
+    (allocated : s.funcs[entry.address.value]? = some entry.limeInstance) :
+    let start := limeSource s outer index args
+    let invoke := (⟨entry.cont, entry.op, entry.before⟩ : GraphEntry.Entry).limeInvoke s outer args
+    ([start, invoke] ++ [entry.limeConfig s outer (entry.initial args)]).IsChain
+        (fun a b => ∀ dst, Step CallFrame.limeNoHost a dst ↔ dst = b) := by
+  intro start invoke
+  exact List.isChain_cons_cons.mpr ⟨fun _ => Computed.lime_direct_call_iff (s := s) (stack := args)
+      (tail := []) ready.resolves, List.isChain_pair.mpr (invoke_iff ready allocated)⟩
+
 theorem run_iff (ready : entry.Checked program tables outer index args)
     (allocated : s.funcs[entry.address.value]? = some entry.limeInstance)
     (links : program.LimeLinksAllocated s) {dst : Config H} :
@@ -417,10 +427,7 @@ theorem run_iff (ready : entry.Checked program tables outer index args)
         (Step CallFrame.limeNoHost) dst := by
   let start := limeSource s outer index args
   let invoke := (⟨entry.cont, entry.op, entry.before⟩ : GraphEntry.Entry).limeInvoke s outer args
-  have chain : ([start, invoke] ++ [entry.limeConfig s outer (entry.initial args)]).IsChain
-        (fun a b => ∀ dst, Step CallFrame.limeNoHost a dst ↔ dst = b) :=
-    List.isChain_cons_cons.mpr ⟨fun _ => Computed.lime_direct_call_iff (s := s) (stack := args)
-      (tail := []) ready.resolves, List.isChain_pair.mpr (invoke_iff ready allocated)⟩
+  have chain := entry_chain ready allocated
   have native := Context.Resume.prefix_run_iff (dst := dst) [start, invoke] _ chain
   refine native.trans (or_congr Iff.rfl (observe (entry.limeConfig s outer) (Step CallFrame.limeNoHost) _
     (initial_typed ready) (preserve ready) (step_iff ready) ?_ dst))

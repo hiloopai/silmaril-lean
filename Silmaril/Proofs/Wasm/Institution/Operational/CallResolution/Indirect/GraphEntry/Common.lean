@@ -59,7 +59,7 @@ private theorem checked_body (checked : entry.check program tables = true) :
   | none => simp [checkedPrefix] at tail
   | some types => exact ⟨types, rfl, by simpa [checkedPrefix] using tail⟩
 
-private theorem trace_exists {locals stack : List Value} {code : List Prefix.Op} {types : List NumType}
+theorem trace_exists {locals stack : List Value} {code : List Prefix.Op} {types : List NumType}
     (wellTyped : Prefix.WellTyped locals stack code types) :
     ∃ states result, OperandTrace locals stack code states result := by
   induction code generalizing stack with
@@ -91,6 +91,12 @@ private theorem trace_finish {locals stack : List Value} {code : List Prefix.Op}
   | done => exact typed
   | value step _ ih => exact ih (Prefix.preserve step typed)
   | trap => trivial
+
+theorem trace_values {locals stack output : List Value} {code : List Prefix.Op} {types : List NumType}
+    {states : List OperandState} (trace : OperandTrace locals stack code states (.values output))
+    (typed : Prefix.WellTyped locals stack code types) :
+    Prefix.stackTypes output = types.reverse := by
+  simpa only [ResultTyped, Prefix.WellTyped, Prefix.check, Option.some.injEq] using trace_finish trace typed
 
 private theorem lookup_tail (ready : entry.Checked program tables outer index args)
     {states : List OperandState} {stack : List Value}

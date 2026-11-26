@@ -417,6 +417,16 @@ private theorem invoke_iff (ready : entry.Checked program tables outer index arg
   rw [Entry.coreFunc, expression_prefix entry.owner, expression_loop] at enter
   exact enter
 
+theorem entry_chain (ready : entry.Checked program tables outer index args)
+    (allocated : s.funcs[entry.address.value]? = some entry.coreInstance) :
+    let start := coreSource s outer index args
+    let invoke := (⟨entry.cont, entry.op, entry.before⟩ : GraphEntry.Entry).coreInvoke s outer args
+    ([start, invoke] ++ [entry.coreConfig s outer (entry.initial args)]).IsChain
+        (fun a b => ∀ dst, Step P noHost a dst ↔ dst = b) := by
+  intro start invoke
+  exact List.isChain_cons_cons.mpr ⟨fun _ => Computed.core_direct_call_iff (s := s) (P := P) (stack := args)
+      (tail := []) ready.resolves allocated, List.isChain_pair.mpr (invoke_iff ready allocated)⟩
+
 theorem run_iff (ready : entry.Checked program tables outer index args)
     (allocated : s.funcs[entry.address.value]? = some entry.coreInstance)
     (links : program.CoreLinksAllocated s) {dst : Config H} :
@@ -429,10 +439,7 @@ theorem run_iff (ready : entry.Checked program tables outer index args)
         (Step P noHost) dst := by
   let start := coreSource s outer index args
   let invoke := (⟨entry.cont, entry.op, entry.before⟩ : GraphEntry.Entry).coreInvoke s outer args
-  have chain : ([start, invoke] ++ [entry.coreConfig s outer (entry.initial args)]).IsChain
-        (fun a b => ∀ dst, Step P noHost a dst ↔ dst = b) :=
-    List.isChain_cons_cons.mpr ⟨fun _ => Computed.core_direct_call_iff (s := s) (P := P) (stack := args)
-      (tail := []) ready.resolves allocated, List.isChain_pair.mpr (invoke_iff ready allocated)⟩
+  have chain := entry_chain (P := P) ready allocated
   have native := Context.Resume.prefix_run_iff (dst := dst) [start, invoke] _ chain
   refine native.trans (or_congr Iff.rfl (observe (entry.coreConfig s outer) (Step P noHost) _
     (initial_typed ready) (preserve ready) (step_iff ready) ?_ dst))

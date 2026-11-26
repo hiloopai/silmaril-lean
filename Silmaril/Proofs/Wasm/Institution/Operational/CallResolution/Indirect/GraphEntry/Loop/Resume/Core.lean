@@ -54,10 +54,11 @@ private theorem under_arm {body dst : Config H}
   rw [arm_cases]
   exact or_iff_left (fun ⟨out, exit, _⟩ => stays out exit)
 
-private theorem write_step (locals stack : List Value) (i : LocalIdx) (rest : List LocalIdx) (dst : Config H) :
-    Step P noHost (corePhase entry s outer (.write locals stack (i :: rest))) dst ↔
-      ∃ b, Edge (.write locals stack (i :: rest)) b ∧ dst = corePhase entry s outer b := by
-  let pending := rest.map (fun j => Admin.plain (.localSet j))
+theorem set_step (locals stack : List Value) (i : LocalIdx) (pending : List Admin) (dst : Config H) :
+    Step P noHost (entry.coreArmWrap outer
+      ⟨s, (entry.frame locals).toCore, coreValues stack ++ .plain (.localSet i) :: pending⟩) dst ↔
+      ∃ saved value next, stack = saved ++ [value] ∧ Locals.Edge ⟨locals, [.value value, .set i]⟩ ⟨next, []⟩ ∧
+        dst = entry.coreArmWrap outer ⟨s, (entry.frame next).toCore, coreValues saved ++ pending⟩ := by
   have stays (out : List Admin) :
       ¬ LabelExit entry.result.toList.length [] (coreValues stack ++ .plain (.localSet i) :: pending) out :=
     Computed.core_label_stays (head := .plain (.localSet i))
@@ -67,18 +68,27 @@ private theorem write_step (locals stack : List Value) (i : LocalIdx) (rest : Li
   constructor
   · rintro ⟨mid, moved, rfl⟩
     obtain ⟨saved, value, next, rfl, wrote, rfl⟩ := Computed.core_set_read (f := entry.frame locals) moved
+    exact ⟨saved, value, next, rfl, wrote, rfl⟩
+  · rintro ⟨saved, value, next, rfl, wrote, rfl⟩
+    refine ⟨⟨s, (entry.frame next).toCore, coreValues saved ++ pending⟩, ?_, rfl⟩
+    have head := Locals.core_sound (P := P) (s := s) (m := entry.owner.declaration.module.toCore) wrote
+    have lifted := Wasm.SingleThreaded.Det.lift_instrs (saved.map Value.toCore) pending _ _ head
+    rcases value with ⟨ty, bits⟩
+    cases ty <;>
+      simpa [Locals.coreConfig, Locals.Codec.encode, Locals.coreCodec, Locals.coreInstr,
+        coreValues, vals, List.map_append, List.append_assoc] using! lifted
+
+
+private theorem write_step (locals stack : List Value) (i : LocalIdx) (rest : List LocalIdx) (dst : Config H) :
+    Step P noHost (corePhase entry s outer (.write locals stack (i :: rest))) dst ↔
+      ∃ b, Edge (.write locals stack (i :: rest)) b ∧ dst = corePhase entry s outer b := by
+  let pending := rest.map (fun j => Admin.plain (.localSet j))
+  refine (set_step (P := P) locals stack i pending dst).trans ⟨?_, ?_⟩
+  · rintro ⟨_, _, _, rfl, wrote, rfl⟩
     exact ⟨_, .write rfl wrote, rfl⟩
   · rintro ⟨b, move, rfl⟩
     cases move with
-    | @write _ next _ saved value _ _ split wrote =>
-      subst stack
-      refine ⟨⟨s, (entry.frame next).toCore, coreValues saved ++ pending⟩, ?_, rfl⟩
-      have head := Locals.core_sound (P := P) (s := s) (m := entry.owner.declaration.module.toCore) wrote
-      have lifted := Wasm.SingleThreaded.Det.lift_instrs (saved.map Value.toCore) pending _ _ head
-      rcases value with ⟨ty, bits⟩
-      cases ty <;>
-        simpa [Locals.coreConfig, Locals.Codec.encode, Locals.coreCodec, Locals.coreInstr,
-          coreValues, vals, List.map_append, List.append_assoc] using! lifted
+    | write split wrote => exact ⟨_, _, _, split, wrote, rfl⟩
 
 private theorem trap_arm_step (locals stack : List Value) (pending : List Admin) (dst : Config H) :
     Step P noHost (corePhase entry s outer (.armTrap locals stack pending)) dst ↔
@@ -185,7 +195,7 @@ theorem finish_run (ready : entry.Checked program tables outer index args)
       ⟨fun ⟨phase, run, _, eq⟩ => ⟨phase, run, eq⟩, fun ⟨phase, run, eq⟩ =>
         ⟨phase, run, program.frame_admitted_run (Loop.graph_checked ready) ready.found valid run, eq⟩⟩
 
-private theorem callee_step (checked : call.Checked program) (links : program.CoreLinksAllocated s)
+theorem callee_step (checked : call.Checked program) (links : program.CoreLinksAllocated s)
     {a : Graph.Phase} {dst : Config H} (typed : Graph.Admitted program call.callee a) (live : a.LabelOutcome) :
     Step P noHost (coreCallee entry s outer call a) dst ↔
       ∃ b, program.FrameEdge call.address a b ∧ dst = coreCallee entry s outer call b := by
@@ -263,6 +273,13 @@ private theorem allocation {active : Source.Activation}
   obtain ⟨address, callee, resolved, found, rfl⟩ := Source.invocation_fields invoked
   cases Indirect.resolve_iff.mp resolved with
   | resolved selected _ _ => exact targets address callee (List.mem_of_getElem? selected) found
+
+theorem enter_allocated {active : Source.Activation} (invoked : active.invocation program = some call)
+    (checked : call.Checked program) (targets : active.binding.site.CoreAllocated program s)
+    (dst : Config H) :
+    Step P noHost (entry.coreLookup s outer active (.call (some call.address))) dst ↔
+      dst = coreCallee entry s outer call call.entered :=
+  enter invoked checked (allocation invoked targets) dst
 
 theorem resolved_run (ready : entry.Checked program tables outer index args)
     {locals stack : List Value} {states : List OperandState} {active : Source.Activation}

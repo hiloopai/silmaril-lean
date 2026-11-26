@@ -14,10 +14,27 @@ namespace Silmaril.Wasm.Institution.Operational.CallResolution.Indirect.GraphEnt
 open Execution
 open Execution.Runtime (Frame Value)
 open CallContinuation.OuterCall.Ranked
+open CallContinuation.OuterCall.Computed
 open Wasm.SingleThreaded.Det (noHost)
 
 variable {entry : Entry} {program : Graph.Program} {tables : Source.Tables} {outer : Frame}
   {index : FuncIdx} {args : List Value} {active : Source.Activation}
+
+theorem trace_exists {locals stack : List Value} {code : List Prefix.Op} {types : List NumType}
+    (typed : Prefix.WellTyped locals stack code types) :
+    ∃ states result, OperandTrace locals stack code states result :=
+  Proofs.trace_exists typed
+
+theorem trace_values {locals stack output : List Value} {code : List Prefix.Op} {types : List NumType}
+    {states : List OperandState} (trace : OperandTrace locals stack code states (.values output))
+    (typed : Prefix.WellTyped locals stack code types) :
+    Prefix.stackTypes output = types.reverse :=
+  Proofs.trace_values trace typed
+
+theorem resolved_entry_ref {call : Context.Invocation} (invoked : active.invocation program = some call) :
+    some call.address ∈ active.binding.site.table.refs ∧ program.lookup call.address = some call.callee ∧
+      active.resolve program = some (.resolved call.address) :=
+  Proofs.resolved_entry_ref invoked
 
 /-- A checked prefix can step to the lookup stack or trap before lookup. -/
 theorem operand_trace_exists (ready : entry.Checked program tables outer index args) :

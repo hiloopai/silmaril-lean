@@ -15,6 +15,7 @@ namespace Silmaril.Wasm.Institution.Operational.CallResolution.Indirect.GraphEnt
 open Execution
 open Execution.Runtime (Value)
 open CallContinuation.OuterCall
+open CallContinuation.OuterCall.Computed
 open CallContinuation.OuterCall.Ranked
 open Wasm.SingleThreaded.Det (noHost)
 
@@ -30,6 +31,14 @@ theorem caller_admitted (ready : entry.Checked program tables outerFrame index a
     Graph.Admitted program entry.owner (entry.callerPhase locals) :=
   Proofs.caller_admitted ready typed
 
+
+theorem initial_typed (ready : entry.Checked program tables outerFrame index args) :
+    entry.Typed (entry.initial args) :=
+  Proofs.initial_typed ready
+
+theorem edge_preserves (ready : entry.Checked program tables outerFrame index args)
+    {a b : State} (typed : entry.Typed a) (move : Edge entry a b) : entry.Typed b :=
+  Proofs.preserve ready typed move
 
 section Core
 
@@ -87,6 +96,25 @@ theorem core_lookup_exact {active : Source.Activation} {out : Outcome}
     (out.coreTrace.map (entry.coreLookup s outerFrame active)).IsChain
       (fun a b => ∀ dst, Step P noHost a dst ↔ dst = b) :=
   Proofs.Core.lookup_exact ready targets allocated resolved
+
+theorem core_entry_chain (ready : entry.Checked program tables outerFrame index args)
+    (allocated : s.funcs[entry.address.value]? = some entry.coreInstance) :
+    let start := coreSource s outerFrame index args
+    let invoke := (⟨entry.cont, entry.op, entry.before⟩ : GraphEntry.Entry).coreInvoke s outerFrame args
+    ([start, invoke] ++ [entry.coreConfig s outerFrame (entry.initial args)]).IsChain
+        (fun a b => ∀ dst, Step P noHost a dst ↔ dst = b) :=
+  Proofs.Core.entry_chain (P := P) ready allocated
+
+theorem core_site_operands (locals : List Value) :
+    entry.coreConfig s outerFrame ⟨locals, .site⟩ = entry.coreOperands s outerFrame locals ([], entry.before) :=
+  Proofs.Core.site_operands locals
+
+theorem core_operand_chain {locals stack : List Value} {code : List Prefix.Op}
+    {states : List OperandState} {result : OperandResult}
+    (trace : OperandTrace locals stack code states result) :
+    (states.map (entry.coreOperands s outerFrame locals) ++ [entry.coreOperandResult s outerFrame locals result]).IsChain
+      (fun a b => ∀ dst, Step P noHost a dst ↔ dst = b) :=
+  Proofs.Core.operand_chain (P := P) trace
 
 end Core
 
@@ -147,6 +175,25 @@ theorem lime_lookup_exact {active : Source.Activation} {out : Outcome}
     Step CallFrame.limeNoHost (entry.limeLookup s outerFrame active) dst ↔
       dst = entry.limeLookupResult s outerFrame active out :=
   Proofs.Lime1.lookup_exact ready targets allocated resolved dst
+
+theorem lime_entry_chain (ready : entry.Checked program tables outerFrame index args)
+    (allocated : s.funcs[entry.address.value]? = some entry.limeInstance) :
+    let start := limeSource s outerFrame index args
+    let invoke := (⟨entry.cont, entry.op, entry.before⟩ : GraphEntry.Entry).limeInvoke s outerFrame args
+    ([start, invoke] ++ [entry.limeConfig s outerFrame (entry.initial args)]).IsChain
+        (fun a b => ∀ dst, Step CallFrame.limeNoHost a dst ↔ dst = b) :=
+  Proofs.Lime1.entry_chain ready allocated
+
+theorem lime_site_operands (locals : List Value) :
+    entry.limeConfig s outerFrame ⟨locals, .site⟩ = entry.limeOperands s outerFrame locals ([], entry.before) :=
+  Proofs.Lime1.site_operands locals
+
+theorem lime_operand_chain {locals stack : List Value} {code : List Prefix.Op}
+    {states : List OperandState} {result : OperandResult}
+    (trace : OperandTrace locals stack code states result) :
+    (states.map (entry.limeOperands s outerFrame locals) ++ [entry.limeOperandResult s outerFrame locals result]).IsChain
+      (fun a b => ∀ dst, Step CallFrame.limeNoHost a dst ↔ dst = b) :=
+  Proofs.Lime1.operand_chain trace
 
 end Lime
 

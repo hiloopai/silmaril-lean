@@ -54,10 +54,11 @@ private theorem under_arm {body dst : Config H}
   rw [arm_cases]
   exact or_iff_left (fun ⟨out, exit, _⟩ => stays out exit)
 
-private theorem write_step (locals stack : List Value) (i : LocalIdx) (rest : List LocalIdx) (dst : Config H) :
-    Step CallFrame.limeNoHost (limePhase entry s outer (.write locals stack (i :: rest))) dst ↔
-      ∃ b, Edge (.write locals stack (i :: rest)) b ∧ dst = limePhase entry s outer b := by
-  let pending := rest.map (fun j => Execution.Runtime.AdminInstr.source (Wasm.Lime1.Instr.localSet j))
+theorem set_step (locals stack : List Value) (i : LocalIdx) (pending : List Admin) (dst : Config H) :
+    Step CallFrame.limeNoHost (entry.limeArmWrap outer
+      ⟨s, entry.frame locals, values stack ++ .source (.localSet i) :: pending⟩) dst ↔
+      ∃ saved value next, stack = saved ++ [value] ∧ Locals.Edge ⟨locals, [.value value, .set i]⟩ ⟨next, []⟩ ∧
+        dst = entry.limeArmWrap outer ⟨s, entry.frame next, values saved ++ pending⟩ := by
   have stays (out : List Admin) :
       ¬ PureStep (entry.frame locals).module.types [.label entry.result.toList.length [] (values stack ++ .source (.localSet i) :: pending)] out :=
     Computed.lime_label_stays (types := (entry.frame locals).module.types) (head := .source (.localSet i))
@@ -67,19 +68,28 @@ private theorem write_step (locals stack : List Value) (i : LocalIdx) (rest : Li
   constructor
   · rintro ⟨mid, moved, rfl⟩
     obtain ⟨saved, value, next, rfl, wrote, rfl⟩ := Computed.lime_set_read (f := entry.frame locals) moved
+    exact ⟨saved, value, next, rfl, wrote, rfl⟩
+  · rintro ⟨saved, value, next, rfl, wrote, rfl⟩
+    refine ⟨⟨s, entry.frame next, values saved ++ pending⟩, ?_, rfl⟩
+    have head := Locals.lime_sound (host := CallFrame.limeNoHost) (s := s)
+      (m := entry.owner.declaration.module) wrote
+    have lifted := Step.context head saved pending
+    rcases value with ⟨ty, bits⟩
+    cases ty <;>
+      simpa [Locals.Codec.encode, Locals.limeCodec, Locals.legacyCodec, Locals.limeInstr,
+        values, List.map_append, List.append_assoc] using! lifted
+
+
+private theorem write_step (locals stack : List Value) (i : LocalIdx) (rest : List LocalIdx) (dst : Config H) :
+    Step CallFrame.limeNoHost (limePhase entry s outer (.write locals stack (i :: rest))) dst ↔
+      ∃ b, Edge (.write locals stack (i :: rest)) b ∧ dst = limePhase entry s outer b := by
+  let pending := rest.map (fun j => Execution.Runtime.AdminInstr.source (Wasm.Lime1.Instr.localSet j))
+  refine (set_step locals stack i pending dst).trans ⟨?_, ?_⟩
+  · rintro ⟨_, _, _, rfl, wrote, rfl⟩
     exact ⟨_, .write rfl wrote, rfl⟩
   · rintro ⟨b, move, rfl⟩
     cases move with
-    | @write _ next _ saved value _ _ split wrote =>
-      subst stack
-      refine ⟨⟨s, entry.frame next, values saved ++ pending⟩, ?_, rfl⟩
-      have head := Locals.lime_sound (host := CallFrame.limeNoHost) (s := s)
-        (m := entry.owner.declaration.module) wrote
-      have lifted := Step.context head saved pending
-      rcases value with ⟨ty, bits⟩
-      cases ty <;>
-        simpa [Locals.Codec.encode, Locals.limeCodec, Locals.legacyCodec, Locals.limeInstr,
-          values, List.map_append, List.append_assoc] using! lifted
+    | write split wrote => exact ⟨_, _, _, split, wrote, rfl⟩
 
 private theorem trap_arm_step (locals stack : List Value) (pending : List Admin) (dst : Config H) :
     Step CallFrame.limeNoHost (limePhase entry s outer (.armTrap locals stack pending)) dst ↔
@@ -186,7 +196,7 @@ theorem finish_run (ready : entry.Checked program tables outer index args)
       ⟨fun ⟨phase, run, _, eq⟩ => ⟨phase, run, eq⟩, fun ⟨phase, run, eq⟩ =>
         ⟨phase, run, program.frame_admitted_run (Loop.graph_checked ready) ready.found valid run, eq⟩⟩
 
-private theorem callee_step (checked : call.Checked program) (links : program.LimeLinksAllocated s)
+theorem callee_step (checked : call.Checked program) (links : program.LimeLinksAllocated s)
     {a : Graph.Phase} {dst : Config H} (typed : Graph.Admitted program call.callee a) (live : a.LabelOutcome) :
     Step CallFrame.limeNoHost (limeCallee entry s outer call a) dst ↔
       ∃ b, program.FrameEdge call.address a b ∧ dst = limeCallee entry s outer call b := by
@@ -264,6 +274,13 @@ private theorem allocation {active : Source.Activation}
   obtain ⟨address, callee, resolved, found, rfl⟩ := Source.invocation_fields invoked
   cases Indirect.resolve_iff.mp resolved with
   | resolved selected _ _ => exact targets address callee (List.mem_of_getElem? selected) found
+
+theorem enter_allocated {active : Source.Activation} (invoked : active.invocation program = some call)
+    (checked : call.Checked program) (targets : active.binding.site.LimeAllocated program s)
+    (dst : Config H) :
+    Step CallFrame.limeNoHost (entry.limeLookupResult s outer active (.resolved call.address)) dst ↔
+      dst = limeCallee entry s outer call call.entered :=
+  enter invoked checked (allocation invoked targets) dst
 
 theorem resolved_run (ready : entry.Checked program tables outer index args)
     {locals stack : List Value} {states : List OperandState} {active : Source.Activation}
