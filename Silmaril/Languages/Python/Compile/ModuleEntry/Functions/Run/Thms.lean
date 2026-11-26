@@ -60,6 +60,20 @@ theorem lowerInstructions_scalarPrefix {scope : Source.Scope} (tree : Source.Sco
         (actions.map .scalar ++ instructions, rows) :=
   Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.lowerInstructions_scalarPrefix tree key actions rest
 
+theorem callOperand_none {scope : Source.Scope} :
+    callOperand? (.none_ : Operand scope) = some (.literal .none) := rfl
+
+theorem evalCall_none {layout : Core.Closure.Layout} (globals : Core.Closure.Executor.GlobalLookup)
+    (heap : Core.Closure.Heap) (frame : Core.Closure.Frame layout) (name : String)
+    (rest : List (Core.Closure.Executor.Operand layout)) :
+    Core.Closure.Executor.evalCallIn globals heap frame (.readGlobal name) (.literal .none :: rest) =
+      ((Core.Closure.Executor.Operand.readGlobal name).evalIn globals heap frame).bind fun callee =>
+        (Core.Closure.Executor.evalArgumentsIn globals heap frame rest).map fun values =>
+          (callee, .none :: values) := by
+  simp only [Core.Closure.Executor.evalCallIn, Core.Closure.Executor.evalArgumentsIn]
+  cases (Core.Closure.Executor.Operand.readGlobal name).evalIn globals heap frame <;>
+    cases Core.Closure.Executor.evalArgumentsIn globals heap frame rest <;> rfl
+
 theorem invoke_current_globals {scope : Source.Scope} (session : Core.Module.Functions.Session)
     (table : Core.Closure.Executor.CodeTable) (target : Core.Module.Functions.Destination)
     (name : String) (arguments : List Core.Module.Functions.Operand) (remaining : List (Instruction scope)) :

@@ -287,13 +287,45 @@ theorem effect_assertVarNames {scope : Source.Scope} (space : Namespace) (contex
     effect space context (.assertVarNames receiver needle : Instruction scope) =
       (⟨(checkVarNames space context.table receiver needle).map fun _ => none, []⟩, context.heap) := rfl
 
-/-- The guarded call follows the ordinary executor state. A settled
-call contributes one receipt, with heap and tail behavior from that state. -/
+theorem lowerCallOperand_none : lowerCallOperand (.literal .none) = .literal .none := rfl
+
+/-- Lookup precedes the singleton operand and its remaining operands. The
+singleton is a successful value and carries no namespace or heap effect. -/
+theorem resolveCall_none (space : Namespace) (name : String) (rest : List Core.Module.Functions.Operand) :
+    Core.Module.SeededCall.resolveCall space #v[] (.global name)
+      ((.literal .none :: rest).map lowerCallOperand) =
+      ((Core.Module.SeededCall.Operand.global name).eval space #v[]).bind fun callee =>
+        (Core.Module.SeededCall.Operand.evalList space #v[] (rest.map lowerCallOperand)).map fun values =>
+          (callee, .none :: values) := by
+  simp only [Core.Module.SeededCall.resolveCall, List.map_cons, lowerCallOperand_none,
+    Core.Module.SeededCall.Operand.evalList]
+  cases (Core.Module.SeededCall.Operand.global name).eval space #v[] <;>
+    cases Core.Module.SeededCall.Operand.evalList space #v[] (rest.map lowerCallOperand) <;> rfl
+
 theorem factoryOperands_iff {values : List Value} {operands : List Core.Module.Functions.Operand} :
     factoryOperands values = some operands ↔
-      ∃ integers : List Int, integers.length ≤ 3 ∧ values = integers.map .int ∧
-        operands = integers.map (fun value => .literal (.int value)) :=
+      ∃ literals : List Core.Closure.Value, literals.length ≤ 3 ∧
+        (∀ literal ∈ literals, literal = .none ∨ ∃ n, literal = .int n) ∧
+        values = literals.map seededValue ∧ operands = literals.map .literal :=
   Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.factoryOperands_iff
+
+/-- Checked operands evaluate to the exact supplied tags in order. Successful
+ordinary entry initializes each corresponding parameter slot to that value. -/
+theorem factoryOperands_enter_read
+    {values : List Value} {operands : List Core.Module.Functions.Operand}
+    {layout : Core.Closure.Layout} {frame : Core.Closure.Frame layout}
+    {globals : Core.Closure.Executor.GlobalLookup} {heap : Core.Closure.Heap}
+    {fn : Function} {parameters : Core.Closure.Parameters fn.code.layout} {arguments : List Core.Closure.Value}
+    {caller : Core.Closure.Call.Saved Core.Closure.Executor.Continuation}
+    {stack : Core.Closure.Executor.Stack} {callee : Core.Closure.Call.Entered
+      Core.Closure.Executor.Continuation fn.code.layout}
+    (profile : factoryOperands values = some operands)
+    (evaluated : Core.Closure.Executor.evalArgumentsIn globals heap frame (operands.map (·.lower)) = .ok arguments)
+    (entered : Core.Closure.Call.enter fn parameters arguments heap caller stack = .ok callee) :
+    arguments.map seededValue = values ∧
+      ∀ {slot value}, (slot, value) ∈ parameters.slots.zip arguments →
+        callee.environment.2.read callee.environment.1 slot.slot = .ok value :=
+  Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.factoryOperands_enter_read profile evaluated entered
 
 theorem acceptsFactory_escaped {context : CallContext} {closure : Function} {arity : Nat}
     {definition : Core.Closure.Dispatch.Definition Core.Closure.Executor.Body closure.code.layout}

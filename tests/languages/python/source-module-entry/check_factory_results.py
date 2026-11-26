@@ -5,7 +5,6 @@ from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
 import runpy
-import tempfile
 
 
 SUCCESS = """def make(n):
@@ -286,7 +285,6 @@ def reference(source, placement):
 if __name__ == "__main__":
     directory = Path(__file__).resolve().parent
     existing = runpy.run_path(str(directory / "check_return_local_call.py"))
-    shared = runpy.run_path(str(directory.parent / "source-scope/check_intake.py"))
     for placement in ("empty", "builtin", "preamble"):
         completion, space = reference(SUCCESS, placement)
         assert completion == ("NameError:___assertEqual" if placement == "empty" else "normal")
@@ -355,10 +353,5 @@ if __name__ == "__main__":
         (FAULT.replace("make(3)", "make(True)"), '#guard factoryFailure pythonSource "make" .unsupported [37]'),
         (FAULT.replace("return leaf", "return n"), '#guard factoryFailure pythonSource "make" .unsupported [37]'),
     )
-    with tempfile.TemporaryDirectory() as tmp:
-        source_path, lean_path = Path(tmp) / "Example.py", Path(tmp) / "Example.lean"
-        for source, guard in (*fixtures, *product_fixtures):
-            shared["emit"](source_path, lean_path, source)
-            shared["check_lean"](lean_path, existing["LEAN"] + LEAN + "\n" + guard + "\n",
-                                 extra_imports=existing["IMPORTS"])
+    existing["check_fixtures"]((*fixtures, *product_fixtures), existing["LEAN"] + LEAN)
     print("CPython and Lean verified factory results, captured cells, and seeded stops.")

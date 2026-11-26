@@ -4,7 +4,6 @@
 from pathlib import Path
 import runpy
 import sys
-import tempfile
 
 
 CHAIN = """bias = 100
@@ -183,7 +182,6 @@ if __name__ == "__main__":
     directory = Path(__file__).resolve().parent
     existing = runpy.run_path(str(directory / "check_return_local_call.py"))
     reference = runpy.run_path(str(directory / "check_factory_results.py"))["reference"]
-    shared = runpy.run_path(str(directory.parent / "source-scope/check_intake.py"))
     for placement in ("empty", "builtin", "preamble"):
         status, namespace = reference(CHAIN, placement)
         assert status == ("NameError:___assertEqual" if placement == "empty" else "normal")
@@ -234,10 +232,5 @@ if __name__ == "__main__":
         ("make = lambda x: 1 + (lambda arg: arg)(x)\n",
          "#guard (match compile pythonSource with | .error (.source (.functionBody (.scopeTree [0]))) => true | _ => false)"),
     )
-    with tempfile.TemporaryDirectory() as tmp:
-        source_path, lean_path = Path(tmp) / "Example.py", Path(tmp) / "Example.lean"
-        for source, guard in fixtures:
-            shared["emit"](source_path, lean_path, source)
-            shared["check_lean"](lean_path, existing["LEAN"] + LEAN + "\n" + guard + "\n",
-                                 extra_imports=existing["IMPORTS"])
+    existing["check_fixtures"](fixtures, existing["LEAN"] + LEAN)
     print(f"CPython {sys.version.split()[0]} and Lean verified nested lambda layouts, captures, and timing.")

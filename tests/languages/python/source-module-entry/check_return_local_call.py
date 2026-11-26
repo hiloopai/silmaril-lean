@@ -151,8 +151,27 @@ def reference(source, placement):
     return completion, namespace.get("answer")
 
 
+def check_fixtures(fixtures, regression):
+    """Check the emitted cases in separate namespaces in one Lean process."""
+    directory = Path(__file__).resolve().parent
+    shared = runpy.run_path(str(directory.parent / "source-scope/check_intake.py"))
+    with tempfile.TemporaryDirectory() as tmp:
+        source_path, lean_path = Path(tmp) / "Example.py", Path(tmp) / "Example.lean"
+        header = None
+        cases = []
+        for index, (source, guard) in enumerate(fixtures):
+            shared["emit"](source_path, lean_path, source)
+            prefix, declaration, body = lean_path.read_text(encoding="utf-8").partition("public def pythonSource")
+            assert declaration and (header is None or header == prefix)
+            header = prefix
+            namespace = f"Fixture{index}"
+            cases.append(f"namespace {namespace}\n{declaration}{body}\n{guard}\nend {namespace}\n")
+        assert header is not None
+        lean_path.write_text(header + regression + "\n" + "\n".join(cases), encoding="utf-8")
+        shared["check_lean"](lean_path, "", extra_imports=IMPORTS)
+
+
 if __name__ == "__main__":
-    shared = runpy.run_path(str(Path(__file__).resolve().parent.parent / "source-scope/check_intake.py"))
     arity = ORDINARY.replace("saved(4)", "saved()")
     assert reference(ORDINARY_PRODUCT, "empty") == (("normal", None), 84)
     none_product = ORDINARY_PRODUCT.replace("answer = saved(True)", "flag = None\nanswer = saved(flag)")
@@ -191,9 +210,5 @@ if __name__ == "__main__":
 #guard (match compile pythonSource with | .error (.functionBody (.bodyProfile [0])) => true | _ => false)
 """),
     )
-    with tempfile.TemporaryDirectory() as temp:
-        source_path, lean_path = Path(temp) / "Example.py", Path(temp) / "Example.lean"
-        for source, guard in fixtures:
-            shared["emit"](source_path, lean_path, source)
-            shared["check_lean"](lean_path, LEAN + "\n" + guard + "\n", extra_imports=IMPORTS)
+    check_fixtures(fixtures, LEAN)
     print(f"CPython {sys.version.split()[0]} and Lean checked returned local calls and seeded argument effects.")

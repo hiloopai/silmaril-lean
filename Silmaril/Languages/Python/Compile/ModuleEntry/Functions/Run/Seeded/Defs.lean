@@ -64,6 +64,7 @@ def lowerCallOperand : Core.Module.Functions.Operand → Core.Module.SeededCall.
   | .readGlobal name => .global name
   | .literal (.int value) => .literal (.int value)
   | .literal (.bool value) => .literal (.bool value)
+  | .literal .none => .literal .none
   | .literal _ => .unsupported
 
 def lowerScalarOperand {scope : Scope} : ModuleEntry.Operand scope → Core.Module.SeededCall.Operand 0
@@ -292,10 +293,11 @@ def ordinaryCall (space : Namespace) (context : CallContext) (closure : Function
 
 def factoryOperand : Value → Option Core.Module.Functions.Operand
   | .int value => some (.literal (.int value))
+  | .none => some (.literal .none)
   | _ => none
 
-/-- The fixed factory slice supplies at most three exact integers. The
-ordinary binder checks the slot count and initializes destinations in order. -/
+/-- Supply at most three exact integer or None values to the ordinary
+positional binder in their original order. -/
 def factoryOperands (values : List Value) : Option (List Core.Module.Functions.Operand) :=
   if values.length ≤ 3 then values.mapM factoryOperand else none
 
@@ -308,7 +310,7 @@ def observeFactory (space : Namespace) (state : Core.Closure.Executor.State) :
   | _ => observeDirectCall space state
 
 /-- Dispatch an already resolved flat call. Factory binding uses the current
-run's recorded descriptors and the bounded fixed integer argument profile. -/
+run's recorded descriptors and the bounded integer and None argument profile. -/
 def invokeFlatCall (space : Namespace) (context : CallContext)
     (destination : Core.Module.Functions.Destination) (callee : Value) (arguments : List Value) :
     Except ModuleFailure CallObservation × Heap :=

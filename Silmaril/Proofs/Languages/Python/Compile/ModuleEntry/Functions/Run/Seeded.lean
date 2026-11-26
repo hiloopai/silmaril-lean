@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded.Defs
 public import Silmaril.Languages.Python.Core.Module.SeededCall.Thms
+import Silmaril.Languages.Python.Core.Closure.Call.Thms
 
 public section
 
@@ -94,52 +95,99 @@ theorem run_directDiscard_unsupported {scope : Source.Scope} {space : Namespace}
     Core.Module.SeededCall.Operand.eval, found, Core.Module.SeededCall.Operand.evalList,
     Except.bind, Except.map, Except.mapError, invokeFlatCall, rejected, acceptObservation, ModuleFailure.ofCall]
 
-theorem factoryOperands_iff {values : List Value} {operands : List Core.Module.Functions.Operand} :
-    factoryOperands values = some operands ↔
-      ∃ integers : List Int, integers.length ≤ 3 ∧ values = integers.map .int ∧
-        operands = integers.map (fun value => .literal (.int value)) := by
-  have mapped (values : List Value) (operands : List Core.Module.Functions.Operand) :
-      values.mapM factoryOperand = some operands ↔
-        ∃ integers : List Int, values = integers.map .int ∧
-          operands = integers.map (fun value => .literal (.int value)) := by
-    induction values generalizing operands with
-    | nil =>
-      constructor
-      · intro equal
-        exact ⟨[], rfl, by simpa using equal.symm⟩
-      · rintro ⟨integers, empty, rfl⟩
-        cases integers <;> simp_all
-    | cons value values ih =>
-      constructor
-      · intro equal
-        cases value with
-        | int value =>
-          cases tail : values.mapM factoryOperand with
-          | none => simp [factoryOperand, tail] at equal
-          | some tailOperands =>
-            obtain ⟨integers, source, target⟩ := (ih tailOperands).mp tail
-            exact ⟨value :: integers, by simp [source], by
-              simpa [factoryOperand, tail, target] using equal.symm⟩
-        | _ => simp [factoryOperand] at equal
-      · rintro ⟨integers, source, rfl⟩
-        cases integers with
-        | nil => simp at source
-        | cons first rest =>
-          simp only [List.map_cons, List.cons.injEq] at source
-          obtain ⟨rfl, remaining⟩ := source
-          have tail := (ih _).mpr ⟨rest, remaining, rfl⟩
-          simp [factoryOperand, tail]
+private theorem factoryOperand_iff {value : Value} {operand : Core.Module.Functions.Operand} :
+    factoryOperand value = some operand ↔
+      ∃ literal : Core.Closure.Value, (literal = .none ∨ ∃ n, literal = .int n) ∧
+        value = seededValue literal ∧ operand = .literal literal := by
   constructor
   · intro accepted
-    by_cases length : values.length ≤ 3
-    · simp only [factoryOperands, length, ite_true, mapped] at accepted
-      obtain ⟨integers, source, target⟩ := accepted
-      exact ⟨integers, by simpa [source] using length, source, target⟩
-    · simp [factoryOperands, length] at accepted
-  · rintro ⟨integers, length, rfl, rfl⟩
-    have size : (integers.map Value.int).length ≤ 3 := by simpa using length
-    simp only [factoryOperands, size, ite_true, mapped]
-    exact ⟨integers, rfl, rfl⟩
+    cases value with
+    | none => exact ⟨.none, .inl rfl, rfl, (Option.some.inj accepted).symm⟩
+    | int n => exact ⟨.int n, .inr ⟨n, rfl⟩, rfl, (Option.some.inj accepted).symm⟩
+    | _ => simp [factoryOperand] at accepted
+  · rintro ⟨_, rfl | ⟨_, rfl⟩, rfl, rfl⟩ <;> rfl
+
+private theorem factoryMap_iff {values : List Value} {operands : List Core.Module.Functions.Operand} :
+    values.mapM factoryOperand = some operands ↔
+      ∃ literals : List Core.Closure.Value, (∀ literal ∈ literals, literal = .none ∨ ∃ n, literal = .int n) ∧
+        values = literals.map seededValue ∧ operands = literals.map .literal := by
+  induction values generalizing operands with
+  | nil =>
+    constructor
+    · intro equal
+      exact ⟨[], by simp, rfl, (Option.some.inj equal).symm⟩
+    · rintro ⟨literals, _, empty, rfl⟩
+      cases literals <;> simp_all
+  | cons value values ih =>
+    constructor
+    · intro equal
+      cases head : factoryOperand value with
+      | none => simp [List.mapM_cons, head] at equal
+      | some operand =>
+        cases tail : values.mapM factoryOperand with
+        | none => simp [List.mapM_cons, head, tail] at equal
+        | some rest =>
+          obtain ⟨literal, valid, rfl, rfl⟩ := factoryOperand_iff.mp head
+          obtain ⟨literals, supported, input, output⟩ := ih.mp tail
+          exact ⟨literal :: literals, by simpa using ⟨valid, supported⟩, by simp [input], by
+            simpa [List.mapM_cons, head, tail, output] using equal.symm⟩
+    · rintro ⟨literals, supported, source, rfl⟩
+      cases literals with
+      | nil => simp at source
+      | cons literal literals =>
+        simp only [List.mem_cons, forall_eq_or_imp] at supported
+        simp only [List.map_cons, List.cons.injEq] at source
+        obtain ⟨rfl, remaining⟩ := source
+        have head := factoryOperand_iff.mpr ⟨literal, supported.1, rfl, rfl⟩
+        have tail := ih.mpr ⟨literals, supported.2, remaining, rfl⟩
+        simp [List.mapM_cons, head, tail]
+
+theorem factoryOperands_iff {values : List Value} {operands : List Core.Module.Functions.Operand} :
+    factoryOperands values = some operands ↔
+      ∃ literals : List Core.Closure.Value, literals.length ≤ 3 ∧
+        (∀ literal ∈ literals, literal = .none ∨ ∃ n, literal = .int n) ∧
+        values = literals.map seededValue ∧ operands = literals.map .literal := by
+  by_cases length : values.length ≤ 3
+  · simp only [factoryOperands, length, ite_true, factoryMap_iff]
+    constructor
+    · rintro ⟨literals, supported, source, target⟩
+      exact ⟨literals, by simpa [source] using length, supported, source, target⟩
+    · rintro ⟨literals, _, supported, source, target⟩
+      exact ⟨literals, supported, source, target⟩
+  · simp only [factoryOperands, length, ite_false, reduceCtorEq, false_iff]
+    rintro ⟨literals, size, _, source, _⟩
+    exact length (by simpa [source] using size)
+
+private theorem evalFactoryLiterals {layout : Core.Closure.Layout} (frame : Core.Closure.Frame layout)
+    (globals : Core.Closure.Executor.GlobalLookup) (heap : Core.Closure.Heap)
+    (literals : List Core.Closure.Value) :
+    Core.Closure.Executor.evalArgumentsIn globals heap frame
+      ((literals.map Core.Module.Functions.Operand.literal).map (·.lower)) = .ok literals := by
+  induction literals with
+  | nil => rfl
+  | cons head tail ih =>
+    rw [List.map_cons, List.map_cons, Core.Closure.Executor.evalArgumentsIn, ih]
+    rfl
+
+theorem factoryOperands_enter_read
+    {values : List Value} {operands : List Core.Module.Functions.Operand}
+    {layout : Core.Closure.Layout} {frame : Core.Closure.Frame layout}
+    {globals : Core.Closure.Executor.GlobalLookup} {heap : Core.Closure.Heap}
+    {fn : Function} {parameters : Core.Closure.Parameters fn.code.layout} {arguments : List Core.Closure.Value}
+    {caller : Core.Closure.Call.Saved Core.Closure.Executor.Continuation}
+    {stack : Core.Closure.Executor.Stack} {callee : Core.Closure.Call.Entered
+      Core.Closure.Executor.Continuation fn.code.layout}
+    (profile : factoryOperands values = some operands)
+    (evaluated : Core.Closure.Executor.evalArgumentsIn globals heap frame (operands.map (·.lower)) = .ok arguments)
+    (entered : Core.Closure.Call.enter fn parameters arguments heap caller stack = .ok callee) :
+    arguments.map seededValue = values ∧
+      ∀ {slot value}, (slot, value) ∈ parameters.slots.zip arguments →
+        callee.environment.2.read callee.environment.1 slot.slot = .ok value := by
+  obtain ⟨literals, _, _, rfl, rfl⟩ := factoryOperands_iff.mp profile
+  rw [evalFactoryLiterals frame globals heap literals] at evaluated
+  have equal := Except.ok.inj evaluated
+  subst arguments
+  exact ⟨rfl, fun member => Core.Closure.Call.enter_read entered member⟩
 
 theorem run_factory_unrecorded {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name target : String} {closure : Function} {arguments : List Core.Module.Functions.Operand}

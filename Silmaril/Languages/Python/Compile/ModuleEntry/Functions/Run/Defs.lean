@@ -42,7 +42,8 @@ def callOperand? {scope : Scope} : Operand scope → Option Core.Module.Function
   | .integer value => some (.literal (.int value))
   | .boolean value => some (.literal (.bool value))
   | .read name _ => some (.readGlobal name)
-  | .none_ | .binary .. | .identityChain .. => none
+  | .none_ => some (.literal .none)
+  | .binary .. | .identityChain .. => none
 
 def callArgument? {scope : Scope} : CallArgument scope → Option Argument
   | .scalar operand => (callOperand? operand).map .scalar
