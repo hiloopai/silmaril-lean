@@ -1,0 +1,13 @@
+{
+  "producer": "fixture.json#producer",
+  "profile": "Arrow Columnar 1.5, little-endian Arrow IPC V5 file, modern framing and EOS, uncompressed",
+  "license": "MIT",
+  "generation": "python3 -I tests/formats/arrow-ipc/file_fixture.py --regenerate",
+  "sha256": {
+    "file-mixed.arrow": "5fb0368c349765edf23005ed971a56b9a9813b3b45f8b5d8a94d7df52b9b4d7c",
+    "file-schema-only.arrow": "ffc17d52076fe30a8429324d749696bb33212e1f2dad91fb8cf794b7390621ae",
+    "file-zero-columns.arrow": "882b395bef1dcd60d3b6c195bcf06663ebd0d2c856507d05d60fef1f5f7f4d9c",
+    "file-dictionary.arrow": "0c47859556d868d8adffd9d3adf7a13c64ea66808521235b0e9b72515d769bc9",
+    "file-int64.arrow": "4bd4b1c9a46fa8e305854c7b33739c73067f1c303078b2dbe75a814c4aa1f3aa"
+  }
+}

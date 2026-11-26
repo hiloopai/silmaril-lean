@@ -45,6 +45,25 @@ structure Message where
   bodyLength : Nat
   deriving DecidableEq, Repr
 
+
+/-- Arrow V5 File.fbs Block. Metadata length includes the continuation prefix
+and padding. The offset is absolute from the leading magic. -/
+structure FileBlock where
+  offset : Nat
+  metadataLength : Nat
+  bodyLength : Nat
+  deriving DecidableEq, Repr
+
+def FileBlock.endOffset (block : FileBlock) : Nat :=
+  block.offset + block.metadataLength + block.bodyLength
+
+/-- Supported V5 footer fields in their original index order. Version,
+dictionaries and custom metadata are checked before constructing this AST. -/
+structure FileFooter where
+  fields : List Field
+  blocks : List FileBlock
+  deriving DecidableEq, Repr
+
 end
 
 private def check (condition : Bool) : Except Error Unit :=
@@ -115,13 +134,15 @@ private def bool (bytes : KBytes) (value : Table) (index : Nat) : Except Error B
   return raw == 1
 
 /-- Vector readers check the whole fixed-stride extent before enumerating any
-elements. The element area can have stricter alignment than the length word. -/
+elements. A nonempty element area can have stricter alignment than the
+length word. -/
 private def vector (bytes : KBytes) (value : Table) (index stride align : Nat) :
     Except Error (Nat × Nat) := do
   let some pos ← reference bytes value index | return (0, 0)
   let count ← uint bytes pos 4
   let first := pos + 4
-  check (pos % 4 == 0 && first % align == 0 && first + count * stride ≤ bytes.len)
+  check (pos % 4 == 0 && (count == 0 || first % align == 0) &&
+    first + count * stride ≤ bytes.len)
   return (first, count)
 
 private def emptyVector (bytes : KBytes) (value : Table) (index stride align : Nat)
@@ -222,5 +243,28 @@ public def readMessage (limits : Limits) (bytes : KBytes) : Except Error Message
     | 3 => MessageHeader.recordBatch <$> batch limits bytes payload
     | _ => throw (.unsupported (.messageKind tag))
   return ⟨header, bodyLength⟩
+
+/-- Decode an Arrow V5 File.fbs footer from its checked file slice. -/
+public def readFileFooter (limits : Limits) (bytes : KBytes) : Except Error FileFooter := do
+  if !bytes.wf then throw (.malformed .source)
+  if bytes.len > limits.metadataBytes then throw (.limit .metadataBytes)
+  let value ← table bytes (← target bytes 0)
+  tableShape value 5
+  let version ← scalar bytes value 0 2
+  if version ≠ 4 then throw (.unsupported (.metadataVersion version))
+  emptyVector bytes value 2 24 8 .dictionary
+  emptyVector bytes value 4 4 4 .customMetadata
+  let schemaTable ← table bytes (← require (← reference bytes value 1))
+  let fields ← schema limits bytes schemaTable
+  let (first, count) ← vector bytes value 3 24 8
+  if count > limits.batches then throw (.limit .batches)
+  let blocks ← (List.range count).mapM fun index => do
+    let pos := first + 24 * index
+    let offset ← natural64 bytes pos
+    let metadataLength ← uint bytes (pos + 8) 4
+    check (metadataLength < 2^31)
+    let bodyLength ← natural64 bytes (pos + 16)
+    pure (FileBlock.mk offset metadataLength bodyLength)
+  return ⟨fields, blocks⟩
 
 end Silmaril.Formats.Arrow

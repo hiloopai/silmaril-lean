@@ -209,8 +209,9 @@ tla-import-check:
 .PHONY: arrow-ipc-metadata-check
 arrow-ipc-metadata-check:
 	$(PYTHON) -I tests/formats/arrow-ipc/fixture.py
+	$(PYTHON) -I tests/formats/arrow-ipc/file_fixture.py
 	.lake/build/bin/arrow_ipc_metadata_tests
-	$(LAKE) build --wfail +Silmaril.Formats.Arrow.Framing.Thms +Silmaril.Formats.Arrow.Layout.Thms +Silmaril.Formats.Arrow.Body.Thms +Silmaril.Formats.Arrow.Writer.Thms +Silmaril.Formats.Arrow.MetadataWriter.Thms +Silmaril.Formats.Arrow.StreamWriter.Thms
+	$(LAKE) build --wfail +Silmaril.Formats.Arrow.Framing.Thms +Silmaril.Formats.Arrow.Layout.Thms +Silmaril.Formats.Arrow.Body.Thms +Silmaril.Formats.Arrow.Writer.Thms +Silmaril.Formats.Arrow.MetadataWriter.Thms +Silmaril.Formats.Arrow.StreamWriter.Thms +Silmaril.Formats.Arrow.FileReader.Thms
 	$(LAKE) env lean -DautoImplicit=false -DwarningAsError=true tests/formats/arrow-ipc/Axioms.lean
 
 check-integrations:

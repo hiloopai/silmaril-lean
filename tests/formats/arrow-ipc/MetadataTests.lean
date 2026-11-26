@@ -2,6 +2,7 @@ module
 
 import Silmaril.Formats.Arrow.Body.Defs
 import Silmaril.Formats.Arrow.StreamWriter.Defs
+import Silmaril.Formats.Arrow.FileReader.Defs
 import Lean.Data.Json.FromToJson.Basic
 
 open Silmaril Silmaril.Formats.Arrow
@@ -223,6 +224,76 @@ def runStreams (directory : Option System.FilePath) : IO Unit := do
 
 end PhysicalWriterTests
 
+private def fileFixture (name : String) : IO ByteArray :=
+  IO.FS.readBinFile (System.FilePath.mk "tests/formats/arrow-ipc" / name)
+
+private def expectFileFailure (label : String) (input : KBytes) (expected : Error)
+    (limits : ObservationLimits := {}) : IO Unit := do
+  match FileReader.readRows limits input with
+  | .ok _ => throw (IO.userError s!"{label}: unexpectedly accepted")
+  | .error error => check s!"{label}: {repr error}" (error == expected)
+
+private def fileRegressions : IO Unit := do
+  let bytes ← fileFixture "file-mixed.arrow"
+  let source := packed bytes
+  let index ← match FileReader.readIndex {} source with
+    | .ok index => pure index
+    | .error error => throw (IO.userError s!"file index: {repr error}")
+  check "file footer interval" (index.span.start == 1136 && index.span.length == 280)
+  check "embedded schema and block index"
+    (index.footer.fields == schema && index.schemaEnd == 184 && index.footer.blocks ==
+      [⟨184, 208, 64⟩, ⟨456, 200, 8⟩, ⟨664, 208, 32⟩, ⟨904, 208, 16⟩])
+  for n in [:expectedRows.length + 1] do
+    let .ok rows := index.readRowsAt {} n | throw (IO.userError s!"file batch {n}")
+    check s!"indexed file batch {n}" (rows == expectedRows[n]?)
+  for (name, fields, expected) in [
+      ("file-mixed.arrow", schema, expectedRows),
+      ("file-schema-only.arrow", schema, []),
+      ("file-zero-columns.arrow", [], [[[], [], []], []])] do
+    let source := packed (← fileFixture name)
+    let .ok observed := FileReader.readRows {} source
+      | throw (IO.userError s!"file materialization {name}")
+    check s!"file observations {name}" (observed == ⟨fields, expected⟩)
+  for split in [8, 392, 1128, 1136, 1179, 1416] do
+    let carrier := packed (bytes.extract 0 split) ++ packed (bytes.extract split bytes.size)
+    let .ok observed := FileReader.readRows {} carrier
+      | throw (IO.userError s!"file at byte split {split}")
+    check s!"file observations at byte split {split}" (observed == ⟨schema, expectedRows⟩)
+  expectFileFailure "leading magic" (patch bytes 0 1 0) (.malformed .source)
+  expectFileFailure "trailing magic" (patch bytes 1425 1 0) (.malformed .source)
+  expectFileFailure "nonzero leading padding" (patch bytes 6 1 1) (.malformed .alignment)
+  expectFileFailure "negative footer length" (patch bytes 1416 4 (2^31)) (.malformed .metadataLength)
+  expectFileFailure "footer starts before magic" (patch bytes 1416 4 1424) (.malformed .truncated)
+  expectFileFailure "unaligned footer" (patch bytes 1416 4 281) (.malformed .alignment)
+  expectFileFailure "missing EOS" (patch bytes 1132 4 8) (.malformed .trailingBytes)
+  expectFileFailure "footer schema differs" (patch bytes 1392 1 0x78) (.malformed .schemaOrder)
+  expectFileFailure "footer version" (patch bytes 1158 2 3) (.unsupported (.metadataVersion 3))
+  -- A length word at 1176 leaves room for one struct at 1180, but the element is unaligned.
+  let shiftedVector := (patch bytes 1168 4 8).toByteArray
+  expectFileFailure "unaligned nonempty block vector" (patch shiftedVector 1176 4 1)
+    (.malformed .flatbuffer)
+  expectFileFailure "negative offset" (patch bytes 1176 8 (2^63)) (.malformed .flatbuffer)
+  expectFileFailure "negative metadata length" (patch bytes 1184 4 (2^31)) (.malformed .flatbuffer)
+  expectFileFailure "unaligned indexed length" (patch bytes 1184 4 207) (.malformed .batchLayout)
+  expectFileFailure "repeated block offset" (patch bytes 1200 8 184) (.malformed .batchLayout)
+  expectFileFailure "displaced first block" (patch bytes 1176 8 192) (.malformed .batchLayout)
+  expectFileFailure "block outside file" (patch bytes 1248 8 4096) (.malformed .batchLayout)
+  expectFileFailure "footer overlap" (patch bytes 1264 8 32) (.malformed .batchLayout)
+  -- Keep the full block extent identical while making footer and message disagree.
+  let wrongMetadata := (patch bytes 1184 4 216).toByteArray
+  expectFileFailure "metadata length disagrees with prefix" (patch wrongMetadata 1192 8 56)
+    (.malformed .metadataLength)
+  expectFileFailure "body length disagrees with message" (patch bytes 224 8 56) (.malformed .bodyLength)
+  expectFileFailure "blocks omitted from index" (patch bytes 1172 4 0) (.malformed .batchLayout)
+  expectFileFailure "file footer byte cap" (packed bytes) (.limit .metadataBytes)
+    { ipc := { metadataBytes := 279 } }
+  expectFileFailure "file batch cap" (packed bytes) (.limit .batches)
+    { ipc := { batches := 3 } }
+  expectFileFailure "file aggregate cells" (packed bytes) (.limit .totalCells) { totalCells := 11 }
+  expectFileFailure "dictionary file" (packed (← fileFixture "file-dictionary.arrow")) (.unsupported .dictionary)
+  expectFileFailure "Int64 file" (packed (← fileFixture "file-int64.arrow")) (.unsupported .fieldInteger)
+  IO.println "Arrow IPC V5 file: footer ranges, indexed observations, errors and budgets passed"
+
 public def main (args : List String) : IO Unit := do
   let (bodyDirectory, streamDirectory) ← match args with
     | [] => pure (none, none)
@@ -282,3 +353,4 @@ public def main (args : List String) : IO Unit := do
   IO.println "Arrow IPC V5 body: ordered PyArrow rows across 1129 split points and malformed-body and budget cases passed"
   PhysicalWriterTests.run bodyDirectory
   PhysicalWriterTests.runStreams streamDirectory
+  fileRegressions
