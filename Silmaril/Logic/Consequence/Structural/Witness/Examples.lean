@@ -30,12 +30,12 @@ def zeroTwo : WDerives (jointRules List.Sublist) Step [0] 2 :=
       simp only [List.mem_singleton] at hp; subst hp; exact .base ⟨0, rfl, rfl⟩)
     (.base ⟨1, rfl, rfl⟩)
 
-example : leaves zeroTwo = [0, 1] := by decide
+theorem zeroTwo_leaves : leaves zeroTwo = [0, 1] := by decide
 
-example : Derives (jointRules List.Sublist) (fun Γ c => Nonempty (Step Γ c)) [0] 2 :=
+theorem zeroTwo_erase : Derives (jointRules List.Sublist) (fun Γ c => Nonempty (Step Γ c)) [0] 2 :=
   zeroTwo.erase
 
 /-- Flattening: a leaf holding `zeroTwo` grafts to `zeroTwo` itself. -/
-example : WDerives.flatten (.base zeroTwo) = zeroTwo := rfl
+theorem flatten_base_zeroTwo : WDerives.flatten (.base zeroTwo) = zeroTwo := rfl
 
 end Silmaril.Consequence.Structural.Witness.Examples

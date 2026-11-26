@@ -28,11 +28,11 @@ open Silmaril.Logic.SAT Silmaril.Consequence.Structural CNF
 /-- The clause `l₁ ∨ … ∨ lₙ` without the literal `0`. -/
 abbrev cl (C : Clause) (h : (0 : Lit) ∉ C := by decide) : WClause := ⟨C, h⟩
 
-example : Tauto [1, -1, 2] := by decide
+theorem tauto_1_n1_2 : Tauto [1, -1, 2] := by decide
 
-example : Entails csat [] (cl [1, -1, 2]) := (entails_nil_iff_tauto _).2 (by decide)
+theorem entails_tauto : Entails csat [] (cl [1, -1, 2]) := (entails_nil_iff_tauto _).2 (by decide)
 
-example : ¬ Entails csat [] (cl [1, 2]) := fun h => absurd ((entails_nil_iff_tauto _).1 h)
+theorem not_entails_1_2 : ¬ Entails csat [] (cl [1, 2]) := fun h => absurd ((entails_nil_iff_tauto _).1 h)
   (by decide)
 
 /-- Unsatisfiability depends only on which clauses occur. -/
@@ -48,10 +48,10 @@ theorem unsat_pair : Unsat csat [cl [1], cl [-1]] := by
   rw [lit_eval_neg τ (by decide)] at h2
   simp_all
 
-example : Unsat csat [cl [-1], cl [1], cl [-1], cl [1]] :=
+theorem unsat_dup : Unsat csat [cl [-1], cl [1], cl [-1], cl [1]] :=
   unsat_of_subset (by simp) unsat_pair
 
-example : CNF.Unsat [[1], [-1]] := (unsat_iff [cl [1], cl [-1]]).1 unsat_pair
+theorem cnf_unsat_pair : CNF.Unsat [[1], [-1]] := (unsat_iff [cl [1], cl [-1]]).1 unsat_pair
 
 /-- Unit propagation, as an entailment. -/
 theorem unit_prop : Entails csat [cl [1], cl [-1, 2]] (cl [2]) := by
@@ -63,7 +63,7 @@ theorem unit_prop : Entails csat [cl [1], cl [-1, 2]] (cl [2]) := by
   simp_all
 
 /-- The same entailment, as a CNF refutation. -/
-example : CNF.Unsat [[1], [-1, 2], [-2]] :=
+theorem cnf_unit_prop : CNF.Unsat [[1], [-1, 2], [-2]] :=
   (entails_iff_cnf_unsat [cl [1], cl [-1, 2]] (cl [2])).1 unit_prop
 
 /-! ## A sound, incomplete checker -/
@@ -95,7 +95,7 @@ theorem bounded_sound (k : Nat) : CheckSound bsat (bounded k) := by
   have h1 := h _ hl; have h2 := h _ hn; simp_all [bsat]
 
 /-- The checker's relation only derives entailments, even after closing it. -/
-example : Derives tarskiRules (viaUnsat (bounded 3) bneg) ≤ Entails bsat :=
+theorem bounded_closure_sound : Derives tarskiRules (viaUnsat (bounded 3) bneg) ≤ Entails bsat :=
   derives_viaUnsat_le_entails (bounded_sound 3) bneg_complete
 
 /-- But it is not cut-closed. -/
@@ -112,7 +112,7 @@ theorem bounded_not_cut : ¬ Cut (viaUnsat (bounded 3) bneg) := by
   unfold viaUnsat at this; revert this; decide
 
 /-- Yet the conclusion of that cut is an entailment. -/
-example : Entails bsat [(true, 0), (true, 2), (true, 1)] (true, 0) :=
+theorem bounded_cut_conclusion_entailed : Entails bsat [(true, 0), (true, 2), (true, 1)] (true, 0) :=
   fun _ h => h _ (by simp)
 
 end Silmaril.Consequence.Refutation.Examples

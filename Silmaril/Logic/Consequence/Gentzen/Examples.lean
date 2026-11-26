@@ -69,18 +69,18 @@ theorem viaUnsat_pairs_closed : Closed defaultRules (viaUnsat pairs lneg) :=
   viaUnsat_pairs_eq ▸ valid_closed
 
 /-- Excluded middle, by TAUTO. -/
-example : Valid lsat [] [(true, 0), (false, 0)] :=
+theorem excluded_middle : Valid lsat [] [(true, 0), (false, 0)] :=
   viaTauto_le_valid pairs_tautSound lneg_sound _ _ (by decide)
 
 /-- Explosion, by UNSAT: `p, ¬p ⊢`. -/
-example : Unsat lsat [(true, 0), (false, 0)] :=
+theorem explosion : Unsat lsat [(true, 0), (false, 0)] :=
   unsat_of_viaUnsat_nil (neg := lneg) pairs_sound (by decide)
 
 /-- Decided validity of literal sequents: `p ⊢ q, p` holds, `p ⊢ q` does not. -/
-example : Valid lsat [(true, 0)] [(true, 1), (true, 0)] :=
+theorem valid_p_qp : Valid lsat [(true, 0)] [(true, 1), (true, 0)] :=
   viaUnsat_pairs_eq ▸ (by decide : viaUnsat pairs lneg [(true, 0)] [(true, 1), (true, 0)])
 
-example : ¬ Valid lsat [(true, 0)] [(true, 1)] :=
+theorem not_valid_p_q : ¬ Valid lsat [(true, 0)] [(true, 1)] :=
   viaUnsat_pairs_eq ▸ (by decide : ¬ viaUnsat pairs lneg [(true, 0)] [(true, 1)])
 
 /-! ## Derivations by cut from non-logical sequents -/
@@ -89,7 +89,7 @@ example : ¬ Valid lsat [(true, 0)] [(true, 1)] :=
 def chain : Seq Lit := fun Γ Δ =>
   (Γ = [(true, 0)] ∧ Δ = [(true, 1)]) ∨ (Γ = [(true, 1)] ∧ Δ = [(true, 2)])
 
-example : Derives defaultRules chain [(true, 0)] [(true, 2)] :=
+theorem chain_derives : Derives defaultRules chain [(true, 0)] [(true, 2)] :=
   .cut (Γ := [(true, 0)]) (Γ' := []) (Δ := []) (Δ' := [(true, 2)]) trivial
     (.base (.inl ⟨rfl, rfl⟩)) (.base (.inr ⟨rfl, rfl⟩))
 
@@ -104,7 +104,7 @@ instance (k : Nat) (Γ : List Lit) : Decidable (bounded k Γ) :=
 theorem bounded_sound (k : Nat) : CheckSound lsat (bounded k) := fun Γ h => pairs_sound Γ h.2
 
 /-- Its closure is sound. -/
-example : Derives defaultRules (viaUnsat (bounded 3) lneg) ≤ Valid lsat :=
+theorem bounded_closure_sound : Derives defaultRules (viaUnsat (bounded 3) lneg) ≤ Valid lsat :=
   derives_viaUnsat_le_valid (bounded_sound 3) lneg_complete
 
 /-- The raw relation is not cut-closed: `p, r ⊢ p` and `p, q ⊢ p` cut on `p` to
