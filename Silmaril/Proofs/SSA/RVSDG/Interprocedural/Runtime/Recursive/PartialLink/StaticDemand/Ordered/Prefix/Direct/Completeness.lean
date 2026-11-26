@@ -31,10 +31,13 @@ private theorem site_complete {i : Fin scope.table.members.length} {target : Ori
     (site : TrackedSite checked routes source i target witnesses) :
     (resolveSite checked routes source rfl i target witnesses).isSome = true := by
   obtain ⟨sources, route, projected, picked, same, left, right⟩ := site
-  simp only [resolveSite, picked]
-  split <;> simp_all
-  subst_vars
-  exact ⟨left, right⟩
+  simp only [resolveSite, resolveSiteWith]
+  split
+  · simp_all
+  · rename_i actual found
+    have equal : actual = sources := Option.some.inj (found.symm.trans projected)
+    subst actual
+    simp [routeSources, picked, same, left, right]
 
 private theorem bind_complete {A B : Type _} {head : Option A} {tail : A → Option B}
     (first : head.isSome = true) (later : ∀ a, (tail a).isSome = true) :

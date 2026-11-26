@@ -211,7 +211,27 @@ for each checked link. Untracked ports may have arbitrary runtime values. -/
     let tail ← collectArms n (fun i => check i.succ)
     pure ⟨Fin.cases head.down tail.down⟩
 
-@[expose] def resolveSite (checked : scope.Checked actions) (routes : Routes inputsL inputsR scope)
+/-- A proof-producing check on the actual projected target and witness wires. -/
+abbrev SourceResolver (inputsL inputsR : Tuple m.Val imports) (scope : Scope m) :=
+  (i : Fin scope.table.members.length) → (sources : Wires imports scope.past (CallPorts scope.table i)) →
+    Option (PLift (selects scope.guardL i (sources.read inputsL scope.localsL) ∧
+      selects scope.guardR i (sources.read inputsR scope.localsR)))
+
+@[expose] def routeSources (checked : scope.Checked actions) (routes : Routes inputsL inputsR scope) :
+    SourceResolver inputsL inputsR scope := fun i sources =>
+  match routes i with
+  | none => none
+  | some route =>
+    if same : sources.addresses = route.wires.addresses then
+      let origin := sources.get .head
+      if (checked.state.left.available (entry := inputsL) Known.ordinary origin).isSome &&
+          (checked.state.right.available (entry := inputsR) Known.ordinary origin).isSome then
+        let equal := NestedTheta.Equality.addresses_injective sources route.wires same
+        some ⟨equal.symm ▸ route.left, equal.symm ▸ route.right⟩
+      else none
+    else none
+
+@[expose] def resolveSiteWith (resolve : SourceResolver inputsL inputsR scope)
     {entry : Ports (Ty V S)} {past : List (Ports (Ty V S))}
     (source : ScopeBoundary imports entry scope.past past)
     {called : MemberSummaries V S} (known : some scope.table = some called)
@@ -225,39 +245,48 @@ for each checked link. Untracked ports may have arbitrary runtime values. -/
           (known ▸ scope.guardR : MemberResolution m (some called)) i
             ((Wires.read (.cons target .nil) values locals).get .head) (witnesses.read values locals)))) := by
   obtain rfl := Option.some.inj known
-  exact match found : source.project (.cons target witnesses), routes i with
-  | some sources, some route =>
-    if same : sources.addresses = route.wires.addresses then
-      let origin := sources.get .head
-      if (checked.state.left.available (entry := inputsL) Known.ordinary origin).isSome &&
-          (checked.state.right.available (entry := inputsR) Known.ordinary origin).isSome then
-        some ⟨fun values locals reads => scoped_call source i target witnesses sources route.wires found same
-          inputsL scope.localsL scope.guardL route.left values locals reads,
-          fun values locals reads => scoped_call source i target witnesses sources route.wires found same
-            inputsR scope.localsR scope.guardR route.right values locals reads⟩
-      else none
-    else none
-  | _, _ => none
+  exact match found : source.project (.cons target witnesses) with
+  | none => none
+  | some sources => (resolve i sources).map fun ready =>
+    ⟨fun values locals reads => scoped_call source i target witnesses sources sources found rfl
+      inputsL scope.localsL scope.guardL ready.down.1 values locals reads,
+      fun values locals reads => scoped_call source i target witnesses sources sources found rfl
+        inputsR scope.localsR scope.guardR ready.down.2 values locals reads⟩
+
+@[expose] def resolveSite (checked : scope.Checked actions) (routes : Routes inputsL inputsR scope)
+    {entry : Ports (Ty V S)} {past : List (Ports (Ty V S))}
+    (source : ScopeBoundary imports entry scope.past past)
+    {called : MemberSummaries V S} (known : some scope.table = some called)
+    (i : Fin called.members.length) (target : Origin entry past (called.at i).fn.port)
+    (witnesses : Wires entry past (called.at i).captures) :
+    Option (PLift
+      ((∀ values locals, source.Reads inputsL scope.localsL values locals →
+          (known ▸ scope.guardL : MemberResolution m (some called)) i
+            ((Wires.read (.cons target .nil) values locals).get .head) (witnesses.read values locals)) ∧
+       (∀ values locals, source.Reads inputsR scope.localsR values locals →
+          (known ▸ scope.guardR : MemberResolution m (some called)) i
+            ((Wires.read (.cons target .nil) values locals).get .head) (witnesses.read values locals)))) :=
+  resolveSiteWith (routeSources checked routes) source known i target witnesses
 
 /-- Check direct calls structurally. At each γ, compose the child boundary
 map with the actual argument wires and certify all arms and the suffix.
 At a θ, retain only same-port feedback sources while checking the body.
 Inline closure descriptions require supplied resolution. -/
-@[expose] def synthesizeAt (checked : scope.Checked actions) (routes : Routes inputsL inputsR scope) :
+@[expose] def synthesizeAtWith (resolve : SourceResolver inputsL inputsR scope) :
     {entry outs : Ports (Ty V S)} → {past sigs : List (Ports (Ty V S))} →
     {loops : Bool} → {member : Option (MemberSummaries V S)} →
     (source : ScopeBoundary imports entry scope.past past) → (code : Code Op entry past sigs outs loops member) →
     (known : some scope.table = member) → Option (PLift (resolvedAt source code known inputsL inputsR))
   | _, _, _, _, _, _, _, .ret _, _ => some ⟨fun _ _ _ => trivial, fun _ _ _ => trivial⟩
   | _, _, _, _, _, _, source, .primitive _ _ rest, known => do
-    let later ← synthesizeAt checked routes (source.snoc ⟨fun _ => none⟩) rest known
+    let later ← synthesizeAtWith resolve (source.snoc ⟨fun _ => none⟩) rest known
     pure ⟨fun values locals reads result => later.down.1 values (locals.snoc result)
         (forget_result source inputsL scope.localsL values locals result reads),
       fun values locals reads result => later.down.2 values (locals.snoc result)
         (forget_result source inputsR scope.localsR values locals result reads)⟩
   | _, _, _, _, _, _, source, .callAt i target witnesses _ rest, known => do
-    let site ← resolveSite checked routes source known i target witnesses
-    let later ← synthesizeAt checked routes (source.snoc ⟨fun _ => none⟩) rest known
+    let site ← resolveSiteWith resolve source known i target witnesses
+    let later ← synthesizeAtWith resolve (source.snoc ⟨fun _ => none⟩) rest known
     pure ⟨fun values locals reads => ⟨site.down.1 values locals reads,
       fun result => later.down.1 values (locals.snoc result)
         (forget_result source inputsL scope.localsL values locals result reads)⟩,
@@ -268,8 +297,8 @@ Inline closure descriptions require supplied resolution. -/
     let entered := source.enter wires
     let joined := entered.join arms
     let children ← collectArms (extra + 2) (fun i =>
-      synthesizeAt checked routes (ScopeBoundary.start entered []) (arms i) known)
-    let later ← synthesizeAt checked routes (source.snoc joined) rest known
+      synthesizeAtWith resolve (ScopeBoundary.start entered []) (arms i) known)
+    let later ← synthesizeAtWith resolve (source.snoc joined) rest known
     pure ⟨fun values locals reads =>
       let child := wires.read values locals
       let childReads : entered.Reads inputsL scope.localsL child :=
@@ -289,8 +318,8 @@ Inline closure descriptions require supplied resolution. -/
   | _, _, _, _, _, _, source, .theta wires body rest, known => do
     let entered := source.enter wires
     let loop := entered.feedback body
-    let checkedBody ← synthesizeAt checked routes (ScopeBoundary.start loop []) body known
-    let later ← synthesizeAt checked routes (source.snoc ⟨fun _ => none⟩) rest known
+    let checkedBody ← synthesizeAtWith resolve (ScopeBoundary.start loop []) body known
+    let later ← synthesizeAtWith resolve (source.snoc ⟨fun _ => none⟩) rest known
     pure ⟨fun values locals reads => ⟨fun next stable =>
       let current := wires.read values locals
       let initial : loop.Reads inputsL scope.localsL current :=
@@ -312,16 +341,29 @@ Inline closure descriptions require supplied resolution. -/
   | _, _, _, _, _, _, _, _, _ => none
 termination_by structural _ _ _ _ _ _ _ code _ => code
 
-@[expose] def synthesize (checked : scope.Checked actions) (routes : Routes inputsL inputsR scope)
+@[expose] def synthesizeWith (resolve : SourceResolver inputsL inputsR scope)
     (captures : Wires imports scope.past context) {past sigs : List (Ports (Ty V S))} {outs : Ports (Ty V S)}
     (code : Code Op (context ++ fn.args) past sigs outs true (some scope.table)) :
     Option (PLift (resolved captures code inputsL inputsR)) :=
   let source := captureBoundary (params := fn.args) captures
-  (synthesizeAt checked routes (ScopeBoundary.start source past) code rfl).map fun certificate =>
+  (synthesizeAtWith resolve (ScopeBoundary.start source past) code rfl).map fun certificate =>
     ⟨fun args locals => certificate.down.1 _ locals
       (start_reads source inputsL scope.localsL _ locals (capture_reads captures inputsL scope.localsL args)),
       fun args locals => certificate.down.2 _ locals
         (start_reads source inputsR scope.localsR _ locals (capture_reads captures inputsR scope.localsR args))⟩
+
+@[expose] def synthesizeAt (checked : scope.Checked actions) (routes : Routes inputsL inputsR scope) :
+    {entry outs : Ports (Ty V S)} → {past sigs : List (Ports (Ty V S))} →
+    {loops : Bool} → {member : Option (MemberSummaries V S)} →
+    (source : ScopeBoundary imports entry scope.past past) → (code : Code Op entry past sigs outs loops member) →
+    (known : some scope.table = member) → Option (PLift (resolvedAt source code known inputsL inputsR)) :=
+  synthesizeAtWith (routeSources checked routes)
+
+@[expose] def synthesize (checked : scope.Checked actions) (routes : Routes inputsL inputsR scope)
+    (captures : Wires imports scope.past context) {past sigs : List (Ports (Ty V S))} {outs : Ports (Ty V S)}
+    (code : Code Op (context ++ fn.args) past sigs outs true (some scope.table)) :
+    Option (PLift (resolved captures code inputsL inputsR)) :=
+  synthesizeWith (routeSources checked routes) captures code
 
 end Check
 

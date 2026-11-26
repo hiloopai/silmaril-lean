@@ -31,6 +31,6 @@ theorem synthesize_complete {captures : Wires imports scope.past context}
     {code : Code Op (context ++ fn.args) past sigs outs true (some scope.table)}
     (tracked : Tracked checked routes (ScopeBoundary.start (captureBoundary captures) past) code) :
     (synthesize checked routes captures code).isSome = true := by
-  simpa [synthesize] using Proofs.tracked_complete tracked
+  simpa [synthesize, synthesizeWith, synthesizeAt] using Proofs.tracked_complete tracked
 
 end Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.PartialLink.StaticDemand.Ordered.Prefix.Direct

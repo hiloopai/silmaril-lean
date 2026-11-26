@@ -65,4 +65,15 @@ structure NamedImports.Rows {ports extra : Ports (Ty V S)} (sources : NamedImpor
   right : Row (Known sources.dispatch.right) inputsR
   matched : sources.Matches inputsL inputsR
 
+/-- The typed import position and captures for a slot supplied by a name.
+The other slots in that provider's dispatch need not be imported. -/
+structure NamedSlot {summary : MemberSummary V S} {imports : Ports (Ty V S)}
+    (left : SlotGuard m summary) (right : SlotGuard m summary)
+    (inputsL inputsR : Tuple m.Val imports) where
+  port : Port imports summary.fn.port
+  capsL : Tuple m.Val summary.captures
+  capsR : Tuple m.Val summary.captures
+  readyL : left (inputsL.get port) capsL
+  readyR : right (inputsR.get port) capsR
+
 end Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.PartialLink.StaticDemand.Ordered.Prefix

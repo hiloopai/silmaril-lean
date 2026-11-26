@@ -96,10 +96,12 @@ private theorem ordinary : OrdinaryOutputs Op := by
   intro _ _ opcode
   cases opcode <;> rfl
 
-private def exact : ExactValueCheck machine :=
-  ExactValueCheck.lambda keys
-    (ExactValueCheck.firstOrder (fun _ => inferInstanceAs (DecidableEq Nat))
-      (fun _ => inferInstanceAs (DecidableEq Unit)))
+private def exactOrdinary : ExactValueCheck machine :=
+  ExactValueCheck.firstOrder (fun _ => inferInstanceAs (DecidableEq Nat))
+    (fun _ => inferInstanceAs (DecidableEq Unit))
+
+private def exact : ExactValueCheck machine := fun left right =>
+  (ExactValueCheck.lambda keys exactOrdinary left right).orElse (fun _ => exactOrdinary left right)
 
 private def alignment : GraphPlan providerGraph providerGraph :=
   .skipL (.skipR (.start (.lambda .done)))
@@ -445,9 +447,10 @@ private def namedLayout : AllocationPlan Op namedSlots (namedPorts ++ namedExtra
           (.primitive .probe (.cons (.arg (.tail (.tail (.tail (.tail .head))))) .nil)
             (.ret (.cons (.output (1 : Fin 3) .head) .nil)))) }
 
-private def namedRight (shifted : Bool) : namedLayout.Layout shifted where
+private def namedRight (shifted : Bool) (wrongTarget : Bool := false) : namedLayout.Layout shifted where
   init := ⟨single, .cons (.arg (.tail (.tail (.tail (.tail .head))))) .nil, [single], initializer⟩
-  captures := .cons (.arg .head) (.cons (.arg (.tail .head)) (.cons (.arg (.tail (.tail .head)))
+  captures := .cons (.arg (if wrongTarget then .tail .head else .head))
+    (.cons (.arg (.tail .head)) (.cons (.arg (.tail (.tail .head)))
     (.cons (.arg (.tail (.tail (.tail .head)))) (.cons (by
       cases shifted
       · exact .output (0 : Fin 1) .head
@@ -456,34 +459,6 @@ private def namedRight (shifted : Bool) : namedLayout.Layout shifted where
 private def clientImports (targetA targetB : machine.Val providerFn.port)
     (witnessA witnessB : machine.Val global) : Tuple machine.Val (namedPorts ++ namedExtra) :=
   .cons targetA (.cons targetB (.cons witnessA (.cons witnessB (one 2))))
-
-private theorem singletonCapture {p : T} (values : Tuple machine.Val [p]) :
-    Tuple.cons (values.get .head) .nil = values := by
-  cases values with | cons _ tail => cases tail; rfl
-
-private theorem matchedTarget (guard : machine.Val providerFn.port → Tuple machine.Val [global] → Prop)
-    {actual selected : machine.Val providerFn.port} {captures : Tuple machine.Val [global]}
-    (same : actual = selected) (known : guard selected captures) :
-    guard actual (.cons (captures.get .head) .nil) :=
-  (singletonCapture captures).symm ▸ (same.symm ▸ known)
-
-private theorem namedReady (shifted : Bool) (guardA : Guard machine namedFirstSlots) (guardB : Guard machine secondSlots)
-    (empty : Guard machine (Scope.ordinary machine).table)
-    (targetA targetB : machine.Val providerFn.port) (witnessA witnessB : machine.Val global)
-    (locals : Locals machine.Val ((if shifted then [[]] else []) ++ [[global]]))
-    (first : guardA (0 : Fin 1) targetA (.cons witnessA .nil))
-    (second : guardB (0 : Fin 1) targetB (.cons witnessB .nil)) :
-    (namedLayout.withLayout (namedRight shifted)).binding.resolved (guardA.combine (guardB.combine empty))
-      (clientImports targetA targetB witnessA witnessB) locals := by
-  have atFirst : (guardA.combine (guardB.combine empty)) (0 : Fin 2) = guardA (0 : Fin 1) :=
-    Guard.combine_left guardA (guardB.combine empty) (0 : Fin 1)
-  have atSecond : (guardA.combine (guardB.combine empty)) (1 : Fin 2) =
-      (guardB.combine empty) (0 : Fin 1) :=
-    Guard.combine_right guardA (guardB.combine empty) (0 : Fin 1)
-  have atSecondLeft : (guardB.combine empty) (0 : Fin 1) = guardB (0 : Fin 1) :=
-    Guard.combine_left guardB empty (0 : Fin 1)
-  cases shifted <;> intro _ _
-  all_goals exact ⟨atFirst.symm ▸ first, fun _ => ⟨(atSecond.trans atSecondLeft).symm ▸ second, fun _ _ => trivial⟩⟩
 
 private def namedArgs (spare : Nat) : Tuple machine.Val pair := .cons (.data (7 : Nat)) (one spare)
 
@@ -500,8 +475,9 @@ private def namedRun (cap vertexR : Nat) (store : Nat) (target : machine.Val cli
   else
     returned observation == some (14, 73)
 
-private def checkNamed (cap : Nat) (swapRight shifted staleRight : Bool := false) : Option Bool := do
-  let right := namedLayout.withLayout (namedRight shifted)
+private def checkNamed (cap : Nat) (swapRight shifted staleRight wrongTarget : Bool := false) : Option Bool := do
+  let rightLayout := namedRight shifted wrongTarget
+  let right := namedLayout.withLayout rightLayout
   -- The outer capture wires move while the numbered λ body keeps its row map.
   let _ ← NestedTheta.Isomorphism.check keys (fun _ => ⟨id, id⟩)
     namedLayout.numbered.body.body right.numbered.body.body
@@ -525,24 +501,10 @@ private def checkNamed (cap : Nat) (swapRight shifted staleRight : Bool := false
   let initial := assembly.chain.checked.storeL
   let receipt ← LinkedRows.check
     (namedLayout.linkDelta actions 85 importsL initial)
-    ((namedLayout.withLayout (namedRight shifted)).linkDelta actions 85 importsR initial)
+    (right.linkDelta actions 85 importsR initial)
   if common : assembly.chain.checked.storeR = initial then
-    let checked ← sources.analyzeLayouts namedLayout (namedRight shifted) exact 85 85
+    let checked ← sources.analyzeLayoutsDirect namedLayout rightLayout exact 85 85
       importsL importsR initial rfl common receipt
-      (fun equal => by
-        refine namedReady false sourceA.sound.dispatch.left sourceB.sound.dispatch.left
-          (Scope.Checked.ordinary actions).state.dispatch.left first.values.left second.values.left
-          (sourceA.sound.capsL.get .head) (sourceB.sound.capsL.get .head) (receipt.left, PUnit.unit) ?_ ?_
-        · exact matchedTarget _ equal.1 sourceA.sound.resolvedL
-        · exact matchedTarget _ equal.2.2.1 sourceB.sound.resolvedL)
-      (fun equal => by
-        refine namedReady shifted sourceA.sound.dispatch.right sourceB.sound.dispatch.right
-          (Scope.Checked.ordinary actions).state.dispatch.right targetAR targetBR
-          (sourceA.sound.capsR.get .head) (sourceB.sound.capsR.get .head)
-          ((Isomorphism.RecursiveCall.Numbered.Prefix.AllocatingClient.initialLocals machine shifted).snoc receipt.right)
-          ?_ ?_
-        · exact matchedTarget _ equal.2.1 sourceA.sound.resolvedR
-        · exact matchedTarget _ equal.2.2.2.1 sourceB.sound.resolvedR)
     let original := namedArgs 4
     let vertexR := if shifted then 1 else 0
     let substituted := checked.substituteDeadFormals requested original (namedArgs 40)
@@ -568,6 +530,8 @@ private def checkNamed (cap : Nat) (swapRight shifted staleRight : Bool := false
 #guard (checkNamed 5 true).isNone
 #guard checkNamed 5 (shifted := true) == some true
 #guard checkNamed 0 (shifted := true) == some true
+-- Both names resolve correctly, but the first call wire reads the second provider.
+#guard (checkNamed 5 (shifted := true) (wrongTarget := true)).isNone
 -- Same provider body and payload, with the capture still at vertex 0.
 #guard (checkNamed 5 (shifted := true) (staleRight := true)).isNone
 

@@ -974,20 +974,34 @@ combines the checked dispatches in typed import order and checks the
 materialized tuple with each name's `checkImports`. The allocating
 entry point takes a successful client initializer receipt at the
 assembly's common final store and returns the usual `ExportAnalysis`.
-The client still supplies static resolution for its checked imports.
+Client resolution can be supplied explicitly or inferred from the checked
+named imports with `NamedImports.analyzeLayoutsDirect`.
 [Named provider demand API](../../../../Silmaril/SSA/RVSDG/Interprocedural/Runtime/Recursive/PartialLink/StaticDemand/Ordered/Prefix/Analysis/Provider/Named/Thms.lean)
 
 `NamedImports.analyzeLayouts` accepts independent typed initializer and
 capture layouts for the same λ body. It checks each import against its
 actual named export, reads the captures from the corresponding successful
 initializer row, and computes one GenKill summary. The two rows share a
-post-link store and the client supplies static resolution for each side.
+post-link store. This entry point takes static resolution for each side.
 Pass the resulting receipt for both sides of
 `ExportAnalysis.relocated_substituted_starts` with the existing related-link
 and dispatch certificates. The two-provider fixture moves the second
 provider and client allocations to vertex 1 on the right, checks exact
 return, typed block and non-tail resumption, and rejects the stale provider
 closure with the same payload from vertex 0.
+
+`NamedImports.analyzeLayoutsDirect` follows the typed call target and
+witness wires in each layout through the existing direct provenance
+checker. The call's static slot must correspond to the exact named import
+position selected by its target wire. The projected witnesses must match
+the capture values of that provider's checked dispatch receipt. The supplied
+exact-value checker must cover both the imported closures and the witness
+value types. The same provenance check handles supported forwarding.
+Computed or untracked targets and mismatched witnesses are rejected.
+The same two-provider regression uses inferred resolution, and also
+rejects a call wired to the other same-signature import with both named
+imports correctly loaded. The common store and single client allocation
+requirements still apply.
 
 `LookupReceipt.entry.traceL` and `traceR` are
 `AllocationHistory.Segment` witnesses with exact entry and exit stores.
