@@ -37,6 +37,7 @@ CHECK_TARGETS ?= sqlite_file_format_compatibility sqlite_lean sqlite_image_lean 
 CHECK_TARGETS += +Silmaril.Wasm.Execution.Core.MemoryProfile.Thms LetIterPackingImportTests LetIterWeakTreeSoundnessTests PEGCoreTests
 CHECK_TARGETS += PeggyDialectTests
 CHECK_TARGETS += PeggyInstitutionTests
+CHECK_TARGETS += PeggyEquationalTests
 
 # Files Lake never reads; only the source gates in `make check` read them.
 SCOPE_EXCLUDE := 'docs/**' '**/*.md' 'scripts/**' 'apps/**' 'problems/**' 'specs/wasm/**' \

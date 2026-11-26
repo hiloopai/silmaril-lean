@@ -487,6 +487,11 @@ globs = ["tests.ssa.PeggyDialect"]
 name = "PeggyInstitutionTests"
 globs = ["tests.ssa.PeggyInstitution"]
 
+# Check the ordinary many-sorted equational comorphism into total-primitive Peggy.
+[[lean_lib]]
+name = "PeggyEquationalTests"
+globs = ["tests.ssa.PeggyEquational"]
+
 # The component and generator tools of the Wasm release (docs/projects/wasm-components.md).
 [[lean_exe]]
 name = "wasm-tools-gen"
