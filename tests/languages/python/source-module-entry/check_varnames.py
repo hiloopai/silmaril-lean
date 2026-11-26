@@ -376,7 +376,7 @@ if __name__ == "__main__":
         if version == "3.13.5":
             assert json.loads(result.stdout) == [version, PARAMETER_TUPLES]
         shared["check_lean"](destination, PARAMETERS_LEAN, extra_imports=IMPORTS)
-        for declaration in ("value=0", "*value", "*, value", "value: int"):
+        for declaration in ("value=missing()", "*value", "*, value", "value: int"):
             shared["emit"](source, destination, f"def inspect({declaration}): pass\n")
             shared["check_lean"](destination, """
 open Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run

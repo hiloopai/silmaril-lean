@@ -9,7 +9,7 @@ public import Silmaril.Languages.Python.Core.Module.SeededCall.Observation.Defs
 
 namespace Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run.Seeded
 
-open Source (Scope)
+open Source (Name Scope)
 open Core.Closure (CodeRef Function Heap)
 open Core.Closure.Executor (CodeTable Fault)
 open Core.Module (ListHeap ListObject)
@@ -334,6 +334,19 @@ def invokeFlatCall (space : Namespace) (context : CallContext)
     | none => (.ok ⟨.error .unsupported, none⟩, context.heap)
   | _, _, _ => invokeCall space context callee arguments
 
+/-- Direct calls of checked defaulted bindings use the already evaluated
+scalar arguments. The ordinary binder handles both missing and extra arguments. -/
+def invokeNamedFlatCall (space : Namespace) (context : CallContext) (defaultedNames : List Name)
+    (destination : Core.Module.Functions.Destination) (name : Name) (callee : Value) (arguments : List Value) :
+    Except ModuleFailure CallObservation × Heap :=
+  if defaultedNames.contains name then
+    match callee, arguments.mapM scalar? with
+    | .function closure, some values =>
+      let operands := values.map fun value => Core.Module.Functions.Operand.literal (.ofScalar value)
+      observeDirectCall space (ordinaryCall space context closure operands)
+    | _, _ => (.ok ⟨.error .unsupported, none⟩, context.heap)
+  else invokeFlatCall space context destination callee arguments
+
 /-- The adjacent source guard establishes the name-to-slot mapping. Read the
 live module-first binding once and enter only a published one-slot function. -/
 def invokeAdjacentKeywordDiscard (space : Namespace) (context : CallContext)
@@ -545,8 +558,33 @@ def checkVarNames (space : Namespace) (table : CodeTable) (receiver : String)
     | .code error => .varNamesFault error
   (assertTruth (.bool member)).mapError ModuleFailure.ofCall
 
+def readDefault (space : Namespace) (name : Name) : Except ModuleFailure Core.Module.Value := do
+  let some value := space.lookupGlobal name | throw (.raised (.runtime (.nameError name)))
+  let some scalar := scalar? value | throw .unsupported
+  return scalar
+
+def defaultPublication {scope : Scope} (space : Namespace) (table : CodeTable) (name : Name)
+    (function : Core.Module.Functions.TopFunction) (operands : List (DefaultOperand scope)) :
+    Except ModuleFailure (Option (Name × Value)) := do
+  let saved ← Run.captureDefaults (readDefault space) operands
+  let _ ← (Core.Closure.Dispatch.resolve table function.ref).mapError .publicationFault
+  return some (name, .function (function.withDefaults saved))
+
+/-- Propagate same-run authorization through actual assignments, and drop it
+on overwrite. Each initial seed starts with an empty authorization list. -/
+def updateDefaultedNames {scope : Scope} (instruction : Instruction scope)
+    (names : List Name) : Option (Name × Value) → List Name
+  | some (name, .function _) =>
+    match instruction with
+    | .publishDefaults .. => name :: names.erase name
+    | .scalar (.assign _ _ (.read source _)) =>
+      if names.contains source then name :: names.erase name else names.erase name
+    | _ => names.erase name
+  | some (name, _) => names.erase name
+  | none => names
+
 def effect {scope : Scope} (space : Namespace) (context : CallContext) (instruction : Instruction scope)
-    (lists : ListHeap := .empty) : Effect × Heap :=
+    (lists : ListHeap := .empty) (defaultedNames : List Name := []) : Effect × Heap :=
   match instruction with
   | .scalar (.assign name _ operand) =>
     (⟨((evaluateScalar space false operand).map fun value => some (name, value)).mapError ModuleFailure.ofCall,
@@ -560,11 +598,13 @@ def effect {scope : Scope} (space : Namespace) (context : CallContext) (instruct
   | .publish name function =>
     let resolved := Core.Closure.Dispatch.resolve context.table function.ref
     (⟨(resolved.map fun _ => some (name, .function function.closure)).mapError .publicationFault, []⟩, context.heap)
+  | .publishDefaults name function operands =>
+    (⟨defaultPublication space context.table name function operands, []⟩, context.heap)
   | .call destination name arguments =>
     match Core.Module.SeededCall.resolveCall space #v[] (.global name) (arguments.map lowerCallOperand) with
     | .error error => (acceptObservation destination name ⟨.error error, none⟩, context.heap)
     | .ok (callee, values) =>
-      let (observed, heap) := invokeFlatCall space context destination callee values
+      let (observed, heap) := invokeNamedFlatCall space context defaultedNames destination name callee values
       match observed with
       | .ok result => (acceptObservation destination name result, heap)
       | .error error => (⟨.error error, []⟩, heap)
@@ -582,21 +622,21 @@ structure Observation where
   lists : ListHeap
 
 def effectWithLists {scope : Scope} (space : Namespace) (context : CallContext)
-    (instruction : Instruction scope) (lists : ListHeap) : (Effect × Heap) × ListHeap :=
+    (instruction : Instruction scope) (lists : ListHeap) (defaultedNames : List Name := []) : (Effect × Heap) × ListHeap :=
   match instruction with
   | .assertListConstruction test =>
     let outcome := evaluateListConstruction space lists test
     ((outcome.effect, context.heap), outcome.lists)
-  | instruction => (effect space context instruction lists, lists)
+  | instruction => (effect space context instruction lists defaultedNames, lists)
 
 /-- A failed instruction keeps its incoming namespace and the heap reached
 by its effects. Successful publications authorize checked ordinary calls. -/
 def runInstructionsIn {scope : Scope} (space : Namespace) (context : CallContext)
-    (instructions : List (Instruction scope)) (lists : ListHeap := .empty) : Observation :=
+    (instructions : List (Instruction scope)) (lists : ListHeap := .empty) (defaultedNames : List Name := []) : Observation :=
   match instructions with
   | [] => ⟨space, .ok (), [], context.heap, lists⟩
   | instruction :: rest =>
-    let ((item, heap), updatedLists) := effectWithLists space context instruction lists
+    let ((item, heap), updatedLists) := effectWithLists space context instruction lists defaultedNames
     match item.binding with
     | .error error => ⟨space, .error error, item.calls, heap, updatedLists⟩
     | .ok binding =>
@@ -605,9 +645,11 @@ def runInstructionsIn {scope : Scope} (space : Namespace) (context : CallContext
         | .publish _ function => function.closure :: context.published
         | _ => context.published
       let escaped := match instruction, binding with
-        | .call (.bindGlobal _) _ _, some (_, .function closure) => closure :: context.escaped
+        | .call (.bindGlobal _) callee _, some (_, .function closure) =>
+          if defaultedNames.contains callee then context.escaped else closure :: context.escaped
         | _, _ => context.escaped
-      let tail := runInstructionsIn updated { context with heap, published, escaped } rest updatedLists
+      let names := updateDefaultedNames instruction defaultedNames binding
+      let tail := runInstructionsIn updated { context with heap, published, escaped } rest updatedLists names
       { tail with calls := item.calls ++ tail.calls }
 
 def runInstructions {scope : Scope} (space : Namespace) (instructions : List (Instruction scope))

@@ -44,12 +44,13 @@ theorem observeArguments_iff {space : Namespace} {arguments : List Argument}
     | next first _ ih => simp [observeArguments, first, ih]
 
 theorem preserves_builtins {scope : Languages.Python.Source.Scope} (space : Namespace)
-    (instructions : List (Instruction scope)) (context : CallContext) (lists : Core.Module.ListHeap) :
-    (runInstructionsIn space context instructions lists).residual.builtins = space.builtins := by
-  induction instructions generalizing space context lists with
+    (instructions : List (Instruction scope)) (context : CallContext) (lists : Core.Module.ListHeap)
+    (defaultedNames : List String := []) :
+    (runInstructionsIn space context instructions lists defaultedNames).residual.builtins = space.builtins := by
+  induction instructions generalizing space context lists defaultedNames with
   | nil => rfl
   | cons instruction rest ih =>
-    cases selected : (effectWithLists space context instruction lists).1.1.binding with
+    cases selected : (effectWithLists space context instruction lists defaultedNames).1.1.binding with
     | error error => simp [runInstructionsIn, selected]
     | ok binding =>
       cases binding with
@@ -77,7 +78,7 @@ theorem run_directDiscard {scope : Source.Scope} {space : Namespace} {context : 
         ⟨space, .error .directCallFuelExhausted, [], heap, Core.Module.ListHeap.empty⟩ := by
   simp [runInstructionsIn, effectWithLists, effect, Core.Module.SeededCall.resolveCall,
     Core.Module.SeededCall.Operand.eval, found, Core.Module.SeededCall.Operand.evalList,
-    Except.bind, Except.map, invokeFlatCall, admitted]
+    Except.bind, Except.map, invokeNamedFlatCall, invokeFlatCall, admitted]
   generalize (callbackInvocation space context.heap closure |>.runPrefix context.table context.fuel).2.state =
     state
   cases state with
@@ -92,7 +93,7 @@ theorem run_directDiscard_unsupported {scope : Source.Scope} {space : Namespace}
       ⟨space, .error .unsupported, [⟨name, ⟨.error .unsupported, none⟩⟩], context.heap, Core.Module.ListHeap.empty⟩ := by
   simp [runInstructionsIn, effectWithLists, effect, Core.Module.SeededCall.resolveCall,
     Core.Module.SeededCall.Operand.eval, found, Core.Module.SeededCall.Operand.evalList,
-    Except.bind, Except.map, Except.mapError, invokeFlatCall, rejected, acceptObservation, ModuleFailure.ofCall]
+    Except.bind, Except.map, Except.mapError, invokeNamedFlatCall, invokeFlatCall, rejected, acceptObservation, ModuleFailure.ofCall]
 
 theorem factoryOperands_iff {values : List Value} {operands : List Core.Module.Functions.Operand} :
     factoryOperands values = some operands ↔
@@ -152,7 +153,7 @@ theorem run_factory_unrecorded {scope : Source.Scope} {space : Namespace} {conte
   have denied (arity : Nat) : context.acceptsFactory closure arity = false := by
     simp [CallContext.acceptsFactory, CallContext.acceptsCallFrom, unpublished, unescaped]
   cases operands : factoryOperands values <;>
-    simp [runInstructionsIn, effectWithLists, effect, resolved, invokeFlatCall, operands, denied,
+    simp [runInstructionsIn, effectWithLists, effect, resolved, invokeNamedFlatCall, invokeFlatCall, operands, denied,
       acceptObservation, ModuleFailure.ofCall, Except.bind, Except.mapError]
 
 theorem run_factory {scope : Source.Scope} {space : Namespace} {context : CallContext}
@@ -176,7 +177,7 @@ theorem run_factory {scope : Source.Scope} {space : Namespace} {context : CallCo
       | .faulted heap _ fault => ⟨space, .error (.directCallFault fault), [], heap, Core.Module.ListHeap.empty⟩
       | .running heap .. | .delivering heap .. | .receiving heap .. =>
         ⟨space, .error .directCallFuelExhausted, [], heap, Core.Module.ListHeap.empty⟩ := by
-  simp only [runInstructionsIn, effectWithLists, effect, resolved, invokeFlatCall, profile, admitted, ite_true]
+  simp only [runInstructionsIn, effectWithLists, effect, resolved, invokeNamedFlatCall, List.contains_nil, Bool.false_eq_true, ite_false, invokeFlatCall, profile, admitted, ite_true]
   generalize ordinaryCall space context closure operands = state
   cases state with
   | finished heap result =>

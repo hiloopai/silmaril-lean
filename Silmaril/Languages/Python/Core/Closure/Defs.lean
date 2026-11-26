@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Languages.Python.Core.Defs
+public import Silmaril.Languages.Python.Core.Module.Defs
 
 /-! # Slot and cell interfaces for lowered Python closures -/
 
@@ -54,12 +54,13 @@ structure CodeRef where
 structure Function where
   code : CodeRef
   captures : Vector CellId code.layout.captures
+  positionalDefaults : List Core.Module.Value := []
   deriving DecidableEq, Repr
 
 /-- Import a compiler-produced capture list in its existing order. -/
 def Function.ofCaptureList (code : CodeRef) (captures : List CellId)
     (size : captures.length = code.layout.captures) : Function :=
-  ⟨code, ⟨captures.toArray, by simpa using size⟩⟩
+  ⟨code, ⟨captures.toArray, by simpa using size⟩, []⟩
 
 inductive Value where
   | none
@@ -67,6 +68,11 @@ inductive Value where
   | bool (value : Bool)
   | function (value : Function)
   deriving Repr
+
+def Value.ofScalar : Core.Module.Value → Value
+  | .int value => .int value
+  | .bool value => .bool value
+  | .none => .none
 
 def Value.truth : Value → Bool
   | .none => false
@@ -100,6 +106,7 @@ inductive RuntimeError where
 inductive Failure where
   | defined (error : RuntimeError)
   | danglingCell (identity : CellId)
+  | invalidPositionalDefaults
   deriving DecidableEq, Repr
 
 /-- Integer-like values in the closed closure value profile. -/
@@ -174,7 +181,7 @@ def Frame.captureCell (frame : Frame layout) : CaptureSlot layout → CellId
 /-- Use the child's index order and retain each selected parent identity. -/
 def Frame.closure (frame : Frame layout) (code : CodeRef)
     (select : Fin code.layout.captures → CaptureSlot layout) : Function :=
-  ⟨code, Vector.ofFn (frame.captureCell ∘ select)⟩
+  ⟨code, Vector.ofFn (frame.captureCell ∘ select), []⟩
 
 def Heap.read (heap : Heap) (identity : CellId) (unbound : RuntimeError) : Except Failure Value :=
   match heap.lookup identity with

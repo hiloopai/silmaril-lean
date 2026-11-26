@@ -10,8 +10,8 @@ private abbrev ownerLayout : Layout := ⟨0, 1, 1⟩
 private abbrev forwardingLayout : Layout := ⟨0, 0, 1⟩
 private def captured : CellId := ⟨0⟩
 private def heap : Heap := ⟨1, fun _ => some (.int 7)⟩
-private def owner (key : Nat) : Value := .function ⟨⟨key, ownerLayout⟩, #v[captured]⟩
-private def forwarding : Value := .function ⟨⟨2, forwardingLayout⟩, #v[captured]⟩
+private def owner (key : Nat) : Value := .function ⟨⟨key, ownerLayout⟩, #v[captured], []⟩
+private def forwarding : Value := .function ⟨⟨2, forwardingLayout⟩, #v[captured], []⟩
 private def aliasSlot : Slot callerLayout := .local 0
 private def frame : Frame callerLayout := ⟨fun _ => some (owner 1), fun _ => captured, Fin.elim0⟩
 
@@ -64,7 +64,7 @@ example : advance table readCurrent =
     some (none, .delivering heap [] (.error (.nameError "current"))) := rfl
 example : advanceIn table (atCurrent (owner 4)) readCurrent =
     some (some (.fault (.missingCode 4)), .faulted heap [] (.missingCode 4)) := rfl
-example : advanceIn table (atCurrent (.function ⟨⟨1, forwardingLayout⟩, #v[captured]⟩)) readCurrent =
+example : advanceIn table (atCurrent (.function ⟨⟨1, forwardingLayout⟩, #v[captured], []⟩)) readCurrent =
     some (some (.fault (.layoutMismatch forwardingLayout ownerLayout)),
       .faulted heap [] (.layoutMismatch forwardingLayout ownerLayout)) := rfl
 

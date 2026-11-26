@@ -30,7 +30,10 @@ theorem source_enter_complete
   let fn := frame.closure (Compile.Closure.codeRef child key) (Compile.Closure.captureOperands captureLayout)
   have count : (parameters parameterLayout).slots.length = child.context.parameters.length := by
     simpa using congrArg List.length (Compile.Closure.parameters_order parameterLayout)
-  apply Core.Closure.Call.enter_complete (fn := fn) (arity.trans count.symm)
+  have completed : Core.Closure.Call.completeArguments (parameters parameterLayout)
+      fn.positionalDefaults arguments = .ok arguments :=
+    Core.Closure.Call.completeArguments_empty.mpr ⟨arity.trans count.symm, rfl⟩
+  apply Core.Closure.Call.enter_complete (fn := fn) completed
   intro identity member
   obtain ⟨i, bound, atIndex⟩ := List.mem_iff_getElem.mp member
   have runtimeBound : i < fn.code.layout.captures := by simpa using bound
@@ -53,7 +56,10 @@ theorem source_parameter_read
   have spec := Core.Closure.Call.enter_spec
     (fn := frame.closure (Compile.Closure.codeRef child key) (Compile.Closure.captureOperands captureLayout))
     entered
-  have arity := (Core.Closure.Call.bind_iff.mp spec.1).1
+  obtain ⟨completed, completion, _⟩ := spec.1
+  change Core.Closure.Call.completeArguments _ [] _ = .ok completed at completion
+  obtain ⟨arity, same⟩ := Core.Closure.Call.completeArguments_empty.mp completion
+  subst completed
   have atSlot : index < (parameters parameterLayout).slots.length := count ▸ declared
   have atArg : index < arguments.length := arity ▸ atSlot
   let slot := (parameters parameterLayout).slots[index]
@@ -66,7 +72,7 @@ theorem source_parameter_read
   have named := congrArg (·[index]?) order
   refine ⟨slot, arg, List.getElem?_eq_getElem atSlot, List.getElem?_eq_getElem atArg, ?_, ?_⟩
   · simpa [List.getElem?_eq_getElem atSlot, List.getElem?_eq_getElem declared, slot] using named.symm
-  · exact Core.Closure.Call.enter_read entered pair
+  · exact Core.Closure.Call.enter_read entered completion pair
 
 theorem source_capture_at
     (entered : enter key captureLayout parameterLayout arguments heap frame continuation stack = .ok callee)

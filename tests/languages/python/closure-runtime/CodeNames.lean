@@ -10,7 +10,7 @@ private abbrev receiverLayout : Layout := ⟨0, 0, 1⟩
 private def captured : CellId := ⟨0⟩
 private def originalHeap : Heap := ⟨1, fun _ => some (.int 3)⟩
 private def heap : Heap := (originalHeap.write captured (.int 7)).getD originalHeap
-private def receiver (key : Nat) : Value := .function ⟨⟨key, receiverLayout⟩, #v[captured]⟩
+private def receiver (key : Nat) : Value := .function ⟨⟨key, receiverLayout⟩, #v[captured], []⟩
 private def aliasSlot : Slot callerLayout := .local 0
 private def frame : Frame callerLayout := ⟨fun _ => some (receiver 1), fun _ => captured, Fin.elim0⟩
 
@@ -74,7 +74,7 @@ example : advance table readCurrent =
     some (none, .delivering heap [saved] (.error (.nameError "current"))) := rfl
 example : advanceIn table (atCurrent (receiver 6)) readCurrent =
     some (some (.fault (.missingCode 6)), .faulted heap [saved] (.missingCode 6)) := rfl
-example : advanceIn table (atCurrent (.function ⟨⟨1, callerLayout⟩, #v[]⟩)) readCurrent =
+example : advanceIn table (atCurrent (.function ⟨⟨1, callerLayout⟩, #v[], []⟩)) readCurrent =
     some (some (.fault (.layoutMismatch callerLayout receiverLayout)),
       .faulted heap [saved] (.layoutMismatch callerLayout receiverLayout)) := rfl
 example : advance table (.running Heap.empty frame

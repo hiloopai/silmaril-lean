@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Languages.Python.Core.Closure.Call.Defs
+public import Silmaril.Languages.Python.Core.Closure.Call.Binding
 
 /-! # Bind supplied positionals and saved trailing defaults
 
@@ -40,4 +40,13 @@ def bind (defaults : PositionalDefaults parameters) (supplied : List Value)
   (defaults.complete supplied).bind fun arguments => bindPositional parameters arguments before
 
 end PositionalDefaults
+
+/-- Complete arguments using the selected descriptor. An invalid descriptor
+is a machine fault, distinct from an arity error in a checked call. -/
+def completeArguments {layout : Layout} (parameters : Parameters layout)
+    (saved : List Core.Module.Value) (supplied : List Value) : Except Failure (List Value) :=
+  if fits : saved.length ≤ parameters.slots.length then
+    PositionalDefaults.complete (parameters := parameters) ⟨saved.map Value.ofScalar, by simpa using fits⟩ supplied
+  else .error .invalidPositionalDefaults
+
 end Silmaril.Languages.Python.Core.Closure.Call

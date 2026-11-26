@@ -34,7 +34,7 @@ private def observation : Option (List BlockPath × Nat × Int × Int) := do
   let heap := Core.Closure.Heap.empty
   let (_, callerFrame) := Core.Closure.Frame.fresh (layout := ⟨0, 0, 0⟩) heap (fun _ => ⟨0⟩)
   let caller : Core.Closure.Call.Saved Cont := ⟨_, callerFrame, ()⟩
-  let root : Core.Closure.Function := ⟨program.entry, Vector.ofFn (fun _ => ⟨0⟩)⟩
+  let root : Core.Closure.Function := { code := program.entry, captures := Vector.ofFn (fun _ => ⟨0⟩) }
   let outer ← (Core.Closure.Dispatch.dispatch program.table (.function root) [.int 41] heap caller []).toOption
   let .closure bind [0, 0] ref captures (.ret (.call (.read name) [.integer 2])) := outer.definition.body
     | none

@@ -51,23 +51,25 @@ theorem dispatch_sound (launched : dispatch table callee arguments heap caller s
       | ok entry =>
         simp [dispatch, resolved, entered] at launched
         subst active
-        obtain ⟨binding, saved⟩ := Call.enter_spec entered
-        obtain ⟨arity, writes⟩ := Call.bind_iff.mp binding
+        obtain ⟨⟨_, completion, binding⟩, saved⟩ := Call.enter_spec entered
+        have writes := (Call.bind_iff.mp binding).2
         have exactEntry : entry = ⟨entry.environment, caller :: stack⟩ := by
           cases entry
           simp_all
         rw [exactEntry]
-        exact .function (resolve_iff.mp resolved) arity
+        exact .function (resolve_iff.mp resolved) completion
           (fun _ captured => Call.enter_captures_live entered captured) writes
 
 theorem dispatch_complete (launched : Dispatches table arguments heap caller stack callee active) :
     dispatch table callee arguments heap caller stack = .ok active := by
   cases launched with
-  | @function fn definition environment code arity captures writes =>
-    obtain ⟨entered, success⟩ := Call.enter_complete (caller := caller) (stack := stack) arity captures
-    obtain ⟨binding, saved⟩ := Call.enter_spec success
-    have expected : Call.bindPositional definition.parameters arguments (fn.freshFrame heap) =
-        .ok environment := Call.bind_iff.mpr ⟨arity, writes⟩
+  | @function fn definition environment code completed completion captures writes =>
+    obtain ⟨entered, success⟩ := Call.enter_complete (caller := caller) (stack := stack) completion captures
+    obtain ⟨⟨actual, checked, binding⟩, saved⟩ := Call.enter_spec success
+    have sameArgs := Except.ok.inj (checked.symm.trans completion)
+    subst actual
+    have expected : Call.bindPositional definition.parameters completed (fn.freshFrame heap) =
+        .ok environment := Call.bind_iff.mpr ⟨Call.completeArguments_length completion, writes⟩
     have same : entered.environment = environment := Except.ok.inj (binding.symm.trans expected)
     have exactEntry : entered = ⟨environment, caller :: stack⟩ := by
       cases entered

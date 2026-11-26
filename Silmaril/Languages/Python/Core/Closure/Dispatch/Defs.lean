@@ -86,9 +86,10 @@ inductive Dispatches (table : CodeTable Body) (arguments : List Value) (heap : H
   | function {fn : Function} {definition : Definition Body fn.code.layout}
       {environment : Call.Environment fn.code.layout}
       (code : Resolves table fn.code definition)
-      (arity : arguments.length = definition.parameters.slots.length)
+      {completed : List Value}
+      (completion : Call.completeArguments definition.parameters fn.positionalDefaults arguments = .ok completed)
       (captures : ∀ identity ∈ fn.captures.toList, identity.address < heap.next)
-      (writes : Call.Writes (definition.parameters.slots.zip arguments) (fn.freshFrame heap) environment) :
+      (writes : Call.Writes (definition.parameters.slots.zip completed) (fn.freshFrame heap) environment) :
       Dispatches table arguments heap caller stack (.function fn)
         ⟨fn.code.layout, definition, ⟨environment, caller :: stack⟩⟩
 

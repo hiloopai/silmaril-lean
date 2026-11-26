@@ -151,9 +151,8 @@ private theorem rejected_eq (rejected : Rejects table args heap callee failure) 
   | missing fn absent => simp [Dispatch.dispatch, Dispatch.resolve_missing absent]
   | mismatch fn entry found different => simp [Dispatch.dispatch, Dispatch.resolve_layout_mismatch found different]
   | dangling found first => simp [Dispatch.dispatch, Dispatch.resolve_iff.mpr found, Call.enter, first]
-  | arity found live wrong =>
-    simp [Dispatch.dispatch, Dispatch.resolve_iff.mpr found, Call.enter, live,
-      Call.bind_arity_error _ _ _ wrong, Except.map]
+  | arguments found live rejected =>
+    simp [Dispatch.dispatch, Dispatch.resolve_iff.mpr found, Call.enter, live, rejected, Except.bind]
 
 private theorem captures_live {fn : Function} (valid : Call.firstDangling fn heap = none) :
     ∀ identity ∈ fn.captures.toList, identity.address < heap.next := by
@@ -196,14 +195,15 @@ private theorem rejected_rule (rejected : Dispatch.dispatch table callee args he
           subst failure
           exact .dangling member check
         | none =>
-          by_cases arity : args.length = definition.parameters.slots.length
-          · obtain ⟨entered, success⟩ := Call.enter_complete (caller := caller) (stack := stack)
-              arity (captures_live check)
+          cases completion : Call.completeArguments definition.parameters fn.positionalDefaults args with
+          | ok completed =>
+            obtain ⟨entered, success⟩ := Call.enter_complete (caller := caller) (stack := stack)
+              completion (captures_live check)
             simp [Dispatch.dispatch, resolved, success] at rejected
-          · simp [Dispatch.dispatch, resolved, Call.enter, check, Call.bind_arity_error _ _ _ arity,
-              Except.map] at rejected
+          | error error =>
+            simp [Dispatch.dispatch, resolved, Call.enter, check, completion, Except.bind] at rejected
             subst failure
-            exact .arity member check arity
+            exact .arguments member check completion
       · simp [Dispatch.dispatch, Dispatch.resolve_layout_mismatch found same] at rejected
         subst failure
         exact .mismatch fn entry found same

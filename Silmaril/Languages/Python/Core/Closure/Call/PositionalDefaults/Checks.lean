@@ -15,7 +15,7 @@ private def allOptional : PositionalDefaults parameters := ⟨[.int 1, .int 2, .
 
 private def before : Environment layout :=
   let parent : Heap := ⟨1, fun _ => some (.int 37)⟩
-  let fn : Function := ⟨⟨0, layout⟩, #v[]⟩
+  let fn : Function := ⟨⟨0, layout⟩, #v[], []⟩
   fn.freshFrame parent
 
 example : allOptional.complete [] = .ok [.int 1, .int 2, .int 3] := rfl

@@ -153,14 +153,15 @@ theorem run_scalarResultAssign {scope : Source.Scope} (space : Namespace) (conte
     (rest : List (Instruction scope)) :
     runInstructionsIn space context (.scalar (.assign name reference (.scalarResult value)) :: rest) =
       runInstructionsIn (space.bindGlobal name (seededValue (Run.embed value))) context rest := by
-  simp [runInstructionsIn, effectWithLists, effect_scalarResultAssign]
+  cases value <;> simp [runInstructionsIn, effectWithLists, effect_scalarResultAssign, updateDefaultedNames,
+    seededValue, Run.embed, Core.Closure.Value.ofScalar]
 
 theorem run_scalarResultAssert {scope : Source.Scope} (space : Namespace) (context : CallContext)
     (value : Core.Module.Value) (rest : List (Instruction scope)) :
     runInstructionsIn space context (.scalar (.assertion (.scalarResult value)) :: rest) =
       if value.truth then runInstructionsIn space context rest
       else ⟨space, .error (.raised (.assertionError .empty)), [], context.heap, Core.Module.ListHeap.empty⟩ := by
-  by_cases h : value.truth <;> simp [runInstructionsIn, effectWithLists, effect, assertOperand_scalarResult, h]
+  by_cases h : value.truth <;> simp [runInstructionsIn, effectWithLists, effect, assertOperand_scalarResult, h, updateDefaultedNames]
 
 theorem effect_conditionalAssign {scope : Source.Scope} (space : Namespace) (context : CallContext)
     (name : Source.Name) (reference : ModuleEntry.GlobalReference scope name) (selected : ModuleEntry.Operand scope) :
@@ -325,7 +326,41 @@ theorem run_publication {scope : Source.Scope} {space : Namespace} {context : Ca
     runInstructionsIn space context (.publish name function :: rest) =
       runInstructionsIn (space.bindGlobal name (.function function.closure))
         { context with published := function.closure :: context.published } rest :=
-  by simp [runInstructionsIn, effectWithLists, effect, resolved, Except.map, Except.mapError]
+  by simp [runInstructionsIn, effectWithLists, effect, resolved, Except.map, Except.mapError, updateDefaultedNames]
+
+
+/-- The ledger records the actual binding only after default evaluation succeeds. -/
+theorem run_saved_defaults {scope : Source.Scope} {space : Namespace} {context : CallContext}
+    {name : Source.Name} {function : TopFunction} {operands : List (DefaultOperand scope)}
+    {rest : List (Instruction scope)} {saved : List Core.Module.Value} {names : List Source.Name}
+    {definition : Core.Closure.Dispatch.Definition Core.Closure.Executor.Body function.ref.layout}
+    (evaluated : Run.captureDefaults (readDefault space) operands = .ok saved)
+    (resolved : Core.Closure.Dispatch.resolve context.table function.ref = .ok definition) :
+    runInstructionsIn space context (.publishDefaults name function operands :: rest) .empty names =
+      runInstructionsIn (space.bindGlobal name (.function (function.withDefaults saved)))
+        context rest .empty (name :: names.erase name) := by
+  simp [runInstructionsIn, effectWithLists, effect, defaultPublication, updateDefaultedNames, evaluated, resolved,
+    bind, pure, Except.bind, Except.pure, Except.mapError]
+
+/-- Copying a tracked binding keeps its exact saved descriptor and marks the alias. -/
+theorem run_saved_default_alias {scope : Source.Scope} {space : Namespace} {context : CallContext}
+    {source aliasName : Source.Name} {sourceRef : GlobalReference scope source}
+    {aliasRef : GlobalReference scope aliasName} {closure : Function} {names : List Source.Name}
+    {rest : List (Instruction scope)} {lists : Core.Module.ListHeap}
+    (found : space.lookupGlobal source = some (.function closure))
+    (tracked : source ∈ names) :
+    runInstructionsIn space context (.scalar (.assign aliasName aliasRef (.read source sourceRef)) :: rest) lists names =
+      runInstructionsIn (space.bindGlobal aliasName (.function closure)) context rest lists (aliasName :: names.erase aliasName) := by
+  simp [runInstructionsIn, effectWithLists, effect, evaluateScalar, lowerScalarOperand,
+    Core.Module.SeededCall.Operand.eval, found, updateDefaultedNames, tracked, Except.map, Except.mapError]
+
+theorem run_default_error {scope : Source.Scope} {space : Namespace} {context : CallContext}
+    {name : Source.Name} {function : TopFunction} {operands : List (DefaultOperand scope)}
+    {rest : List (Instruction scope)} {error : ModuleFailure} {names : List Source.Name}
+    (failed : Run.captureDefaults (readDefault space) operands = .error error) :
+    runInstructionsIn space context (.publishDefaults name function operands :: rest) .empty names =
+      ⟨space, .error error, [], context.heap, Core.Module.ListHeap.empty⟩ := by
+  simp [runInstructionsIn, effectWithLists, effect, defaultPublication, failed, bind, Except.bind]
 
 theorem run_publication_fault {scope : Source.Scope} {space : Namespace} {context : CallContext}
     {name : String} {function : TopFunction} {rest : List (Instruction scope)} {error : Core.Closure.Dispatch.Failure}

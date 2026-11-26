@@ -7,6 +7,37 @@ import Silmaril.Proofs.Languages.Python.Compile.ModuleEntry.Functions.Run.Prefix
 public section
 namespace Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run
 
+
+/-- Publication installs exactly the evaluated values and preserves the heap. -/
+theorem advance_saved_defaults {scope : Source.Scope} {session : Core.Module.Functions.Session}
+    {table : Core.Closure.Executor.CodeTable} {name : Source.Name}
+    {function : Core.Module.Functions.TopFunction} {operands : List (DefaultOperand scope)}
+    {rest : List (Instruction scope)} {saved : List Core.Module.Value}
+    {definition : Core.Closure.Dispatch.Definition Core.Closure.Executor.Body function.ref.layout}
+    (evaluated : captureDefaults (readDefault session) operands = .ok saved)
+    (resolved : Core.Closure.Dispatch.resolve table function.ref = .ok definition) :
+    advance table (.ready session (.publishDefaults name function operands :: rest)) =
+      ([], .ready (session.bindGlobal name (.function (function.withDefaults saved))) rest) := by
+  simp [advance, publishDefaults, evaluated, Core.Module.Functions.Session.publishWithDefaults,
+    resolved, bind, Except.bind, Except.map, Except.mapError]
+
+theorem advance_default_error {scope : Source.Scope} {session : Core.Module.Functions.Session}
+    {table : Core.Closure.Executor.CodeTable} {name : Source.Name}
+    {function : Core.Module.Functions.TopFunction} {operands : List (DefaultOperand scope)}
+    {rest : List (Instruction scope)} {error : Completion}
+    (failed : captureDefaults (readDefault session) operands = .error error) :
+    advance table (.ready session (.publishDefaults name function operands :: rest)) =
+      ([], .finished session error) := by
+  simp [advance, publishDefaults, failed, bind, Except.bind]
+
+theorem captureDefaults_read {scope : Source.Scope} {failure : Type}
+    (lookup : Source.Name → Except failure Core.Module.Value) (name : Source.Name)
+    (reference : GlobalReference scope name) (rest : List (DefaultOperand scope)) :
+    captureDefaults lookup (.read name reference :: rest) =
+      (lookup name).bind (fun value => (captureDefaults lookup rest).map (value :: ·)) := by
+  cases found : lookup name <;> cases evaluated : captureDefaults lookup rest <;>
+    simp [captureDefaults, found, evaluated, bind, pure, Except.bind, Except.map, Except.pure]
+
 theorem seed_lookup (globals : Core.Module.Globals) (heap : Core.Closure.Heap) (name : String) :
     (seed globals heap).globals name = (globals.lookup name).map embed := rfl
 
@@ -19,10 +50,10 @@ theorem evaluate_conditionalResult {scope : Source.Scope} (session : Core.Module
 theorem evaluate_scalarResult {scope : Source.Scope} (session : Core.Module.Functions.Session)
     (value : Core.Module.Value) : evaluate session (Operand.scalarResult (scope := scope) value) = .ok (embed value) := by
   cases value with
-  | int value => simp [Operand.scalarResult, evaluate, embed]
-  | bool value => simpa [Operand.scalarResult, Operand.conditionalResult, evaluate, embed] using
+  | int value => simp [Operand.scalarResult, evaluate, embed, Core.Closure.Value.ofScalar]
+  | bool value => simpa [Operand.scalarResult, Operand.conditionalResult, evaluate, embed, Core.Closure.Value.ofScalar] using
       (evaluate_conditionalResult (scope := scope) session (.boolean value))
-  | none => simp [Operand.scalarResult, evaluate, embed]
+  | none => simp [Operand.scalarResult, evaluate, embed, Core.Closure.Value.ofScalar]
 
 theorem advance_scalarResultAssign {scope : Source.Scope} (table : Core.Closure.Executor.CodeTable)
     (session : Core.Module.Functions.Session) (name : Source.Name) (reference : GlobalReference scope name)

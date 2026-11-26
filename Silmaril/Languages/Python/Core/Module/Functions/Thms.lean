@@ -10,11 +10,11 @@ namespace Silmaril.Languages.Python.Core.Module.Functions
 
 open Core.Closure
 
-theorem Session.bind_lookup (session : Session) (name : GlobalName) (value : Value) :
+theorem Session.bind_lookup (session : Session) (name : GlobalName) (value : Closure.Value) :
     (session.bindGlobal name value).globals name = some value := by simp [Session.bindGlobal]
 
 theorem Session.bind_other (session : Session) {name query : GlobalName}
-    (value : Value) (different : query ≠ name) :
+    (value : Closure.Value) (different : query ≠ name) :
     (session.bindGlobal name value).globals query = session.globals query := by simp [Session.bindGlobal, different]
 
 theorem Session.publish_iff {session updated : Session} {table : Executor.CodeTable} {name : GlobalName}

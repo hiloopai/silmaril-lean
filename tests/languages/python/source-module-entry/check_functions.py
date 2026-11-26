@@ -85,7 +85,7 @@ read(value=1)
 """, extra_imports=IMPORTS)
         generator_cases = (
             ("def gen():\n    if False: yield 1\n    return 2\n", "(.unsupportedGenerator [0])"),
-            ("def gen(value=0): yield value\n", ".parameterProfile"),
+            ("def gen(value=0): yield value\n", "(.unsupportedGenerator [0])"),
             ("def outer():\n    def gen(value=0): yield value\n    return 2\n",
              "(.unsupportedGenerator [0, 0])"),
         )

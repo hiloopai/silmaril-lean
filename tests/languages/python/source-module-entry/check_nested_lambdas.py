@@ -225,7 +225,7 @@ if __name__ == "__main__":
         (arity, '#guard immediateFailure pythonSource (.positionalArity 0 1)'),
         (CREATE, "#guard timing pythonSource false"),
         (invoke, "#guard timing pythonSource true"),
-        ("make = lambda arg=missing: arg\n",
+        ("make = lambda arg=missing(): arg\n",
          "#guard (match compile pythonSource with | .error (.source (.functionBody .parameterProfile)) => true | _ => false)"),
         ("make = lambda x: lambda *values: x\n",
          "#guard (match compile pythonSource with | .error (.source (.functionBody .parameterProfile)) => true | _ => false)"),

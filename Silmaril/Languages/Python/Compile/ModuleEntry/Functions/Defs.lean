@@ -181,14 +181,68 @@ def literalKeywordDefault? : (declaration : List Source.Parameter) → (body : L
     else none
   | _, _ => none
 
+/-- Default evaluation is limited to exact scalars and live module reads. -/
+inductive DefaultOperand (scope : Scope) where
+  | literal (value : Core.Module.Value)
+  | read (name : Name) (reference : GlobalReference scope name)
+
+inductive DefaultTranslation (scope : Scope) : Source.Expr → DefaultOperand scope → Prop where
+  | literal {source value} (encoded : scalarLiteral? source = some value) :
+      DefaultTranslation scope source (.literal value)
+  | none_ : DefaultTranslation scope .none_ (.literal .none)
+  | read {name} (reference : GlobalReference scope name) :
+      DefaultTranslation scope (.name name) (.read name reference)
+
+def lowerDefault (scope : Scope) : (source : Source.Expr) →
+    Except Error {operand // DefaultTranslation scope source operand}
+  | .none_ => .ok ⟨.literal .none, .none_⟩
+  | .name name => do
+    let some reference := globalReference? scope name | throw (.unresolvedGlobal name)
+    return ⟨.read name reference, .read reference⟩
+  | source =>
+    match encoded : scalarLiteral? source with
+    | some value => .ok ⟨.literal value, .literal encoded⟩
+    | none => .error (.functionBody .parameterProfile)
+
+def eraseDefault (parameter : Source.Parameter) : Source.Parameter :=
+  { parameter with defaultValue := none }
+
+/-- Required parameters precede the saved suffix. Both relations preserve
+declaration order, and each saved operand comes from the parent scope. -/
+inductive DefaultSuffix (scope : Scope) : Bool → List Source.Parameter → List (DefaultOperand scope) → Prop where
+  | nil (saving : Bool) : DefaultSuffix scope saving [] []
+  | required {parameter rest operands} (absent : parameter.defaultValue = none)
+      (tail : DefaultSuffix scope false rest operands) : DefaultSuffix scope false (parameter :: rest) operands
+  | optional {saving parameter source rest operand operands}
+      (present : parameter.defaultValue = some source) (checked : DefaultTranslation scope source operand)
+      (tail : DefaultSuffix scope true rest operands) :
+      DefaultSuffix scope saving (parameter :: rest) (operand :: operands)
+
+def lowerDefaultSuffix (scope : Scope) (saving : Bool) : (declaration : List Source.Parameter) →
+    Except Error {operands // DefaultSuffix scope saving declaration operands}
+  | [] => .ok ⟨[], .nil saving⟩
+  | parameter :: rest =>
+    match present : parameter.defaultValue with
+    | some source => do
+      let operand ← lowerDefault scope source
+      let tail ← lowerDefaultSuffix scope true rest
+      return ⟨operand.val :: tail.val, .optional present operand.property tail.property⟩
+    | none =>
+      match saving with
+      | true => .error (.functionBody .parameterProfile)
+      | false => do
+        let tail ← lowerDefaultSuffix scope false rest
+        return ⟨tail.val, .required present tail.property⟩
+
 /-- The ordinary definition checks used with or without an adjacent call. -/
 structure DefinitionTranslation (tree : ScopeTree) (index : Nat) (declaration : List Source.Parameter)
     (body : List Source.Stmt) (child : ScopeTree) (parameters : Core.Closure.Parameters (frameLayout child.scope))
-    (code : Code (frameLayout child.scope)) : Prop where
+    (code : Code (frameLayout child.scope)) (defaults : List (DefaultOperand tree.scope) := []) : Prop where
   located : tree.children[index]? = some child
   path : child.scope.context.path = tree.scope.context.path ++ [index]
   kind : child.scope.context.kind = .function
-  fixed : declaration.all Compile.Closure.Body.fixed = true
+  fixed : (declaration.map eraseDefault).all Compile.Closure.Body.fixed = true
+  saved : DefaultSuffix tree.scope false declaration defaults
   parameterOrder : parameters.slots.map (Compile.Closure.parameterName child.scope) =
     declaration.map Source.Parameter.name
   functionBody : Compile.Closure.Body.Translation child 0 body code
@@ -309,6 +363,7 @@ inductive Action (scope : Scope) where
   | define (name : Name) (reference : GlobalReference scope name) (child : ScopeTree)
       (parameters : Core.Closure.Parameters (frameLayout child.scope)) (code : Code (frameLayout child.scope))
       (keywordDefault : Option (Fin (frameLayout child.scope).locals × Int) := none)
+      (defaults : List (DefaultOperand scope) := [])
   | call (destination : Destination scope) (name : Name) (reference : GlobalReference scope name)
       (arguments : List (Operand scope))
   | adjacentKeywordDiscard (name : Name) (reference : GlobalReference scope name) (value : Int)
@@ -346,16 +401,16 @@ inductive Translation (tree : ScopeTree) : Nat → List Source.Stmt → List (Ac
       (site : CallSite statement target name arguments) (result : destination.placement = target)
       (operandOrder : CallArguments tree.scope arguments values) (remaining : Translation tree index rest tail) :
       Translation tree index (statement :: rest) (.nestedCall destination name reference values :: tail)
-  | define {index name declaration body rest child reference parameters code tail}
-      (definition : DefinitionTranslation tree index declaration body child parameters code)
+  | define {index name declaration body rest child reference parameters code tail defaults}
+      (definition : DefinitionTranslation tree index declaration body child parameters code defaults)
       (remaining : Translation tree (index + 1) rest tail) :
       Translation tree index (.functionDef name declaration body [] none :: rest)
-        (.define name reference child parameters code :: tail)
-  | defineLambda {index statement name declaration body rest child reference parameters code tail}
+        (.define name reference child parameters code none defaults :: tail)
+  | defineLambda {index statement name declaration body rest child reference parameters code tail defaults}
       (binding : Compile.Closure.Body.Assignment statement name (.lambda declaration body))
-      (definition : DefinitionTranslation tree index declaration [.return_ (some body)] child parameters code)
+      (definition : DefinitionTranslation tree index declaration [.return_ (some body)] child parameters code defaults)
       (remaining : Translation tree (index + 1) rest tail) :
-      Translation tree index (statement :: rest) (.define name reference child parameters code :: tail)
+      Translation tree index (statement :: rest) (.define name reference child parameters code none defaults :: tail)
   | defineLiteralKeywordDefault {index name declaration body rest child reference parameter slot value code tail}
       (located : tree.children[index]? = some child)
       (path : child.scope.context.path = tree.scope.context.path ++ [index])
@@ -395,17 +450,23 @@ def lowerPlan (tree : ScopeTree) (index : Nat) : (source : List Source.Stmt) →
               .defineLiteralKeywordDefault located scopeMatches.1 scopeMatches.2 checked.property
                 (bound ▸ destination.property) code.property tail.property⟩
           | _ => throw (.functionBody .parameterProfile)
-        let parameters ← (Compile.Closure.Body.checkParameters child.scope declaration).mapError .functionBody
+        let parameters ← (Compile.Closure.Body.checkParameters child.scope (declaration.map eraseDefault)).mapError .functionBody
         let code ← (Compile.Closure.Body.lowerBodyWith child true 0 body).mapError .functionBody
-        let definition : DefinitionTranslation tree index declaration body child parameters.val code.val :=
-          ⟨located, scopeMatches.1, scopeMatches.2, parameters.property.1, parameters.property.2, code.property⟩
-        let action := Action.define name reference child parameters.val code.val
+        let defaults ← lowerDefaultSuffix tree.scope false declaration
+        let definition : DefinitionTranslation tree index declaration body child parameters.val code.val defaults.val :=
+          ⟨located, scopeMatches.1, scopeMatches.2, parameters.property.1, defaults.property,
+            by simpa [List.map_map, Function.comp_def, eraseDefault] using parameters.property.2, code.property⟩
+        let action := Action.define name reference child parameters.val code.val none defaults.val
         match adjacent : rest with
         | statement :: remaining =>
-          if let some call := adjacentKeywordDiscard? name declaration statement then
-            let tail ← lowerPlan tree (index + 1) remaining
-            return ⟨action :: .adjacentKeywordDiscard name reference call.val :: tail.val,
-              adjacent.symm ▸ .defineThenKeywordDiscard definition call.property tail.property⟩
+          if empty : defaults.val = [] then
+            if let some call := adjacentKeywordDiscard? name declaration statement then
+              let tail ← lowerPlan tree (index + 1) remaining
+              let ordinary : DefinitionTranslation tree index declaration body child parameters.val code.val :=
+                empty ▸ definition
+              return ⟨.define name reference child parameters.val code.val ::
+                .adjacentKeywordDiscard name reference call.val :: tail.val,
+                adjacent.symm ▸ .defineThenKeywordDiscard ordinary call.property tail.property⟩
           let tail ← lowerPlan tree (index + 1) (statement :: remaining)
           return ⟨action :: tail.val, adjacent.symm ▸ .define definition tail.property⟩
         | [] =>
@@ -429,20 +490,22 @@ def lowerPlan (tree : ScopeTree) (index : Nat) : (source : List Source.Stmt) →
       let tail ← lowerPlan tree index rest
       return ⟨.assertListConstruction test.val :: tail.val, .assertListConstruction test.property tail.property⟩
     else if let some ⟨(name, .lambda declaration body), binding⟩ := Compile.Closure.Body.assignment? statement then
-      unless declaration.all Compile.Closure.Body.fixed do throw (.functionBody .parameterProfile)
+      unless (declaration.map eraseDefault).all Compile.Closure.Body.fixed do throw (.functionBody .parameterProfile)
       let path := tree.scope.context.path ++ [index]
       match located : tree.children[index]? with
       | none => throw (.functionScope path)
       | some child =>
         if scopeMatches : child.scope.context.path = path ∧ child.scope.context.kind = .function then
           let some reference := globalReference? tree.scope name | throw (.unresolvedGlobal name)
-          let parameters ← (Compile.Closure.Body.checkParameters child.scope declaration).mapError .functionBody
+          let parameters ← (Compile.Closure.Body.checkParameters child.scope (declaration.map eraseDefault)).mapError .functionBody
           let code ← (Compile.Closure.Body.lowerBodyWith child true 0 [.return_ (some body)]).mapError .functionBody
+          let defaults ← lowerDefaultSuffix tree.scope false declaration
           let tail ← lowerPlan tree (index + 1) rest
           let definition : DefinitionTranslation tree index declaration [.return_ (some body)] child
-              parameters.val code.val :=
-            ⟨located, scopeMatches.1, scopeMatches.2, parameters.property.1, parameters.property.2, code.property⟩
-          return ⟨.define name reference child parameters.val code.val :: tail.val,
+              parameters.val code.val defaults.val :=
+            ⟨located, scopeMatches.1, scopeMatches.2, parameters.property.1, defaults.property,
+              by simpa [List.map_map, Function.comp_def, eraseDefault] using parameters.property.2, code.property⟩
+          return ⟨.define name reference child parameters.val code.val none defaults.val :: tail.val,
             .defineLambda binding definition tail.property⟩
         else throw (.functionScope path)
     else if let some ⟨(target, name, arguments), site⟩ := callSite? statement then

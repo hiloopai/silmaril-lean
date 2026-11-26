@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Languages.Python.Core.Closure.Call.Defs
+public import Silmaril.Languages.Python.Core.Closure.Call.PositionalDefaults.Completion
 public import Silmaril.Languages.Python.Core.Closure.Thms
 import Silmaril.Proofs.Languages.Python.Core.Closure.Call.Correspondence
 
@@ -40,7 +41,8 @@ variable {Continuation : Layout → Type} {fn : Function} {parameters : Paramete
   {callee : Entered Continuation fn.code.layout}
 
 theorem enter_spec (entered : enter fn parameters arguments heap caller stack = .ok callee) :
-    bindPositional parameters arguments (fn.freshFrame heap) = .ok callee.environment ∧
+    (∃ completed, completeArguments parameters fn.positionalDefaults arguments = .ok completed ∧
+      bindPositional parameters completed (fn.freshFrame heap) = .ok callee.environment) ∧
       callee.stack = caller :: stack :=
   Proofs.Languages.Python.Core.Closure.Call.enter_spec entered
 
@@ -48,23 +50,30 @@ theorem enter_captures_live (entered : enter fn parameters arguments heap caller
     {identity : CellId} (captured : identity ∈ fn.captures.toList) : identity.address < heap.next :=
   Proofs.Languages.Python.Core.Closure.Call.enter_captures_live entered captured
 
-/-- The fixed positional profile can enter whenever arity matches and all
-incoming cells are allocated. Incoming cells need not be bound. -/
-theorem enter_complete (arity : arguments.length = parameters.slots.length)
+/-- Entry succeeds after argument completion when all incoming cells are allocated. -/
+theorem enter_complete {completed : List Value}
+    (completion : completeArguments parameters fn.positionalDefaults arguments = .ok completed)
     (live : ∀ identity ∈ fn.captures.toList, identity.address < heap.next) :
     ∃ callee, enter fn parameters arguments heap caller stack = .ok callee :=
-  Proofs.Languages.Python.Core.Closure.Call.enter_complete arity live
+  Proofs.Languages.Python.Core.Closure.Call.enter_complete completion live
 
 theorem enter_capture (entered : enter fn parameters arguments heap caller stack = .ok callee)
     (index : Fin fn.code.layout.captures) : callee.environment.2.captures index = fn.captures.get index :=
-  congrFun (bind_preserves_ids (enter_spec entered).1).2 index
+  by
+    obtain ⟨_, _, bound⟩ := (enter_spec entered).1
+    exact congrFun (bind_preserves_ids bound).2 index
 
-/-- Successful entry reads each positional argument at its compiler-assigned slot. -/
+/-- Successful entry reads each completed argument at its compiler-assigned slot. -/
 theorem enter_read (entered : enter fn parameters arguments heap caller stack = .ok callee)
+    {completed : List Value}
+    (completion : completeArguments parameters fn.positionalDefaults arguments = .ok completed)
     {slot : ParameterSlot fn.code.layout} {value : Value}
-    (member : (slot, value) ∈ parameters.slots.zip arguments) :
-    callee.environment.2.read callee.environment.1 slot.slot = .ok value :=
-  bind_read (enter_spec entered).1 (Frame.fresh_owned_injective heap fn.captures.get) member
+    (member : (slot, value) ∈ parameters.slots.zip completed) :
+    callee.environment.2.read callee.environment.1 slot.slot = .ok value := by
+  obtain ⟨actual, checked, bound⟩ := (enter_spec entered).1
+  have same := Except.ok.inj (checked.symm.trans completion)
+  subst actual
+  exact bind_read bound (Frame.fresh_owned_injective heap fn.captures.get) member
 
 /-- Allocation and positional binding leave every pre-existing cell unchanged. -/
 theorem enter_preserves_cell (entered : enter fn parameters arguments heap caller stack = .ok callee)

@@ -81,6 +81,7 @@ abbrev CodeTable := Dispatch.CodeTable Body
 
 inductive Fault where
   | danglingCell (identity : CellId)
+  | invalidPositionalDefaults
   | missingCode (key : Nat)
   | layoutMismatch (expected actual : Layout)
   | unprofiledFreevars (ref : CodeRef)
@@ -227,6 +228,7 @@ def fault (heap : Heap) (stack : Stack) (error : Fault) : Transition :=
 def fail (heap : Heap) (stack : Stack) : Failure → Transition
   | .defined error => (none, .delivering heap stack (.error error))
   | .danglingCell identity => fault heap stack (.danglingCell identity)
+  | .invalidPositionalDefaults => fault heap stack .invalidPositionalDefaults
 
 def failDispatch (heap : Heap) (stack : Stack) : Dispatch.Failure → Transition
   | .call error => fail heap stack error
@@ -374,11 +376,10 @@ inductive Rejects (table : CodeTable) (arguments : List Value) (heap : Heap) :
   | dangling {fn : Function} {definition : Dispatch.Definition Body fn.code.layout} {identity : CellId}
       (found : Dispatch.Resolves table fn.code definition) (first : Call.firstDangling fn heap = some identity) :
       Rejects table arguments heap (.function fn) (.call (.danglingCell identity))
-  | arity {fn : Function} {definition : Dispatch.Definition Body fn.code.layout}
+  | arguments {fn : Function} {definition : Dispatch.Definition Body fn.code.layout} {error : Failure}
       (found : Dispatch.Resolves table fn.code definition) (live : Call.firstDangling fn heap = none)
-      (wrong : arguments.length ≠ definition.parameters.slots.length) :
-      Rejects table arguments heap (.function fn)
-        (.call (.defined (.positionalArity definition.parameters.slots.length arguments.length)))
+      (rejected : Call.completeArguments definition.parameters fn.positionalDefaults arguments = .error error) :
+      Rejects table arguments heap (.function fn) (.call error)
 
 /-- Assignment and successful return delivery use the same frame-write relation. -/
 inductive Stores (heap : Heap) (frame : Frame layout) (destination : Slot layout) (value : Value)

@@ -60,8 +60,12 @@ theorem enter_project (fn : Function) (parameters : Parameters fn.code.layout) (
   cases Call.firstDangling fn heap.project with
   | some identity => rfl
   | none =>
-    rw [← freshFrame_project fn heap, ← bindPositional_project]
-    cases bindPositional parameters arguments (freshFrame fn heap) <;> rfl
+    cases Call.completeArguments parameters fn.positionalDefaults arguments with
+    | error error => rfl
+    | ok completed =>
+      simp only [bind, Except.bind]
+      rw [← freshFrame_project fn heap, ← bindPositional_project]
+      cases bindPositional parameters completed (freshFrame fn heap) <;> rfl
 
 theorem dispatch_project (rows : CodeRows Body) (callee : Value) (arguments : List Value)
     (heap : HeapTable) (caller : Call.Saved Continuation) (stack : List (Call.Saved Continuation)) :

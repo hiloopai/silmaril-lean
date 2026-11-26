@@ -37,7 +37,9 @@ def enter (fn : Function) (parameters : Parameters fn.code.layout) (arguments : 
     (heap : HeapTable) : Except Closure.Failure (Snapshot fn.code.layout) :=
   match Call.firstDangling fn heap.project with
   | some identity => .error (.danglingCell identity)
-  | none => bindPositional parameters arguments (freshFrame fn heap)
+  | none => do
+    let completed ← Call.completeArguments parameters fn.positionalDefaults arguments
+    bindPositional parameters completed (freshFrame fn heap)
 
 structure Active (Body Continuation : Layout → Type) where
   layout : Layout

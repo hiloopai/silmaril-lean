@@ -44,6 +44,7 @@ def fault (heap : HeapTable) (stack : Stack) (error : Fault) : Transition :=
 def fail (heap : HeapTable) (stack : Stack) : Failure → Transition
   | .defined error => (none, .delivering heap stack (.error error))
   | .danglingCell identity => fault heap stack (.danglingCell identity)
+  | .invalidPositionalDefaults => fault heap stack .invalidPositionalDefaults
 
 def failDispatch (heap : HeapTable) (stack : Stack) : Closure.Dispatch.Failure → Transition
   | .call error => fail heap stack error

@@ -10,8 +10,8 @@ private abbrev codeLayout : Layout := ⟨0, 0, 1⟩
 private abbrev emptyLayout : Layout := ⟨0, 0, 0⟩
 private def captured : CellId := ⟨0⟩
 private def heap : Heap := ⟨1, fun _ => some (.int 7)⟩
-private def closure (key : Nat) : Value := .function ⟨⟨key, codeLayout⟩, #v[captured]⟩
-private def emptyClosure : Value := .function ⟨⟨2, emptyLayout⟩, #v[]⟩
+private def closure (key : Nat) : Value := .function ⟨⟨key, codeLayout⟩, #v[captured], []⟩
+private def emptyClosure : Value := .function ⟨⟨2, emptyLayout⟩, #v[], []⟩
 private def aliasSlot : Slot callerLayout := .local 0
 private def frame : Frame callerLayout := ⟨fun _ => some (closure 1), fun _ => captured, Fin.elim0⟩
 
@@ -62,7 +62,7 @@ example :
     advanceIn table (globals (closure 4)) (.running heap frame (.assertFreevars absent next) []) =
       some (some (.fault (.missingCode 4)), .faulted heap [] (.missingCode 4)) := rfl
 
-private def mismatched : Value := .function ⟨⟨1, emptyLayout⟩, #v[]⟩
+private def mismatched : Value := .function ⟨⟨1, emptyLayout⟩, #v[], []⟩
 example :
     advanceIn table (globals mismatched) (.running heap frame (.assertFreevars absent next) []) =
       some (some (.fault (.layoutMismatch emptyLayout codeLayout)),

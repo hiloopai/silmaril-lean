@@ -42,6 +42,25 @@ ordinary heap intact. A missing key or mismatched layout reports the
 exact module `publicationFault`. `run_publication` and
 `run_publication_fault` give the exact continuation or residual state.
 
+A module-level `def` or assigned lambda can save a trailing suffix of
+positional defaults consisting of integer, Boolean and `None` literals
+or live module reads that produce those scalars. Both runners evaluate
+the suffix once from left to right before establishing the new binding.
+A failed read retains the previous module binding, reached heap and
+prior receipts. The values travel on the function descriptor, so a
+saved alias stays independent of subsequent rebinding of the function
+name or the names read by its defaults.
+
+A direct seeded call uses this path when its live callee binding came
+from such a publication or an assignment alias in the same run. The
+ordinary and Finite executors use the shared positional binder to fill
+only omitted slots. An explicit `None` read occupies a supplied slot.
+The default evaluator does not execute calls. This profile covers
+fixed positional signatures and direct calls with scalar arguments, and
+uses the existing settlement of results, faults and exhausted prefixes.
+Run the differential controls with CPython 3.13.5 using
+`python3 -I tests/languages/python/source-module-entry/check_saved_defaults.py`.
+
 A direct named call to the typed exception-expectation helper can run a
 function published earlier in the same module execution. The callback
 must have zero positional parameters and receive zero arguments.
@@ -143,10 +162,12 @@ factory path for the lambda input.
 | 2 | `lambda1.py`, `lambda2.py` and `lambda3.py` construct factories with lambdas. | Both supplied references finish normally. The empty reference reaches the missing helper after binding the resulting closures. The first uses a fixed nested lambda chain. The second uses a checked final call to a lexical lambda and forwards its captured cell. The third needs module call lowering for literal `None` and a seeded factory argument profile that binds it. |
 | 3 | `nesting-plus-free-ref-to-global.py` assigns a declared global in an outer factory. | The two returned closures see the last write. The supplied references finish normally and the empty reference reaches the missing helper. The compiler needs declared-global writes and child lookup of that global. Executor namespace effects must survive return and failure. |
 | 4 | `testfunctions8.py` compares named call results in assertions. `testscope1.py` immediately calls a returned closure inside an assertion. | Both complete normally in every reference. They need checked call results as comparison operands. The first also uses a standalone Boolean assignment in the seeded namespace. The second needs a call-result callee and the assertion-message evaluation rule. |
-| 5 | `testfunctions11.py` omits two trailing literal positional defaults after six supplied values. | All references finish normally. It needs a saved-default positional binder, a conjunctive assertion, and a seeded ordinary discard with the completed argument list. Larger default and unpacking rows also require tuple, mapping or exception semantics. |
+| 5 | `testfunctions11.py` omits two trailing literal positional defaults after six supplied values. | All references finish normally. It needs a conjunctive assertion in the closure body. The fixed positional binder and seeded direct discard can consume the saved suffix. Larger default and unpacking rows also require tuple, mapping or exception semantics. |
 
-The two defaulted lambda rows need saved positional defaults and binding
-of omitted suffix slots. Their full supplied runs also need tuple results
+The two defaulted lambda rows combine fixed positional defaults with
+later signature and call features. A direct call of a defaulted function
+inside a seeded helper argument needs its own checked argument dispatch.
+Their full supplied runs need tuple results
 and tuple equality in the helper, variadic collection, and the
 `___assertRaises(TypeError, ...)` path with positional callback
 arguments. `lambda_stararg.py` additionally expands literal tuples in

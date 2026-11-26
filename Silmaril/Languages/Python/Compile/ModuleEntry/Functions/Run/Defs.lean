@@ -11,7 +11,7 @@ public import Silmaril.Languages.Python.Core.Module.Functions.Defs
 @[expose] public section
 namespace Silmaril.Languages.Python.Compile.ModuleEntry.Functions.Run
 
-open Source (Scope)
+open Source (Name Scope)
 open Compile.Closure (frameLayout)
 open Core.Closure (CodeRef Frame Heap Layout RuntimeError Slot Value)
 open Core.Closure.Executor (Body CodeTable Event)
@@ -28,6 +28,7 @@ inductive Instruction (scope : Scope) where
   | assertListConstruction (test : ListConstructionTest scope)
   | assertVarNames (receiver : String) (needle : List UInt32)
   | publish (name : String) (function : TopFunction)
+  | publishDefaults (name : String) (function : TopFunction) (operands : List (DefaultOperand scope))
   | call (destination : Core.Module.Functions.Destination) (name : String) (operands : List Core.Module.Functions.Operand)
   /-- The source plan places this call immediately after the matching publication. -/
   | adjacentKeywordDiscard (name : String) (value : Int)
@@ -91,7 +92,7 @@ def lowerInstructions {scope : Scope} (tree : Source.ScopeTree) (next : Nat) : L
     let some arguments := operands.mapM callArgument? | throw .callOperand
     let (instructions, blocks) ← lowerInstructions tree next rest
     return (.nestedCall (destination target) name arguments :: instructions, blocks)
-  | .define name _ child parameters code keywordDefault :: rest => do
+  | .define name _ child parameters code keywordDefault defaults :: rest => do
     let layout := frameLayout child.scope
     if captures : layout.captures = 0 then
       let nested := Compile.Closure.Link.linkBody (next + 1) tree (initializeKeywordDefault code keywordDefault)
@@ -101,8 +102,10 @@ def lowerInstructions {scope : Scope} (tree : Source.ScopeTree) (next : Nat) : L
       let profiled := match keywordDefault with
         | none => ((root.withFreeVars tree).withCellVars tree).withCodeNames tree
         | some _ => root
-      return (.publish name ⟨⟨next, layout⟩, captures⟩ :: instructions,
-        profiled :: (nested.children ++ blocks))
+      let function : TopFunction := ⟨⟨next, layout⟩, captures⟩
+      let instruction := if defaults.isEmpty then Instruction.publish name function
+        else Instruction.publishDefaults name function defaults
+      return (instruction :: instructions, profiled :: (nested.children ++ blocks))
     else throw (.incomingCaptures child.scope.context.path)
 
 structure Compiled (source : Source.Module) where
@@ -122,10 +125,7 @@ def compile (source : Source.Module) : Except CompileError (Compiled source) := 
   let table ← (Compile.Closure.Run.lowerTable linked).mapError .functionBody
   return ⟨checked, instructions, linked, table.val, table.property⟩
 
-def embed : Core.Module.Value → Value
-  | .int value => .int value
-  | .bool value => .bool value
-  | .none => .none
+def embed : Core.Module.Value → Value := Value.ofScalar
 
 def seed (globals : Core.Module.Globals) (heap : Heap := .empty) : Session :=
   ⟨fun name => (globals.lookup name).map embed, heap⟩
@@ -146,6 +146,28 @@ def scalar? : Value → Option Core.Module.Value
   | .bool value => some (.bool value)
   | .none => some .none
   | .function _ => none
+
+/-- Evaluate default operands in the parent namespace and stop at the
+first failed read. The result contains the exact scalar tags. -/
+def captureDefaults {scope : Scope} {failure : Type}
+    (lookup : Name → Except failure Core.Module.Value) :
+    List (DefaultOperand scope) → Except failure (List Core.Module.Value)
+  | [] => .ok []
+  | .literal value :: rest => (captureDefaults lookup rest).map (value :: ·)
+  | .read name _ :: rest => do
+    let value ← lookup name
+    let saved ← captureDefaults lookup rest
+    return value :: saved
+
+def readDefault (session : Session) (name : Name) : Except Completion Core.Module.Value := do
+  let some value := session.globals name | throw (.raised (.nameError name))
+  let some scalar := scalar? value | throw .scalarProfile
+  return scalar
+
+def publishDefaults {scope : Scope} (session : Session) (table : CodeTable) (name : Name)
+    (function : TopFunction) (operands : List (DefaultOperand scope)) : Except Completion Session := do
+  let saved ← captureDefaults (readDefault session) operands
+  (session.publishWithDefaults table name function saved).mapError .codeFault
 
 def evaluate {scope : Scope} (session : Session) : Operand scope → Except Completion Value
   | .integer value => .ok (.int value)
@@ -262,6 +284,9 @@ def advance {scope : Scope} (table : CodeTable) : State scope → List Event × 
     | .publish name function => ([], match session.publish table name function with
       | .ok updated => .ready updated rest
       | .error fault => .finished session (.codeFault fault))
+    | .publishDefaults name function operands => ([], match publishDefaults session table name function operands with
+      | .ok updated => .ready updated rest
+      | .error error => .finished session error)
     | .call destination name arguments => ([], .calling (session.prepareCall destination (.readGlobal name) arguments) rest)
     | .adjacentKeywordDiscard name value =>
       ([], .calling (session.prepareCall .discard (.readGlobal name) [.literal (.int value)]) rest)

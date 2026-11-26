@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Languages.Python.Core.Closure.Call.Defs
+public import Silmaril.Languages.Python.Core.Closure.Call.PositionalDefaults.Completion
 public import Silmaril.Languages.Python.Core.Closure.Thms
 
 public section
@@ -182,17 +183,21 @@ variable {Continuation : Layout → Type} {fn : Function} {parameters : Paramete
   {callee : Entered Continuation fn.code.layout}
 
 theorem enter_spec (entered : enter fn parameters arguments heap caller stack = .ok callee) :
-    bindPositional parameters arguments (fn.freshFrame heap) = .ok callee.environment ∧
+    (∃ completed, completeArguments parameters fn.positionalDefaults arguments = .ok completed ∧
+      bindPositional parameters completed (fn.freshFrame heap) = .ok callee.environment) ∧
       callee.stack = caller :: stack := by
   cases valid : firstDangling fn heap with
   | some identity => simp [enter, valid] at entered
   | none =>
-    cases binding : bindPositional parameters arguments (fn.freshFrame heap) with
-    | error error => simp [enter, valid, binding, Except.map] at entered
-    | ok initialized =>
-      simp only [enter, valid, binding, Except.map, Except.ok.injEq] at entered
-      cases entered
-      exact ⟨rfl, rfl⟩
+    cases completion : completeArguments parameters fn.positionalDefaults arguments with
+    | error error => simp [enter, valid, completion, Except.bind] at entered
+    | ok completed =>
+      cases binding : bindPositional parameters completed (fn.freshFrame heap) with
+      | error error => simp [enter, valid, completion, binding, Except.bind, Except.map] at entered
+      | ok initialized =>
+        simp only [enter, valid, completion, binding, Except.bind, Except.map, Except.ok.injEq] at entered
+        cases entered
+        exact ⟨⟨completed, rfl, binding⟩, rfl⟩
 
 theorem enter_captures_live (entered : enter fn parameters arguments heap caller stack = .ok callee)
     {identity : CellId} (captured : identity ∈ fn.captures.toList) : identity.address < heap.next := by
@@ -205,7 +210,8 @@ theorem enter_captures_live (entered : enter fn parameters arguments heap caller
   have outside : heap.next ≤ identity.address := by omega
   exact (List.find?_eq_none.mp valid identity captured) (by simpa using outside)
 
-theorem enter_complete (arity : arguments.length = parameters.slots.length)
+theorem enter_complete {completed : List Value}
+    (completion : completeArguments parameters fn.positionalDefaults arguments = .ok completed)
     (live : ∀ identity ∈ fn.captures.toList, identity.address < heap.next) :
     ∃ callee, enter fn parameters arguments heap caller stack = .ok callee := by
   have valid : firstDangling fn heap = none := by
@@ -216,9 +222,9 @@ theorem enter_complete (arity : arguments.length = parameters.slots.length)
       ((fn.freshFrame heap).2.owned index).address < (fn.freshFrame heap).1.next := by
     change heap.next + index.val < heap.next + fn.code.layout.owned
     exact Nat.add_lt_add_left index.isLt _
-  obtain ⟨initialized, writes⟩ := writes_live (parameters.slots.zip arguments) _ freshlyAllocated
-  have bound := bind_iff.mpr ⟨arity, writes⟩
-  exact ⟨⟨initialized, caller :: stack⟩, by simp [enter, valid, bound, Except.map]⟩
+  obtain ⟨initialized, writes⟩ := writes_live (parameters.slots.zip completed) _ freshlyAllocated
+  have bound := bind_iff.mpr ⟨completeArguments_length completion, writes⟩
+  exact ⟨⟨initialized, caller :: stack⟩, by simp [enter, valid, completion, bound, Except.bind, Except.map]⟩
 
 theorem enter_preserves_cell (entered : enter fn parameters arguments heap caller stack = .ok callee)
     {identity : CellId} (live : identity.address < heap.next) :
@@ -228,7 +234,8 @@ theorem enter_preserves_cell (entered : enter fn parameters arguments heap calle
     intro equal
     have address : identity.address = heap.next + index.val := congrArg CellId.address equal
     omega
-  exact (writes_preserve_lookup (bind_iff.mp (enter_spec entered).1).2 outside).trans
+  obtain ⟨_, _, bound⟩ := (enter_spec entered).1
+  exact (writes_preserve_lookup (bind_iff.mp bound).2 outside).trans
     (Heap.lookup_reserve_old heap fn.code.layout.owned identity live)
 
 end Silmaril.Proofs.Languages.Python.Core.Closure.Call
