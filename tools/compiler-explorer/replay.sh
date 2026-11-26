@@ -45,23 +45,37 @@ if [ -z "$selection" ]; then
   exit 1
 fi
 mapfile -t selected <<< "$selection"
-pids=()
-failed=0
-wait_batch() {
-  for pid in "${pids[@]}"; do
-    if ! wait "$pid"; then failed=1; fi
-  done
-  pids=()
-}
+queued=${#selected[@]}
+# The validated decimals have no leading zeros. Compare widths, then digits
+# in ASCII order, so even a limit beyond Bash's integer range clamps safely.
+if (( ${#jobs} > ${#queued} )) ||
+  { (( ${#jobs} == ${#queued} )) && test "$jobs" \> "$queued"; }; then
+  jobs=$queued
+fi
+
+# Discovery can return the longest replay last. Start it first and let xargs
+# refill each slot as soon as its worker exits.
+ordered=()
 for m in "${selected[@]}"; do
-  (
-    start=$(date +%s)
-    timeout 1200 env -u SILMARIL_REPLAY_TARGETS SILMARIL_REPLAY_MODULE="$m" \
-      "$LAKE" env lean -DwarningAsError=true "$driver"
-    echo "kernel replay $m: $(( $(date +%s) - start )) s"
-  ) &
-  pids+=("$!")
-  if (( ${#pids[@]} >= jobs )); then wait_batch; fi
+  if [[ "$m" == CompilesToExamples.Explorer.C2C.Runs ]]; then
+    ordered=("$m" "${ordered[@]}")
+  else
+    ordered+=("$m")
+  fi
 done
-wait_batch
-exit "$failed"
+printf '%s\0' "${ordered[@]}" |
+  xargs -0 -n 1 -P "$jobs" bash -c '
+    lake=$1
+    driver=$2
+    m=$3
+    start=$(date +%s)
+    if timeout 1200 env -u SILMARIL_REPLAY_TARGETS SILMARIL_REPLAY_MODULE="$m" \
+      "$lake" env lean -DwarningAsError=true "$driver"; then
+      echo "kernel replay $m: $(( $(date +%s) - start )) s"
+    else
+      status=$?
+      echo "kernel replay $m failed (exit $status)" >&2
+      # A worker exit of 255 would make xargs abandon the remaining modules.
+      exit 1
+    fi
+  ' replay "$LAKE" "$driver" || exit 1
