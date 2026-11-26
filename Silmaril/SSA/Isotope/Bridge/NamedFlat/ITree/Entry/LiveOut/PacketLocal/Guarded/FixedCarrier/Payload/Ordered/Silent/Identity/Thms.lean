@@ -9,6 +9,7 @@ public section
 namespace Silmaril.Isotope.Bridge.NamedFlat.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.OrderedLiveOut.Identity
 
 open Silmaril.SSA.LambdaRTL (CFG)
+open Silmaril.Elgot (liftPure)
 open Silmaril.Elgot.ITree (Tree)
 open LambdaSSA (Flat FiniteCFG)
 open LambdaSSA.Semantics (Env extend)
@@ -30,6 +31,21 @@ attribute [local instance] requestTypes
 
 universe v
 variable {slots : List Bool}
+
+theorem restore_block {K : Type 1} (keys : Fin ((layout slots).length + 2) ≃ K)
+    (i : Fin (layout slots).length) (input : Value Runtime) :
+    restoreAt keys (i.val, input) = (keys (i.castAdd 2), input) :=
+  Silmaril.Proofs.Isotope.Bridge.NamedFlat.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.OrderedLiveOut.Identity.restore_block keys i input
+
+theorem row_replay {κ K : Type 1} {P : FlatInstitution.Signature.{0, 0} κ}
+    (names : Fin ((layout slots).length + 2) ≃ K) (i : Fin (layout slots).length)
+    (row : Row P.Instr (layout slots) ((layout slots).get i))
+    (literals : P.Instr → Option Bool) (agrees : row.Agrees literals) (caller : Payload Bit)
+    (packet : Payload ((layout slots).get i)) (env : Env Runtime) :
+    (row.step caller packet >>= liftPure (Sum.map id (encodePhase names))) =
+      (region (rawWithLiterals literals) (extend env (.pair (encodeValue ULift.up packet.val) .unit)) row.code.erase >>=
+        fun q => pure (.inr (restoreAt names q))) :=
+  Silmaril.Proofs.Isotope.Bridge.NamedFlat.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.OrderedLiveOut.Identity.row_replay names i row literals agrees caller packet env
 
 section Named
 

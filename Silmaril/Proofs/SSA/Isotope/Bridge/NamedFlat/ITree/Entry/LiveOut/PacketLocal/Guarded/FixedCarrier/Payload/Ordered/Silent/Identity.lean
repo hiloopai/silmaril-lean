@@ -63,7 +63,7 @@ private def phaseAt {L : List Syntax.Ty} (q : Packet L) : Phase L := ⟨.inr q�
 private theorem inner_jump {i j : Fin (layout slots).length} {typed : (layout slots).get j = (layout slots).get i}
     (jump : p i = .jump j typed) (value : Payload ((layout slots).get i)) :
     inner (phaseAt ⟨i, value⟩) = pure (.inr (phaseAt (jumpPacket j typed value))) := by
-  simp [partitionStep, phaseAt, Profile.rawStep, Profile.isJump, jump]
+  simp [partitionStep, phaseAt, Profile.rawStep, Profile.isJump, jump, Row.step]
 
 private theorem follow {fuel : Nat} {i : Fin (layout slots).length} {result : Result (layout slots).length 1}
     (found : p.scan fuel i = some result) :
@@ -89,13 +89,13 @@ private theorem follow {fuel : Nat} {i : Fin (layout slots).length} {result : Re
         simpa [Profile.silent, LambdaSSA.UB.Overlay.Shape.DependentRequestTree.NativeExtraction.OpenOperands.Silent.Table.labelRows, row] using found.symm
       refine ⟨i, rfl, terminal, fun value => ?_⟩
       rw [iter_partition_outer _ _ _ (by simp [phaseAt, Profile.isJump, row])]
-      simp [phaseAt, Profile.rawStep, row]
+      simp [phaseAt, Profile.rawStep, row, Row.step]
     | ret tag bit ty fields =>
       have terminal : result = .ret i 0 := by
         simpa [Profile.silent, LambdaSSA.UB.Overlay.Shape.DependentRequestTree.NativeExtraction.OpenOperands.Silent.Table.labelRows, row] using found.symm
       refine ⟨i, rfl, terminal, fun value => ?_⟩
       rw [iter_partition_outer _ _ _ (by simp [phaseAt, Profile.isJump, row])]
-      simp [phaseAt, Profile.rawStep, row]
+      simp [phaseAt, Profile.rawStep, row, Row.step]
 
 private theorem exhausted {i : Fin (layout slots).length} (none : p.scan (layout slots).length i = none)
     (value : Payload ((layout slots).get i)) : iter inner (phaseAt ⟨i, value⟩) = diverge := by
@@ -274,12 +274,8 @@ theorem roots (selected : Tag → Bool) : RootAgrees (p.endpoint selected) calle
         (fun reply => p.tree caller ⟨routes.dest reply.1,
           cast (congrArg Payload (routes.typed reply.1).symm) reply.2⟩)) (arg_eval eq caller input).symm
 
-private def encodePhase {K : Type 1} (keys : Fin ((layout slots).length + 2) ≃ K) (phase : Phase (layout slots)) : K × Value Runtime :=
-  match phase.down with
-  | .inl packet => (keys (packet.1.natAdd (layout slots).length), packetValue packet)
-  | .inr q => (keys (q.1.castAdd 2), .pair (encodeValue ULift.up q.2.val) .unit)
 
-private theorem restore_block {K : Type 1} (keys : Fin ((layout slots).length + 2) ≃ K)
+theorem restore_block {K : Type 1} (keys : Fin ((layout slots).length + 2) ≃ K)
     (i : Fin (layout slots).length) (input : Value Runtime) :
     restoreAt keys (i.val, input) = (keys (i.castAdd 2), input) := by
   unfold restoreAt
@@ -321,6 +317,38 @@ private theorem ret_eval {A : Syntax.Ty} {bit : Bool} (literals : Φ → Option 
   rw [cast_value (exit_type (A := PayloadType) i).symm]
   exact fields.eval_row_at literals agree i env packet _
 
+theorem row_replay {κ K : Type 1} {P : FlatInstitution.Signature.{0, 0} κ}
+    (names : Fin ((layout slots).length + 2) ≃ K) (i : Fin (layout slots).length)
+    (row : Row P.Instr (layout slots) ((layout slots).get i))
+    (literals : P.Instr → Option Bool) (agrees : row.Agrees literals) (caller : Payload Bit)
+    (packet : Payload ((layout slots).get i)) (env : Env Runtime) :
+    (row.step caller packet >>= liftPure (Sum.map id (encodePhase names))) =
+      (region (rawWithLiterals literals) (extend env (.pair (encodeValue ULift.up packet.val) .unit)) row.code.erase >>=
+        fun q => pure (.inr (restoreAt names q))) := by
+  cases row with
+  | jump j typed =>
+    simp only [Row.step, Row.code, jump_eval, pure_bind, liftPure, Function.comp_apply, Sum.map_inr,
+      encodePhase, jumpPacket, restore_block]
+    rw [cast_value typed.symm]
+  | ret tag bit eq fields =>
+    have agrees : fields.Agrees literals := agrees
+    simp only [Row.step, Row.code, ret_eval literals tag eq fields agrees caller packet env,
+      activeStep, pure_bind, liftPure, Function.comp_apply, Sum.map_inr, encodePhase, restore_exit]
+    rfl
+  | request op eq routes =>
+    let incoming := cast (congrArg Payload eq) packet
+    have run := Recognize.eval_request_at (P := P) (opcode := op) ULift.up query (rawWithLiterals literals) routes.dest routes.fallback
+      (request_agreement literals op) env incoming
+    change region (rawWithLiterals literals) (extend env (.pair (encodeValue ULift.up incoming.val) .unit))
+      (Recognize.requestAt op routes.dest routes.fallback).erase = _ at run
+    have same : incoming.val = packet.val := cast_value eq packet
+    rw [same] at run
+    simp only [Row.step, Row.code, run, activeStep, bind_assoc, pure_bind, liftPure, Function.comp_apply,
+      Sum.map_inr, encodePhase, restore_block]
+    congr 1
+    funext r
+    rw [cast_value (routes.typed r.down.1).symm]
+
 section Named
 
 variable {κ V K : Type 1} [DecidableEq V] [DecidableEq K]
@@ -357,29 +385,8 @@ private theorem step_eval (phase : Phase (layout slots)) :
     unfold mapReturn
     rw [ck.readback.block_eval instr store env]
     simp only [Identity.Profile.expected, bind_assoc]
-    cases row : ck.profile i with
-    | jump j typed =>
-      simp only [Profile.rawStep, row, Row.code, jump_eval, pure_bind, liftPure, Function.comp_apply, Sum.map_inr,
-        Sum.elim_inr, encodePhase, jumpPacket, restore_block]
-      rw [cast_value typed.symm]
-    | ret tag bit eq fields =>
-      have agrees : fields.Agrees literals := by simpa [row, Row.Agrees] using ck.literals_agree i
-      simp only [Profile.rawStep, row, Row.code, ret_eval literals tag eq fields agrees entry packet env,
-        activeStep, pure_bind, liftPure, Function.comp_apply, Sum.map_inr, Sum.elim_inr, encodePhase, restore_exit]
-      rfl
-    | request op eq routes =>
-      let incoming := cast (congrArg Payload eq) packet
-      have run := Recognize.eval_request_at (P := P) (opcode := op) ULift.up query instr routes.dest routes.fallback
-        (request_agreement literals op) env incoming
-      change region instr (extend env (.pair (encodeValue ULift.up incoming.val) .unit))
-        (Recognize.requestAt op routes.dest routes.fallback).erase = _ at run
-      have same : incoming.val = packet.val := cast_value eq packet
-      rw [same] at run
-      simp only [Profile.rawStep, row, Row.code, run, activeStep, bind_assoc, pure_bind, liftPure, Function.comp_apply,
-        Sum.map_inr, Sum.elim_inr, encodePhase, restore_block]
-      congr 1
-      funext r
-      rw [cast_value (routes.typed r.down.1).symm]
+    simp only [pure_bind, Sum.elim_inr, Function.comp_apply]
+    exact row_replay names i (ck.profile i) literals (ck.literals_agree i) entry packet env
 
 theorem named_tree (seedValue : input seed = encodeValue ULift.up entry.val) :
     LiveOut.observeRaw instr (I).exits (fun _ => [first, second]) source input = ck.profile.tree entry ⟨0, entry⟩ :=

@@ -1559,6 +1559,26 @@ same effectful reply position reaches an ordered exit or a silent cycle
 at the same label depending on the returned packet.
 [Packet-indexed reachable product][ssa-ub-packet-dispatch-product]
 
+`OrderedLiveOut.PacketDispatch.admit?` extends exact named readback to a
+Bit case on the decoded block parameter. A leading typed literal assignment
+supplies one Bit through the existing `rawWithLiterals` interpretation,
+which emits no request for the recognized literal opcode. Each arm sends
+either that Bit or the unchanged input Bit to a declared internal Bit label.
+The actual packet-local versioner checks the types. The recognizer then
+checks the complete numbered decoder, discriminator, branches and bindings.
+
+`Checked.observe_normalized` relates the original mutable runner to
+the full-configuration scan at the agreed caller seed. The scan retains
+the packet that reached the exposed return so the ordered two-Bit
+projection and final handler state are preserved. At a selected exit,
+the existing decoration hides the return payload. The regression
+compares a revisit with a changed Bit that returns after a state-changing
+reply against a repeated full configuration that silently diverges.
+An unsupported decoder or target yields unknown. The packed dispatcher
+product compares unit return payloads. The named observation theorem
+retains both live-out fields.
+[Named Bit dispatch][ssa-ub-named-packet-dispatch]
+
 ## Coverage and gaps
 
 | Language | Refinement and institutions in the repository | UB construction and remaining hypotheses |
@@ -1736,6 +1756,7 @@ lake build --wfail +Silmaril.SSA.Isotope.Institution.UndefinedBehaviour.LambdaSS
 [ssa-ub-named-ordered-liveout-silent]: ../../Silmaril/SSA/Isotope/Bridge/NamedFlat/ITree/Entry/LiveOut/PacketLocal/Guarded/FixedCarrier/Payload/Ordered/Silent/Thms.lean
 [ssa-ub-named-ordered-identity]: ../../Silmaril/SSA/Isotope/Bridge/NamedFlat/ITree/Entry/LiveOut/PacketLocal/Guarded/FixedCarrier/Payload/Ordered/Silent/Identity/Thms.lean
 [ssa-ub-open-guarded-silent]: ../../Silmaril/SSA/Isotope/Institution/UndefinedBehaviour/LambdaSSA/Overlay/Shape/Separation/DependentRequestTree/Native/OpenOperands/Step/Silent/Thms.lean
+[ssa-ub-named-packet-dispatch]: ../../Silmaril/SSA/Isotope/Bridge/NamedFlat/ITree/Entry/LiveOut/PacketLocal/Guarded/FixedCarrier/Payload/Ordered/Silent/Dispatch/Thms.lean
 [ssa-ub-packet-dispatch]: ../../Silmaril/SSA/Isotope/Institution/UndefinedBehaviour/LambdaSSA/Overlay/Shape/Separation/DependentRequestTree/Native/OpenOperands/Step/Silent/Dispatch/Thms.lean
 [ssa-ub-packet-dispatch-product]: ../../Silmaril/SSA/Isotope/Institution/UndefinedBehaviour/LambdaSSA/Overlay/Shape/Separation/DependentRequestTree/Native/OpenOperands/Step/Silent/Dispatch/Product/Thms.lean
 [ssa-ub-open-ranks]: ../../Silmaril/SSA/Isotope/Bridge/Acyclic/Positional/Rank/Thms.lean

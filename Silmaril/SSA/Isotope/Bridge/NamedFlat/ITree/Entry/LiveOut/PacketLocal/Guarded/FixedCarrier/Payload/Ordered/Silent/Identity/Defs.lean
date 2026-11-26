@@ -180,14 +180,18 @@ def activeStep {Φ : Type} {R : List Syntax.Ty} {A : Syntax.Ty} (row : Row Φ R 
       let q := r.down
       pure (.inr ⟨.inr ⟨routes.dest q.1, cast (congrArg Syntax.Payload (routes.typed q.1).symm) q.2⟩⟩)
 
+def Row.step {Φ : Type} {R : List Syntax.Ty} {i : Fin R.length} (row : Row Φ R (R.get i))
+    (caller : Syntax.Payload Bit) (packet : Syntax.Payload (R.get i)) :
+    Tree (Request Φ) (Transfer Runtime ⊕ Phase R) :=
+  match row with
+  | .jump j h => pure (.inr ⟨.inr (jumpPacket j h packet)⟩)
+  | row => activeStep row caller packet
+
 def Profile.rawStep {Φ : Type} {slots : List Bool} (p : Profile Φ slots) (caller : Syntax.Payload Bit)
     (phase : Phase (layout slots)) : Tree (Request Φ) (Transfer Runtime ⊕ Phase (layout slots)) :=
   match phase.down with
   | .inl result => pure (.inl (packedReturn result))
-  | .inr ⟨i, packet⟩ =>
-    match p i with
-    | .jump j h => pure (.inr ⟨.inr (jumpPacket j h packet)⟩)
-    | row => activeStep row caller packet
+  | .inr ⟨i, packet⟩ => (p i).step caller packet
 
 def Profile.isJump {Φ : Type} {slots : List Bool} (p : Profile Φ slots) (phase : Phase (layout slots)) : Bool :=
   match phase.down with
@@ -261,5 +265,10 @@ def compare? [DecidableEq P.Instr] {literals : P.Instr → Option Bool}
         raw raw' outputCodes caller caller replyPackets configs configs
     else none
   | _, _ => none
+
+def encodePhase {K : Type 1} (keys : Fin ((layout slots).length + 2) ≃ K) (phase : Phase (layout slots)) : K × Value Runtime :=
+  match phase.down with
+  | .inl packet => (keys (packet.1.natAdd (layout slots).length), PayloadRecognition.packetValue packet)
+  | .inr q => (keys (q.1.castAdd 2), .pair (Recognize.encodeValue ULift.up q.2.val) .unit)
 
 end Silmaril.Isotope.Bridge.NamedFlat.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.OrderedLiveOut.Identity

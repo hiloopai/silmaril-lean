@@ -2,6 +2,8 @@ module
 
 import Silmaril.SSA.Isotope.Bridge.NamedFlat.ITree.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.Payload.Ordered.Silent.Thms
 import Silmaril.SSA.Isotope.Bridge.NamedFlat.ITree.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.Payload.Ordered.Silent.Identity.Thms
+import Silmaril.SSA.Isotope.Bridge.NamedFlat.ITree.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.Payload.Ordered.Silent.Dispatch.Thms
+import Silmaril.SSA.Isotope.Institution.UndefinedBehaviour.LambdaSSA.Overlay.Shape.Separation.DependentRequestTree.Native.OpenOperands.Step.Silent.Dispatch.Product.Thms
 import Mathlib.Tactic.FinCases
 import Silmaril.SSA.Isotope.Bridge.NamedFlat.ITree.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.LiveBit.Thms
 import Silmaril.SSA.Isotope.Bridge.NamedFlat.ITree.Entry.LiveOut.PacketLocal.Guarded.FixedCarrier.Payload.Recognize.Thms
@@ -1318,6 +1320,119 @@ example : compare? (inferred? true) (inferred? false)
   exact .inr (.inl rfl)
 
 end IdentityTransfer
+
+namespace PacketDispatch
+
+open FixedCarrier.OrderedLiveOut (fields PayloadType)
+open FixedCarrier.OrderedLiveOut.Identity (layout observeNamedNumbered)
+open FixedCarrier.OrderedLiveOut.PacketDispatch
+
+private abbrev slots : List Bool := [true, true, false]
+private abbrev L := layout slots
+private abbrev Labels := ULift.{1} (Fin 6)
+private def keys : Fin 6 ≃ Labels := Equiv.ulift.symm
+
+-- A successful reply supplies false to row 1. The finishing variant
+-- revisits row 1 with true before returning from row 2.
+private def source (cycle : Bool) (target : Fin 6 := 2) (wrongDecoder : Bool := false) :
+    CFG Reg Labels signature.Instr :=
+  let branch (discriminator : Reg) := .term (.case (.val (.var discriminator))
+    .left (.br (keys 1) (.var .alt))
+    .right (.br (keys target) (.var .again)))
+  ⟨.term (.br (keys 0) (.var .seed)),
+    [(keys 0, ⟨.arg, .term (.case (.app .poll (.var .arg))
+      .again (.br (keys 1) (.var .again))
+      .rest (.case (.val (.var .rest))
+        .left (.br (keys 3) (.var .left))
+        .tail (.case (.val (.var .tail))
+          .right (.br (keys 3) (.var .right)) .impossible (.br (keys 3) .unit))))⟩),
+     (keys 1, ⟨.again, .let1 .alt (.app (.literal (!cycle)) .unit)
+       (branch (if wrongDecoder then .alt else .again))⟩),
+     (keys 2, ⟨.left, .let1 .alt (.app (.literal true) .unit) (.term (.br (keys 4) .unit))⟩),
+     (keys 3, ⟨.arg, .let1 .alt (.app (.literal true) .unit)
+       (.let1 .left (.app (.literal false) .unit) (.term (.br (keys 5) .unit)))⟩)]⟩
+
+private def inferred? (cycle : Bool) (target : Fin 6 := 2) (wrongDecoder : Bool := false) :=
+  admit? (P := signature) (slots := slots) (seed := Reg.seed) (first := Reg.alt) (second := Reg.left)
+    (names := keys) (source cycle target wrongDecoder) literalValues
+
+private def checked (cycle : Bool) :
+    FixedCarrier.OrderedLiveOut.PacketDispatch.Checked (P := signature) (slots := slots) (seed := Reg.seed)
+      (first := Reg.alt) (second := Reg.left) (names := keys) (source cycle) literalValues :=
+  (inferred? cycle).get (by cases cycle <;> decide +kernel)
+
+private abbrev configurations : ConfigurationEnumeration L := IdentityTransfer.configurations
+
+private def handler : Syntax.StatePrimitives signature.Instr Nat :=
+  fun _ _ n => if n = 0 then .ret (pack (L := Replies) ⟨0, leftBit⟩) 1 else .fault n
+
+private noncomputable def observe (cycle : Bool) (selected : Tag → Bool) :=
+  observeNamedNumbered (source cycle) keys .alt .left seedStore literalValues handler 0 selected
+
+private theorem afterReply (cycle : Bool) (selected : Tag → Bool) :
+    observe cycle selected =
+      (checked cycle).profile.observeAt configurations leftBit ⟨1, leftBit⟩ handler 1 selected := by
+  unfold observe
+  rw [(checked cycle).observe_normalized seedStore leftBit configurations rfl,
+    (checked cycle).profile.observe_step leftBit configurations ⟨0, leftBit⟩]
+  cases cycle <;> rfl
+
+private theorem loop_diverges : observe true noSelection = WithTop.some {Outcome.diverge} := by
+  rw [afterReply, (checked true).profile.observe_step leftBit configurations ⟨1, leftBit⟩]
+  rfl
+
+private theorem changed_returns : observe false noSelection =
+    WithTop.some {Outcome.ret (0 : Tag) (projected 0 true true).2.val (1 : Nat)} := by
+  rw [afterReply, (checked false).profile.observe_step leftBit configurations ⟨1, leftBit⟩]
+  rfl
+
+private theorem changed_selected : observe false firstSelected = ⊤ := by
+  rw [afterReply, (checked false).profile.observe_step leftBit configurations ⟨1, leftBit⟩]
+  rfl
+
+example : ¬ observe true noSelection ≤ observe false noSelection := by
+  rw [loop_diverges, changed_returns]
+  simp [WithTop.coe_le_coe]
+
+example : ¬ observe false firstSelected ≤ observe true noSelection := by
+  rw [changed_selected, loop_diverges]
+  simp
+
+example : ((checked false).profile.control noSelection).step leftBit ⟨1, leftBit⟩ = .inl ⟨1, rightBit⟩ := by
+  rfl
+
+example : ((checked false).profile.control noSelection).step leftBit ⟨1, rightBit⟩ = .inl ⟨2, rightBit⟩ := by
+  rfl
+
+example : ((checked true).profile.control noSelection).step leftBit ⟨1, leftBit⟩ = .inl ⟨1, leftBit⟩ := by
+  rfl
+
+private abbrev native (cycle : Bool) := (checked cycle).profile.control noSelection
+
+private def callers : CallerEnumeration Bit :=
+  ⟨[leftBit, rightBit], by
+    rintro ⟨x, typed⟩
+    cases typed with
+    | inl h => cases h; exact List.Mem.head _
+    | inr h => cases h; exact List.Mem.tail _ (List.Mem.head _)⟩
+
+-- The unit-return packed view is separated by the same control mismatch.
+example : (native true).checkEntries? (native false) (native true).native (native false).native
+    callers id id replies configurations configurations = some false := by
+  rfl
+
+-- The alternate discriminator passes typed packet-local admission.
+example : (PacketLocal.admit (P := signature) (Recognize.numberedInterface Reg.seed keys)
+    (FixedCarrier.OrderedLiveOut.fields Reg.alt Reg.left) (source false 2 true)
+    (FixedCarrier.OrderedLiveOut.Identity.argumentType (slots := slots))).isSome = true := by
+  decide +kernel
+
+-- Exact readback declines the changed discriminator and invalid targets.
+example : (inferred? false 2 true).isNone = true := by decide +kernel
+example : (inferred? false 4).isNone = true := by decide +kernel
+example : (inferred? false 3).isNone = true := by decide +kernel
+
+end PacketDispatch
 
 end Ordered
 
