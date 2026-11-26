@@ -1,6 +1,7 @@
 module
 
-import Silmaril.Wasm.Component.SyncImportITree.Thms
+import Silmaril.Wasm.Component.Reference.SyncImportRun.Thms
+import Silmaril.Wasm.Component.Reference.SyncImportRun.Fixture.Thms
 import Silmaril.Wasm.Component.Reference.Litmus.Thms
 import Silmaril.Wasm.Abstract.BodyTrace.Thms
 
@@ -8,6 +9,7 @@ open Silmaril.Games Silmaril.Games.Abstract Silmaril.Elgot
 open Silmaril.Wasm.Game
 open Silmaril.Wasm.Component.Reference Silmaril.Wasm.Component.Reference.Litmus
 open Silmaril.Wasm.Component.SyncImportITree
+open Silmaril.Wasm.Component.Reference.SyncImportRun.Fixture
 open Silmaril.Wasm.Execution.Core (Val Result vals)
 open Silmaril.Wasm.SingleThreaded (decompose? decompose?_top resumeResult neverFail hostArity?)
 
@@ -141,5 +143,28 @@ example :
       seqBehavioursI Core3Adder.first.prof (Host.ofEmbedder embC) 10 fwdS.toRef fwdS.imports
         [("f", [toRefVal (.u32 3)])] "f" [toRefVal (.u32 3)] :=
   ⟨replies 13, fwd_seq_refS⟩
+
+open Silmaril.Wasm.Component (Calls Instantiates) in
+open Silmaril.Wasm.Component.Machine Silmaril.Wasm.Component.Runtime in
+open Silmaril.Wasm.SingleThreaded (profile) in
+open Silmaril.Proofs.Wasm.Component.Reference (Store.mapH) in
+-- The independently constructed tree path becomes a stock call when the
+-- counter host admits its reply.
+example {booted : Config (core3P (profile neverFail)) Nat}
+    {exports : List (String × FuncId)} {f : FuncId}
+    (init : let h := answerHostS (profile neverFail) fwdC
+      Instantiates .deterministic h.hr h.dispatch
+        (Config.init (hostFuncs 0 fwdS.imports CStore.empty) 10)
+        fwdS.toRef (importArgs fwdS.imports) booted ⟨0⟩ exports)
+    (lookup : exports.lookup "f" = some f) :
+    let h := answerHostS (profile neverFail) fwdC
+    ∃ finished,
+      Calls .deterministic h.hr h.dispatch booted ⟨0⟩ f [toRefVal (.u32 3)] finished
+        (.resolved (some [toRefVal (.u32 13)])) ∧
+      finished.host = 11 ∧ Store.mapH trampIdx finished.store.core = fwdStore := by
+  have admitted : HostReplies (c := fwdS) fwdC 10 [⟨request, importReply 13⟩] 11 :=
+    .cons rfl (.nil 11)
+  exact (reference_return_iff_sees (o := neverFail) ready fwdS_inst question fwdC_ok init lookup).mpr
+    ⟨_, _, rfl, admitted, replies 13⟩
 
 end SyncImportITreeRegression

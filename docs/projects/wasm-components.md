@@ -252,14 +252,21 @@ the host ends at `11`. The matching ITree path has one answered import and
 carries the final mapped Core store.
 [Lean example](../../Silmaril/Wasm/Component/Reference/SyncImportRun/Examples.lean)
 
-This direction is from stock execution to the ITree's typed import path and
-successful return. The observer projects away the machine's internal steps,
-component arena, and scheduler labels. `answerHostS` services imports through
-dispatcher operations, so the proof reads the exchanges from the segmented
-run. Whole-export completeness and an observer for machine traps and
-divergence remain open. Such an observer must account separately for failed
-ABI lifts, host refusal and lockdown, `cannotBlockSync`, a visible pending
-request, and silent Core divergence.
+`reference_return_of_sees` replays an independently supplied successful ITree
+path from the corresponding fresh stock instance. `HostReplies` checks each
+typed exchange against the fixed answering function in the host state left
+by the preceding exchange. The replay constructs a stock `Calls` witness with
+the path's result values, final host state and projected Core store.
+`reference_return_iff_sees` bundles both directions at that observation level.
+The replay example uses the tree's explicit reply of `13` to `f(3)`, admitted
+by the counter host in state `10`.
+[Lean example](../../Silmaril/Wasm/Component/SyncImportITree/Examples.lean)
+
+The observer projects away internal steps, the component arena and scheduler
+labels. The equivalence covers successful returns with finitely many answered
+imports. Relating whole-export observations of failed ABI lifts, host refusal
+and lockdown, `cannotBlockSync`, pending requests and silent Core divergence
+remains open.
 
 ```sh
 make check CHECK_TARGETS='+Silmaril.Wasm.Component.SyncImportITree.Examples +Silmaril.Wasm.Component.Reference.SyncImportCut.Examples +Silmaril.Wasm.Component.Reference.SyncImportRun.Examples'
