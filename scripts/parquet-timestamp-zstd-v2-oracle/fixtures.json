@@ -1,0 +1,16 @@
+{
+  "utc_nanos": "4ca963388000d699dde176d14f18ad9a9fadaa826ce40404c509da23026f9f7d",
+  "local_micros": "b436fded966550c338ff11cc71247add553567133bbc127e62c6572ef817fd52",
+  "raw_local_millis": "ed534dbdcc583f6601995ffd2d136204a2f87adeedd54f468ff107bffdc181bd",
+  "mutated_late_crc": "1c32f044b35cde9e2f9da1f1f939fa0569d1600f5cf3279c157134ccab6b61e7",
+  "mutated_late_magic": "447bd8c195390ef9c08dc102b559979c1c33d8e3dbf31c9b5f458e6bc0d7a5b9",
+  "mutated_raw_flag_true": "67af85ff2a0060f98d14cae8af0575e09fc4833f25f5356cc7cc6c92a6c671af",
+  "mutated_frame_flag_false": "4aade89a556e5c0adc8c8c5aa9c9bab9217a39363298a15ef08ad765198329a7",
+  "mutated_null_count": "d427d2faac6c690f098399ce43dbfe7b9da29a770b50071764e9f9749657162c",
+  "mutated_level_extent": "7e34782e2005568d1f20c97ac872853d60b19c482f945660fbb2ed93ec1d455e",
+  "mutated_two_groups": "1b450163186aaf6222dc3898723a229ed1fd8b73b0a3a0f0e57ffb1049032751",
+  "mutated_early_crc": "d13d21c00aba540cd678c7357520582f8cf3a6c2ef371d68bede8497f3af16f9",
+  "v1": "1a62a6ed7888c7152c5d5c1e663b06970939f35072f06dad970884b92b54b9cc",
+  "dictionary_v2": "7ca5d415b70c758efb304ffdbe69c5ee1c993c8fecd86c47037a92852b3955a5",
+  "snappy_v2": "ef5309df5de06fa39a17f2bb2aa397fe10ee7c2ec4b58d7b2664111412df5637"
+}
