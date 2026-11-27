@@ -40,12 +40,8 @@ def PageWire (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (entri
        leafLimits bound page.frame slots))
 
 def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
-    Except GroupError (Slots bound) := do
-  let checked ← checkGroup limits leafLimits bound index
-  let entries := checked.entries.toArray
-  let pages ← (checked.data.zipIdx 1).mapM fun (page, ordinal) =>
-    decodePage limits leafLimits bound entries page ordinal
-  return pages.flatten.map (Option.map bound.binding.descriptor.decode)
+    Except GroupError (Slots bound) :=
+  Dictionary.Zstd.V2.readGroupUsing bound (decodePage limits leafLimits bound) (checkGroup limits leafLimits bound index)
 
 def readBound (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) : Leaf.Zstd.V2.Source :=
   Leaf.Zstd.V2.readBoundWith bound (readGroup limits leafLimits bound)

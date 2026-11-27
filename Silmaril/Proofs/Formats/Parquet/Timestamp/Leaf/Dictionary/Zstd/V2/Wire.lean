@@ -103,6 +103,7 @@ theorem checkGroupWith_wire {admits : Int → Bool} {validate : List DataPage �
   obtain ⟨framed, selected, accepted⟩ := bind_ok accepted
   obtain ⟨chunk, storedCap, original, chain, dictionaryOffset, dataOffset⟩ :=
     Leaf.Dictionary.frameGroupUsing_wire (mapError_ok selected)
+  unfold checkFramedWith at accepted
   split at accepted
   · contradiction
   rename_i expandedCap
@@ -238,7 +239,7 @@ theorem readGroup_first_page_error {limits : Limits} {leafLimits : Leaf.Limits} 
     (earlier : before.mapM (fun (item, i) => decodePage limits leafLimits bound checked.entries.toArray item i) = .ok outputs)
     (failed : decodePage limits leafLimits bound checked.entries.toArray page ordinal = .error cause) :
     readGroup limits leafLimits bound index = .error cause := by
-  simp [readGroup, admitted, split, earlier, failed, Bind.bind, Except.bind]
+  simp [readGroup, readGroupUsing, admitted, split, earlier, failed, Bind.bind, Except.bind]
 
 theorem readGroup_wire {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound} {index : Nat} {slots : Slots bound}
     (read : readGroup limits leafLimits bound index = .ok slots) :
@@ -248,7 +249,7 @@ theorem readGroup_wire {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bou
       slots = pages.flatten.map (Option.map bound.binding.descriptor.decode) ∧
       slots.map (Option.map Ticks.ticks) = pages.flatten.map (Option.map Int64.toInt) ∧
       slots.length = checked.chunk.group.numRows.toNat := by
-  unfold readGroup at read
+  unfold readGroup readGroupUsing at read
   obtain ⟨checked, accepted, read⟩ := bind_ok read
   obtain ⟨pages, decoded, read⟩ := bind_ok read
   obtain ⟨_, _, _, _, _, _, _, _, dictionary, plans, rows⟩ := checkGroup_wire accepted

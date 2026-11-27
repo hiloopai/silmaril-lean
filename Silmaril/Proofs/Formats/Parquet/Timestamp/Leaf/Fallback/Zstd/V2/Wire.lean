@@ -88,7 +88,8 @@ theorem checkGroup_first_header_error {limits : Limits} {leafLimits : Leaf.Limit
       .error (.selection (.dictionaryPage ordinal frame.header.start cause)) := by
     rw [Leaf.Dictionary.Zstd.V2.planPagesWith, split, List.mapM_append, prefixOk]
     simp [failed, Leaf.Dictionary.atFrame, Except.mapError, Bind.bind, Except.bind]
-  simp [checkGroup, Leaf.Dictionary.Zstd.V2.checkGroupWith, framedOk, Nat.not_lt.mpr cap,
+  simp [checkGroup, Leaf.Dictionary.Zstd.V2.checkGroupWith, Leaf.Dictionary.Zstd.V2.checkFramedWith,
+    framedOk, Nat.not_lt.mpr cap,
     rejected, Except.mapError, Bind.bind, Except.bind]
 
 theorem checkGroup_phase_error {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}
@@ -98,7 +99,8 @@ theorem checkGroup_phase_error {limits : Limits} {leafLimits : Leaf.Limits} {bou
     (planned : Leaf.Dictionary.Zstd.V2.planPagesWith Leaf.Fallback.admits bound framed.data = .ok pages)
     (failed : Leaf.Fallback.checkSequence pages = .error cause) :
     checkGroup limits leafLimits bound index = .error (.selection cause) := by
-  simp [checkGroup, Leaf.Dictionary.Zstd.V2.checkGroupWith, framedOk, Nat.not_lt.mpr cap,
+  simp [checkGroup, Leaf.Dictionary.Zstd.V2.checkGroupWith, Leaf.Dictionary.Zstd.V2.checkFramedWith,
+    framedOk, Nat.not_lt.mpr cap,
     planned, failed, Except.mapError, Bind.bind, Except.bind]
 
 theorem dictionary_checksum_error {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}
@@ -154,7 +156,7 @@ theorem readGroup_first_page_error {limits : Limits} {leafLimits : Leaf.Limits} 
     (earlier : before.mapM (fun (item, i) => decodePage limits leafLimits bound checked.entries.toArray item i) = .ok outputs)
     (failed : decodePage limits leafLimits bound checked.entries.toArray page ordinal = .error cause) :
     readGroup limits leafLimits bound index = .error cause := by
-  simp [readGroup, admitted, split, earlier, failed, Bind.bind, Except.bind]
+  simp [readGroup, Leaf.Dictionary.Zstd.V2.readGroupUsing, admitted, split, earlier, failed, Bind.bind, Except.bind]
 
 theorem readGroup_wire {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound} {index : Nat} {slots : Slots bound}
     (read : readGroup limits leafLimits bound index = .ok slots) :
@@ -164,7 +166,7 @@ theorem readGroup_wire {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bou
       slots = pages.flatten.map (Option.map bound.binding.descriptor.decode) ∧
       slots.map (Option.map Ticks.ticks) = pages.flatten.map (Option.map Int64.toInt) ∧
       slots.length = checked.chunk.group.numRows.toNat := by
-  unfold readGroup at read
+  unfold readGroup Leaf.Dictionary.Zstd.V2.readGroupUsing at read
   obtain ⟨checked, accepted, read⟩ := bind_ok read
   obtain ⟨pages, decoded, read⟩ := bind_ok read
   obtain ⟨_, _, _, _, _, _, _, _, dictionary, plans, _, rows⟩ := checkGroup_wire accepted

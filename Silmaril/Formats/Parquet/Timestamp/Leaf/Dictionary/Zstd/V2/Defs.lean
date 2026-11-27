@@ -54,10 +54,9 @@ def planPages := planPagesWith (· == 8)
 
 /-- Check the whole original frame chain and declared expansion before the data
 phase and slot checks. Only then expand the leading dictionary. -/
-def checkGroupWith (admits : Int → Bool) (validate : List DataPage → Except Leaf.Error Unit)
-    (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+def checkFramedWith (admits : Int → Bool) (validate : List DataPage → Except Leaf.Error Unit)
+    (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (framed : FramedChunk) :
     Except GroupError CheckedChunk := do
-  let framed ← (frameGroupUsing .zstdDictionaryV2 limits.dictionary leafLimits bound index).mapError .selection
   if limits.maxExpandedChunkBytes < (framed.frames.map (·.value.uncompressedSize)).sum then
     throw .expandedChunkLimit
   let data ← planPagesWith admits bound framed.data
@@ -67,6 +66,12 @@ def checkGroupWith (admits : Int → Bool) (validate : List DataPage → Except 
   if actual ≠ expected then throw (.selection (.rowCount expected actual))
   let entries ← readEntries limits leafLimits bound framed.dictionary
   return ⟨framed.chunk, framed.dictionary, entries, data⟩
+
+def checkGroupWith (admits : Int → Bool) (validate : List DataPage → Except Leaf.Error Unit)
+    (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except GroupError CheckedChunk := do
+  let framed ← (frameGroupUsing .zstdDictionaryV2 limits.dictionary leafLimits bound index).mapError .selection
+  checkFramedWith admits validate limits leafLimits bound framed
 
 /-- The strict dictionary-only profile requires tag 8 on every data frame. -/
 def checkGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
@@ -135,13 +140,18 @@ structure PageWire (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound)
       slots.map Option.isSome = prepared.mask ∧
       (slots.filterMap id).length + header.numNulls = header.numValues
 
-def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
-    Except GroupError (Slots bound) := do
-  let checked ← checkGroup limits leafLimits bound index
+def readGroupUsing (bound : Bound)
+    (decode : Array Int64 → DataPage → Nat → Except GroupError (List (Option Int64)))
+    (admitted : Except GroupError CheckedChunk) : Except GroupError (Slots bound) := do
+  let checked ← admitted
   let entries := checked.entries.toArray
   let pages ← (checked.data.zipIdx 1).mapM fun (page, ordinal) =>
-    decodePage limits leafLimits bound entries page ordinal
+    decode entries page ordinal
   return pages.flatten.map (Option.map bound.binding.descriptor.decode)
+
+def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except GroupError (Slots bound) :=
+  readGroupUsing bound (decodePage limits leafLimits bound) (checkGroup limits leafLimits bound index)
 
 def readBound (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) : Leaf.Zstd.V2.Source :=
   Leaf.Zstd.V2.readBoundWith bound (readGroup limits leafLimits bound)
