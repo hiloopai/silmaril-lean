@@ -1,0 +1,16 @@
+{
+  "native_utc": "4aef6edb281b3228b4276f795b57bb410558ccbffb83e9f63d111f98579fc01b",
+  "native_local": "ebe3d5ffdceb3c5c8e87fb1fd1f2b5f3b9f0256a05c83e59ce1655f9eb0ae904",
+  "mutated_true_flag": "cdfbb46c19a259d1d3d70ecef83725d574f8e909f57beefc62879a5082cdfa70",
+  "mutated_absent_flag": "f25947d0777939724e788ca63805f62037f949709760a6c8408d6a6456db0131",
+  "mutated_dictionary_crc": "ac124b54d06791316f2ed84f1c345843160ce0d28901b4a6f83515a649d4a6cb",
+  "mutated_levels_crc": "af8aa3989b65e01ff07c1c56485606607bc6bb0f5c4dc8276dd270d1f8a39f9a",
+  "mutated_reference": "d0a12f02f648a8fb21738d17df4403160fc9b61221105b688263d206939c5f24",
+  "mutated_true_size": "98ee0a475517d800054946875283304f97c172fecbde035c913cf736f02b323a",
+  "mutated_false_size": "a46a20c719026ffbad81c87097c6cd95c544bd12d5b9e0ad3fadcb5779eaf6c0",
+  "native_v1": "8a6d6432a17a4cde1204a9f31641a481a0ea1bf6f67c13bd554e261fcc15f12e",
+  "assembled_late_v1": "e3e1bd552e7b47cb3b7350938307536666739e5790b1805972bfb341ca69836e",
+  "native_fallback": "d01fb98c32040d64b95f58e2ec2cc77fac34b9cfbbe66c900ecb343e0f584703",
+  "native_plain": "42c2e221b08409a0f21efd68d6f13395cd93e8ae2a64a6443a4e63e4054a5ebb",
+  "native_snappy": "66b9a9d231cbef84fbf8b06f3244c68c2a52124c1d73527205ee1c5c1ff8aff6"
+}
