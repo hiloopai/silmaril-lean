@@ -63,6 +63,22 @@ and an empty selection through `[12, 0, 6]`. A three-field and a
 54-cell IPC budget each admit the composed output while refusing
 the four-column output of the original successful source read.
 
+### Direct source success
+
+`project_compose_success` derives direct exhaustion from an admitted
+direct open and a successful original read. `project_compose_of_caps`
+also derives the direct open from explicit file-byte, total-row and
+field caps. Both use `SameColumnPolicy`, which requires matching
+snapshot, page and value limits. The three source admission caps can
+differ. Repeats may make the composed projection wider than the
+original, so the field cap applies to the composed list.
+
+The [source success oracle][success-oracle] compares five direct reads
+with PyArrow under exact, independently tighter admission caps. It
+checks one-under file, row and field refusals, an expanded repeated
+selection and a zero-width selection through an empty middle group.
+The success theorem is confined to source observations.
+
 ```sh
 lake build --wfail +Silmaril.Formats.Parquet.FlatProjection.Checks
 python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-flat-projection
@@ -72,3 +88,4 @@ python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-fl
 [oracle]: ../../scripts/parquet-flat-projection-oracle/check.py
 [composition-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Thms.lean
 [composition-oracle]: ../../scripts/parquet-flat-projection-composition-oracle/check.py
+[success-oracle]: ../../scripts/parquet-flat-projection-success-oracle/check.py

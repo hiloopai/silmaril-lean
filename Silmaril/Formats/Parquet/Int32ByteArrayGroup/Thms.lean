@@ -9,6 +9,15 @@ public section
 
 namespace Silmaril.Formats.Parquet.Int32ByteArrayGroup
 
+/-- Page decoding depends on the column and value limits. File byte and
+snapshot admission are handled separately. -/
+theorem decoders_congr {left right : Limits}
+    (page : left.column = right.column) (valueBytes : left.maxValueBytes = right.maxValueBytes)
+    (layout : FlatColumn.Layout) :
+    decodeInt32 left layout = decodeInt32 right layout ∧
+    decodeByteArray left layout = decodeByteArray right layout :=
+  Proofs.Formats.Parquet.Int32ByteArrayGroup.decoders_congr page valueBytes layout
+
 theorem openFile_snapshot {limits : Limits} {source : Bytes} {int32 byteArray : Field}
     {checked : Checked int32 byteArray} (opened : openFile limits source int32 byteArray = .ok checked) :
     Snapshot.check (Failure := Unit) limits.snapshot source = .ok checked.snapshot ∧

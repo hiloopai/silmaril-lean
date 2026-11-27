@@ -3,6 +3,7 @@ module
 public import Silmaril.Formats.Parquet.FlatProjection.Composition.Defs
 import all Silmaril.Formats.Parquet.FlatProjection.Defs
 import Silmaril.Formats.Parquet.FlatProjection.Thms
+import Silmaril.Formats.Parquet.Int32ByteArrayGroup.Thms
 
 public section
 
@@ -75,15 +76,26 @@ private theorem same_results {α β ε : Type} {f : α → Except ε β}
     | cons value rest =>
       exact congrArg₂ List.cons (Except.ok.inj (head.symm.trans value)) (ih rest)
 
+private theorem read_policy_congr {snapshot : Snapshot.Checked} {left right : FlatProjection.Limits}
+    (same : SameColumnPolicy left right) (bound : Bound snapshot) (index : Nat) :
+    bound.read left index = bound.read right index := by
+  cases bound with
+  | int32 name layout binding =>
+    have decode := (Int32ByteArrayGroup.decoders_congr same.page same.valueBytes layout).1
+    simp [Bound.read, same.page, decode]
+  | byteArray name layout binding =>
+    have decode := (Int32ByteArrayGroup.decoders_congr same.page same.valueBytes layout).2
+    simp [Bound.read, same.page, decode]
+
 private theorem change_read_policy {snapshot : Snapshot.Checked} {left right : FlatProjection.Limits}
-    {index : Nat} (same : left.column = right.column)
+    {index : Nat} (same : SameColumnPolicy left right)
     {bindings : List (Bound snapshot)} {columns : List OrderedWriter.Column}
     (read : List.Forall₂ (fun bound value => bound.read left index = .ok value) bindings columns) :
     List.Forall₂ (fun bound value => bound.read right index = .ok value) bindings columns := by
   induction read with
   | nil => exact .nil
   | @cons bound value _ _ head tail ih =>
-    exact .cons ((bound_read_congr same bound index).symm.trans head) ih
+    exact .cons ((read_policy_congr same bound index).symm.trans head) ih
 
 private theorem project_batch_of_columns {positions : List Nat} {original direct : OrderedWriter.BatchInput}
     (sameRows : original.rowCount = direct.rowCount)
@@ -116,10 +128,10 @@ theorem select_bound {snapshot : Snapshot.Checked} {ordinals positions composed 
   rw [same_results lookup (bindProjection_lookup directBind)] at selected
   exact selected
 
-theorem project_compose {originalLimits directLimits : FlatProjection.Limits} {input : Bytes}
+private theorem project_compose_policy {originalLimits directLimits : FlatProjection.Limits} {input : Bytes}
     {ordinals positions composed : List Nat} {original direct : Checked}
     {wide narrow : List OrderedWriter.BatchInput}
-    (sameColumnPolicy : originalLimits.column = directLimits.column)
+    (sameColumnPolicy : SameColumnPolicy originalLimits directLimits)
     (composition : composeOrdinals ordinals positions = some composed)
     (originalOpen : openFile originalLimits input ordinals = .ok original)
     (directOpen : openFile directLimits input composed = .ok direct)
@@ -130,7 +142,7 @@ theorem project_compose {originalLimits directLimits : FlatProjection.Limits} {i
   obtain ⟨other, directColumns⟩ := direct
   obtain ⟨originalCheck, originalBind, _⟩ := open_bindings originalOpen
   obtain ⟨directCheck, directBind, _⟩ := open_bindings directOpen
-  rw [sameColumnPolicy] at originalCheck
+  rw [sameColumnPolicy.snapshot] at originalCheck
   have sameSnapshot : snapshot = other := Except.ok.inj (originalCheck.symm.trans directCheck)
   subst other
   have chosenOk := select_bound composition originalBind directBind
@@ -152,6 +164,150 @@ theorem project_compose {originalLimits directLimits : FlatProjection.Limits} {i
       exact project_batch_of_columns (count.trans (congrArg (·.numRows.toNat) sameGroup |>.trans otherCount.symm))
         (equalColumns ▸ selected)) (readAll_indexed originalRead) (readAll_indexed directRead)
   simp [project, observe, selectedFields, selectedBatches, Bind.bind, Option.bind, pure]
+
+theorem project_compose {originalLimits directLimits : FlatProjection.Limits} {input : Bytes}
+    {ordinals positions composed : List Nat} {original direct : Checked}
+    {wide narrow : List OrderedWriter.BatchInput}
+    (sameColumnPolicy : originalLimits.column = directLimits.column)
+    (composition : composeOrdinals ordinals positions = some composed)
+    (originalOpen : openFile originalLimits input ordinals = .ok original)
+    (directOpen : openFile directLimits input composed = .ok direct)
+    (originalRead : original.readAll originalLimits = .ok wide)
+    (directRead : direct.readAll directLimits = .ok narrow) :
+    project positions (observe original wide) = some (observe direct narrow) :=
+  project_compose_policy
+    ⟨congrArg Int32ByteArrayGroup.Limits.snapshot sameColumnPolicy,
+      congrArg Int32ByteArrayGroup.Limits.column sameColumnPolicy,
+      congrArg Int32ByteArrayGroup.Limits.maxValueBytes sameColumnPolicy⟩
+    composition originalOpen directOpen originalRead directRead
+
+private theorem mapM_of_success {α β ε : Type} {f : α → Except ε β}
+    {xs : List α} {ys : List β} (read : List.Forall₂ (fun x y => f x = .ok y) xs ys) :
+    xs.mapM f = .ok ys := by
+  induction read with
+  | nil => rfl
+  | cons head _ ih => simp [List.mapM_cons, head, ih, Bind.bind, Except.bind, pure, Except.pure]
+
+private theorem indexed_mapM_of_success {α β ε : Type} {R : α → β → Prop}
+    {f : α × Nat → Except ε β} {xs : List α} {ys : List β} (start : Nat)
+    (step : ∀ {x y}, R x y → ∀ position, f (x, position) = .ok y)
+    (read : List.Forall₂ R xs ys) :
+    (xs.zipIdx start).mapM f = .ok ys := by
+  induction read generalizing start with
+  | nil => rfl
+  | cons head _ ih => simp [List.mapM_cons, step head, ih, Bind.bind, Except.bind, pure, Except.pure]
+
+private theorem bindProjection_of_lookup {snapshot : Snapshot.Checked} {ordinals : List Nat}
+    {columns : List (Bound snapshot)}
+    (lookup : List.Forall₂ (fun ordinal column => bindOrdinal snapshot ordinal = .ok column) ordinals columns) :
+    bindProjection snapshot ordinals = .ok columns := by
+  apply indexed_mapM_of_success 0 _ lookup
+  intro ordinal column bound position
+  change (bindOrdinal snapshot ordinal).mapError (SourceError.bind position ordinal) = .ok column
+  simp [bound, Except.mapError]
+
+theorem open_compose {originalLimits directLimits : FlatProjection.Limits} {input : Bytes}
+    {ordinals positions composed : List Nat} {original : Checked}
+    (same : SameColumnPolicy originalLimits directLimits)
+    (composition : composeOrdinals ordinals positions = some composed)
+    (originalOpen : openFile originalLimits input ordinals = .ok original)
+    (fileBytes : input.length ≤ directLimits.column.maxFileBytes)
+    (rows : original.snapshot.metadata.numRows.toNat ≤ directLimits.maxFileRows)
+    (fields : composed.length ≤ directLimits.maxFields) :
+    ∃ direct, openFile directLimits input composed = .ok direct := by
+  obtain ⟨snapshot, bound, _⟩ := open_bindings originalOpen
+  obtain ⟨columns, _, lookup⟩ := select_related (bindProjection_lookup bound) composition
+  have selected := bindProjection_of_lookup lookup
+  rw [same.snapshot] at snapshot
+  refine ⟨⟨original.snapshot, columns⟩, ?_⟩
+  simp [openFile, Nat.not_lt.mpr fileBytes, Nat.not_lt.mpr fields, snapshot, Nat.not_lt.mpr rows, selected,
+    Bind.bind, Except.bind, Except.mapError, pure, Except.pure]
+
+private theorem readColumns_of_lookup {snapshot : Snapshot.Checked} {limits : FlatProjection.Limits}
+    {index : Nat} {bindings : List (Bound snapshot)} {columns : List OrderedWriter.Column}
+    (lookup : List.Forall₂ (fun bound column => bound.read limits index = .ok column) bindings columns) :
+    readColumns limits index bindings = .ok columns := by
+  apply indexed_mapM_of_success 0 _ lookup
+  intro bound column decoded position
+  change (bound.read limits index).mapError (SourceError.read index position bound.ordinal) = .ok column
+  simp [decoded, Except.mapError]
+
+private theorem group_select_success {snapshot : Snapshot.Checked}
+    {originalLimits directLimits : FlatProjection.Limits} {positions : List Nat} {index : Nat}
+    {originalColumns directColumns : List (Bound snapshot)} {batch : OrderedWriter.BatchInput}
+    (same : SameColumnPolicy originalLimits directLimits)
+    (selected : select positions originalColumns = some directColumns)
+    (read : (Checked.mk snapshot originalColumns).readGroup originalLimits index = .ok batch) :
+    ∃ direct, (Checked.mk snapshot directColumns).readGroup directLimits index = .ok direct := by
+  obtain ⟨group, found, count, lookup⟩ := group_lookup read
+  change snapshot.groupAt index = some group at found
+  by_cases rows : originalLimits.column.column.maxRows < group.numRows.toNat
+  · simp [Checked.readGroup, found, rows, Bind.bind, Except.bind, throw] at read
+  obtain ⟨columns, _, selectedReads⟩ := select_related lookup selected
+  have decoded := readColumns_of_lookup (change_read_policy same selectedReads)
+  have directRows : ¬ directLimits.column.column.maxRows < group.numRows.toNat := by simpa [same.page] using rows
+  refine ⟨⟨batch.rowCount, columns⟩, ?_⟩
+  simp [Checked.readGroup, found, directRows, decoded, count, Bind.bind, Except.bind, pure, Except.pure]
+
+private theorem carry_success {α β γ ε δ : Type} {left : α → Except ε β} {right : α → Except δ γ}
+    {indices : List α} {wide : List β}
+    (step : ∀ index batch, left index = .ok batch → ∃ direct, right index = .ok direct)
+    (success : List.Forall₂ (fun index batch => left index = .ok batch) indices wide) :
+    ∃ narrow, List.Forall₂ (fun index batch => right index = .ok batch) indices narrow := by
+  induction success with
+  | nil => exact ⟨[], .nil⟩
+  | cons head _ ih =>
+    obtain ⟨first, read⟩ := step _ _ head
+    obtain ⟨rest, later⟩ := ih
+    exact ⟨first :: rest, .cons read later⟩
+
+private theorem composed_read_succeeds {originalLimits directLimits : FlatProjection.Limits} {input : Bytes}
+    {ordinals positions composed : List Nat} {original direct : Checked} {wide : List OrderedWriter.BatchInput}
+    (same : SameColumnPolicy originalLimits directLimits)
+    (composition : composeOrdinals ordinals positions = some composed)
+    (originalOpen : openFile originalLimits input ordinals = .ok original)
+    (directOpen : openFile directLimits input composed = .ok direct)
+    (originalRead : original.readAll originalLimits = .ok wide) :
+    ∃ narrow, direct.readAll directLimits = .ok narrow := by
+  obtain ⟨snapshot, originalColumns⟩ := original
+  obtain ⟨other, directColumns⟩ := direct
+  obtain ⟨originalCheck, originalBind, _⟩ := open_bindings originalOpen
+  obtain ⟨directCheck, directBind, _⟩ := open_bindings directOpen
+  rw [same.snapshot] at originalCheck
+  have sameSnapshot : snapshot = other := Except.ok.inj (originalCheck.symm.trans directCheck)
+  subst other
+  have selected := select_bound composition originalBind directBind
+  obtain ⟨narrow, read⟩ := carry_success
+    (right := fun index => (Checked.mk snapshot directColumns).readGroup directLimits index)
+    (fun _ _ batch => group_select_success same selected batch) (readAll_indexed originalRead)
+  exact ⟨narrow, mapM_of_success read⟩
+
+theorem project_compose_success {originalLimits directLimits : FlatProjection.Limits} {input : Bytes}
+    {ordinals positions composed : List Nat} {original direct : Checked} {wide : List OrderedWriter.BatchInput}
+    (same : SameColumnPolicy originalLimits directLimits)
+    (composition : composeOrdinals ordinals positions = some composed)
+    (originalOpen : openFile originalLimits input ordinals = .ok original)
+    (directOpen : openFile directLimits input composed = .ok direct)
+    (originalRead : original.readAll originalLimits = .ok wide) :
+    ∃ narrow, direct.readAll directLimits = .ok narrow ∧
+      project positions (observe original wide) = some (observe direct narrow) := by
+  obtain ⟨narrow, read⟩ := composed_read_succeeds same composition originalOpen directOpen originalRead
+  exact ⟨narrow, read, project_compose_policy same composition originalOpen directOpen originalRead read⟩
+
+theorem project_compose_of_caps {originalLimits directLimits : FlatProjection.Limits} {input : Bytes}
+    {ordinals positions composed : List Nat} {original : Checked} {wide : List OrderedWriter.BatchInput}
+    (same : SameColumnPolicy originalLimits directLimits)
+    (composition : composeOrdinals ordinals positions = some composed)
+    (originalOpen : openFile originalLimits input ordinals = .ok original)
+    (originalRead : original.readAll originalLimits = .ok wide)
+    (fileBytes : input.length ≤ directLimits.column.maxFileBytes)
+    (rows : original.snapshot.metadata.numRows.toNat ≤ directLimits.maxFileRows)
+    (fields : composed.length ≤ directLimits.maxFields) :
+    ∃ direct narrow, openFile directLimits input composed = .ok direct ∧ direct.readAll directLimits = .ok narrow ∧
+      project positions (observe original wide) = some (observe direct narrow) := by
+  obtain ⟨direct, opened⟩ := open_compose same composition originalOpen fileBytes rows fields
+  obtain ⟨narrow, read, observation⟩ := project_compose_success same composition originalOpen opened originalRead
+  exact ⟨direct, narrow, opened, read, observation⟩
 
 theorem project_rowCounts {positions : List Nat} {original direct : Observation}
     (projected : project positions original = some direct) :

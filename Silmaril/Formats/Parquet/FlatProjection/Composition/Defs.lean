@@ -18,6 +18,13 @@ def select {α : Type} (positions : List Nat) (values : List α) : Option (List 
 def composeOrdinals (original positions : List Nat) : Option (List Nat) :=
   select positions original
 
+/-- The snapshot and column decoding policies agree. File bytes, total
+rows and projection width have separate admission caps. -/
+structure SameColumnPolicy (original direct : FlatProjection.Limits) : Prop where
+  snapshot : original.column.snapshot = direct.column.snapshot
+  page : original.column.column = direct.column.column
+  valueBytes : original.column.maxValueBytes = direct.column.maxValueBytes
+
 structure Observation where
   fields : List Arrow.MixedFlat.Field
   batches : List StreamWriter.BatchObservation

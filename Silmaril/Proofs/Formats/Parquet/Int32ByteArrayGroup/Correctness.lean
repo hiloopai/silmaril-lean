@@ -22,6 +22,14 @@ private theorem mapError_ok {ε δ α : Type} {input : Except ε α} {f : ε →
   | error _ => cases success
   | ok a => cases success; rfl
 
+theorem decoders_congr {left right : Limits}
+    (page : left.column = right.column) (valueBytes : left.maxValueBytes = right.maxValueBytes)
+    (layout : FlatColumn.Layout) :
+    decodeInt32 left layout = decodeInt32 right layout ∧
+    decodeByteArray left layout = decodeByteArray right layout := by
+  have same : left.byteArray = right.byteArray := by simp [Limits.byteArray, page, valueBytes]
+  simp [decodeInt32, decodeByteArray, same]
+
 theorem openFile_snapshot {limits : Limits} {source : Bytes} {int32 byteArray : Field}
     {checked : Checked int32 byteArray} (opened : openFile limits source int32 byteArray = .ok checked) :
     Snapshot.check (Failure := Unit) limits.snapshot source = .ok checked.snapshot ∧
