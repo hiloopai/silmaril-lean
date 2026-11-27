@@ -240,15 +240,17 @@ public theorem selectChunk_wire {checked : ListFile.Checked} {ordinal : Nat} {ch
         obtain rfl := Except.ok.inj h
         exact ⟨(ListFile.frameGroupWith_wire selected).1, frames, not_not.mp dictOffset, not_not.mp dataOffset⟩
 
-public theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witness : DataWitness}
-    {checked : ListFile.Checked} {ordinal expanded left : Nat}
-    {rows : List Row}
-    (sound : ∀ {checked column entries budget frame events}, read checked column entries budget frame = .ok events →
-      witness checked column entries frame events ∧ events.length ≤ budget.slots ∧
-        frame.value.uncompressedSize ≤ budget.expanded)
-    (h : readGroupUsing limits read checked ordinal expanded = .ok (rows, left)) :
-    GroupWireUsing limits witness checked ordinal rows (expanded - left) ∧ left ≤ expanded := by
-  unfold readGroupUsing at h
+public theorem readGroupWith_wire {limits : Limits} {walk : DataWalk} {witness : WalkWitness}
+    {checked : ListFile.Checked} {ordinal expanded left : Nat} {rows : List Row}
+    (sound : ∀ {checked column entries ordinal budget state frames left next},
+      walk checked column entries ordinal budget state frames = .ok (left, next) →
+      ∃ pages, witness checked column entries frames pages ∧
+        pages.flatten.length + left.slots = budget.slots ∧
+        expandedSize frames + left.expanded = budget.expanded ∧
+        state.feed pages.flatten = .ok next)
+    (h : readGroupWith limits walk checked ordinal expanded = .ok (rows, left)) :
+    GroupWireWith limits witness checked ordinal rows (expanded - left) ∧ left ≤ expanded := by
+  unfold readGroupWith at h
   cases chosen : selectChunk checked ordinal with
   | error e => simp [chosen, Bind.bind, Except.bind] at h
   | ok chunk =>
@@ -263,7 +265,7 @@ public theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witnes
     | error e => simp [entriesRead, Except.mapError] at h
     | ok entries =>
       simp only [entriesRead, Except.mapError] at h
-      cases decoded : readFramesUsing (read checked chunk.framed.chunk entries.toArray) 1
+      cases decoded : walk checked chunk.framed.chunk entries.toArray 1
           ⟨chunk.framed.chunk.metadata.numValues.toNat, expanded - chunk.dictionary.value.uncompressedSize⟩
           State.empty (chunk.firstData :: chunk.rest) with
       | error e => simp [decoded] at h
@@ -281,9 +283,8 @@ public theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witnes
         obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj h)
         have origin := selectChunk_wire chosen
         obtain ⟨dictionary, dictBound⟩ := readEntries_wire entriesRead
-        obtain ⟨pages, wires, slots, bytes, fed, order⟩  :=
-          readFramesUsing_wire (read := read checked chunk.framed.chunk entries.toArray)
-            (witness := witness checked chunk.framed.chunk entries.toArray) (fun proof => sound proof) decoded
+        obtain ⟨pages, wires, slots, bytes, fed⟩ := sound decoded
+        have order := ListPage.feed_wire fed
         change _ + budget.slots = _ at slots
         change expandedSize (chunk.firstData :: chunk.rest) + budget.expanded =
           expanded - chunk.dictionary.value.uncompressedSize at bytes
@@ -295,6 +296,22 @@ public theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witnes
         exact ⟨⟨chunk, entries, pages, origin, dictionary, wires, by simpa [noSurplus] using slots, rowCount,
           ListPage.reconstruct_of_feed fed, by simpa [ListPage.finish_empty] using order,
           Nat.le_of_not_gt slotCap, Nat.le_of_not_gt rowCap, by omega⟩, by omega⟩
+
+public theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witness : DataWitness}
+    {checked : ListFile.Checked} {ordinal expanded left : Nat}
+    {rows : List Row}
+    (sound : ∀ {checked column entries budget frame events}, read checked column entries budget frame = .ok events →
+      witness checked column entries frame events ∧ events.length ≤ budget.slots ∧
+        frame.value.uncompressedSize ≤ budget.expanded)
+    (h : readGroupUsing limits read checked ordinal expanded = .ok (rows, left)) :
+    GroupWireUsing limits witness checked ordinal rows (expanded - left) ∧ left ≤ expanded := by
+  obtain ⟨wire, bound⟩ := readGroupWith_wire
+    (witness := fun checked column entries => List.Forall₂ (witness checked column entries))
+    (walk := fun checked column entries => readFramesUsing (read checked column entries))
+    (fun decoded => by
+      obtain ⟨pages, localWire, slots, bytes, fed, _⟩ := readFramesUsing_wire (fun proof => sound proof) decoded
+      exact ⟨pages, localWire, slots, bytes, fed⟩) h
+  exact ⟨⟨wire⟩, bound⟩
 
 public theorem readGroup_wire {limits : Limits} {checked : ListFile.Checked} {ordinal expanded left : Nat}
     {rows : List Row} (h : readGroup limits checked ordinal expanded = .ok (rows, left)) :
@@ -310,7 +327,7 @@ public theorem readGroup_dictionary_error {limits : Limits} {checked : ListFile.
     (rows : chunk.framed.group.numRows.toNat ≤ checked.limits.page.maxRows)
     (failed : readEntries limits checked expanded chunk.dictionary = .error cause) :
     readGroup limits checked ordinal expanded = .error (.frame 0 chunk.dictionary.header.start cause) := by
-  simp [readGroup, readGroupUsing, selected, Nat.not_lt.mpr slots, Nat.not_lt.mpr rows, failed, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readGroupUsing, readGroupWith, selected, Nat.not_lt.mpr slots, Nat.not_lt.mpr rows, failed, Except.mapError, Bind.bind, Except.bind]
 
 public theorem readFramesUsing_append {read : FrameReader}
     {earlier suffix : List Page.Frame} {ordinal : Nat}

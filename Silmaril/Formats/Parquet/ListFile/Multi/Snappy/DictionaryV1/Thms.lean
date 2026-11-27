@@ -122,7 +122,33 @@ theorem convert_readback {limits : Limits} {source : Bytes} {wire : KBytes}
     (h : (convert limits source).wire = .ok wire) : Readback limits source wire :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.convert_readback h
 
-/-- The dictionary group walk retains the original dictionary and the selected data-page witnesses. -/
+/-- Apply the existing ordered budgeted walk to one segment of the selected chunk. -/
+theorem readFramesUsing_wire {read : FrameReader} {witness : Page.Frame → List Event → Prop}
+    {ordinal : Nat} {budget left : Budget} {state next : State} {frames : List Page.Frame}
+    (sound : ∀ {budget frame events}, read budget frame = .ok events →
+      witness frame events ∧ events.length ≤ budget.slots ∧ frame.value.uncompressedSize ≤ budget.expanded)
+    (h : readFramesUsing read ordinal budget state frames = .ok (left, next)) :
+    ∃ pages, List.Forall₂ witness frames pages ∧
+      pages.flatten.length + left.slots = budget.slots ∧
+      Snappy.expandedSize frames + left.expanded = budget.expanded ∧
+      state.feed pages.flatten = .ok next ∧
+      next.finish.flatMap ListPage.rowEvents = state.finish.flatMap ListPage.rowEvents ++ pages.flatten :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readFramesUsing_wire sound h
+
+/-- Lift a checked data walk to the original chunk, signed dictionary and group rows. -/
+theorem readGroupWith_wire {limits : Limits} {walk : DataWalk} {witness : WalkWitness}
+    {checked : ListFile.Checked} {ordinal expanded left : Nat} {rows : List Row}
+    (sound : ∀ {checked column entries ordinal budget state frames left next},
+      walk checked column entries ordinal budget state frames = .ok (left, next) →
+      ∃ pages, witness checked column entries frames pages ∧
+        pages.flatten.length + left.slots = budget.slots ∧
+        Snappy.expandedSize frames + left.expanded = budget.expanded ∧
+        state.feed pages.flatten = .ok next)
+    (h : readGroupWith limits walk checked ordinal expanded = .ok (rows, left)) :
+    GroupWireWith limits witness checked ordinal rows (expanded - left) ∧ left ≤ expanded :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readGroupWith_wire sound h
+
+/-- The dictionary group walk retains the original dictionary and data-page witnesses. -/
 theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witness : DataWitness}
     {checked : ListFile.Checked} {ordinal expanded left : Nat}
     {rows : List Row}

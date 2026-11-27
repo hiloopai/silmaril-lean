@@ -1,0 +1,30 @@
+Native PyArrow 26.0.1 SHA-256 57aebdec9ccdbf040b0757e6b67bbba59a231b8517a5248024096ca0ed383964, footer [751, 1318)
+  group 0 dictionary @4, signed entries [-2147483648, 0, 1, 2, 3, 4, 5]
+    page 1 @54, rep [84, 86), def [86, 88), suffix [88, 89), tag 8, compressed False, slots/rows/nulls 1/1/1
+    page 2 @89, rep [119, 121), def [121, 123), suffix [123, 124), tag 8, compressed False, slots/rows/nulls 1/1/1
+    page 3 @124, rep [154, 156), def [156, 159), suffix [159, 162), tag 8, compressed False, slots/rows/nulls 3/1/1
+    page 4 @162, rep [192, 194), def [194, 196), suffix [196, 199), tag 8, compressed False, slots/rows/nulls 1/1/0
+    page 5 @199, rep [229, 231), def [231, 233), suffix [233, 238), tag 8, compressed False, slots/rows/nulls 6/1/0
+    page 6 @238, rep [268, 270), def [270, 273), suffix [273, 277), tag 0, compressed False, slots/rows/nulls 2/1/1
+    page 7 @277, rep [308, 312), def [312, 314), suffix [314, 326), tag 0, compressed True, slots/rows/nulls 20/1/0
+    page 8 @326, rep [357, 361), def [361, 370), suffix [370, 379), tag 0, compressed True, slots/rows/nulls 32/1/16
+  group 1 dictionary @379, signed entries [-7, -1, 0, 1, 2, 3, 4]
+    page 1 @426, rep [456, 458), def [458, 460), suffix [460, 461), tag 8, compressed False, slots/rows/nulls 1/1/1
+    page 2 @461, rep [491, 493), def [493, 495), suffix [495, 496), tag 8, compressed False, slots/rows/nulls 1/1/1
+    page 3 @496, rep [526, 528), def [528, 531), suffix [531, 534), tag 8, compressed False, slots/rows/nulls 3/1/1
+    page 4 @534, rep [564, 566), def [566, 568), suffix [568, 571), tag 8, compressed False, slots/rows/nulls 1/1/0
+    page 5 @571, rep [601, 603), def [603, 605), suffix [605, 610), tag 8, compressed False, slots/rows/nulls 6/1/0
+    page 6 @610, rep [640, 642), def [642, 645), suffix [645, 649), tag 0, compressed False, slots/rows/nulls 2/1/1
+    page 7 @649, rep [680, 684), def [684, 686), suffix [686, 698), tag 0, compressed True, slots/rows/nulls 20/1/0
+    page 8 @698, rep [729, 733), def [733, 742), suffix [742, 751), tag 0, compressed True, slots/rows/nulls 32/1/16
+Lean Arrow SHA-256 a75b551f08183c660af794d7d5de6ebb0d8be1c353450b5d134b3d26c6368a96, exact EOS [1248, 1256)
+mutated-reentry.parquet SHA-256 dd5c7999de4d4d6e20274141569c6ac2f5ead252adbf265e3aa36e44c2020fab
+reentry: group 1 page 8 @698; one retained batch and no IPC bytes
+mutated-late-plain-crc.parquet SHA-256 6d09d94743b91f8f33cc565407ed00503b86e77d256a7699de9d6bcb18c7278b
+late-plain-crc: group 1 page 8 @698; one retained batch and no IPC bytes
+mutated-early-index-crc-before-reentry.parquet SHA-256 e291085cbc239ec84eb1d3b43e4bb1023c81d0838ed3498c6fd36a0bde917565
+early-index-crc-before-reentry: group 1 page 3 @496; one retained batch and no IPC bytes
+mutated-missing-prefix.parquet SHA-256 4e013510414604ed426137e59894a802dc697fbc072eeec4cad6fb9b985a0ca0
+missing-prefix: group 1 page 1 @426; one retained batch and no IPC bytes
+assembled-wrong-plain-rows.parquet SHA-256 968682b071b3fff7d4c3698529eab87604c189999edfb1d0044022a5f19c4bb2
+wrong-plain-rows: group 1 page 8 @698; one retained batch and no IPC bytes

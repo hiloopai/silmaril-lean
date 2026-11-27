@@ -36,12 +36,15 @@ inductive FrameError where
   | indices (cause : DictionaryIndex.Error)
   | page (cause : ListPage.Error)
   | indexedContinuation
+  | fallbackExpectedDictionary
+  | dictionaryReentry
   deriving DecidableEq, Repr
 
 inductive GroupError where
   | framing (cause : ListFile.ReadError)
   | missingDictionary
   | missingData
+  | missingPlainSuffix
   | dictionaryOffset (declared : Option Int) (actual : Nat)
   | dataOffset (declared : Int) (actual : Nat)
   | slotLimit
@@ -191,7 +194,13 @@ structure ChunkWire (checked : ListFile.Checked) (ordinal : Nat) (chunk : Chunk)
     chunk.framed.chunk.metadata.dictionaryPageOffset = some (chunk.dictionary.header.start : Int)
   dataOffset : chunk.framed.chunk.metadata.dataPageOffset = (chunk.firstData.header.start : Int)
 
-def readGroupUsing (limits : Limits) (read : DataReader) (checked : ListFile.Checked) (ordinal expanded : Nat) :
+abbrev DataWalk := ListFile.Checked → Footer.ColumnChunk → Array Int32 →
+  Nat → Budget → State → List Page.Frame → Except GroupError (Budget × State)
+
+abbrev WalkWitness := ListFile.Checked → Footer.ColumnChunk → Array Int32 →
+  List Page.Frame → List (List Event) → Prop
+
+def readGroupWith (limits : Limits) (walk : DataWalk) (checked : ListFile.Checked) (ordinal expanded : Nat) :
     Except GroupError (List Row × Nat) := do
   let selected ← selectChunk checked ordinal
   let column := selected.framed.chunk
@@ -202,22 +211,25 @@ def readGroupUsing (limits : Limits) (read : DataReader) (checked : ListFile.Che
   let dictionary := selected.dictionary
   let entries ← (readEntries limits checked expanded dictionary).mapError (.frame 0 dictionary.header.start)
   let budget : Budget := ⟨slots, expanded - dictionary.value.uncompressedSize⟩
-  let (left, state) ← readFramesUsing (read checked column entries.toArray) 1 budget State.empty
+  let (left, state) ← walk checked column entries.toArray 1 budget State.empty
     (selected.firstData :: selected.rest)
   if left.slots ≠ 0 then return ← throw (.missingSlots left.slots)
   let rows := state.finish
   if rows.length ≠ expectedRows then return ← throw (.rowCount expectedRows rows.length)
   pure (rows, left.expanded)
 
+def readGroupUsing (limits : Limits) (read : DataReader) :=
+  readGroupWith limits (fun checked column entries => readFramesUsing (read checked column entries))
+
 def readGroup (limits : Limits) (checked : ListFile.Checked) (ordinal expanded : Nat) :
     Except GroupError (List Row × Nat) :=
   readGroupUsing limits (readFrame limits) checked ordinal expanded
 
-abbrev GroupWireData (limits : Limits) (witness : DataWitness) (checked : ListFile.Checked) (ordinal : Nat)
+abbrev GroupWireWith (limits : Limits) (witness : WalkWitness) (checked : ListFile.Checked) (ordinal : Nat)
     (rows : List Row) (spent : Nat) : Prop :=
   ∃ chunk entries pages,
     ChunkWire checked ordinal chunk ∧ DictionaryWire limits checked chunk.dictionary entries ∧
-    List.Forall₂ (witness checked chunk.framed.chunk entries.toArray)
+    witness checked chunk.framed.chunk entries.toArray
       (chunk.firstData :: chunk.rest) pages ∧
     pages.flatten.length = chunk.framed.chunk.metadata.numValues.toNat ∧
     rows.length = chunk.framed.group.numRows.toNat ∧
@@ -226,6 +238,9 @@ abbrev GroupWireData (limits : Limits) (witness : DataWitness) (checked : ListFi
     chunk.framed.chunk.metadata.numValues.toNat ≤ limits.snappy.parquet.maxGroupSlots ∧
     chunk.framed.group.numRows.toNat ≤ checked.limits.page.maxRows ∧
     Snappy.expandedSize chunk.framed.frames = spent
+
+abbrev GroupWireData (limits : Limits) (witness : DataWitness) :=
+  GroupWireWith limits (fun checked column entries => List.Forall₂ (witness checked column entries))
 
 structure GroupWireUsing (limits : Limits) (witness : DataWitness) (checked : ListFile.Checked) (ordinal : Nat)
     (rows : List Row) (spent : Nat) : Prop where
