@@ -174,9 +174,8 @@ private theorem splitLeading_order (frames : List Page.Frame) :
 
 private theorem leading_wire {limits : Limits} {metadata : Footer.ColumnMetadata} {source : Bytes}
     {dictionary : Option Page.Frame} {entries : Option (Array Bytes)}
-    {fail : Page.Frame → FlatColumn.PageError DecodeError → Error}
-    (h : dictionary.mapM (fun frame => (readDictionaryFor profile limits metadata source frame).mapError (fail frame)) =
-      .ok entries) : LeadingWireFor profile limits source dictionary entries := by
+    (h : dictionary.mapM (readDictionaryFor profile limits metadata source) = .ok entries) :
+    LeadingWireFor profile limits source dictionary entries := by
   cases dictionary with
   | none =>
     cases h
@@ -184,7 +183,7 @@ private theorem leading_wire {limits : Limits} {metadata : Footer.ColumnMetadata
   | some frame =>
     obtain ⟨values, decoded, h⟩ := bind_ok h
     cases h
-    exact readDictionary_wire (mapError_ok decoded)
+    exact readDictionary_wire decoded
 
 private theorem pages_count {limits : Limits} {source : Bytes} {entries : Option (Array Bytes)}
     {data : List Page.Frame} {pages : List (List (Option Bytes))}
@@ -196,11 +195,19 @@ private theorem pages_count {limits : Limits} {source : Bytes} {entries : Option
     obtain ⟨_, _, _, _, _, _, _, count, _⟩ := first
     simp [count, ih]
 
-private theorem readFrames_wire {limits : Limits} {metadata : Footer.ColumnMetadata} {source : Bytes}
-    {group column rows : Nat} {name : String} {frames : List Page.Frame} {slots : List (Option Bytes)}
-    (h : readFramesFor profile limits metadata source group column name rows frames = .ok slots) :
-    FramesWireFor profile limits source metadata rows frames slots := by
-  unfold readFramesFor at h
+theorem readFramesWith_wire {δ α ε : Type}
+    {openDictionary : Page.Frame → Except (FlatColumn.PageError ε) δ}
+    {decodePage : Option δ → Page.Frame → Except (FlatColumn.PageError ε) (List (Option α))}
+    {metadata : Footer.ColumnMetadata} {group column rows : Nat} {name : String} {frames : List Page.Frame}
+    {slots : List (Option α)}
+    (h : readFramesWith openDictionary decodePage metadata group column name rows frames = .ok slots) :
+    ∃ (dictionary : Option Page.Frame) (data : List Page.Frame) (entries : Option δ) (pages : List (List (Option α))),
+      frames = dictionary.toList ++ data ∧
+      dictionary.map (fun frame : Page.Frame => (frame.header.start : Int)) = metadata.dictionaryPageOffset ∧
+      data.head?.map (fun frame : Page.Frame => (frame.header.start : Int)) = some metadata.dataPageOffset ∧
+      (data.map declaredSlots).sum = rows ∧ dictionary.mapM openDictionary = .ok entries ∧
+      List.Forall₂ (fun frame page => decodePage entries frame = .ok page) data pages ∧ slots = pages.flatten := by
+  unfold readFramesWith at h
   cases split : splitLeading frames with
   | mk dictionary data =>
     rw [split] at h
@@ -211,21 +218,32 @@ private theorem readFrames_wire {limits : Limits} {metadata : Footer.ColumnMetad
     rename_i counted
     obtain ⟨entries, opened, h⟩ := bind_ok h
     obtain ⟨pages, decoded, h⟩ := bind_ok h
-    have ordered : List.Forall₂ (PageWireFor profile limits source entries) data pages := by
+    have leading : dictionary.mapM openDictionary = .ok entries := by
+      cases dictionary with
+      | none => cases opened; rfl
+      | some frame =>
+        obtain ⟨value, parsed, result⟩ := bind_ok opened
+        cases result
+        change (openDictionary frame >>= fun value => .ok (some value)) = .ok (some value)
+        rw [mapError_ok parsed]
+        rfl
+    have ordered : List.Forall₂ (fun frame page => decodePage entries frame = .ok page) data pages := by
       rw [← List.zipIdx_map_fst (if dictionary.isSome then 1 else 0) data, List.forall₂_map_left_iff]
-      exact (mapM_order _ decoded).imp (fun _ _ read => decodeData_wire (mapError_ok read))
+      exact (mapM_order _ decoded).imp (fun _ _ read => mapError_ok read)
     have order := splitLeading_order frames
     rw [split] at order
     cases h
     exact ⟨dictionary, data, entries, pages, order, Decidable.not_not.mp (fun e => offsets (.inl e)),
-      Decidable.not_not.mp (fun e => offsets (.inr e)),
-      leading_wire opened, ordered, rfl, (pages_count ordered).trans (Decidable.not_not.mp counted)⟩
+      Decidable.not_not.mp (fun e => offsets (.inr e)), Decidable.not_not.mp counted, leading, ordered, rfl⟩
 
-theorem readBoundGroup_wire {snapshot : Snapshot.Checked} {name : String}
+theorem readBoundGroupWith_wire {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
     {binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩} {limits : Limits}
-    {index : Nat} {slots : List (Option Bytes)} (h : readBoundGroupFor profile binding limits index = .ok slots) :
-    ∃ group, BoundGroupWireFor profile binding limits index group slots := by
-  unfold readBoundGroupFor at h
+    {read : Footer.ColumnMetadata → Bytes → Nat → Nat → String → Nat → List Page.Frame →
+      Except (FlatColumn.Error ε) (List (Option α))}
+    {index : Nat} {slots : List (Option α)} (h : readBoundGroupWith profile binding limits read index = .ok slots) :
+    ∃ group, BoundGroupWireWith binding limits (fun metadata source rows frames output =>
+      read metadata source index binding.columnOrdinal name rows frames = .ok output) index group slots := by
+  unfold readBoundGroupWith at h
   split at h <;> try contradiction
   rename_i group selected
   dsimp only at h
@@ -236,7 +254,20 @@ theorem readBoundGroup_wire {snapshot : Snapshot.Checked} {name : String}
   obtain ⟨frames, framed, decoded⟩ := bind_ok h
   obtain ⟨⟨path, physical, count⟩, codec, bounded⟩ := locate_wire (mapError_ok located)
   exact ⟨group, column, span, frames, binding.leafAt, selected, matched, path,
-    physical, count, codec, bounded, mapError_ok framed, readFrames_wire decoded⟩
+    physical, count, codec, bounded, mapError_ok framed, decoded⟩
+
+theorem readBoundGroup_wire {snapshot : Snapshot.Checked} {name : String}
+    {binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩} {limits : Limits}
+    {index : Nat} {slots : List (Option Bytes)} (h : readBoundGroupFor profile binding limits index = .ok slots) :
+    ∃ group, BoundGroupWireFor profile binding limits index group slots := by
+  obtain ⟨group, column, span, frames, leaf, selected, matched, path, physical, count, codec, bounded,
+    framed, decoded⟩ := readBoundGroupWith_wire h
+  obtain ⟨dictionary, data, entries, pages, order, dictionaryAt, dataAt, declared, leading, ordered, flattened⟩ :=
+    readFramesWith_wire decoded
+  have pageWire := ordered.imp (fun _ _ read => decodeData_wire read)
+  exact ⟨group, column, span, frames, leaf, selected, matched, path, physical, count, codec, bounded, framed,
+    dictionary, data, entries, pages, order, dictionaryAt, dataAt, leading_wire leading, pageWire,
+    flattened, flattened ▸ (pages_count pageWire).trans declared⟩
 
 theorem readGroup_wire {name : String} {checked : Checked name} {limits : Limits}
     {index : Nat} {slots : List (Option Bytes)} (h : readGroupFor profile checked limits index = .ok slots) :

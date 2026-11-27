@@ -55,6 +55,32 @@ theorem readLegacyGroup_wire {name : String} {checked : Checked name} {limits : 
     GroupWireFor .plainDictionaryV1 checked limits index slots :=
   Proofs.Formats.Parquet.ByteArrayFallback.readGroup_wire (profile := .plainDictionaryV1) h
 
+/-- The chunk-local callbacks run in original frame order after the offsets and
+advertised row count are checked. -/
+theorem readFramesWith_wire {δ α ε : Type}
+    {openDictionary : Page.Frame → Except (FlatColumn.PageError ε) δ}
+    {decodePage : Option δ → Page.Frame → Except (FlatColumn.PageError ε) (List (Option α))}
+    {metadata : Footer.ColumnMetadata} {group column rows : Nat} {name : String} {frames : List Page.Frame}
+    {slots : List (Option α)}
+    (h : readFramesWith openDictionary decodePage metadata group column name rows frames = .ok slots) :
+    ∃ (dictionary : Option Page.Frame) (data : List Page.Frame) (entries : Option δ) (pages : List (List (Option α))),
+      frames = dictionary.toList ++ data ∧
+      dictionary.map (fun frame : Page.Frame => (frame.header.start : Int)) = metadata.dictionaryPageOffset ∧
+      data.head?.map (fun frame : Page.Frame => (frame.header.start : Int)) = some metadata.dataPageOffset ∧
+      (data.map declaredSlots).sum = rows ∧ dictionary.mapM openDictionary = .ok entries ∧
+      List.Forall₂ (fun frame page => decodePage entries frame = .ok page) data pages ∧ slots = pages.flatten :=
+  Proofs.Formats.Parquet.ByteArrayFallback.readFramesWith_wire h
+
+/-- The callback consumes the original selected frames from the bound snapshot. -/
+theorem readBoundGroupWith_wire {profile : Profile} {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
+    {binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩} {limits : Limits}
+    {read : Footer.ColumnMetadata → Bytes → Nat → Nat → String → Nat → List Page.Frame →
+      Except (FlatColumn.Error ε) (List (Option α))}
+    {index : Nat} {slots : List (Option α)} (h : readBoundGroupWith profile binding limits read index = .ok slots) :
+    ∃ group, BoundGroupWireWith binding limits (fun metadata source rows frames output =>
+      read metadata source index binding.columnOrdinal name rows frames = .ok output) index group slots :=
+  Proofs.Formats.Parquet.ByteArrayFallback.readBoundGroupWith_wire h
+
 /-- The legacy walk can reuse a BYTE_ARRAY binding from a paired checked
 snapshot, preserving its original leaf, chunk, frames and slot count. -/
 theorem readBoundLegacyGroup_wire {snapshot : Snapshot.Checked} {name : String}

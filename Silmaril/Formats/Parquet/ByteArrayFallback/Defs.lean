@@ -135,9 +135,13 @@ def decodeDataFor (profile : Profile) (limits : Limits) (metadata : Footer.Colum
 def declaredSlots (frame : Page.Frame) : Nat :=
   ((FlatColumn.pageParameters .optional 0 frame.value).map (·.numValues)).getD 0
 
-def readFramesFor (profile : Profile) (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
-    (group column : Nat) (name : String) (rows : Nat) (frames : List Page.Frame) :
-    Except Error (List (Option Bytes)) := do
+/-- Check original dictionary and data offsets and the full declared slot count
+before invoking the chunk-local dictionary and ordered data callbacks. -/
+def readFramesWith {δ α ε : Type}
+    (openDictionary : Page.Frame → Except (FlatColumn.PageError ε) δ)
+    (decodePage : Option δ → Page.Frame → Except (FlatColumn.PageError ε) (List (Option α)))
+    (metadata : Footer.ColumnMetadata) (group column : Nat) (name : String) (rows : Nat)
+    (frames : List Page.Frame) : Except (FlatColumn.Error ε) (List (Option α)) := do
   let failColumn := FlatColumn.Error.column group column name
   let failPage := fun (page : Nat) (frame : Page.Frame) =>
     FlatColumn.Error.page group column name page frame.header.start
@@ -148,16 +152,25 @@ def readFramesFor (profile : Profile) (limits : Limits) (metadata : Footer.Colum
     .error (failColumn .unsupportedOffsets)
   else if declared ≠ rows then .error (failColumn (.declaredCount rows declared))
   else do
-    let entries ← dictionary.mapM fun frame => (readDictionaryFor profile limits metadata source frame).mapError (failPage 0 frame)
+    let entries ← dictionary.mapM fun frame => (openDictionary frame).mapError (failPage 0 frame)
     let pages ← (data.zipIdx (if dictionary.isSome then 1 else 0)).mapM fun (frame, ordinal) =>
-      (decodeDataFor profile limits metadata source entries frame).mapError (failPage ordinal frame)
+      (decodePage entries frame).mapError (failPage ordinal frame)
     return pages.flatten
 
-/-- Read the selected group from the same snapshot as its binding. Dictionary
-state is local to this chunk and publication waits for all frames to succeed. -/
-def readBoundGroupFor (profile : Profile) {snapshot : Snapshot.Checked} {name : String}
-    (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩) (limits : Limits) (index : Nat) :
-    Except Error (List (Option Bytes)) := do
+def readFramesFor (profile : Profile) (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (group column : Nat) (name : String) (rows : Nat) (frames : List Page.Frame) :
+    Except Error (List (Option Bytes)) :=
+  readFramesWith (readDictionaryFor profile limits metadata source)
+    (decodeDataFor profile limits metadata source) metadata group column name rows frames
+
+/-- Frame the selected chunk from the same snapshot as the binding, then
+pass the original frames to the chunk-local reader. -/
+def readBoundGroupWith {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
+    (profile : Profile) (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩)
+    (limits : Limits)
+    (read : Footer.ColumnMetadata → Bytes → Nat → Nat → String → Nat → List Page.Frame →
+      Except (FlatColumn.Error ε) (List (Option α)))
+    (index : Nat) : Except (FlatColumn.Error ε) (List (Option α)) := do
   let ordinal := binding.columnOrdinal
   let failColumn := FlatColumn.Error.column index ordinal name
   let some group := snapshot.groupAt index | throw (.groupIndex index)
@@ -168,7 +181,14 @@ def readBoundGroupFor (profile : Profile) {snapshot : Snapshot.Checked} {name : 
     let metadata := column.metadata
     let span ← (locateFor profile limits binding.leaf group metadata snapshot.footer.start).mapError failColumn
     let frames ← (Page.readChunk limits.file.column.framing snapshot.bytes span).mapError (failColumn ∘ .framing)
-    readFramesFor profile limits metadata snapshot.bytes index ordinal name rows frames
+    read metadata snapshot.bytes index ordinal name rows frames
+
+/-- Read the selected group from the same snapshot as its binding. Dictionary
+state is local to this chunk and publication waits for all frames to succeed. -/
+def readBoundGroupFor (profile : Profile) {snapshot : Snapshot.Checked} {name : String}
+    (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩) (limits : Limits) (index : Nat) :
+    Except Error (List (Option Bytes)) :=
+  readBoundGroupWith profile binding limits (readFramesFor profile limits) index
 
 def readGroupFor (profile : Profile) {name : String} (checked : Checked name) (limits : Limits)
     (index : Nat) : Except Error (List (Option Bytes)) :=
@@ -216,9 +236,11 @@ def FramesWireFor (profile : Profile) (limits : Limits) (source : Bytes) (metada
     LeadingWireFor profile limits source dictionary entries ∧
     List.Forall₂ (PageWireFor profile limits source entries) data pages ∧ slots = pages.flatten ∧ slots.length = rows
 
-def BoundGroupWireFor (profile : Profile) {snapshot : Snapshot.Checked} {name : String}
+/-- Attach a chunk-level relation to the selected original frames. -/
+def BoundGroupWireWith {snapshot : Snapshot.Checked} {name : String} {α : Type}
     (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩) (limits : Limits)
-    (index : Nat) (group : Footer.RowGroup) (slots : List (Option Bytes)) : Prop :=
+    (wire : Footer.ColumnMetadata → Bytes → Nat → List Page.Frame → List (Option α) → Prop)
+    (index : Nat) (group : Footer.RowGroup) (slots : List (Option α)) : Prop :=
   ∃ column span frames,
     snapshot.metadata.schema[binding.leafOrdinal]? = some binding.leaf ∧
     snapshot.groupAt index = some group ∧
@@ -227,7 +249,13 @@ def BoundGroupWireFor (profile : Profile) {snapshot : Snapshot.Checked} {name : 
     column.metadata.numValues = group.numRows ∧ column.metadata.codec = 0 ∧
     Page.columnSpan snapshot.footer.start column.metadata = some span ∧
     Page.readChunk limits.file.column.framing snapshot.bytes span = .ok frames ∧
-    FramesWireFor profile limits snapshot.bytes column.metadata group.numRows.toNat frames slots
+    wire column.metadata snapshot.bytes group.numRows.toNat frames slots
+
+def BoundGroupWireFor (profile : Profile) {snapshot : Snapshot.Checked} {name : String}
+    (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩) (limits : Limits)
+    (index : Nat) (group : Footer.RowGroup) (slots : List (Option Bytes)) : Prop :=
+  BoundGroupWireWith binding limits (fun metadata source => FramesWireFor profile limits source metadata)
+    index group slots
 
 def GroupWireFor (profile : Profile) {name : String} (checked : Checked name) (limits : Limits)
     (index : Nat) (slots : List (Option Bytes)) : Prop :=

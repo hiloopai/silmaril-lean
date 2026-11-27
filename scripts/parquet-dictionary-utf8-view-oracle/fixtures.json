@@ -1,0 +1,11 @@
+{
+  "v1.parquet": "decb45c6325a820a90921dc9929e7ba9c1d9db5fdcb8a623d77500f985b40b92",
+  "v2.parquet": "0e80c85f982226754e0f39004cec465301969f2f7b9781d728fd7df5de2cbede",
+  "bad-used-text.parquet": "1965edd22e58ffdacfc7955da726814d84a4432c2e7e780500a749c9d54c7b94",
+  "bad-unused-text.parquet": "9d67220a7fb39776be46dd7a82c50931a2d44a1b0230eaa7920654a810bd6b51",
+  "bad-index.parquet": "15124d5224d640150c6e07f3a40e52bb7ad40867a971ba91af8edf290febfd9f",
+  "plain.parquet": "65f2e98da88b2db1e826f085cafca85f13ff744627a8f459228149684765b6c3",
+  "opaque.parquet": "d151e7ccfa80069a30ae6a43952a246469948324e7986f407a7cb365bed803eb",
+  "v1.arrows": "b5f404d4d6345fdc5cd322518b8e7e9cbef67d7cab97eac6b92767c578a8a7e4",
+  "v2.arrows": "b5f404d4d6345fdc5cd322518b8e7e9cbef67d7cab97eac6b92767c578a8a7e4"
+}

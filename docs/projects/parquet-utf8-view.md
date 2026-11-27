@@ -92,6 +92,51 @@ lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Snappy.Checks
 python3 scripts/parquet-snappy-utf8-view-oracle/check.py "$(mktemp -d)"
 ```
 
+## Opt-in uncompressed dictionary STRING
+
+`Parquet.Plain.ByteArray.Utf8.Dictionary.convert` binds one named flat
+optional BYTE_ARRAY leaf with the same checked STRING/UTF8 annotation.
+It reads codec 0, one leading PLAIN dictionary (tag 0) per selected
+chunk, and only RLE_DICTIONARY data pages (tag 8). V1 uses RLE levels.
+V2 uses the original raw level and index windows. Required leaves,
+CRC, compression, legacy tag 2 and PLAIN fallback are outside this
+profile. Admission and decoding apply to the selected column.
+
+After the exact bounded PLAIN dictionary decode, the reader validates
+each entry as strict UTF-8 in dictionary order before reading any of
+its indices. Every dictionary entry is a value of the annotated STRING
+leaf, so malformed unused entries fail the same check as referenced
+entries. This gives a complete typed dictionary for the original chunk
+and makes text validation independent of which rows use it. Invalid
+text reports dictionary page 0, its original header offset and the
+zero-based entry ordinal. Index failures carry the original data page
+ordinal including the leading dictionary, and the original header offset.
+
+`readGroup_wire` ties the bound snapshot and selected chunk to the
+original frame order. Each dictionary entry encodes to its original
+bytes, every data page retains its exact definition mask and consumed
+index stream, and the indexed lookups recover the ordered nullable
+UTF-8 octets. `convert_readback` preserves one native Utf8View batch
+per group through EOS. Source failures precede IPC writer limits.
+
+PyArrow 26.0.1 produces V1 and V2 files with two nine-row groups and
+different dictionary orders. Thrift 0.25.0 checks exact tag-0 entries,
+tag-8 indices, and nullable slot order. The IPC comparison covers
+non-ASCII text, distinct composed and decomposed spellings, repeated
+values, nulls and empty strings. Three edits in the second group
+exercise invalid used entry 0, invalid unused entry 4, and out-of-range
+index 7 on data page 2. The unused-entry edit leaves PyArrow's decoded
+rows and the opaque reader's selected bytes identical to the clean file.
+
+[Definitions](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Dictionary/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Dictionary/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-dictionary-utf8-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Checks
+python3 scripts/parquet-dictionary-utf8-view-oracle/check.py "$(mktemp -d)"
+```
+
 ## Native Utf8View to Parquet STRING
 
 `Parquet.Plain.ByteArray.Utf8.FromIpc.convert` reads one explicitly
