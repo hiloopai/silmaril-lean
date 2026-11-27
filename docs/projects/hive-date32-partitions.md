@@ -244,11 +244,37 @@ and `lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/Render/Checks.lean "$
 Use the pinned PyArrow command above with
 `python -I /repo/scripts/hive-date-utf8-render-oracle/Oracle.py /out/directories.tsv`.
 
-The existing [mixed Parquet file writer](../../Silmaril/Formats/Parquet/MixedV1Writer/Multi/Defs.lean)
-provides checked INT32 and opaque BYTE_ARRAY groups. A paired Hive
-manifest writer needs a named-table adapter that admits the exact paired
-physical and two-key virtual schema, routes rows with the generic Hive
-write plan, and converts each stable physical bucket into bounded mixed
-writer groups. It also needs deterministic checked literal file paths,
-an all-or-error manifest result, and a law connecting the emitted bytes
-and group order to the paired manifest reader under the same options.
+## Paired native manifest emission
+
+[The manifest writer](../../Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Defs.lean)
+takes a checked packed named table at the exact ordered schema. Its
+physical columns are one nullable INT32 followed by one nullable opaque
+BYTE_ARRAY. The two declared DATE and UTF-8 fields follow the physical
+pair. The generic write plan diagnoses source and routing failures before
+any file emission. Each first-seen directory gets one literal
+`part-0.parquet` under its canonical directory, with source order
+preserved within the bucket. An empty source yields an empty manifest.
+
+The cut policy caps rows and groups per file and divides each nonempty
+bucket into consecutive full groups followed by a possible shorter
+group. [`MixedV1Writer.Multi`](../../Silmaril/Formats/Parquet/MixedV1Writer/Multi/Defs.lean)
+applies its existing page, group, file-byte and total-row checks.
+The pure emitter returns the whole manifest only after paired ingress
+reopens the emitted bytes at their literal keys, reaches EOS, and
+matches each group boundary and the exact typed rows from the route
+plan. The manifest and the readback are materialized for this check.
+The [public laws](../../Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Thms.lean)
+relate emission to the independent first-directory route and the
+ordered original rows within each bucket.
+
+The pinned PyArrow comparator reads physical values and typed Hive
+partition columns from six actual emitted Parquet files. It observes
+the manifest and footer order explicitly. Fixtures include interleaving
+across directories, two group sizes, empty and null cells, escaped
+UTF-8, both virtual orders and opaque bytes that are invalid UTF-8.
+
+Generate the files with
+`lake build --wfail +Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Checks`
+and `lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Checks.lean "$tmp"`.
+Use the pinned PyArrow command above with
+`python -I /repo/scripts/hive-date-utf8-writer-oracle/Oracle.py /out`.
