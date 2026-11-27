@@ -241,6 +241,30 @@ inductive MetadataError where
   | descriptorCount (expected actual : Nat)
   deriving DecidableEq, Repr
 
+
+namespace LargeUtf8
+
+/-- Opt-in schema kinds. LargeUtf8 shares the three-descriptor layout of
+plain Utf8 and retains its distinct type for value decoding. -/
+inductive Kind where
+  | existing (kind : MixedFlat.Kind)
+  | largeUtf8
+  deriving DecidableEq, Repr
+
+structure Field where
+  name : String
+  nullable : Bool
+  kind : Kind
+  deriving DecidableEq, Repr
+
+/-- Project only the field's layout for the shared metadata and body binder. -/
+def Field.layout (field : Field) : MixedFlat.Field :=
+  ⟨field.name, field.nullable, match field.kind with
+    | .existing kind => kind
+    | .largeUtf8 => .primitive .utf8⟩
+
+end LargeUtf8
+
 end MixedFlat
 
 inductive MessageHeader where
@@ -642,20 +666,44 @@ private def mixedFieldKind (bytes : KBytes) (tag : Nat) (payload : Table) :
     return .view (← viewFieldKind tag payload)
   return .primitive (← primitiveFieldType bytes tag payload)
 
-private def mixedSchema (limits : Limits) (bytes : KBytes) (payload : Table) :
-    Except Error (List MixedFlat.Field) := do
+private def mixedSchemaWith {α : Type} (limits : Limits) (bytes : KBytes) (payload : Table)
+    (fieldAt : Nat → Except Error α) : Except Error (List α) := do
   let (_, fields) ← schemaWith limits bytes payload
     (fun endian => if endian = 0 then .ok () else .error (.unsupported (.endianness endian)))
-    (fun pos => fieldWith bytes pos (mixedFieldKind bytes) MixedFlat.Field.mk)
+    fieldAt
   return fields
 
-/-- Admit the ordered fields of the bodyless little-endian mixed-flat Schema. -/
-public def MixedFlat.readSchema (limits : Limits) (bytes : KBytes) :
-    Except Error (List MixedFlat.Field) := do
+private def mixedSchema (limits : Limits) (bytes : KBytes) (payload : Table) :
+    Except Error (List MixedFlat.Field) :=
+  mixedSchemaWith limits bytes payload
+    (fun pos => fieldWith bytes pos (mixedFieldKind bytes) MixedFlat.Field.mk)
+
+private def readMixedSchema {α : Type} (limits : Limits) (bytes : KBytes)
+    (decode : Table → Except Error (List α)) : Except Error (List α) := do
   let (tag, payload, bodyLength) ← messageParts limits bytes
   if tag ≠ 1 then throw (.unsupported (.messageKind tag))
   if bodyLength ≠ 0 then throw (.malformed .bodyLength)
-  mixedSchema limits bytes payload
+  decode payload
+
+/-- Admit the ordered fields of the bodyless little-endian mixed-flat Schema. -/
+public def MixedFlat.readSchema (limits : Limits) (bytes : KBytes) :
+    Except Error (List MixedFlat.Field) :=
+  readMixedSchema limits bytes (mixedSchema limits bytes)
+
+private def mixedLargeUtf8Kind (bytes : KBytes) (tag : Nat) (payload : Table) :
+    Except Error MixedFlat.LargeUtf8.Kind := do
+  if tag = 20 then
+    tableShape payload 0
+    return .largeUtf8
+  return .existing (← mixedFieldKind bytes tag payload)
+
+/-- Read the opt-in mixed schema with native LargeUtf8 (tag 20) in any
+position, using the same V5 flat, little-endian checks. -/
+public def MixedFlat.LargeUtf8.readSchema (limits : Limits) (bytes : KBytes) :
+    Except Error (List MixedFlat.LargeUtf8.Field) :=
+  readMixedSchema limits bytes fun payload =>
+    mixedSchemaWith limits bytes payload
+      (fun pos => fieldWith bytes pos (mixedLargeUtf8Kind bytes) MixedFlat.LargeUtf8.Field.mk)
 
 /-- Bound count words and check the computed descriptor cardinality before
 enumerating the nodes and descriptors. Count positions are view ordinals. -/

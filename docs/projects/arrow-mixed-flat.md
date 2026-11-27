@@ -982,3 +982,41 @@ embedded message region.
 lake build +Silmaril.Formats.Arrow.MixedFlat.FileWriter.Examples +Silmaril.Formats.Arrow.MixedFlat.FileWriter.Axioms
 python3 -I scripts/arrow-mixed-flat/file_writer_oracle.py /tmp/arrow-mixed-file
 ```
+
+## Opt-in LargeUtf8 reader
+
+Import `Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Defs` to decode a
+paired Schema, RecordBatch metadata and body. The profile admits tag 20
+alongside the established mixed-flat leaf types in declaration order.
+LargeUtf8 keeps its exact name, nullability and type. Its three descriptors
+are assigned by the existing binder and passed to the signed little-endian
+i64 LargeUtf8 decoder. Only view fields consume variadic count words.
+The original mixed and one-field entry points keep their admission rules.
+
+`readBatch_sound` binds output columns to the checked assignment.
+The assignment exhausts the original nodes, counts and descriptors in order
+and bounds the descriptor windows before value decoding.
+`readColumn_largeUtf8` ties present text to validated UTF-8 over the
+assigned offsets and data. Null slots still have checked offset geometry.
+
+`MixedFlat.LargeUtf8.Stream.read` takes one framing profile for the full
+V5 carrier. It materializes the completed record prefix after admitting
+the schema. Inspect `trace.termination` for exact EOS or a typed error
+at the original record ordinal and absolute byte offset. A column error
+carries its full schema index and the nested decoder cause. An empty
+RecordBatch uses one batch slot. Per-message IPC and view-count limits
+apply alongside the running row and cell budgets. The stream proof
+retains the exact record order, and `original_buffer` identifies the
+absolute carrier octets for each assigned descriptor.
+
+Pinned PyArrow 26.0.1 inputs cover Int32 before nullable LargeUtf8 and
+required LargeUtf8 before Int32, each with modern and legacy framing.
+A modern stream with two BinaryViews exercises count vectors `[0, 1]`
+and `[0, 0]` around fixed and variable-width fields. Synthetic controls
+mutate late UTF-8 and i64 offsets, preserving a populated and an explicit
+empty batch before the typed failure.
+
+```sh
+lake build --wfail Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Stream.Examples Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Stream.Axioms
+python scripts/arrow-mixed-flat/large_utf8_fixtures.py
+```
