@@ -354,3 +354,38 @@ lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
 lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean ipc /tmp/hive-row-group-ipc
 python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-row-group-ipc --ipc
 ```
+
+### Restriction of the unpruned tagged trace
+
+[`scanPruned_eq_restrict`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Events/Pruning/Thms.lean)
+identifies the complete result of the skip-open scan with stable batch
+restriction of `scanUnpruned`. The reference uses the same typed path
+binder and predicate at each original occurrence index. Every kept batch
+retains its literal path, occurrence index, footer ordinal, row count and
+cells. The restriction carries the terminal outcome through unchanged.
+
+The proof requires each reached, successfully path-bound rejected file to
+decode through all its groups. A file is reached when the unpruned scan of
+its strict prefix exhausts. The premise permits a selected failure and
+places no requirement on a suffix beyond that failure. Schema and policy
+admission are shared. Both scans report a reached malformed path before
+pruning. A rejected damaged payload can stop the unpruned trace, while
+skip-open pruning can continue and reach EOS. The controls exercise both
+that case and a selected failure before unreachable rejected damage.
+
+`ToIpc.convert_readback_restrict` connects the same restriction to actual
+native IPC pull readback on successful writing. The proof also recovers
+exhaustion of the unpruned reference under its reached-decode premise.
+The IPC fields and counts come from the selected groups, and the file and
+footer tags stay on the source trace.
+
+The pinned PyArrow replay uses an explicit ordered inventory with repeated
+literal files, including the null partition in each marker mode. It reads
+the source groups independently and compares the unpruned tags, the
+selected tags at their original positions, and the decoded IPC records.
+
+```sh
+lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
+lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean repeat /tmp/hive-row-group-repeat
+python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-row-group-repeat --repeat
+```

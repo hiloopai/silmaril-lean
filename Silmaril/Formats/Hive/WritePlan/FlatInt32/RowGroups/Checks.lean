@@ -3,8 +3,10 @@ module
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Thms
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Thms
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.ToIpc.Thms
+import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Pruning.Thms
 import Silmaril.Formats.Parquet.Snapshot.Footer.Thms
 meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.ToIpc.Defs
+meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Pruning.Defs
 
 namespace Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups
 
@@ -281,6 +283,78 @@ private def convertIpc (options : PartitionPath.Options) (keys : List (Fin parti
   | .error (.scan (.policy .zeroRowsPerGroup)) => true
   | _ => false
 
+private def unpruned (options : PartitionPath.Options) :=
+  Events.scanUnpruned leaf partitions options decode policy limits
+
+private def restrict (options : PartitionPath.Options) (files : List File) (whole : Events.Trace expected String) :=
+  whole.restrict (Events.keepOccurrence partitions options decode keep files)
+
+private def batchValues (result : Events.Trace expected String) :=
+  result.batches.map fun batch => (batch.position, batch.columns.rowCount, observe batch.columns.toRows)
+
+private def repeatFiles : List File → Option (List File)
+  | [first, rejected, nulls, last] => some [nulls, rejected, first, nulls, last, first]
+  | _ => none
+
+#guard Id.run do
+  let .ok original := make {} | return false
+  let some files := repeatFiles original | return false
+  let .ok whole := unpruned {} files | return false
+  let .ok pruned := trace {} files | return false
+  let reference := restrict {} files whole
+  return whole.batches.length == 12 && pruned.result.toOption.isSome && reference.result.toOption.isSome &&
+    batchShape pruned == [(0, 0, 2), (0, 1, 1), (2, 0, 2), (2, 1, 1),
+      (3, 0, 2), (3, 1, 1), (5, 0, 2), (5, 1, 1)] &&
+    batchValues pruned == batchValues reference
+
+#guard Id.run do
+  let .ok original := make customMarker | return false
+  let some files := repeatFiles original | return false
+  let .ok whole := unpruned customMarker files | return false
+  let .ok pruned := trace customMarker files | return false
+  let .ok wire := convertIpc customMarker [keyPosition] ipcLimits files | return false
+  let reference := restrict customMarker files whole
+  return whole.result.toOption.isSome && batchValues pruned == batchValues reference &&
+    (pruned.batches.filter (fun batch => batch.position.path == "key=null%2F%3D/part-0.parquet")).length == 4 &&
+    Ipc.readEvents ipcLimits wire == some (Events.ToIpc.observeTrace leaf partitions [keyPosition] reference)
+
+-- A selected failure ends the shared prefix before the later rejected damage.
+#guard Id.run do
+  let .ok (first :: skipped :: target :: _) := make {} | return false
+  let some selectedDamage := damage target 1 | return false
+  let some unreachableDamage := damage skipped 1 | return false
+  let files := [first, skipped, selectedDamage, unreachableDamage]
+  let .ok whole := unpruned {} files | return false
+  let .ok pruned := trace {} files | return false
+  let .error (actual@(.file 2 _ (.payload (.parquet (.decode 1 _))))) := pruned.result | return false
+  let reference := restrict {} files whole
+  let .error expected := reference.result | return false
+  return actual == expected && batchValues pruned == batchValues reference &&
+    batchShape pruned == [(0, 0, 2), (0, 1, 1), (2, 0, 2)]
+
+-- Reached rejected damage distinguishes a decode-all trace from skip-open pruning.
+#guard Id.run do
+  let .ok (first :: skipped :: target :: _) := make {} | return false
+  let some rejectedDamage := damage skipped 1 | return false
+  let files := [rejectedDamage, first, target]
+  let .ok whole := unpruned {} files | return false
+  let .ok pruned := trace {} files | return false
+  let reference := restrict {} files whole
+  let .error (.file 0 _ (.payload (.parquet (.decode 1 _)))) := reference.result | return false
+  return reference.batches.isEmpty && pruned.result.toOption.isSome &&
+    batchShape pruned == [(1, 0, 2), (1, 1, 1), (2, 0, 2), (2, 1, 1)]
+
+#guard Id.run do
+  let .ok (first :: skipped :: _) := make {} | return false
+  let files := [first, {skipped with path := "../" ++ skipped.path}]
+  let rejects : Scan.Predicate partitions.toScan Cell := fun _ => none
+  let .ok whole := unpruned {} files | return false
+  let .ok pruned := Events.scanPruned leaf partitions {} decode policy limits rejects files | return false
+  let reference := whole.restrict (Events.keepOccurrence partitions {} decode rejects files)
+  let .error (actual@(.file 1 _ (.path (.path _ .invalidSegment)))) := pruned.result | return false
+  let .error expected := reference.result | return false
+  return actual == expected && pruned.batches.isEmpty && reference.batches.isEmpty
+
 #print axioms planCuts_exact
 #print axioms splitSlots_exact
 #print axioms readPayload_footer
@@ -300,6 +374,8 @@ private def convertIpc (options : PartitionPath.Options) (keys : List (Fin parti
 #print axioms Events.ToIpc.fields_exact
 #print axioms Events.ToIpc.convert_readback
 #print axioms Events.ToIpc.convert_scan_error
+#print axioms Events.scanPruned_eq_restrict
+#print axioms Events.ToIpc.convert_readback_restrict
 
 private def showCell (cell : Option Int32) : String := cell.map (fun value => toString value.toInt) |>.getD "null"
 
@@ -318,16 +394,19 @@ private def writeFixture (root : System.FilePath) (name : String) (options : Par
   IO.FS.writeFile (directory / "manifest.tsv") (String.intercalate "\n" manifest ++ "\n")
   IO.FS.writeFile (directory / "selected.tsv") (String.intercalate "\n" selected ++ "\n")
 
-private def writeEvents (root : System.FilePath) (name : String) (options : PartitionPath.Options) : IO Unit := do
-  let .ok files := make options | throw (IO.userError "multi-group native emit failed")
-  let .ok result := trace options files | throw (IO.userError "manifest event open failed")
+private def writeTrace (path : System.FilePath) (result : Events.Trace expected String) : IO Unit := do
   let .eos := result.toArrow.termination | throw (IO.userError "manifest event read failed")
   let batches := result.batches.map fun batch =>
     let pos := batch.position
     let cells := (observe batch.columns.toRows).map fun (payload, key) => showCell payload ++ ":" ++ showCell key
     String.intercalate "\t" [toString pos.fileIndex, pos.path, toString pos.groupIndex,
       toString batch.columns.rowCount, String.intercalate "," cells]
-  IO.FS.writeFile (root / name / "events.tsv") (String.intercalate "\n" (batches ++ ["eos"]) ++ "\n")
+  IO.FS.writeFile path (String.intercalate "\n" (batches ++ ["eos"]) ++ "\n")
+
+private def writeEvents (root : System.FilePath) (name : String) (options : PartitionPath.Options) : IO Unit := do
+  let .ok files := make options | throw (IO.userError "multi-group native emit failed")
+  let .ok result := trace options files | throw (IO.userError "manifest event open failed")
+  writeTrace (root / name / "events.tsv") result
 
 private def writeIpc (root : System.FilePath) (name : String) (options : PartitionPath.Options) : IO Unit := do
   let .ok files := make options | throw (IO.userError "multi-group native emit failed")
@@ -340,20 +419,36 @@ private def writeIpc (root : System.FilePath) (name : String) (options : Partiti
   IO.FS.writeBinFile (directory / "partitioned.arrows") partitioned.toByteArray
   IO.FS.writeBinFile (directory / "empty.arrows") empty.toByteArray
 
+private def writeRepeat (root : System.FilePath) (name : String) (options : PartitionPath.Options) : IO Unit := do
+  let .ok original := make options | throw (IO.userError "multi-group native emit failed")
+  let some files := repeatFiles original | throw (IO.userError "unexpected repeat fixture file layout")
+  let .ok whole := unpruned options files | throw (IO.userError "unpruned repeat open failed")
+  let .ok pruned := trace options files | throw (IO.userError "pruned repeat open failed")
+  let .ok wire := convertIpc options [keyPosition] ipcLimits files | throw (IO.userError "repeat IPC emit failed")
+  let directory := root / name
+  IO.FS.writeFile (directory / "repeat-paths.txt") (String.intercalate "\n" (files.map (·.path)) ++ "\n")
+  writeTrace (directory / "repeat-unpruned.tsv") whole
+  writeTrace (directory / "repeat-pruned.tsv") pruned
+  IO.FS.writeBinFile (directory / "repeat.arrows") wire.toByteArray
+
 public def main (args : List String) : IO Unit := do
   let (root, mode) ← match args with
     | [root] => pure (root, "")
     | ["events", root] => pure (root, "events")
     | ["ipc", root] => pure (root, "ipc")
-    | _ => throw (IO.userError "expected a fixture output directory, optionally preceded by events or ipc")
+    | ["repeat", root] => pure (root, "repeat")
+    | _ => throw (IO.userError "expected a fixture output directory, optionally preceded by events, ipc or repeat")
   writeFixture root "default" {}
   writeFixture root "custom" customMarker
-  if mode == "events" || mode == "ipc" then
+  if mode == "events" || mode == "ipc" || mode == "repeat" then
     writeEvents root "default" {}
     writeEvents root "custom" customMarker
-  if mode == "ipc" then
+  if mode == "ipc" || mode == "repeat" then
     writeIpc root "default" {}
     writeIpc root "custom" customMarker
+  if mode == "repeat" then
+    writeRepeat root "default" {}
+    writeRepeat root "custom" customMarker
 
 end Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups
 

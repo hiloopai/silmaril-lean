@@ -32,7 +32,38 @@ def check_ipc(path, names, groups):
         assert source.tell() == len(data)
 
 
-def check(root, marker, encoded_marker, events, ipc):
+def event_lines(groups):
+    def cell(value):
+        return "null" if value is None else str(value)
+
+    lines = []
+    for occurrence, path, group_index, count, key, slots in groups:
+        pairs = ",".join(f"{cell(slot)}:{cell(key)}" for slot in slots)
+        lines.append(f"{occurrence}\t{path}\t{group_index}\t{count}\t{pairs}")
+    return lines + ["eos"]
+
+
+def check_repeats(root, profile, paths, observed_batches, predicate):
+    literal = (root / "repeat-paths.txt").read_text(encoding="utf-8").splitlines()
+    repeated_paths = [str(root / path) for path in literal]
+    assert repeated_paths == [paths[i] for i in (2, 1, 0, 2, 3, 0)]
+    view = ds.dataset(repeated_paths, format="parquet", partitioning=profile, partition_base_dir=str(root))
+    kept = [fragment.path for fragment in view.get_fragments(filter=predicate)]
+    assert kept == [repeated_paths[i] for i in (0, 2, 3, 5)]
+    whole = [(occurrence, path, group, count, key, slots)
+             for occurrence, path in enumerate(literal)
+             for _, original, group, count, key, slots in observed_batches if original == path]
+    selected_paths = set(kept)
+    selected_occurrences = [i for i, path in enumerate(repeated_paths) if path in selected_paths]
+    assert selected_occurrences == [0, 2, 3, 5]
+    retained = [batch for batch in whole if batch[0] in selected_occurrences]
+    assert len(whole) == 12 and len(retained) == 8
+    assert (root / "repeat-unpruned.tsv").read_text(encoding="utf-8").splitlines() == event_lines(whole)
+    assert (root / "repeat-pruned.tsv").read_text(encoding="utf-8").splitlines() == event_lines(retained)
+    check_ipc(root / "repeat.arrows", ["payload", "key"], retained)
+
+
+def check(root, marker, encoded_marker, events, ipc, repeats):
     expected_paths = [f"key={encoded_marker if key is None else key}/part-0.parquet"
                       for key, _ in EXPECTED]
     paths = []
@@ -74,20 +105,15 @@ def check(root, marker, encoded_marker, events, ipc):
     rendered = ["\t".join("null" if value is None else str(value) for value in row) for row in expected]
     assert (root / "selected.tsv").read_text(encoding="utf-8").splitlines() == rendered
     if events:
-        def cell(value):
-            return "null" if value is None else str(value)
-
         selected_paths = set(fragments)
         groups = [batch for batch in observed_batches if str(root / batch[1]) in selected_paths]
-        lines = []
-        for occurrence, path, group_index, count, key, slots in groups:
-            pairs = ",".join(f"{cell(slot)}:{cell(key)}" for slot in slots)
-            lines.append(f"{occurrence}\t{path}\t{group_index}\t{count}\t{pairs}")
-        assert (root / "events.tsv").read_text(encoding="utf-8").splitlines() == lines + ["eos"]
+        assert (root / "events.tsv").read_text(encoding="utf-8").splitlines() == event_lines(groups)
         if ipc:
             check_ipc(root / "payload.arrows", ["payload"], groups)
             check_ipc(root / "partitioned.arrows", ["payload", "key"], groups)
             check_ipc(root / "empty.arrows", ["payload", "key"], [])
+    if repeats:
+        check_repeats(root, profile, paths, observed_batches, predicate)
 
 
 def main():
@@ -96,16 +122,19 @@ def main():
     assert np.__version__ == "2.5.5"
     root = Path(sys.argv[1]).resolve()
     default = "__HIVE_DEFAULT_PARTITION__"
-    assert sys.argv[2:] in ([], ["--events"], ["--ipc"])
+    assert sys.argv[2:] in ([], ["--events"], ["--ipc"], ["--repeat"])
     events = bool(sys.argv[2:])
-    ipc = sys.argv[2:] == ["--ipc"]
-    check(root / "default", default, default, events, ipc)
-    check(root / "custom", "null/=", "null%2F%3D", events, ipc)
+    repeats = sys.argv[2:] == ["--repeat"]
+    ipc = repeats or sys.argv[2:] == ["--ipc"]
+    check(root / "default", default, default, events, ipc, repeats)
+    check(root / "custom", "null/=", "null%2F%3D", events, ipc, repeats)
     print("PyArrow matched eight files, sixteen groups, twenty-four ordered rows, and both pruned traces.")
     if events:
         print("PyArrow matched eight ordered tagged batches, their exact rows, and both EOS boundaries.")
     if ipc:
         print("PyArrow matched six IPC streams, sixteen record batches, and the exact nullable INT32 fields.")
+    if repeats:
+        print("PyArrow matched 24 unpruned groups and 16 restricted groups and IPC records across both repeat fixtures.")
 
 
 if __name__ == "__main__":
