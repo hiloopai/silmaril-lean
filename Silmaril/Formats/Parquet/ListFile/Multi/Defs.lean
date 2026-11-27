@@ -33,7 +33,7 @@ inductive GroupError where
   | frame (ordinal offset : Nat) (cause : FrameError)
   deriving DecidableEq, Repr
 
-/-- An OffsetIndex requires every V1 page to start on a row boundary. -/
+/-- A leading continuation starts inside an existing list, away from a row boundary. -/
 def startsWithinRow : List Event → Bool
   | .next _ :: _ => true
   | _ => false
@@ -57,17 +57,24 @@ structure FrameWire (checked : ListFile.Checked) (column : Footer.ColumnChunk) (
     ListPage.EventsWire checked.limits.page info.numValues body events
   indexBoundary : column.offsetIndexOffset.isSome = true → startsWithinRow events = false
 
-/-- Use the complete original frame order and keep the current list open.
-Every frame-local refusal carries its original ordinal and header offset. -/
-def readFrames (checked : ListFile.Checked) (column : Footer.ColumnChunk)
+abbrev SlotFrameReader (error : Type) := Nat → Page.Frame → Except error (List Event)
+
+/-- Use the original frame order and keep the current list open. Both
+decoder and stitching refusals retain the original frame coordinates. -/
+def readFramesWith {frameError groupError : Type}
+    (indexed : Nat → Nat → frameError → groupError)
+    (feedError : ListPage.Error → frameError) (read : SlotFrameReader frameError)
     (frames : List Page.Frame) (ordinal remaining : Nat) (state : State) :
-    Except GroupError (Nat × State) :=
+    Except groupError (Nat × State) :=
   match frames with
   | [] => .ok (remaining, state)
   | frame :: rest => do
-    let events ← (readFrame checked column remaining frame).mapError (.frame ordinal frame.header.start)
-    let next ← (state.feed events).mapError (.frame ordinal frame.header.start ∘ .page)
-    readFrames checked column rest (ordinal + 1) (remaining - events.length) next
+    let events ← (read remaining frame).mapError (indexed ordinal frame.header.start)
+    let next ← (state.feed events).mapError (indexed ordinal frame.header.start ∘ feedError)
+    readFramesWith indexed feedError read rest (ordinal + 1) (remaining - events.length) next
+
+def readFrames (checked : ListFile.Checked) (column : Footer.ColumnChunk) :=
+  readFramesWith GroupError.frame FrameError.page (readFrame checked column)
 
 /-- The full chunk is framed before decoding and checked against both footer
 totals. The group always starts with no live list. -/

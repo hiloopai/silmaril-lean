@@ -16,6 +16,31 @@ theorem readFrame_wire {checked : ListFile.Checked} {column : Footer.ColumnChunk
     FrameWire checked column frame events ∧ events.length ≤ remaining :=
   Proofs.Formats.Parquet.ListFile.Multi.readFrame_wire h
 
+/-- The selected decoder contributes exact slots and the shared LIST state
+retains the original event order. -/
+theorem readFramesWith_wire {frameError groupError : Type} {indexed : Nat → Nat → frameError → groupError}
+    {feedError : ListPage.Error → frameError} {read : SlotFrameReader frameError}
+    {witness : Page.Frame → List Event → Prop}
+    {frames : List Page.Frame} {ordinal remaining left : Nat} {state next : State}
+    (sound : ∀ {remaining frame events}, read remaining frame = .ok events →
+      witness frame events ∧ events.length ≤ remaining)
+    (h : readFramesWith indexed feedError read frames ordinal remaining state = .ok (left, next)) :
+    ∃ pages, List.Forall₂ witness frames pages ∧
+      pages.flatten.length + left = remaining ∧
+      state.feed pages.flatten = .ok next ∧
+      next.finish.flatMap ListPage.rowEvents = state.finish.flatMap ListPage.rowEvents ++ pages.flatten :=
+  Proofs.Formats.Parquet.ListFile.Multi.readFramesWith_wire sound h
+
+/-- A successful original frame prefix passes the remaining slots and state to its suffix. -/
+theorem readFramesWith_append {frameError groupError : Type}
+    {indexed : Nat → Nat → frameError → groupError} {feedError : ListPage.Error → frameError}
+    {read : SlotFrameReader frameError} {before after : List Page.Frame} {ordinal remaining left : Nat}
+    {state next : State}
+    (h : readFramesWith indexed feedError read before ordinal remaining state = .ok (left, next)) :
+    readFramesWith indexed feedError read (before ++ after) ordinal remaining state =
+      readFramesWith indexed feedError read after (ordinal + before.length) left next :=
+  Proofs.Formats.Parquet.ListFile.Multi.readFramesWith_append h
+
 /-- The original frame order determines the concatenated wire events and exact slot total. -/
 theorem readFrames_wire {checked : ListFile.Checked} {column : Footer.ColumnChunk}
     {frames : List Page.Frame} {ordinal remaining left : Nat} {state next : State}

@@ -30,6 +30,23 @@ theorem readFrame_wire {checked : Checked} {framed : ListFile.FramedGroup} {fram
     {rows : List Row} (h : readFrame checked framed frame = .ok rows) : FrameWire checked framed frame rows :=
   Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.readFrame_wire h
 
+theorem rowStarts_of_rows (rows : List Row) :
+    rowStarts (rows.flatMap ListPage.rowEvents) = rows.length :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.rowStarts_of_rows rows
+
+/-- The exact raw repetitions are in event order, and the two level streams
+account for the three independent header counts. -/
+theorem event_counts {info : Page.DataV2} {repetition definition scalars : Bytes} {events : List Event}
+    (sectionWire : SectionsWire info.numValues repetition definition scalars events)
+    (rowCount : rowStarts events = info.numRows) (nullCount : missingSlots events = info.numNulls) :
+    ∃ reps defs,
+      Hybrid.Wire 1 info.numValues repetition.toList reps ∧
+      Hybrid.Wire 2 info.numValues definition.toList defs ∧
+      reps.length = info.numValues ∧ defs.length = info.numValues ∧
+      reps.count 0 = info.numRows ∧ defs.countP (· != 2) = info.numNulls ∧
+      events.map (fun event => event.wire.1) = reps :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.event_counts sectionWire rowCount nullCount
+
 /-- The two raw streams determine the three distinct V2 header counts. -/
 theorem sections_counts {info : Page.DataV2} {repetition definition scalars : Bytes}
     {rows : List Row}

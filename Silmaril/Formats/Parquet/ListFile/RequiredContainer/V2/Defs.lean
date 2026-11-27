@@ -63,6 +63,10 @@ structure RawWire (limits : ListPage.Limits) (source : Bytes) (frame : Page.Fram
     spans.values.stop - spans.values.start = sections.scalars.length ∧
     body.toList = sections.repetition.toList ++ sections.definition.toList ++ sections.scalars.toList
 
+/-- Each repetition-zero event starts one row. -/
+def rowStarts (events : List Event) : Nat :=
+  events.countP (fun event => event.wire.1 == 0)
+
 /-- V2 counts zero-value slots, including the marker of an empty list. -/
 def missingSlots (events : List Event) : Nat :=
   events.countP (fun event => event.wire.2.2.isNone)

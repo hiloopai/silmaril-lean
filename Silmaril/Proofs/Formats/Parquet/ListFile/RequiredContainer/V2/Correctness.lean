@@ -205,8 +205,9 @@ private theorem slot_repetitions {events : List Event} {reps defs : List Nat}
     (reps.zip (defs.zip entries)).map Prod.fst at mapped
   simpa only [same, List.map_fst_zip fits] using mapped
 
-private theorem rowMarkers (rows : List Row) :
-    (rows.flatMap ListPage.rowEvents).countP (fun event => event.wire.1 == 0) = rows.length := by
+public theorem rowStarts_of_rows (rows : List Row) :
+    rowStarts (rows.flatMap ListPage.rowEvents) = rows.length := by
+  unfold rowStarts
   have one (row : Row) : (ListPage.rowEvents row).countP (fun event => event.wire.1 == 0) = 1 := by
     cases row with
     | none => rfl
@@ -220,6 +221,33 @@ private theorem rowMarkers (rows : List Row) :
     simp only [List.flatMap_cons, List.countP_append, one, ih, List.length_cons]
     omega
 
+public theorem event_counts {info : Page.DataV2} {repetition definition scalars : Bytes}
+    {events : List Event}
+    (sectionWire : SectionsWire info.numValues repetition definition scalars events)
+    (rowCount : rowStarts events = info.numRows)
+    (nullCount : missingSlots events = info.numNulls) :
+    ∃ reps defs,
+      Hybrid.Wire 1 info.numValues repetition.toList reps ∧
+      Hybrid.Wire 2 info.numValues definition.toList defs ∧
+      reps.length = info.numValues ∧ defs.length = info.numValues ∧
+      reps.count 0 = info.numRows ∧ defs.countP (· != 2) = info.numNulls ∧
+      events.map (fun event => event.wire.1) = reps := by
+  obtain ⟨reps, defs, _, entries, repWire, defWire, repLength, defLength, entryLength, _, mask, _, ordered⟩ :=
+    sectionWire.data
+  have repetitions := slot_repetitions (by simp [repLength, defLength, entryLength]) ordered
+  have values := slot_values (repLength.trans entryLength.symm) (defLength.trans entryLength.symm) ordered
+  have noneEq : (fun (item : Option Int32) => !item.isSome) = Option.isNone := by
+    funext item
+    cases item <;> rfl
+  have missing := congrArg (List.countP (!·)) mask
+  simp only [valueMask, List.countP_map, Function.comp_def, noneEq] at missing
+  refine ⟨reps, defs, repWire, defWire, repLength, defLength, ?_, ?_, repetitions⟩
+  · rw [← repetitions, List.count, List.countP_map]
+    exact rowCount
+  · change defs.countP (fun d => !(d == 2)) = info.numNulls
+    rw [← missing, ← values, List.countP_map]
+    exact nullCount
+
 public theorem sections_counts {info : Page.DataV2} {repetition definition scalars : Bytes}
     {rows : List Row}
     (sectionWire : SectionsWire info.numValues repetition definition scalars (rows.flatMap ListPage.rowEvents))
@@ -230,21 +258,9 @@ public theorem sections_counts {info : Page.DataV2} {repetition definition scala
       Hybrid.Wire 2 info.numValues definition.toList defs ∧
       reps.length = info.numValues ∧ defs.length = info.numValues ∧
       reps.count 0 = info.numRows ∧ defs.countP (· != 2) = info.numNulls := by
-  obtain ⟨reps, defs, _, entries, repWire, defWire, repLength, defLength, entryLength, _, mask, _, ordered⟩ :=
-    sectionWire.data
-  have repetitions := slot_repetitions (by simp [repLength, defLength, entryLength]) ordered
-  have values := slot_values (repLength.trans entryLength.symm) (defLength.trans entryLength.symm) ordered
-  have noneEq : (fun (item : Option Int32) => !item.isSome) = Option.isNone := by
-    funext item
-    cases item <;> rfl
-  have missing := congrArg (List.countP (!·)) mask
-  simp only [valueMask, List.countP_map, Function.comp_def, noneEq] at missing
-  refine ⟨reps, defs, repWire, defWire, repLength, defLength, ?_, ?_⟩
-  · rw [← repetitions, List.count, List.countP_map]
-    exact (rowMarkers rows).trans rowCount
-  · change defs.countP (fun d => !(d == 2)) = info.numNulls
-    rw [← missing, ← values, List.countP_map]
-    exact nullCount
+  obtain ⟨reps, defs, repWire, defWire, repLength, defLength, rowTotal, nullTotal, _⟩ :=
+    event_counts sectionWire ((rowStarts_of_rows rows).trans rowCount) nullCount
+  exact ⟨reps, defs, repWire, defWire, repLength, defLength, rowTotal, nullTotal⟩
 
 public theorem frame_counts {checked : Checked} {framed : ListFile.FramedGroup} {frame : Page.Frame}
     {rows : List Row} (wire : FrameWire checked framed frame rows) :

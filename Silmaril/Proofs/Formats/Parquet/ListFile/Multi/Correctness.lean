@@ -48,19 +48,24 @@ public theorem readFrame_wire {checked : ListFile.Checked} {column : Footer.Colu
                 exact Nat.le_of_not_gt cap
   · contradiction
 
-public theorem readFrames_wire {checked : ListFile.Checked} {column : Footer.ColumnChunk}
+public theorem readFramesWith_wire {frameError groupError : Type} {indexed : Nat → Nat → frameError → groupError}
+    {feedError : ListPage.Error → frameError} {read : SlotFrameReader frameError}
+    {witness : Page.Frame → List Event → Prop}
     {frames : List Page.Frame} {ordinal remaining left : Nat} {state next : State}
-    (h : readFrames checked column frames ordinal remaining state = .ok (left, next)) :
-    ∃ pages, List.Forall₂ (FrameWire checked column) frames pages ∧
+    (sound : ∀ {remaining frame events}, read remaining frame = .ok events →
+      witness frame events ∧ events.length ≤ remaining)
+    (h : readFramesWith indexed feedError read frames ordinal remaining state = .ok (left, next)) :
+    ∃ pages, List.Forall₂ witness frames pages ∧
       pages.flatten.length + left = remaining ∧
+      state.feed pages.flatten = .ok next ∧
       next.finish.flatMap ListPage.rowEvents = state.finish.flatMap ListPage.rowEvents ++ pages.flatten := by
   induction frames generalizing ordinal remaining state with
   | nil =>
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj h)
-    exact ⟨[], .nil, by simp, by simp⟩
+    exact ⟨[], .nil, by simp, ListPage.feed_nil state, by simp⟩
   | cons frame rest ih =>
-    rw [readFrames] at h
-    cases frameRead : readFrame checked column remaining frame with
+    rw [readFramesWith] at h
+    cases frameRead : read remaining frame with
     | error e => simp [frameRead, Except.mapError, Bind.bind, Except.bind] at h
     | ok events =>
       simp only [frameRead, Except.mapError, Bind.bind, Except.bind] at h
@@ -68,12 +73,52 @@ public theorem readFrames_wire {checked : ListFile.Checked} {column : Footer.Col
       | error e => simp [fed] at h
       | ok more =>
         simp only [fed] at h
-        obtain ⟨pages, wire, count, order⟩ := ih h
-        obtain ⟨page, bound⟩ := readFrame_wire frameRead
-        refine ⟨events :: pages, .cons page wire, ?_, ?_⟩
+        obtain ⟨pages, wire, count, nextFed, order⟩ := ih h
+        obtain ⟨page, bound⟩ := sound frameRead
+        refine ⟨events :: pages, .cons page wire, ?_, ?_, ?_⟩
         · simp only [List.flatten_cons, List.length_append]
           omega
+        · rw [List.flatten_cons, ListPage.feed_append, fed]
+          exact nextFed
         · simpa [ListPage.feed_wire fed, List.append_assoc] using order
+
+public theorem readFrames_wire {checked : ListFile.Checked} {column : Footer.ColumnChunk}
+    {frames : List Page.Frame} {ordinal remaining left : Nat} {state next : State}
+    (h : readFrames checked column frames ordinal remaining state = .ok (left, next)) :
+    ∃ pages, List.Forall₂ (FrameWire checked column) frames pages ∧
+      pages.flatten.length + left = remaining ∧
+      next.finish.flatMap ListPage.rowEvents = state.finish.flatMap ListPage.rowEvents ++ pages.flatten := by
+  obtain ⟨pages, frameWire, count, _, ordered⟩ :=
+    readFramesWith_wire (witness := FrameWire checked column)
+      (read := readFrame checked column) (fun decoded => readFrame_wire decoded) h
+  exact ⟨pages, frameWire, count, ordered⟩
+
+public theorem readFramesWith_append {frameError groupError : Type}
+    {indexed : Nat → Nat → frameError → groupError} {feedError : ListPage.Error → frameError}
+    {read : SlotFrameReader frameError} {before after : List Page.Frame} {ordinal remaining left : Nat}
+    {state next : State}
+    (h : readFramesWith indexed feedError read before ordinal remaining state = .ok (left, next)) :
+    readFramesWith indexed feedError read (before ++ after) ordinal remaining state =
+      readFramesWith indexed feedError read after (ordinal + before.length) left next := by
+  induction before generalizing ordinal remaining state with
+  | nil =>
+    obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj h)
+    simp
+  | cons frame rest ih =>
+    rw [readFramesWith] at h
+    cases decoded : read remaining frame with
+    | error cause => simp [decoded, Except.mapError, Bind.bind, Except.bind] at h
+    | ok events =>
+      simp only [decoded, Except.mapError, Bind.bind, Except.bind] at h
+      cases fed : state.feed events with
+      | error cause => simp [fed] at h
+      | ok more =>
+        simp only [fed] at h
+        simp only [List.cons_append, readFramesWith, decoded, Except.mapError, Bind.bind, Except.bind, fed]
+        rw [ih h]
+        congr 1
+        simp only [List.length_cons]
+        omega
 
 public theorem readGroup_wire {maxGroupSlots : Nat} {checked : ListFile.Checked} {ordinal : Nat} {slots : List Row}
     (h : readGroup maxGroupSlots checked ordinal = .ok slots) : GroupWire maxGroupSlots checked ordinal slots := by
@@ -113,7 +158,7 @@ public theorem readFrames_read_error {checked : ListFile.Checked} {column : Foot
     {state : State} {cause : FrameError} (failed : readFrame checked column remaining frame = .error cause) :
     readFrames checked column (frame :: rest) ordinal remaining state =
       .error (.frame ordinal frame.header.start cause) := by
-  simp [readFrames, failed, Except.mapError, Bind.bind, Except.bind]
+  simp [readFrames, readFramesWith, failed, Except.mapError, Bind.bind, Except.bind]
 
 public theorem readFrames_feed_error {checked : ListFile.Checked} {column : Footer.ColumnChunk}
     {frame : Page.Frame} {rest : List Page.Frame} {ordinal remaining : Nat}
@@ -122,7 +167,7 @@ public theorem readFrames_feed_error {checked : ListFile.Checked} {column : Foot
     (failed : state.feed events = .error cause) :
     readFrames checked column (frame :: rest) ordinal remaining state =
       .error (.frame ordinal frame.header.start (.page cause)) := by
-  simp [readFrames, read, failed, Except.mapError, Bind.bind, Except.bind]
+  simp [readFrames, readFramesWith, read, failed, Except.mapError, Bind.bind, Except.bind]
 
 public theorem readFrames_leading_continuation {checked : ListFile.Checked} {column : Footer.ColumnChunk}
     {frame : Page.Frame} {rest : List Page.Frame} {remaining : Nat} {item : Option Int32} {events : List Event}

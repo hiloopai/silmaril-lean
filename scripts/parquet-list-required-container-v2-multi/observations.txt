@@ -1,0 +1,29 @@
+PyArrow 26.0.1
+native-required-v2-multi.parquet SHA-256 a96b08ec864df0628e4dce2531f18665714ccd0cef1bb9873bcd64d9c00e2009, footer [204, 752)
+  group 0 page 0 @4, slots 2, rows 2, zero-value slots 2, rep [28, 30) [0, 0], def [30, 33) [0, 1], scalar [33, 33) []
+  group 0 page 1 @33, slots 3, rows 1, zero-value slots 1, rep [57, 59) [0, 1, 1], def [59, 62) [2, 1, 2], scalar [62, 70) [-2147483648, 2147483647]
+  group 0 page 2 @70, slots 2, rows 1, zero-value slots 0, rep [94, 96) [0, 1], def [96, 98) [2, 2], scalar [98, 106) [7, 7]
+  group 1 page 0 @106, slots 3, rows 2, zero-value slots 3, rep [130, 132) [0, 1, 0], def [132, 135) [1, 1, 0], scalar [135, 135) []
+  group 1 page 1 @135, slots 3, rows 1, zero-value slots 1, rep [159, 161) [0, 1, 1], def [161, 164) [2, 1, 2], scalar [164, 172) [-7, 0]
+  group 1 page 2 @172, slots 1, rows 1, zero-value slots 0, rep [196, 198) [0], def [198, 200) [2], scalar [200, 204) [2147483647]
+native-required-v2-multi.arrows SHA-256 3aa0c5ba7842a0bdb3244b6e9d79e8d39053e97cfac311fe1b3cb355829d4992, exact EOS [752, 760)
+assembled-page-rows.parquet SHA-256 6513d97ded6dd2ce524d688a9e470c7ba474afa31d8c48c7b9609c58be75c10f
+page-rows: group 1 page 2 @172; one original batch and no IPC bytes
+assembled-page-nulls.parquet SHA-256 b093144f6cfb93ec2f29fe0d86502f74cb15bb18136b88d080335585b1a7928f
+page-nulls: group 1 page 2 @172; one original batch and no IPC bytes
+assembled-page-slots.parquet SHA-256 3283ab081c0300097b928bc8869b6d63bb7153a1595c77c8b0b8ce4603859c0a
+page-slots: group 1 page 2 @172; one original batch and no IPC bytes
+assembled-short-plain.parquet SHA-256 4d099ef9ac8aaa9520b886c7265fd3459c59aa981c0782141ccaf56d4d1c1f3e
+short-plain: group 1 page 2 @172; one original batch and no IPC bytes
+assembled-long-plain.parquet SHA-256 145d84bf415cd02ee3431496f9bcd6dd8d2825b923d277b31d365834168d812e
+long-plain: group 1 page 2 @172; one original batch and no IPC bytes
+assembled-group-rows.parquet SHA-256 7168928804078dcfe7ca21bbe9afee932882d2c3158bd0652a40ebaf7948dd1d
+group-rows: group 1 footer totals; one original batch and no IPC bytes
+assembled-group-slots.parquet SHA-256 2e123634871a51e335c29ff73da5864e3cc9407ce8c953d8ace504946dd2f486
+group-slots: group 1 footer totals; one original batch and no IPC bytes
+mutated-late-continuation.parquet SHA-256 d83136bd29720f19ff49860345abc2208152f81268624b2a60a165ce9ea943db
+late-continuation: group 1 page 2 @172; one original batch and no IPC bytes
+mutated-two-continuations.parquet SHA-256 d71dc3af8beaccc180e0f5cd9be36142960fe89d0799bca2d067bfa784b69971
+first-of-two: group 1 page 1 @135; one original batch and no IPC bytes
+mutated-continue-empty.parquet SHA-256 2e5f30563e9c222943fdaf4d90af5be4e8cf5a6e31b33cec2990dc1a1ec87753
+continue-empty: group 1 page 0 @106; one original batch and no IPC bytes
