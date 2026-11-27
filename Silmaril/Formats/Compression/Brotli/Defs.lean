@@ -102,6 +102,10 @@ def StreamWire (input output : List UInt8) (wbits steps : Nat) : Prop :=
 
 namespace Internal
 
+/-- The buffered tail and absolute position share the same byte boundary. -/
+def Cursor (reader : LSBReader) (bits : List Bool) : Prop :=
+  reader.Rep bits ∧ reader.count < 8 ∧ (reader.totalRead + reader.count) % 8 = 0
+
 def start (input : List UInt8) : LSBReader := ⟨0, 0, input, 0⟩
 
 def take (reader : LSBReader) (width : Nat) : Except Error (Nat × LSBReader) :=

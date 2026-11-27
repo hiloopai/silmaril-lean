@@ -1,0 +1,378 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "fixtures": {
+    "cli-distance-one": {
+      "producer": "libbrotli CLI quality 4",
+      "wire_sha256": "90a16dae74719010380c521f24a5f0c9456506390e028b8994eb4cd69104ca9e",
+      "output_sha256": "2edc986847e209b4016e141a6dc8716d3207350f416969382d431539bf292e4a",
+      "output_size": 1024,
+      "blocks": [
+        [
+          1,
+          0,
+          0,
+          1024,
+          24
+        ]
+      ],
+      "block_end_bits": [
+        82
+      ],
+      "ring": [
+        1,
+        4,
+        11,
+        15
+      ]
+    },
+    "cli-distance-two": {
+      "producer": "libbrotli CLI quality 4",
+      "wire_sha256": "11fac9b8c845e1221463302a1560b679353d532f43510539df64c842e8ad84ca",
+      "output_sha256": "c0aa76afe70d62eaf06346d2fe367f65024d7d991d93d5d8465fa6866de2de26",
+      "output_size": 1400,
+      "blocks": [
+        [
+          1,
+          0,
+          0,
+          1400,
+          24
+        ]
+      ],
+      "block_end_bits": [
+        93
+      ],
+      "ring": [
+        2,
+        4,
+        11,
+        15
+      ]
+    },
+    "cli-literal-only": {
+      "producer": "libbrotli CLI quality 4",
+      "wire_sha256": "ca9335d3078b3bf2af0f9624421533d9799347f3efd351a56bf2f9e4a4b796bf",
+      "output_sha256": "2b06f52841f4448b6fa7e9dc4c2d8d764173652195db5ab3612d2f3668f17254",
+      "output_size": 256,
+      "blocks": [
+        [
+          1,
+          0,
+          0,
+          256,
+          24
+        ]
+      ],
+      "block_end_bits": [
+        1132
+      ],
+      "ring": [
+        4,
+        11,
+        15,
+        16
+      ]
+    },
+    "flushed-cross-metablock": {
+      "producer": "libbrotli streaming encoder quality 9",
+      "wire_sha256": "a82d1a78c212bb51b9f6516d6f74a752527c8b5d2515494da0375ff211682bbf",
+      "output_sha256": "aca1b8c3b45e461589ea7274b368cfdfb75d4a3dbd75026fe6091ad087de1d4a",
+      "output_size": 1280,
+      "blocks": [
+        [
+          0,
+          0,
+          0,
+          512,
+          24
+        ],
+        [
+          0,
+          1,
+          0,
+          0,
+          2204
+        ],
+        [
+          1,
+          0,
+          0,
+          768,
+          2228
+        ]
+      ],
+      "block_end_bits": [
+        2198,
+        2208,
+        2293
+      ],
+      "ring": [
+        384,
+        4,
+        8,
+        4
+      ]
+    },
+    "cli-dictionary": {
+      "producer": "libbrotli CLI quality 7",
+      "wire_sha256": "6a552bdbff1a5d0e76e4b71ab59c9121d7182142b96e0173f6be16823c2f4a11",
+      "output_sha256": "e717dac5202c6371a047a53770406e4a43b20d754a0f37e4694a5a3e7f5187fb",
+      "output_size": 6279,
+      "blocks": [
+        [
+          1,
+          0,
+          0,
+          6279,
+          24
+        ]
+      ],
+      "block_end_bits": [
+        2179
+      ],
+      "ring": null
+    },
+    "raw-metadata-compressed": {
+      "producer": "libbrotli streaming encoder quality 9 with 17 metadata bytes",
+      "wire_sha256": "aa288e804c9814bb6d0c9fc45814635cf808aac73015da6d850de12adc7edbbe",
+      "output_sha256": "12184fe271bc6d4cf1ba4860f91d885679bc43cbfc98e654efbc8d6eadbb1a5f",
+      "output_size": 1280,
+      "blocks": [
+        [
+          0,
+          0,
+          1,
+          512,
+          24
+        ],
+        [
+          0,
+          1,
+          0,
+          17,
+          4134
+        ],
+        [
+          1,
+          0,
+          0,
+          768,
+          4292
+        ]
+      ],
+      "block_end_bits": [
+        4120,
+        4272,
+        4357
+      ],
+      "ring": [
+        384,
+        4,
+        11,
+        15
+      ]
+    },
+    "compressed-metadata-raw": {
+      "producer": "libbrotli streaming encoder quality 9 with 257 metadata bytes",
+      "wire_sha256": "9191d51679f0e94e6c55d02de12ee2512a461a6e320c3f57a1b990932f4a853c",
+      "output_sha256": "715a45cd55babc1a8789b2e231ffdac931fe3e74c8f925dfb6e5fc7f3eb1485b",
+      "output_size": 1112,
+      "blocks": [
+        [
+          0,
+          0,
+          0,
+          600,
+          24
+        ],
+        [
+          0,
+          1,
+          0,
+          0,
+          98
+        ],
+        [
+          0,
+          1,
+          0,
+          257,
+          126
+        ],
+        [
+          0,
+          0,
+          1,
+          512,
+          2204
+        ],
+        [
+          1,
+          0,
+          0,
+          0,
+          6306
+        ]
+      ],
+      "block_end_bits": [
+        92,
+        104,
+        2184,
+        6304,
+        6306
+      ],
+      "ring": [
+        2,
+        4,
+        11,
+        15
+      ]
+    }
+  },
+  "failures": {
+    "flushed-cross-metablock/trailing": {
+      "bit": 2293,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.trailingInput)",
+      "command": null
+    },
+    "flushed-cross-metablock/short-bit-cap": {
+      "bit": 2293,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.bitLimit",
+      "command": null
+    },
+    "flushed-cross-metablock/short-output-cap": {
+      "bit": 2228,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.outputLimit)",
+      "command": null
+    },
+    "flushed-cross-metablock/short-block-cap": {
+      "bit": 2208,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.stepLimit)",
+      "command": null
+    },
+    "flushed-cross-metablock/truncated-last-byte": {
+      "bit": 2277,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.command\n  (Silmaril.Formats.Compression.Brotli.Execute.Error.distance\n    (Silmaril.Formats.Compression.Brotli.Distance.Error.truncatedExtra))",
+      "command": 0
+    },
+    "flushed-cross-metablock/nonzero-final-fill": {
+      "bit": 2293,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.nonzeroPadding)",
+      "command": null
+    },
+    "flushed-cross-metablock/short-mlen": {
+      "bit": 2277,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.command\n  (Silmaril.Formats.Compression.Brotli.Execute.Error.metaBlockExtent)",
+      "command": 0
+    },
+    "cli-dictionary": {
+      "bit": 392,
+      "block": 0,
+      "cause": {
+        "dictionary": [
+          28183,
+          8,
+          28174
+        ]
+      },
+      "command": 0
+    },
+    "raw-metadata-compressed/trailing": {
+      "bit": 4357,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.trailingInput)",
+      "command": null
+    },
+    "raw-metadata-compressed/short-bit-cap": {
+      "bit": 4357,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.bitLimit",
+      "command": null
+    },
+    "raw-metadata-compressed/short-output-cap": {
+      "bit": 4292,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.outputLimit)",
+      "command": null
+    },
+    "raw-metadata-compressed/short-block-cap": {
+      "bit": 4272,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.stepLimit)",
+      "command": null
+    },
+    "raw-metadata-compressed/truncated-last-byte": {
+      "bit": 4341,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.command\n  (Silmaril.Formats.Compression.Brotli.Execute.Error.distance\n    (Silmaril.Formats.Compression.Brotli.Distance.Error.truncatedExtra))",
+      "command": 0
+    },
+    "raw-metadata-compressed/nonzero-final-fill": {
+      "bit": 4357,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.nonzeroPadding)",
+      "command": null
+    },
+    "raw-metadata-compressed/short-mlen": {
+      "bit": 4341,
+      "block": 2,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.command\n  (Silmaril.Formats.Compression.Brotli.Execute.Error.metaBlockExtent)",
+      "command": 0
+    },
+    "compressed-metadata-raw/trailing": {
+      "bit": 6306,
+      "block": 4,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.trailingInput)",
+      "command": null
+    },
+    "compressed-metadata-raw/short-bit-cap": {
+      "bit": 6306,
+      "block": 4,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.bitLimit",
+      "command": null
+    },
+    "compressed-metadata-raw/short-output-cap": {
+      "bit": 2204,
+      "block": 3,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.outputLimit)",
+      "command": null
+    },
+    "compressed-metadata-raw/short-block-cap": {
+      "bit": 6304,
+      "block": 4,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.stepLimit)",
+      "command": null
+    },
+    "compressed-metadata-raw/truncated-last-byte": {
+      "bit": 6304,
+      "block": 4,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.truncated)",
+      "command": null
+    },
+    "compressed-metadata-raw/nonzero-final-fill": {
+      "bit": 6306,
+      "block": 4,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.nonzeroPadding)",
+      "command": null
+    },
+    "switching": {
+      "wire_sha256": "ac8ba0851fb288df3a2ade64937504756e499e6d436a2d2623ec25f790ca2cf5",
+      "types": [
+        3,
+        2,
+        2
+      ],
+      "bit": 24,
+      "block": 0,
+      "cause": "unsupported block switching",
+      "command": null
+    }
+  }
+}

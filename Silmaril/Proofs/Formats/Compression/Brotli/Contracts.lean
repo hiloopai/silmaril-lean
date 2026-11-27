@@ -12,11 +12,6 @@ open Silmaril.Formats.Compression
 open Silmaril.Formats.Compression.Brotli
 open Silmaril.Formats.Compression.Brotli.Internal
 
-/-- The remaining bit list and the buffered part of its first byte agree
-    with the absolute bit position. -/
-private def Cursor (reader : LSBReader) (bits : List Bool) : Prop :=
-  reader.Rep bits ∧ reader.count < 8 ∧ (reader.totalRead + reader.count) % 8 = 0
-
 private theorem bind_ok {ε α β : Type} {action : Except ε α} {next : α → Except ε β}
     {out : β} (read : (action >>= next) = .ok out) :
     ∃ value, action = .ok value ∧ next value = .ok out := by
@@ -24,7 +19,7 @@ private theorem bind_ok {ε α β : Type} {action : Except ε α} {next : α →
   | error _ => cases read
   | ok value => exact ⟨value, rfl, read⟩
 
-private theorem take_sound {width value : Nat} {reader next : LSBReader} {bits : List Bool}
+theorem take_sound {width value : Nat} {reader next : LSBReader} {bits : List Bool}
     (cursor : Cursor reader bits) (read : take reader width = .ok (value, next)) :
     ∃ tail, bits = natBits value width ++ tail ∧ Cursor next tail ∧
       value < 2 ^ width ∧ next.totalRead = reader.totalRead + width := by
@@ -41,7 +36,7 @@ private theorem take_sound {width value : Nat} {reader next : LSBReader} {bits :
   rw [pos, count]
   omega
 
-private theorem readWindow_sound {reader next : LSBReader} {bits : List Bool} {wbits : Nat}
+theorem readWindow_sound {reader next : LSBReader} {bits : List Bool} {wbits : Nat}
     (cursor : Cursor reader bits) (read : readWindow reader = .ok (wbits, next)) :
     ∃ code tail, WindowWire wbits code ∧ bits = code ++ tail ∧ Cursor next tail ∧
       next.totalRead = reader.totalRead + code.length := by
@@ -164,7 +159,7 @@ private theorem readHeader_sound {reader next : LSBReader} {bits : List Bool} {h
     · obtain ⟨_, _, read⟩ := bind_ok read
       contradiction
 
-private theorem alignZero_sound {reader aligned : LSBReader} {bits : List Bool}
+theorem alignZero_sound {reader aligned : LSBReader} {bits : List Bool}
     (cursor : Cursor reader bits) (read : alignZero reader = .ok aligned) :
     ∃ tail, bits = padding reader.totalRead ++ tail ∧ Cursor aligned tail ∧ aligned.count = 0 ∧
       aligned.totalRead = reader.totalRead + (padding reader.totalRead).length := by
@@ -183,7 +178,7 @@ private theorem alignZero_sound {reader aligned : LSBReader} {bits : List Bool}
     · simp [LSBReader.alignToByte, padding, width]
   · contradiction
 
-private theorem takeBody_sound {size : Nat} {reader next : LSBReader} {bits : List Bool} {body : List UInt8}
+theorem takeBody_sound {size : Nat} {reader next : LSBReader} {bits : List Bool} {body : List UInt8}
     (cursor : Cursor reader bits) (aligned : reader.count = 0)
     (read : takeBody size reader = .ok (body, next)) :
     ∃ tail, body.length = size ∧ bits = bytesBits body ++ tail ∧ Cursor next tail ∧
@@ -206,7 +201,7 @@ private theorem takeBody_sound {size : Nat} {reader next : LSBReader} {bits : Li
     · simp [extent]
   · contradiction
 
-private theorem emptyCursor {reader : LSBReader} {bits : List Bool}
+theorem emptyCursor {reader : LSBReader} {bits : List Bool}
     (cursor : Cursor reader bits) (count : reader.count = 0) (input : reader.input = []) : bits = [] := by
   have shape := cursor.1.2
   rw [count, input] at shape
