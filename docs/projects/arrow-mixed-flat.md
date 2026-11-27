@@ -689,3 +689,40 @@ control exercises the distinct immutable batch-limit precedence.
 make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyCutoff.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyCutoff.Axioms'
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### External view prefix mismatch after complete framing
+
+`Incremental.Failure.PrefixMismatch.Run` describes an admitted schedule
+through a checked Schema, a complete published prefix, and a later
+fully framed RecordBatch rejected at an external view slot. The
+original metadata and body spans, batch slot, variadic count limits,
+and running row and cell budgets are checked before the field decoder.
+
+`feed_field_wire` recovers the original complete frame and the exact
+field error from the terminal feed. `record_field_error` and
+`field_terminal` transfer that cause to the immutable record and
+stream readers. These laws also apply to other typed column causes
+that surface after complete admission.
+
+`prefix_mismatch_exact` replays every prior batch and its absolute range.
+The terminal cause keeps the original batch ordinal, message offset,
+field index and slot index. The trace ends with the error and has only
+the previously published batches. `schedules_mismatch_equivalent`
+compares two admitted schedules that reach the mismatch on the same
+octets and limits. `mismatch_no_success` excludes a completed stream
+on those octets.
+
+The one-byte and uneven guards use synthetic four-byte edits to a
+native BinaryView stream and the pinned PyArrow mixed stream. The
+original frame extents and the EOS bytes are present in both inputs.
+The batch, row and cell controls report their own earlier errors.
+The incremental aggregate data-buffer cap also takes precedence
+when lowered below the candidate total.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/PrefixMismatch/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/PrefixMismatch/Thms.lean) ·
+[Lean guards](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/PrefixMismatch/Examples.lean)
+
+```sh
+make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.PrefixMismatch.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.PrefixMismatch.Axioms'
+python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
+```

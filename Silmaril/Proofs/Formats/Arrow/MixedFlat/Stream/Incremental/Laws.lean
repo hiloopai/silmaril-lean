@@ -90,6 +90,20 @@ theorem schema_exact {ipc : Arrow.Limits} {len raw : Nat} {frame : Frame}
   simp [MixedFlat.Stream.readSchemaFrame, env, checked, bind, Except.bind,
     Except.mapError, pure, Except.pure]
 
+theorem packed_frame {ipc : Arrow.Limits} {len raw : Nat} {frame : Frame}
+    (original : frame.InCarrier ipc (.leaf len raw)) (bodyWf : frame.body.wf = true) :
+    metadataBytes frame.metadata = (KBytes.leaf len raw).slice (frame.offset + 8) frame.metadata.len ∧
+      readBody ipc (.leaf len raw) (frame.offset + 8 + frame.metadata.len) frame.body.len =
+        .ok (metadataBytes frame.body) := by
+  let start := frame.offset + 8 + frame.metadata.len
+  let carrier := KBytes.leaf len raw
+  obtain ⟨body, bodyRead, bodyBytes⟩ := original.2.2.2
+  obtain ⟨_, _, _, fit, selected⟩ := (readBody_iff _ _ _ _ _).mp bodyRead
+  have bodyWindow : Window carrier start frame.body :=
+    ⟨bodyWf, fit, bodyBytes.trans (by rw [selected]; exact carrier.toList_slice start frame.body.len rfl fit)⟩
+  have bodyMatch := (pack_window bodyWindow).trans selected.symm
+  exact ⟨pack_window original.2.1, bodyMatch.symm ▸ bodyRead⟩
+
 theorem record_exact {limits : MixedFlat.Stream.Incremental.Limits} {len raw : Nat}
     {fields : List MixedFlat.Field} {running : Running} {frame : Frame} {value : Delivered fields}
     (original : frame.InCarrier limits.mixed.observation.ipc (.leaf len raw))
@@ -99,24 +113,64 @@ theorem record_exact {limits : MixedFlat.Stream.Incremental.Limits} {len raw : N
       frame.metadata.len = .ok value.record := by
   obtain ⟨metadata, metadataCheck, _, _, _, budget, parsed, range⟩ := decode_checked decoded
   have extent : metadata.bodyLength = frame.body.len := by
-    exact parsedExtent (body := .leaf frame.body.len (frame.body.read 0 frame.body.len)) parsed
-  let start := frame.offset + 8 + frame.metadata.len
-  let carrier := KBytes.leaf len raw
-  have metadataMatch := pack_window original.2.1
-  obtain ⟨body, bodyRead, bodyBytes⟩ := original.2.2.2
-  obtain ⟨_, _, _, fit, selected⟩ := (readBody_iff _ _ _ _ _).mp bodyRead
-  have bodyWindow : Window carrier start frame.body :=
-    ⟨bodyWf, fit, bodyBytes.trans (by rw [selected]; exact carrier.toList_slice start frame.body.len rfl fit)⟩
-  have bodyMatch := pack_window bodyWindow
+    exact parsedExtent (body := metadataBytes frame.body) parsed
+  obtain ⟨metadataMatch, bodyRead⟩ := packed_frame original bodyWf
   rw [metadataMatch] at metadataCheck
-  change MixedFlat.readParsed limits.mixed fields metadata (metadataBytes frame.body) = _ at parsed
-  rw [bodyMatch, ← selected] at parsed
   apply (MixedFlat.Stream.readRecord_iff _ _ _ _ _ _ _).mpr
-  refine ⟨metadata, body, metadataCheck, ?_, budget, parsed, ?_⟩
+  refine ⟨metadata, metadataBytes frame.body, metadataCheck, ?_, budget, parsed, ?_⟩
   · rw [extent]
     exact bodyRead
   · rw [range, extent]
     rfl
+
+private theorem field_extent {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
+    {metadata : MixedFlat.Metadata} {body : KBytes} {index : Nat} {cause : MixedFlat.ColumnError}
+    (failed : MixedFlat.readParsed limits fields metadata body = .error (.field index cause)) :
+    metadata.bodyLength = body.len := by
+  by_cases extent : metadata.bodyLength = body.len
+  · exact extent
+  · by_cases source : body.wf = true
+    · simp [MixedFlat.readParsed, MixedFlat.bindBatch, source, extent, bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at failed
+    · simp [MixedFlat.readParsed, MixedFlat.bindBatch, source, bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at failed
+
+theorem decode_field_checked {limits : MixedFlat.Stream.Incremental.Limits}
+    {fields : List MixedFlat.Field} {running : Running} {frame : Frame}
+    {index : Nat} {cause : MixedFlat.ColumnError}
+    (failed : decode limits fields running frame = .error (.record (.decode (.field index cause)))) :
+    ∃ metadata,
+      MixedFlat.readMetadata limits.mixed.observation.ipc limits.mixed.view.dataBuffers
+        limits.mixed.totalDataBuffers fields (metadataBytes frame.metadata) = .ok metadata ∧
+      running.ordinal < limits.mixed.observation.ipc.batches ∧
+      running.dataBuffers + metadata.counts.sum ≤ limits.totalDataBuffers ∧
+      Body.checkBudget limits.mixed.observation fields.length (running.rows + metadata.batch.rowCount) = .ok () ∧
+      metadata.bodyLength = frame.body.len ∧
+      MixedFlat.readParsed limits.mixed fields metadata (metadataBytes frame.body) = .error (.field index cause) := by
+  unfold decode at failed
+  dsimp only at failed
+  split at failed
+  · simp [bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at failed
+  rename_i batches
+  cases metadataCheck : MixedFlat.readMetadata limits.mixed.observation.ipc limits.mixed.view.dataBuffers
+      limits.mixed.totalDataBuffers fields (metadataBytes frame.metadata) with
+  | error => simp [metadataCheck, bind, Except.bind, Except.mapError] at failed
+  | ok metadata =>
+    simp only [metadataCheck, bind, Except.bind, Except.mapError] at failed
+    split at failed
+    · simp [throw, throwThe, MonadExceptOf.throw] at failed
+    rename_i enough
+    cases budget : Body.checkBudget limits.mixed.observation fields.length (running.rows + metadata.batch.rowCount) with
+    | error => simp [budget] at failed
+    | ok accepted =>
+      cases accepted
+      simp only [budget] at failed
+      split at failed
+      · rename_i fault parsed
+        change (Except.error (.record (.decode fault)) : Except BatchError (Delivered fields)) = _ at failed
+        simp only [Except.error.injEq, BatchError.record.injEq, MixedFlat.Stream.BatchError.decode.injEq] at failed
+        subst fault
+        exact ⟨metadata, rfl, by omega, Nat.le_of_not_gt enough, budget,
+          field_extent (body := metadataBytes frame.body) parsed, parsed⟩
+      · contradiction
 
 private theorem aligned_eq {fields : List MixedFlat.Field} {observed : MixedFlat.Observed}
     {left right : MixedFlat.Events.Batch (MixedFlat.Events.schema fields)}
@@ -227,6 +281,17 @@ theorem framing_shape {ipc : Arrow.Limits} {previous : FramingState} {chunk : KB
         rfl
       · contradiction
   · contradiction
+
+theorem completed_frame_at {size packed : Nat} {cursor : Cursor} {chunk rest : KBytes}
+    {frame : Frame} {next : FramingState}
+    (held : cursor.input.InCarrier cursor.limits.mixed.observation.ipc (.leaf size packed))
+    (incoming : Window (.leaf size packed) cursor.position chunk)
+    (fed : Arrow.Framing.Incremental.feed cursor.limits.mixed.observation.ipc cursor.input chunk =
+      .ok (.frame frame next rest)) :
+    frame.offset = cursor.messageOffset ∧
+      frame.InCarrier cursor.limits.mixed.observation.ipc (.leaf size packed) ∧ frame.body.wf = true :=
+  ⟨(framing_shape fed).1, (Arrow.Framing.Incremental.feed_refines rfl held incoming fed).1,
+    (framing_shape fed).2.2⟩
 
 theorem feed_refines {size packed : Nat} {cursor : Cursor} {chunk : KBytes} {reply : Progress}
     (held : cursor.input.InCarrier cursor.limits.mixed.observation.ipc (.leaf size packed))

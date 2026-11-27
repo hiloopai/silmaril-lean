@@ -26,6 +26,43 @@ theorem decode_checked {limits : Limits} {fields : List MixedFlat.Field}
       value.record.range = frameRange frame :=
   Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.decode_checked decoded
 
+/-- A framed publication on a packed reference supplies exactly the original
+metadata and body slices for subsequent typed checks. -/
+theorem packed_frame {ipc : Arrow.Limits} {len raw : Nat} {frame : Frame}
+    (original : frame.InCarrier ipc (.leaf len raw)) (bodyWf : frame.body.wf = true) :
+    metadataBytes frame.metadata = (KBytes.leaf len raw).slice (frame.offset + 8) frame.metadata.len ∧
+      readBody ipc (.leaf len raw) (frame.offset + 8 + frame.metadata.len) frame.body.len =
+        .ok (metadataBytes frame.body) :=
+  Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.packed_frame original bodyWf
+
+/-- A field error has passed the batch, metadata, running budgets and body
+layout checks. It retains the exact downstream column cause. -/
+theorem decode_field_checked {limits : Limits}
+    {fields : List MixedFlat.Field} {running : Running} {frame : Frame}
+    {index : Nat} {cause : MixedFlat.ColumnError}
+    (failed : decode limits fields running frame = .error (.record (.decode (.field index cause)))) :
+    ∃ metadata,
+      MixedFlat.readMetadata limits.mixed.observation.ipc limits.mixed.view.dataBuffers
+        limits.mixed.totalDataBuffers fields (metadataBytes frame.metadata) = .ok metadata ∧
+      running.ordinal < limits.mixed.observation.ipc.batches ∧
+      running.dataBuffers + metadata.counts.sum ≤ limits.totalDataBuffers ∧
+      Body.checkBudget limits.mixed.observation fields.length (running.rows + metadata.batch.rowCount) = .ok () ∧
+      metadata.bodyLength = frame.body.len ∧
+      MixedFlat.readParsed limits.mixed fields metadata (metadataBytes frame.body) = .error (.field index cause) :=
+  Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.decode_field_checked failed
+
+/-- Even if a later typed check rejects the record, a completed framing step
+identifies the original record start and complete wire windows. -/
+theorem completed_frame_at {size packed : Nat} {cursor : Cursor} {chunk rest : KBytes}
+    {frame : Frame} {next : Arrow.Framing.Incremental.State}
+    (held : cursor.input.InCarrier cursor.limits.mixed.observation.ipc (.leaf size packed))
+    (incoming : Window (.leaf size packed) cursor.position chunk)
+    (fed : Arrow.Framing.Incremental.feed cursor.limits.mixed.observation.ipc cursor.input chunk =
+      .ok (.frame frame next rest)) :
+    frame.offset = cursor.messageOffset ∧
+      frame.InCarrier cursor.limits.mixed.observation.ipc (.leaf size packed) ∧ frame.body.wf = true :=
+  Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.completed_frame_at held incoming fed
+
 /-- Any ordered, well-formed fragment preserves the original carrier reference
 and any publication agrees with the immutable parser at its original offset. -/
 theorem feed_refines {size packed : Nat} {cursor : Cursor} {chunk : KBytes} {reply : Progress}
