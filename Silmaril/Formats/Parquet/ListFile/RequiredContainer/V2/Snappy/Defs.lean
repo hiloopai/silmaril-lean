@@ -44,6 +44,24 @@ structure StoredWire (limits : Limits) (checked : Checked) (frame : Page.Frame)
     spans.values.stop - spans.values.start = frame.value.compressedSize - Multi.Snappy.v2LevelBytes info ∧
     Multi.Snappy.V2BodyWire checked frame info stored sections
 
+/-- Prepare the checksum-checked original V2 body, then decode and validate
+its required LIST events. The caller admits the header and bounds the slots. -/
+def readEvents (limits : Limits) (checked : Checked) (frame : Page.Frame) (info : Page.DataV2) :
+    Except Multi.Snappy.FrameError (List Event) := do
+  let sections ← readSections limits checked frame info
+  let events ← (RequiredContainer.decodeSections checked.limits.page info.numValues
+    sections.repetition sections.definition sections.scalars).mapError .page
+  Multi.Snappy.checkV2Counts info events
+  pure events
+
+structure EventsWire (limits : Limits) (checked : Checked) (frame : Page.Frame)
+    (info : Page.DataV2) (events : List Event) : Prop where
+  data : ∃ sections,
+    StoredWire limits checked frame info sections ∧
+    SectionsWire info.numValues sections.repetition sections.definition sections.scalars events ∧
+    Multi.startsWithinRow events = false ∧ Multi.Snappy.pageRows events = info.numRows ∧
+    Multi.Snappy.pageNulls events = info.numNulls
+
 def readFrame (limits : Limits) (checked : Checked) (framed : FramedGroup) (frame : Page.Frame) :
     Except FrameError (List Row) := do
   let .dataV2 info := frame.value.kind | throw (.snappy (.page .pageKind))
@@ -55,10 +73,7 @@ def readFrame (limits : Limits) (checked : Checked) (framed : FramedGroup) (fram
   let expectedRows := framed.group.numRows.toNat
   if checked.limits.page.maxRows < expectedRows ∨ checked.limits.page.maxRows < info.numRows then
     return ← throw (.snappy (.page .rowLimit))
-  let sections ← (readSections limits checked frame info).mapError .snappy
-  let events ← (RequiredContainer.decodeSections checked.limits.page info.numValues
-    sections.repetition sections.definition sections.scalars).mapError (.snappy ∘ .page)
-  (Multi.Snappy.checkV2Counts info events).mapError .snappy
+  let events ← (readEvents limits checked frame info).mapError .snappy
   let rows ← (ListPage.reconstruct events).mapError (.snappy ∘ .page)
   if rows.length ≠ expectedRows then return ← throw (.groupRows expectedRows rows.length)
   pure rows

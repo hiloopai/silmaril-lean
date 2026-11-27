@@ -1,0 +1,47 @@
+PyArrow 26.0.1
+native-required-v2-snappy-multi-crc.parquet SHA-256 17d9f00a7a5b041720f6a3dbae8e6770cbab9dde31c225b614363aee03d855d6, footer [274, 825)
+  group 0 page 0 @4, crc 1434987136, slots/rows/nulls 2/2/2, flag False, rep [34, 36), def [36, 39), suffix [39, 39) -> 0 raw bytes
+  group 0 page 1 @39, crc 80185707, slots/rows/nulls 3/1/1, flag False, rep [68, 70), def [70, 73), suffix [73, 81) -> 8 raw bytes
+  group 0 page 2 @81, crc -467135486, slots/rows/nulls 2/1/0, flag False, rep [111, 113), def [113, 115), suffix [115, 123) -> 8 raw bytes
+  group 1 page 0 @123, crc 1421479770, slots/rows/nulls 3/2/3, flag False, rep [153, 155), def [155, 158), suffix [158, 158) -> 0 raw bytes
+  group 1 page 1 @158, crc 588024252, slots/rows/nulls 1/1/0, flag False, rep [188, 190), def [190, 192), suffix [192, 196) -> 4 raw bytes
+  group 1 page 2 @196, crc -1781117756, slots/rows/nulls 105/1/1, flag True, rep [228, 233), def [233, 241), suffix [241, 274) -> 416 raw bytes
+native-required-v2-snappy-multi-no-crc.parquet SHA-256 ff7517340d0ab380fdf05ac65b8a976ab727097f1852418f45ea9e57750a32df, footer [239, 790)
+  group 0 page 0 @4, crc absent, slots/rows/nulls 2/2/2, flag False, rep [28, 30), def [30, 33), suffix [33, 33) -> 0 raw bytes
+  group 0 page 1 @33, crc absent, slots/rows/nulls 3/1/1, flag False, rep [57, 59), def [59, 62), suffix [62, 70) -> 8 raw bytes
+  group 0 page 2 @70, crc absent, slots/rows/nulls 2/1/0, flag False, rep [94, 96), def [96, 98), suffix [98, 106) -> 8 raw bytes
+  group 1 page 0 @106, crc absent, slots/rows/nulls 3/2/3, flag False, rep [130, 132), def [132, 135), suffix [135, 135) -> 0 raw bytes
+  group 1 page 1 @135, crc absent, slots/rows/nulls 1/1/0, flag False, rep [159, 161), def [161, 163), suffix [163, 167) -> 4 raw bytes
+  group 1 page 2 @167, crc absent, slots/rows/nulls 105/1/1, flag True, rep [193, 198), def [198, 206), suffix [206, 239) -> 416 raw bytes
+assembled-default-flag.parquet SHA-256 962908189b4731cf6e5fd4bf39817504c86e3602f78f6c0dfed0a8a34c4b58f1, footer [271, 442)
+  group 0 page 0 @4, crc 1434987136, slots/rows/nulls 2/2/2, flag False, rep [34, 36), def [36, 39), suffix [39, 39) -> 0 raw bytes
+  group 0 page 1 @39, crc 80185707, slots/rows/nulls 3/1/1, flag False, rep [68, 70), def [70, 73), suffix [73, 81) -> 8 raw bytes
+  group 0 page 2 @81, crc -467135486, slots/rows/nulls 2/1/0, flag False, rep [111, 113), def [113, 115), suffix [115, 123) -> 8 raw bytes
+  group 1 page 0 @123, crc 1421479770, slots/rows/nulls 3/2/3, flag False, rep [153, 155), def [155, 158), suffix [158, 158) -> 0 raw bytes
+  group 1 page 1 @158, crc 588024252, slots/rows/nulls 1/1/0, flag False, rep [188, 190), def [190, 192), suffix [192, 196) -> 4 raw bytes
+  group 1 page 2 @196, crc -1781117756, slots/rows/nulls 105/1/1, flag default true, rep [225, 230), def [230, 238), suffix [238, 271) -> 416 raw bytes
+native-required-v2-snappy-multi-crc.arrows SHA-256 92de4becd3dacd92b4cc68686db9d809543de957f9cd86b208952a799423d25c, exact EOS [1168, 1176)
+native-required-v2-snappy-multi-no-crc.arrows SHA-256 92de4becd3dacd92b4cc68686db9d809543de957f9cd86b208952a799423d25c, exact EOS [1168, 1176)
+assembled-default-flag.arrows SHA-256 92de4becd3dacd92b4cc68686db9d809543de957f9cd86b208952a799423d25c, exact EOS [1168, 1176)
+mutated-raw-crc.parquet SHA-256 aa3be3a85d96efa6aaad1d9195b215b0ff47b7bdbc47f5ff559bbd8bcf4456fa
+raw-crc: group 1 page 1 @158; retained one original batch and no IPC bytes
+mutated-level-crc.parquet SHA-256 15077c64daed8e98b476199116d7aed53c34c3ff4a39271a726b9e352b8b5a08
+level-crc: group 1 page 2 @196; retained one original batch and no IPC bytes
+mutated-snappy-crc.parquet SHA-256 4b75e6025524e635777d24a8578b950925cf7aac14c4e8c2a7061dddd860cd72
+snappy-crc: group 1 page 2 @196; retained one original batch and no IPC bytes
+mutated-two-crcs.parquet SHA-256 5f3c0be7fe267fe4335615c70c9939ddc882dc767d1d740db9a6ff3616c4c05f
+two-crcs: group 1 page 1 @158; retained one original batch and no IPC bytes
+assembled-page-rows.parquet SHA-256 9fd7d91ff89ec758eb943ce3f55c8ffd26b9183c29fa2c2b2c394650a52e9f91
+page-rows: group 1 page 2 @196; retained one original batch and no IPC bytes
+assembled-page-nulls.parquet SHA-256 b04fbe44416250d1e92eadfe591d57270db85c0b2f0f6b9f58ff4897555897bb
+page-nulls: group 1 page 2 @196; retained one original batch and no IPC bytes
+assembled-page-slots.parquet SHA-256 a038f2ef945b722ef250db3c17461de70d4d94759de24876907ca1e0bd468fd4
+page-slots: group 1 page 2 @196; retained one original batch and no IPC bytes
+assembled-raw-flag.parquet SHA-256 4fad5acd4b7c0f40b722e8da2b691df0d3c96d16f5ac8bfd0f7d3c72a62bddd7
+raw-flag: group 1 framing; retained one original batch and no IPC bytes
+assembled-bad-snappy.parquet SHA-256 f20045242c9f7875ad73f54e4fd5df89cfab2a1b473ab0df2fddd307ff8a16c6
+bad-snappy: group 1 page 2 @196; retained one original batch and no IPC bytes
+assembled-bad-level.parquet SHA-256 3d02fdc8670015bed019dcdae87b707140ad5bb76eb386928f5d42ca2101174d
+bad-level: group 1 page 2 @196; retained one original batch and no IPC bytes
+assembled-late-continuation.parquet SHA-256 36505d79b3175a1293746950d2ff0cc2b62e0f453c223b327419fe1cd87d988b
+late-continuation: group 1 page 2 @196; retained one original batch and no IPC bytes

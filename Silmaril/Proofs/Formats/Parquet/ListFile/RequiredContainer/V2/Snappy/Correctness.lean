@@ -15,7 +15,7 @@ namespace Silmaril.Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Snappy
 open Silmaril.Formats Silmaril.Formats.Parquet
 open Silmaril.Formats.Parquet.ListFile.RequiredContainer (Checked SectionsWire)
 open Silmaril.Formats.Parquet.ListFile.RequiredContainer.V2.Snappy
-open ListPage (Row)
+open ListPage (Event Row)
 
 private theorem checkedExtent {cap : Nat} {source : Bytes} {frame : Page.Frame}
     {status : Page.Checksum.Status} (h : Page.Checksum.verify cap source frame = .ok status) :
@@ -83,6 +83,30 @@ public theorem suffix_wire {checked : Checked} {frame : Page.Frame} {info : Page
     subst codec
     exact decoded
 
+public theorem readEvents_wire {limits : Limits} {checked : Checked} {frame : Page.Frame}
+    {info : Page.DataV2} {events : List Event} (kind : frame.value.kind = .dataV2 info)
+    (h : readEvents limits checked frame info = .ok events) : EventsWire limits checked frame info events := by
+  unfold readEvents at h
+  simp only [Bind.bind, Except.bind] at h
+  cases prepared : readSections limits checked frame info with
+  | error cause => simp [prepared] at h
+  | ok sections =>
+    simp only [prepared] at h
+    cases decoded : ListFile.RequiredContainer.decodeSections checked.limits.page info.numValues
+        sections.repetition sections.definition sections.scalars with
+    | error cause => simp [decoded, Except.mapError] at h
+    | ok output =>
+      simp only [decoded, Except.mapError] at h
+      cases counted : ListFile.Multi.Snappy.checkV2Counts info output with
+      | error cause => simp [counted] at h
+      | ok accepted =>
+        cases accepted
+        simp only [counted] at h
+        obtain rfl := Except.ok.inj h
+        obtain ⟨boundary, rows, absent⟩ := ListFile.Multi.Snappy.checkV2Counts_wire counted
+        exact ⟨sections, readSections_wire kind prepared, ListFile.RequiredContainer.decodeSections_wire decoded,
+          boundary, rows, absent⟩
+
 public theorem readFrame_wire {limits : Limits} {checked : Checked} {framed : ListFile.FramedGroup}
     {frame : Page.Frame} {rows : List Row}
     (h : readFrame limits checked framed frame = .ok rows) : FrameWire limits checked framed frame rows := by
@@ -104,45 +128,32 @@ public theorem readFrame_wire {limits : Limits} {checked : Checked} {framed : Li
     rename_i rowCaps
     push Not at rowCaps
     simp only [Except.mapError, Bind.bind, Except.bind] at h
-    cases prepared : readSections limits checked frame info with
-    | error cause => simp [prepared] at h
-    | ok sections =>
-      simp only [prepared] at h
-      cases decoded : ListFile.RequiredContainer.decodeSections checked.limits.page info.numValues
-          sections.repetition sections.definition sections.scalars with
-      | error cause => simp [decoded] at h
-      | ok events =>
-        simp only [decoded] at h
-        cases counted : ListFile.Multi.Snappy.checkV2Counts info events with
-        | error cause => simp [counted] at h
-        | ok accepted =>
-          cases accepted
-          simp only [counted] at h
-          cases assembled : ListPage.reconstruct events with
-          | error cause => simp [assembled] at h
-          | ok output =>
-            simp only [assembled] at h
-            split at h
-            · contradiction
-            rename_i groupRows
-            obtain rfl := Except.ok.inj h
-            have groupCount := not_not.mp groupRows
-            have sectionWire := ListFile.RequiredContainer.decodeSections_wire decoded
-            have ordered := ListPage.reconstruct_wire assembled
-            obtain ⟨boundary, rowCount, nulls⟩ := ListFile.Multi.Snappy.checkV2Counts_wire counted
-            have sourceRows : output.length = info.numRows := by
-              rw [← ListFile.Multi.Snappy.pageRows_of_rows output, ordered]
-              exact rowCount
-            have ⟨physical, extent⟩ := ListFile.RequiredContainer.V2.sections_physical sectionWire
-            change ListFile.Multi.Snappy.pageNulls events = info.numNulls at nulls
-            refine ⟨ListFile.RequiredContainer.reconstruct_present sectionWire assembled, info, sections, kind,
-              not_not.mp codec, not_not.mp encoding, readSections_wire kind prepared, ordered ▸ sectionWire,
-              ordered ▸ boundary, not_not.mp slots, rowCaps.2, sourceRows, groupCount, groupCount ▸ rowCaps.1,
-              ordered ▸ nulls, ?_, ?_⟩
-            · rw [← nulls]
-              exact extent
-            · rw [ordered, ← nulls]
-              exact physical
+    cases decoded : readEvents limits checked frame info with
+    | error cause => simp [decoded] at h
+    | ok events =>
+      simp only [decoded] at h
+      cases assembled : ListPage.reconstruct events with
+      | error cause => simp [assembled] at h
+      | ok output =>
+        simp only [assembled] at h
+        split at h
+        · contradiction
+        rename_i groupRows
+        obtain rfl := Except.ok.inj h
+        have groupCount := not_not.mp groupRows
+        obtain ⟨sections, prepared, sectionWire, boundary, rowCount, nulls⟩ := (readEvents_wire kind decoded).data
+        have ordered := ListPage.reconstruct_wire assembled
+        have sourceRows : output.length = info.numRows := by
+          rw [← ListFile.Multi.Snappy.pageRows_of_rows output, ordered]
+          exact rowCount
+        have ⟨physical, extent⟩ := ListFile.RequiredContainer.V2.sections_physical sectionWire
+        refine ⟨ListFile.RequiredContainer.reconstruct_present sectionWire assembled, info, sections, kind,
+          not_not.mp codec, not_not.mp encoding, prepared, ordered ▸ sectionWire,
+          ordered ▸ boundary, not_not.mp slots, rowCaps.2, sourceRows, groupCount, groupCount ▸ rowCaps.1,
+          ordered ▸ nulls, ?_, ?_⟩
+        · rwa [← nulls]
+        · rw [ordered, ← nulls]
+          exact physical
   · contradiction
 
 public theorem frame_counts {limits : Limits} {checked : Checked} {framed : ListFile.FramedGroup}

@@ -9,7 +9,7 @@ public section
 namespace Silmaril.Formats.Parquet.ListFile.RequiredContainer.V2.Snappy
 
 open RequiredContainer (Checked)
-open ListPage (Row)
+open ListPage (Event Row)
 open Silmaril.Relational
 
 /-- The stored checksum and raw level spans belong to the original frame and snapshot. -/
@@ -32,6 +32,20 @@ theorem suffix_wire {checked : Checked} {frame : Page.Frame} {info : Page.DataV2
           .snappy suffix sections.scalars.toList
       else suffix = sections.scalars.toList) :=
   Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Snappy.suffix_wire wire
+
+/-- The admitted page events carry stored-body, exact level and header-count evidence. -/
+theorem readEvents_wire {limits : Limits} {checked : Checked} {frame : Page.Frame}
+    {info : Page.DataV2} {events : List Event} (kind : frame.value.kind = .dataV2 info)
+    (h : readEvents limits checked frame info = .ok events) : EventsWire limits checked frame info events :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Snappy.readEvents_wire kind h
+
+/-- CRC refusal is returned before decoding the original level sections or
+preparing the suffix, irrespective of their contents. -/
+theorem readEvents_checksum_error {limits : Limits} {checked : Checked} {frame : Page.Frame}
+    {info : Page.DataV2} {cause : Page.Checksum.Error}
+    (failed : Page.Checksum.verify limits.maxStoredPageBytes checked.snapshot.bytes frame = .error cause) :
+    readEvents limits checked frame info = .error (.checksum cause) := by
+  simp [readEvents, readSections, failed, Except.mapError, Bind.bind, Except.bind]
 
 /-- The signed result preserves checked counts, original wire sections and present parents. -/
 theorem readFrame_wire {limits : Limits} {checked : Checked} {framed : ListFile.FramedGroup}
@@ -64,7 +78,7 @@ theorem readFrame_checksum_error {limits : Limits} {checked : Checked} {framed :
     (pageRows : info.numRows ≤ checked.limits.page.maxRows)
     (failed : Page.Checksum.verify limits.maxStoredPageBytes checked.snapshot.bytes frame = .error cause) :
     readFrame limits checked framed frame = .error (.snappy (.checksum cause)) := by
-  simp [readFrame, readSections, kind, codec, encoding, slots, Nat.not_lt.mpr groupRows, Nat.not_lt.mpr pageRows,
+  simp [readFrame, readEvents, readSections, kind, codec, encoding, slots, Nat.not_lt.mpr groupRows, Nat.not_lt.mpr pageRows,
     failed, Except.mapError, Bind.bind, Except.bind]
 
 /-- A body refusal keeps frame zero and its absolute offset in the selected group. -/

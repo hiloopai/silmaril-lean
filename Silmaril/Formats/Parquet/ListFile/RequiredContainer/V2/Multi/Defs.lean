@@ -23,13 +23,13 @@ inductive FrameError where
   | rowContinuation
   deriving DecidableEq, Repr
 
-inductive GroupError where
+inductive GroupError (frameError : Type := FrameError) where
   | framing (cause : ListFile.ReadError)
   | slotLimit
   | rowLimit
   | missingSlots (count : Nat)
   | rowCount (expected actual : Nat)
-  | frame (ordinal offset : Nat) (cause : FrameError)
+  | frame (ordinal offset : Nat) (cause : frameError)
   deriving DecidableEq, Repr
 
 /-- Called on an original frame from the admitted codec-zero chunk. -/
@@ -62,23 +62,42 @@ structure FrameWire (checked : Checked) (frame : Page.Frame) (events : List Even
 def readFrames (checked : Checked) :=
   ListFile.Multi.readFramesWith GroupError.frame (FrameError.data ∘ V2.FrameError.page) (readFrame checked)
 
-def readGroup (maxGroupSlots : Nat) : RequiredContainer.GroupReader GroupError := fun checked ordinal => do
-  let framed ← (checked.frameGroup ordinal).mapError .framing
-  let slots := framed.chunk.metadata.numValues.toNat
-  let rows := framed.group.numRows.toNat
-  if maxGroupSlots < slots then return ← throw .slotLimit
-  if checked.limits.page.maxRows < rows then return ← throw .rowLimit
-  let (remaining, state) ← readFrames checked framed.frames 0 slots State.empty
-  if remaining ≠ 0 then return ← throw (.missingSlots remaining)
-  let output := state.finish
-  if output.length ≠ rows then return ← throw (.rowCount rows output.length)
-  pure output
+/-- Walk the selected LIST chunk's original frames with a shared slot, row,
+and error-coordinate policy. -/
+def readGroupWith {frameError : Type}
+    (select : Checked → Nat → Except ListFile.ReadError ListFile.FramedGroup) (maxGroupSlots : Nat)
+    (read : Checked → ListFile.Multi.SlotFrameReader frameError)
+    (feedError : ListPage.Error → frameError) : RequiredContainer.GroupReader (GroupError frameError) :=
+  fun checked ordinal => do
+    let framed ← (select checked ordinal).mapError .framing
+    let slots := framed.chunk.metadata.numValues.toNat
+    let rows := framed.group.numRows.toNat
+    if maxGroupSlots < slots then return ← throw .slotLimit
+    if checked.limits.page.maxRows < rows then return ← throw .rowLimit
+    let (remaining, state) ← ListFile.Multi.readFramesWith GroupError.frame feedError (read checked)
+      framed.frames 0 slots State.empty
+    if remaining ≠ 0 then return ← throw (.missingSlots remaining)
+    let output := state.finish
+    if output.length ≠ rows then return ← throw (.rowCount rows output.length)
+    pure output
 
-structure GroupWire (maxGroupSlots : Nat) (checked : Checked) (ordinal : Nat) (rows : List Row) : Prop where
+def readGroup (maxGroupSlots : Nat) : RequiredContainer.GroupReader GroupError :=
+  readGroupWith ListFile.Checked.frameGroup maxGroupSlots readFrame (FrameError.data ∘ V2.FrameError.page)
+
+/-- Counts are determined by the original raw sections and ordered required
+events. Body codecs can supply their own storage and preparation witness. -/
+structure CountedFrame (frame : Page.Frame) (events : List Event) : Prop where
+  data : ∃ (info : Page.DataV2) (repetition definition scalars : Bytes),
+    frame.value.kind = .dataV2 info ∧
+    SectionsWire info.numValues repetition definition scalars events ∧
+    rowStarts events = info.numRows ∧ missingSlots events = info.numNulls
+
+structure GroupWire (maxGroupSlots : Nat) (checked : Checked) (ordinal : Nat) (rows : List Row)
+    (codec : Int := 0) (witness : Page.Frame → List Event → Prop := FrameWire checked) : Prop where
   parents : ∀ row ∈ rows, row.isSome = true
   data : ∃ (framed : ListFile.FramedGroup) (pages : List (List Event)) (headers : List Page.DataV2),
-    ListFile.FramedGroupWire checked ordinal framed ∧
-    List.Forall₂ (FrameWire checked) framed.frames pages ∧
+    ListFile.FramedGroupWire checked ordinal framed codec ∧
+    List.Forall₂ witness framed.frames pages ∧
     List.Forall₂ (fun (frame : Page.Frame) header => frame.value.kind = .dataV2 header) framed.frames headers ∧
     ListPage.reconstruct pages.flatten = .ok rows ∧
     rows.flatMap ListPage.rowEvents = pages.flatten ∧

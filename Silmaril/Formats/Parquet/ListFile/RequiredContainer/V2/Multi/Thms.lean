@@ -51,6 +51,39 @@ theorem readGroup_frame_error {maxGroupSlots : Nat} {checked : Checked} {ordinal
     readGroup maxGroupSlots checked ordinal = .error (.frame before.length frame.header.start cause) :=
   Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Multi.readGroup_frame_error selected slots rows order earlier failed
 
+/-- The checked codec walk preserves the complete group witness for its page reader. -/
+theorem readGroupWith_wire {frameError : Type} {codec : Int} {maxGroupSlots : Nat}
+    {select : Checked → Nat → Except ListFile.ReadError ListFile.FramedGroup}
+    {read : Checked → ListFile.Multi.SlotFrameReader frameError} {feedError : ListPage.Error → frameError}
+    {checked : Checked} {ordinal : Nat} {rows : List Row} {witness : Page.Frame → List Event → Prop}
+    (selectedWire : ∀ {framed}, select checked ordinal = .ok framed →
+      ListFile.FramedGroupWire checked ordinal framed codec)
+    (sound : ∀ {remaining frame events}, read checked remaining frame = .ok events →
+      witness frame events ∧ CountedFrame frame events ∧ events.length ≤ remaining)
+    (h : readGroupWith select maxGroupSlots read feedError checked ordinal = .ok rows) :
+    GroupWire maxGroupSlots checked ordinal rows codec witness :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Multi.readGroupWith_wire selectedWire sound h
+
+/-- An admitted frame prefix determines the exact coordinates of the next error. -/
+theorem readGroupWith_frame_error {frameError : Type} {maxGroupSlots : Nat}
+    {select : Checked → Nat → Except ListFile.ReadError ListFile.FramedGroup}
+    {checked : Checked} {ordinal : Nat} {read : Checked → ListFile.Multi.SlotFrameReader frameError}
+    {feedError : ListPage.Error → frameError}
+    {framed : ListFile.FramedGroup} {before after : List Page.Frame} {frame : Page.Frame}
+    {remaining : Nat} {state : State} {cause : frameError}
+    (selected : select checked ordinal = .ok framed)
+    (slots : framed.chunk.metadata.numValues.toNat ≤ maxGroupSlots)
+    (rows : framed.group.numRows.toNat ≤ checked.limits.page.maxRows)
+    (order : framed.frames = before ++ frame :: after)
+    (earlier : ListFile.Multi.readFramesWith GroupError.frame feedError (read checked)
+      before 0 framed.chunk.metadata.numValues.toNat State.empty = .ok (remaining, state))
+    (failed : read checked remaining frame = .error cause ∨
+      ∃ events error, read checked remaining frame = .ok events ∧
+        state.feed events = .error error ∧ cause = feedError error) :
+    readGroupWith select maxGroupSlots read feedError checked ordinal =
+      .error (.frame before.length frame.header.start cause) :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Multi.readGroupWith_frame_error selected slots rows order earlier failed
+
 /-- A late source failure retains the completed earlier groups and precedes writer admission. -/
 theorem convert_first_error {limits : Limits} {source : Bytes} {checked : Checked}
     {before after : List Nat} {ordinal : Nat} {groups : List (List Row)} {cause : GroupError}
