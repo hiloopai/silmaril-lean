@@ -9,13 +9,14 @@ their original encoding tag, including fallback within a chunk.
 | --- | --- | --- |
 | 0 UNCOMPRESSED | Raw body | Raw suffix |
 | 1 SNAPPY | Exact raw Snappy block | Exact raw Snappy block |
+| 2 GZIP | One bounded GZIP member | One bounded GZIP member |
 | 7 LZ4_RAW | Exact raw LZ4 block | Exact raw LZ4 block |
 
 V2 repetition and definition spans remain raw. A false V2 flag uses
 the original raw suffix directly and bypasses the codec. Codec ID 5
 is a typed column refusal. The checked codec 7 adapter uses the raw
 block format and refuses an LZ4 frame in the original dictionary body.
-[Pinned Parquet codec IDs](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/src/main/thrift/parquet.thrift#L670-L679)
+[GZIP bounds](parquet-recursive-dictionary-gzip.md) · [Pinned Parquet codec IDs](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/src/main/thrift/parquet.thrift#L670-L679)
 
 The dictionary codec table agrees with the column table for every
 admitted codec. The binding proof connects the dictionary decoder

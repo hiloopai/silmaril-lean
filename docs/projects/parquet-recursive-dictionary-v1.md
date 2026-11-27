@@ -57,7 +57,7 @@ Lean Arrow streams, and independent IPC framing checks exact EOS.
 
 The controls exercise missing and repeated dictionaries, misordering,
 both original offsets, index bounds and exact extent, CRC, entry and
-byte caps, and header-inclusive footer totals. A genuine GZIP dictionary file
+byte caps, and header-inclusive footer totals. A genuine Zstandard dictionary file
 exercises the codec boundary. A late original index
 failure preserves the earlier group through empty projection and
 takes precedence over native output limits.

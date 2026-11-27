@@ -1,0 +1,162 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "zlib": "1.3.1",
+  "genuine_parquet": {
+    "v1": {
+      "bytes": 5340,
+      "sha256": "51ae095c1e8f047cd40e4313f1f6d080ef2c7083f81269829169af1c026bb506"
+    },
+    "v2": {
+      "bytes": 4514,
+      "sha256": "92f9a712339b66b1b2bd421b21a15d3a91e201fbb7ec517493fcf5112a72b8a1"
+    },
+    "v2_compressed_indices": {
+      "bytes": 1978,
+      "sha256": "c1e104ea4fe44b0ee9db0e303f62dab113eb7746216bad4de72b59f1edd3d5d3"
+    },
+    "v1_fallback": {
+      "bytes": 5461,
+      "sha256": "5f9edd1f61657997ce7ada5d9d45ebcecb3287569a99599d3b3adda2d9564c55"
+    },
+    "v2_fallback": {
+      "bytes": 4891,
+      "sha256": "bee36234b044c6e57d84cf8c5621d5b640f12a18d3ec8f2ef76809e528d6030f"
+    }
+  },
+  "labeled_edits": {
+    "v2_raw_bypass": {
+      "bytes": 1990,
+      "sha256": "d96d2b7210b3fc9acd9ac47508c7f79b7fa7bc730317aae7b8262c510cf9a789"
+    },
+    "v1_midrow_fallback": {
+      "bytes": 725,
+      "sha256": "5f2dfddc65ea34703f1a79e7c5404fdcb4817c3707a518699cb37b8ef263b6e1"
+    },
+    "late_v1_indices": {
+      "bytes": 5348,
+      "sha256": "cf572029a9ac8e2aef9810c19707387ebadf0072ec0ba1e7440a0fc963c6b92b"
+    },
+    "late_v2_indices": {
+      "bytes": 1986,
+      "sha256": "ca720a1df6d499c19e8c29047808482770b745955d634e821a9f3643fa311ca8"
+    },
+    "dictionary_stored_crc": {
+      "bytes": 5468,
+      "sha256": "c036c24024ef454e4e6693f143a7fce0514c948d962255d313e1d8e9d4669270"
+    },
+    "dictionary_extent": {
+      "bytes": 5468,
+      "sha256": "8cc2524049b57250c3e457db51d587492d8f7953840a5954048c0ea69891ea8f"
+    },
+    "dictionary_member_crc": {
+      "bytes": 5468,
+      "sha256": "8faaf9d9282bb5ab05a56c0f81e99a71a4e31d7c5c78953fb173deaa54f9cf97"
+    },
+    "dictionary_member_isize": {
+      "bytes": 5468,
+      "sha256": "1d659214b643c0bff133095eaa8e4eefcca4b114c777d2142414a3646adc4339"
+    },
+    "dictionary_trailing": {
+      "bytes": 5469,
+      "sha256": "6aa59b4e1430d2df0a34a11836e826e43b62750d55358b1ec89d47721642f690"
+    },
+    "dictionary_second_member": {
+      "bytes": 5488,
+      "sha256": "250825b99c9eccd821c75fa5571f33835cb111229892082fc37de1d72fa137f9"
+    },
+    "v1_stored_crc": {
+      "bytes": 5347,
+      "sha256": "3d187fda7dd05ae54fc4a3d6532877a69f2b9a46ae16d16f0641657cb48a293d"
+    },
+    "v1_extent": {
+      "bytes": 5347,
+      "sha256": "8ec13a7b27ef762a968a03e2155c82cdc1d57c3560b69889c6fd58ae2abeab7b"
+    },
+    "v1_member_crc": {
+      "bytes": 5347,
+      "sha256": "f3d96c0acc3aa372938ecdb5d4e251ec726de04967232a97cc922ec93ab4e9bc"
+    },
+    "v1_member_isize": {
+      "bytes": 5347,
+      "sha256": "68de766f288e989a36f0b307890ed80c1a4c72e654e21de023b752b3adbf3aaa"
+    },
+    "v1_trailing": {
+      "bytes": 5348,
+      "sha256": "1b4bb6ba84f201ab9b2de729bc9cf04fb0f931d305b0d4f0a390c13f1a69b9c7"
+    },
+    "v1_second_member": {
+      "bytes": 5367,
+      "sha256": "c127a84c91d9317a8c18194a67444a129d6a79d65148f6c6835af89b5be01550"
+    },
+    "v2_stored_crc": {
+      "bytes": 1985,
+      "sha256": "71ab5cbe4e141a3a143ef4fdb02485d29ce8334aac4e03ef779382eb65733fac"
+    },
+    "v2_extent": {
+      "bytes": 1985,
+      "sha256": "0b7c9220401ee89239daca571730b03a32484ccefb31f3459393e6d056cb7ad7"
+    },
+    "v2_member_crc": {
+      "bytes": 1985,
+      "sha256": "04a7f2845306e6fcfeba85c5fa5f80d68afc6a9c88cb3c7a00fd0498c26ebd71"
+    },
+    "v2_member_isize": {
+      "bytes": 1985,
+      "sha256": "e5fd7c431195490c0c6a3391c1bbfa7016a87d4fbaf09ff7ffeb5f773f10a1d9"
+    },
+    "v2_trailing": {
+      "bytes": 1986,
+      "sha256": "8d570c42e43765d4ccc0d2de35f0fa15eb4d11fa2ee93153cdafbf0498516cb8"
+    },
+    "v2_second_member": {
+      "bytes": 2005,
+      "sha256": "3eba871a913eca77737e9bc5405f823486c9d602393d018f6cc22093f691dfb5"
+    },
+    "raw_v2_extent": {
+      "bytes": 1990,
+      "sha256": "5a794ae669f3d0e12fdb30d72b228d59fdfae3c5fd2c6442770b09b5a41c532f"
+    },
+    "missing_dictionary_from_total": {
+      "bytes": 1978,
+      "sha256": "eb235fea9b774ed50c99ee9bb969ef4e8910cda224ef93005b39f39b829c1ee3"
+    },
+    "short_stored_total": {
+      "bytes": 1978,
+      "sha256": "bfcfec386b6ae01a5c56155ed64335ad2f27c7ef06303fe5155aadadeacab89b"
+    }
+  },
+  "lean_ipc": {
+    "v1": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "v2": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "v2_compressed_indices": {
+      "bytes": 4648,
+      "sha256": "c57a3cc2017e56cb945d9ff89f3c46e9bb01439b6709c1831af846582561b8c9"
+    },
+    "v1_fallback": {
+      "bytes": 3512,
+      "sha256": "ba8fe32a71bf122c0b73c066554936b97ff591d00fa76b3344ff14d8c628e328"
+    },
+    "v2_fallback": {
+      "bytes": 3512,
+      "sha256": "ba8fe32a71bf122c0b73c066554936b97ff591d00fa76b3344ff14d8c628e328"
+    },
+    "v2_raw_bypass": {
+      "bytes": 4648,
+      "sha256": "c57a3cc2017e56cb945d9ff89f3c46e9bb01439b6709c1831af846582561b8c9"
+    },
+    "v1_midrow_fallback": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    }
+  }
+}

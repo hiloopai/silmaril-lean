@@ -107,7 +107,7 @@ def verify(scratch):
     short_wire = write(schema, short_groups, data_page_version="2.0")
     mixed = write(schema, groups, data_page_version="2.0",
                   use_dictionary=["packet.items.list.élément.lo"])
-    compressed = write(schema, groups, data_page_version="2.0", compression="GZIP")
+    compressed = write(schema, groups, data_page_version="2.0", compression="ZSTD")
     genuine = {"native": native, "zero_slot_pages": short_wire, "mixed": mixed, "compressed": compressed}
     key, target = (1, 0), 1
     edited = controls(native, key, target)
@@ -187,7 +187,7 @@ def verify(scratch):
     page_error("bad_crc", f".checksum (.mismatch {crc_header[4][1] & 0xffffffff} {zlib.crc32(edited_body)})")
     page_error("native", ".dictionaryIndices .indexByteLimit", "{ indices := ⟨1048576, 0⟩ }")
     page_error("native", ".dictionaryIndices (.hybrid .valueLimit)", "{ indices := ⟨0, 16777216⟩ }")
-    code.append(f'  bindFailure (← load folder "compressed") {group} {column} (.column {address} (.codec 2))')
+    code.append(f'  bindFailure (← load folder "compressed") {group} {column} (.column {address} (.codec 6))')
 
     page = authored.pages[-1]
     mid_slot, mid_row, _ = page.before

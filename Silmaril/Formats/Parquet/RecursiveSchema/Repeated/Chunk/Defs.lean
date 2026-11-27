@@ -6,7 +6,7 @@ public import Silmaril.Formats.Parquet.FlatColumn.Zstd.Defs
 public import Silmaril.Formats.Parquet.ScalarPage.BrotliRaw.Defs
 public import Silmaril.Formats.Parquet.DictionaryIndex.Defs
 
-/-! Checked unindexed PLAIN V1/V2 and dictionary-first V1/V2 chunks with identity, Snappy or LZ4_RAW,
+/-! Checked unindexed PLAIN V1/V2 and dictionary-first V1/V2 chunks with identity, Snappy, GZIP or LZ4_RAW,
 with at most one repeated ancestor and independent bounds on slots and row starts. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -104,18 +104,21 @@ instance (metadata : Footer.ColumnMetadata) : Decidable (DictionaryEncodings met
 inductive DictionaryCodec where
   | uncompressed
   | snappy
+  | gzip
   | lz4Raw
   deriving DecidableEq, Repr
 
 def DictionaryCodec.ofId : Int → Option DictionaryCodec
   | 0 => some .uncompressed
   | 1 => some .snappy
+  | 2 => some .gzip
   | 7 => some .lz4Raw
   | _ => none
 
 def DictionaryCodec.column : DictionaryCodec → ColumnCodec
   | .uncompressed => .uncompressed
   | .snappy => .snappy
+  | .gzip => .gzip
   | .lz4Raw => .lz4Raw
 
 inductive FramedEncoding (metadata : Footer.ColumnMetadata) where
