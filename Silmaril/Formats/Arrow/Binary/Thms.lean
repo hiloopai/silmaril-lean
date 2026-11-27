@@ -9,6 +9,14 @@ namespace Silmaril.Formats.Arrow.Binary
 
 namespace Offsets
 
+theorem readOffset_sound {width : Width} {buffers : Buffers} {index offset : Nat}
+    (read : readOffset width buffers index = .ok offset) : OffsetWire width buffers index offset :=
+  Proofs.Formats.Arrow.Binary.Offsets.readOffset_sound read
+
+theorem readSlot_sound {width : Width} {buffers : Buffers} {index : Nat} {value : Option KBytes}
+    (read : readSlot width buffers index = .ok value) : SlotWire width buffers index value :=
+  Proofs.Formats.Arrow.Binary.Offsets.readSlot_sound read
+
 theorem readColumn_sound {width : Width} {limits : Limits} {nullable : Bool}
     {node : FieldNode} {buffers : Buffers} {values : Column}
     (read : readColumn width limits nullable node buffers = .ok values) :

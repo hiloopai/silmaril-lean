@@ -111,6 +111,16 @@ structure Field where
 
 end LargeBinary
 
+namespace LargeUtf8
+
+/-- A flat LargeUtf8 field (Schema.fbs union tag 20). -/
+structure Field where
+  name : String
+  nullable : Bool
+  deriving DecidableEq, Repr
+
+end LargeUtf8
+
 namespace ListInt32
 
 /-- The admitted nested field is a nullable List with one nullable signed
@@ -544,6 +554,11 @@ public def Binary.readSchema (limits : Limits) (bytes : KBytes) :
 public def LargeBinary.readSchema (limits : Limits) (bytes : KBytes) :
     Except Binary.SchemaError LargeBinary.Field :=
   singleBinarySchema limits bytes 19 LargeBinary.Field.mk
+
+/-- Admit one LargeUtf8 field from bodyless little-endian V5 Schema metadata. -/
+public def LargeUtf8.readSchema (limits : Limits) (bytes : KBytes) :
+    Except Binary.SchemaError LargeUtf8.Field :=
+  singleBinarySchema limits bytes 20 LargeUtf8.Field.mk
 
 /-- Read the bodyless little-endian V5 Schema of a standalone one-field
 view batch. Its kind is independent of legacy and other Schema readers. -/
