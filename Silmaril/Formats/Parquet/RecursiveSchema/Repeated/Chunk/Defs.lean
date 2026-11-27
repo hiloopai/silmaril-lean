@@ -4,7 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Defs
 public import Silmaril.Formats.Parquet.ScalarPage.Defs
 
-/-! Checked unindexed PLAIN V1/V2 chunks with Snappy suffixes in V2, at most one
+/-! Checked unindexed PLAIN V1/V2 chunks with Snappy or identity codecs, at most one
 repeated ancestor and independent bounds on slots and row starts. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -30,15 +30,18 @@ instance (chunk : Footer.ColumnChunk) : Decidable (Unindexed chunk) := by
   unfold Unindexed
   infer_instance
 
-/-- V1 is available only under the identity column codec. -/
+/-- The recursive reader admits the identity and Snappy column codecs. -/
 inductive ColumnCodec where
   | uncompressed
   | snappy
   deriving DecidableEq, Repr
 
-def ColumnCodec.id : ColumnCodec → Int
-  | .uncompressed => Payload.Codec.uncompressed.id
-  | .snappy => Payload.Codec.snappy.id
+def ColumnCodec.payload : ColumnCodec → Payload.Codec
+  | .uncompressed => .uncompressed
+  | .snappy => .snappy
+
+def ColumnCodec.id (codec : ColumnCodec) : Int :=
+  codec.payload.id
 
 def ColumnCodec.ofId : Int → Option ColumnCodec
   | 0 => some .uncompressed
@@ -179,7 +182,6 @@ inductive PageCause where
   | v2Extent
   | v2SignedExtent (declared expected : Nat)
   | payload (original : Payload.Error)
-  | v1Codec (original : Int)
   | v2RowBoundary (slot repetition : Nat)
   | v2Rows (declared actual : Nat)
   | v2Nulls (declared actual : Nat)
@@ -287,8 +289,9 @@ def classifySlots (leaf : Leaf) (rowCeiling : Nat) (reps defs : List Nat)
     (start : State) : Except PageCause Classified :=
   classifySlotsFrom leaf rowCeiling reps defs start []
 
-def admitPage (frame : Page.Frame) (remaining : Nat) : Except PageCause Page.DataV1 :=
-  (RecursiveSchema.Chunk.admitPage frame remaining).mapError fun
+def admitPage (frame : Page.Frame) (remaining : Nat) (codec : ColumnCodec := .uncompressed) :
+    Except PageCause Page.DataV1 :=
+  (RecursiveSchema.Chunk.admitPageWith (codec == .uncompressed) frame remaining).mapError fun
     | .rowOverrun remaining advertised => .slotOverrun remaining advertised
     | cause => .header cause
 
@@ -316,31 +319,55 @@ structure DecodedWire (leaf : Leaf) (repetitions definitions : List Nat) (suffix
     decoded.words.map Option.isSome = decoded.levels.map LevelSlot.present ∧
     decoded.words.filterMap id = original.map (RecursiveSchema.Chunk.readWord leaf.kind)
 
-/-- The existing V1 entry point checks the original length-prefixed levels. -/
-def decodePage (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
-  let info ← admitPage frame remaining
+def decodeSnappy (bounds : Payload.Bounds) (stored : Bytes) : Except PageCause Bytes :=
+  ((Payload.decode bounds Payload.Codec.snappy.id stored.toList).mapError .payload).map Bytes.ofList
+
+def v1BodyBounds (limits : Limits) (frame : Page.Frame) : Payload.Bounds :=
+  ⟨frame.value.compressedSize, limits.maxBodyBytes, frame.value.uncompressedSize, limits.maxBodyBytes, 0⟩
+
+/-- The serialized V1 body, including each level prefix, uses the column
+codec. Verify the stored frame before extracting bytes or expanding it. -/
+def readV1Body (limits : Limits) (codec : ColumnCodec) (source : Bytes) (frame : Page.Frame) :
+    Except PageCause Bytes := do
   let _ ← (Page.Checksum.verify limits.maxBodyBytes source frame).mapError .checksum
-  let body := Page.Checksum.payloadBytes source frame
+  let stored := Page.Checksum.payloadBytes source frame
+  match codec with
+  | .uncompressed => return stored
+  | .snappy => decodeSnappy (v1BodyBounds limits frame) stored
+
+structure V1BodyWire (limits : Limits) (codec : ColumnCodec) (source : Bytes) (frame : Page.Frame)
+    (body : Bytes) : Prop where
+  original : ∃ stored checksum,
+    Page.Checksum.verify limits.maxBodyBytes source frame = .ok checksum ∧
+    source.slice? frame.payload.start (some frame.payload.stop) = some stored ∧
+    stored.length = frame.value.compressedSize ∧ stored.length ≤ limits.maxBodyBytes ∧
+    body.length = frame.value.uncompressedSize ∧ body.length ≤ limits.maxBodyBytes ∧
+    Payload.Decodes frame.value.uncompressedSize codec.payload stored.toList body.toList
+
+def decodeV1Page (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (source : Bytes)
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
+  let info ← admitPage frame remaining codec
+  let body ← readV1Body limits codec source frame
   let reps ← (readLevels limits.levels leaf.maxRepetition info.numValues body).mapError .repetition
   let defs ← (readLevels limits.levels leaf.maxDefinition info.numValues reps.tail).mapError .definition
   decodeSlots leaf reps.levels defs.levels defs.tail start rowCeiling
 
+/-- The identity-codec V1 entry point used by native writer readback. -/
+def decodePage (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage :=
+  decodeV1Page limits .uncompressed leaf source frame start remaining rowCeiling
+
 structure PageWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
-  original : ∃ (info : Page.DataV1) (body : Bytes) (reps defs : LevelBlock)
-    (words : List (List UInt8)) (checksum : Page.Checksum.Status),
-    RecursiveSchema.Chunk.HeaderWire frame remaining info ∧
-    Page.Checksum.verify limits.maxBodyBytes source frame = .ok checksum ∧
-    source.slice? frame.payload.start (some frame.payload.stop) = some body ∧
-    body.length = frame.value.compressedSize ∧
+    (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage)
+    (codec : ColumnCodec := .uncompressed) : Prop where
+  original : ∃ (info : Page.DataV1) (body : Bytes) (reps defs : LevelBlock),
+    frame.value.kind = .dataV1 info ∧
+    (info.encoding = 0 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
+    info.numValues ≤ remaining ∧
+    V1BodyWire limits codec source frame body ∧
     LevelWire limits.levels leaf.maxRepetition info.numValues body reps ∧
     LevelWire limits.levels leaf.maxDefinition info.numValues reps.tail defs ∧
-    SlotsWire leaf rowCeiling reps.levels defs.levels start decoded.levels decoded.after ∧
-    defs.tail.toList = words.flatten ∧ words.length = (decoded.levels.map LevelSlot.present).count true ∧
-    (∀ word ∈ words, word.length = RecursiveSchema.Chunk.wordWidth leaf.kind) ∧
-    decoded.words.map Option.isSome = decoded.levels.map LevelSlot.present ∧
-    decoded.words.filterMap id = words.map (RecursiveSchema.Chunk.readWord leaf.kind) ∧
+    DecodedWire leaf reps.levels defs.levels defs.tail start rowCeiling decoded ∧
     decoded.levels.length = info.numValues
 
 /-- V2 level lengths come from the header. A zero maximum omits the section. -/
@@ -418,8 +445,7 @@ def readV2Suffix (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
     if frame.value.uncompressedSize > limits.maxBodyBytes then throw (.payload .outputLimit)
     let expected := (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind
     if bounds.expectedSize ≠ expected then throw (.v2SignedExtent bounds.expectedSize expected)
-    let decoded ← (Payload.decode bounds (codec.v2 info) stored.toList).mapError .payload
-    return Bytes.ofList decoded
+    decodeSnappy bounds stored
 
 inductive V2SuffixWire (limits : Limits) (codec : ColumnCodec) (frame : Page.Frame)
     (info : Page.DataV2) (stored : Bytes) : Bytes → Prop where
@@ -469,14 +495,12 @@ def decodeDataPage (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (source
     (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage :=
   match frame.value.kind with
   | .dataV2 _ => decodeV2Page limits codec leaf source frame start remaining rowCeiling
-  | .dataV1 _ =>
-    if codec = .uncompressed then decodePage limits leaf source frame start remaining rowCeiling
-    else .error (.v1Codec codec.id)
+  | .dataV1 _ => decodeV1Page limits codec leaf source frame start remaining rowCeiling
   | kind => .error (.header (.pageKind kind))
 
 inductive DataPageWire (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (source : Bytes)
     (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
-  | v1 : codec = .uncompressed → PageWire limits leaf source frame start remaining rowCeiling decoded →
+  | v1 : PageWire limits leaf source frame start remaining rowCeiling decoded codec →
       DataPageWire limits codec leaf source frame start remaining rowCeiling decoded
   | v2 : V2PageWire limits codec leaf source frame start remaining rowCeiling decoded →
       DataPageWire limits codec leaf source frame start remaining rowCeiling decoded

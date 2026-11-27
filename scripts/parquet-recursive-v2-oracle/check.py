@@ -162,9 +162,11 @@ def capture(wire, schema, rows, *, codec=0):
                 v2.append(f"(some ({schema_term(info)}, ⟨⟨{payload}, {payload+rl}⟩, "
                           f"⟨{payload+rl}, {payload+scalar_at}⟩, ⟨{payload+scalar_at}, {payload+len(body)}⟩⟩))")
             else:
-                assert tag == 0 and column_codec == 0 and fields[2][1] == len(body)
+                assert tag == 0
+                raw = body if column_codec == 0 else pa.Codec("snappy").decompress(body, fields[2][1]).to_pybytes()
+                assert len(raw) == fields[2][1]
                 count = fields[5][1][1][1]
-                rep, rest = CHUNK["level_section"](body, int(repeated is not None), count)
+                rep, rest = CHUNK["level_section"](raw, int(repeated is not None), count)
                 defs, values = CHUNK["level_section"](rest, len(steps), count)
                 v2.append("none")
             fmt = "<i" if scalar.type.bit_width == 32 else "<q"

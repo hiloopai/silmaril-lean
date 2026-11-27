@@ -3,7 +3,6 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Formats.Parquet.Page.Thms
 import Silmaril.Formats.Parquet.Page.Checksum.Thms
-import Silmaril.Formats.Parquet.Payload.Thms
 import Silmaril.Formats.Parquet.Hybrid.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Page
 
@@ -138,21 +137,14 @@ public theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf :
     · rename_i notRaw
       have snappy : codec.v2 info = 1 := by
         cases codec <;> cases flag : info.isCompressed <;>
-          simp [ColumnCodec.v2, ColumnCodec.id, ScalarPage.v2Codec, Payload.Codec.id, flag] at *
+          simp [ColumnCodec.v2, ColumnCodec.id, ColumnCodec.payload, ScalarPage.v2Codec, Payload.Codec.id, flag] at *
       split at read
       · contradiction
       · rename_i bounded
         split at read
         · contradiction
-        · obtain ⟨out, decoded, finished⟩ := bind_ok read
-          cases Except.ok.inj finished
-          obtain ⟨selected, id, model, before, _, after, _⟩ :=
-            Payload.decode_sound (from_mapError decoded)
-          have chosen : selected = .snappy := by
-            simpa [snappy, Payload.Codec.ofId] using id.symm
-          subst selected
-          exact .snappy snappy (by simpa using model) (by simpa using before)
-            (by simpa using after) (by omega)
+        · obtain ⟨model, before, _, after, _⟩ := decodeSnappy_wire read
+          exact .snappy snappy model before after (by omega)
 
 public theorem decodeV2Page_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
@@ -185,10 +177,7 @@ public theorem decodeDataPage_wire {limits : Limits} {codec : ColumnCodec} {leaf
   unfold decodeDataPage at read
   split at read
   · exact .v2 (decodeV2Page_wire read)
-  · split at read
-    · rename_i plain
-      exact .v1 plain (decodePage_wire read)
-    · contradiction
+  · exact .v1 (decodeV1Page_wire read)
   · contradiction
 
 public theorem v2_accounting {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
@@ -230,9 +219,7 @@ public theorem dataPage_counts {limits : Limits} {codec : ColumnCodec} {leaf : L
     start.slot + decoded.levels.length = decoded.after.slot ∧
       start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
   cases wire with
-  | v1 _ v1 =>
-    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, slots, _⟩ := v1.original
-    exact slot_counts slots
+  | v1 v1 => exact v1_state_counts v1
   | v2 v2 =>
     obtain ⟨_, _, _, _, _, checked, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, slots, final⟩ :=
       v2.original

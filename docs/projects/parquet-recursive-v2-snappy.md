@@ -4,8 +4,8 @@ The checked recursive reader admits Snappy on unindexed PLAIN Data
 Page V2 columns with signed INT32/INT64 leaves. The required and optional
 Struct and canonical three-level LIST profile still permits at most
 one repeated ancestor per leaf. Native emission uses UNCOMPRESSED V1.
-A reached V1 page requires the UNCOMPRESSED column codec. The source
-continues to refuse dictionaries and indexes.
+The reader also admits [whole-body Snappy V1](parquet-recursive-v1-snappy.md).
+The source continues to refuse dictionaries and indexes.
 
 The original footer supplies the column codec. The original V2 header
 resolves `is_compressed`, which defaults to true. A false flag takes
@@ -56,7 +56,7 @@ CRC computed over the decoded body, extent arithmetic, cumulative
 metadata size and stored and decoded body limits. Direct Events
 preserves the completed group and terminal cause through empty
 projection. The native IPC route returns the same original failure
-ahead of writer limits. Genuine Snappy V1, Gzip V2 and Snappy pageless
+ahead of writer limits. Genuine Gzip V2 and Snappy pageless
 sources exercise the profile refusals.
 [Fixture pins](../../scripts/parquet-recursive-v2-snappy-oracle/fixtures.json)
 

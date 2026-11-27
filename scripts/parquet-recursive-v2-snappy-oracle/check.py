@@ -57,21 +57,13 @@ def encode(header, body, *, crc=True):
     return THRIFT["encode"](header) + body
 
 
-def replace_page(wire, location, edit):
-    """Splice one labeled test frame and recompute both footer size vectors."""
-    target_group, target_column, target_page = location
-    chunks, raw_extents = {}, {}
-    for key, _, start, stop in V2["columns"](wire):
-        frames = list(FRAMES(wire, start, stop))
-        if key == (target_group, target_column):
-            byte, header, payload, body = frames[target_page]
-            changed = edit(header, body)
-            chunks[key] = wire[start:byte] + changed + wire[payload + len(body):stop]
-        else:
-            chunks[key] = wire[start:stop]
-        altered = chunks[key]
-        raw_extents[key] = sum(payload - byte + header[2][1]
-                               for byte, header, payload, _ in FRAMES(altered, 0, len(altered)))
+def pack_chunks(wire, chunks):
+    """Test-only carrier with distinct header-inclusive stored and raw extents."""
+    raw_extents = {
+        key: sum(payload - byte + header[2][1]
+                 for byte, header, payload, _ in FRAMES(data, 0, len(data)))
+        for key, data in chunks.items()
+    }
     packed = V2["wrap_pages"](wire, chunks)
     footer = MIXED["metadata"](packed)
     for group, row_group in enumerate(THRIFT["list_field"](footer, 4)):
@@ -80,6 +72,21 @@ def replace_page(wire, location, edit):
             chunk[3][1][6] = TType.I64, raw_extents[group, column]
         row_group[2] = TType.I64, sum(raw_extents[group, col] for col in range(len(spans)))
     return SCHEMA["pack"](packed, footer)
+
+
+def replace_page(wire, location, edit):
+    """Splice one labeled test frame and recompute both footer size vectors."""
+    target_group, target_column, target_page = location
+    chunks = {}
+    for key, _, start, stop in V2["columns"](wire):
+        if key == (target_group, target_column):
+            frames = list(FRAMES(wire, start, stop))
+            byte, header, payload, body = frames[target_page]
+            changed = edit(header, body)
+            chunks[key] = wire[start:byte] + changed + wire[payload + len(body):stop]
+        else:
+            chunks[key] = wire[start:stop]
+    return pack_chunks(wire, chunks)
 
 
 def fixture_edits(wire, where):
@@ -208,10 +215,7 @@ def verify(scratch):
     code.append(f'  refuse (← load folder "wrong_chunk_total") {group} {column} {{}} '
                 f'(.chunk {address} ⟨{col.start}, {col.stop}⟩ (.uncompressedSize {raw_total+1} {raw_total}))')
     first_path = '["packet", "items", "list", "élément", "lo"]'
-    first_byte = raw_chunks(genuine["v1_snappy"])[0, 0][0][0]
     code.extend([
-        f'  refuse (← load folder "v1_snappy") 0 0 {{}} '
-        f'(.page ⟨0, 0, {first_path}⟩ ⟨0, {first_byte}, {{}}⟩ (.v1Codec 1))',
         f'  bindFailure (← load folder "gzip_v2") 0 0 (.column ⟨0, 0, {first_path}⟩ (.codec 2))',
         '  deny (.original (.snapshot (.invalidMetadata .pageInterval))) (openFile {} (← load folder "pageless_snappy"))',
     ])
@@ -244,7 +248,7 @@ def verify(scratch):
         ipc[name] = wire
     pages = sum(len(col.pages) for fixture in captured.values() for col in fixture.values())
     print(f"Checked {pages} original pages including {len(compressed)} compressed and {len(raw)} raw "
-          "in the all-Snappy input, three native IPC streams and thirteen typed refusals")
+          "in the all-Snappy input, three native IPC streams and twelve typed refusals")
     return {"genuine_parquet": fingerprints(genuine), "labeled_edits": fingerprints(labeled),
             "lean_ipc": fingerprints(ipc)}
 

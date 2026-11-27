@@ -1,0 +1,77 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "native": {
+      "bytes": 2385,
+      "sha256": "e86bf362b05945df79765203b14754ff7c161102458479387513d40983e094a8"
+    }
+  },
+  "labeled_edits": {
+    "stored_crc": {
+      "bytes": 2391,
+      "sha256": "ba6ff146e1abeab98ab46f75fd6bfdca4975796b3354c8d864cb4792fc7ba529"
+    },
+    "decoded_crc": {
+      "bytes": 2391,
+      "sha256": "537e8e559fb414cc05adfa7c080277dd1331c2debe939ecf68d47e8e33543a48"
+    },
+    "malformed": {
+      "bytes": 2348,
+      "sha256": "db9065d4ce6779d7ea68ca5ff809faf696dbbdd8b939b3a0629b0e00a0302f1b"
+    },
+    "short_output": {
+      "bytes": 2348,
+      "sha256": "ddf63097ecca62c6315faf1317531d52fc421373d2a4db89435b1f468143b8b6"
+    },
+    "trailing_input": {
+      "bytes": 2392,
+      "sha256": "6ffbc2a621b8e229741ea927b8e4d0abb8525f10f64889b2444e7a0f5a1095f3"
+    },
+    "short_value": {
+      "bytes": 2391,
+      "sha256": "1150fea314f217d321ca58bf87992bd0fd6330e16719492f2f7dc1e3c0428afc"
+    },
+    "extra_value": {
+      "bytes": 2393,
+      "sha256": "07b77eef736eda8d08958544c8fcac6aba6620a96316811dc818bc5f1fdb1798"
+    },
+    "slot_overrun": {
+      "bytes": 2391,
+      "sha256": "2f1530f4bae42a5cb318482d28393e71d85f1f3aea85cbb75526a2d84154dd12"
+    },
+    "footer_total": {
+      "bytes": 2385,
+      "sha256": "c5648b9c362466995fe0c17a68df2c8c8b9445534d9c909f35d5e10162fb8819"
+    },
+    "continuation": {
+      "bytes": 627,
+      "sha256": "58cd4c038e625d65071713d906bf900a3eb8629bc61907e03e3f56a8c7bc7aec"
+    },
+    "mixed_boundary": {
+      "bytes": 620,
+      "sha256": "9d9b174520abe81e4bcc1d8585c03eed180f38e9e9481eac41004e348ed02023"
+    },
+    "after_closed_v2": {
+      "bytes": 620,
+      "sha256": "05e536c8b15d5fd5f09034a500ba5d856bc715f6c2316618d973053b759feb21"
+    }
+  },
+  "lean_ipc": {
+    "native": {
+      "bytes": 3992,
+      "sha256": "2a9f0548ca9576078713f7150cfdf8426684dcaa7ec47c39e284760778638eb7"
+    },
+    "continuation": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    },
+    "mixed_boundary": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    }
+  }
+}

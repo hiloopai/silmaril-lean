@@ -121,16 +121,21 @@ def fill (states : List Presence) (words : List Word) (reversed : List Slot) :
   | .value :: rest, word :: words => fill rest words (.value word :: reversed)
   | _, _ => .error .wordCount
 
-def admitPage (frame : Page.Frame) (remaining : Nat) : Except Cause Page.DataV1 :=
+/-- Share the PLAIN V1 header checks. Identity callers also require equal
+stored and raw sizes before they read the body. -/
+def admitPageWith (requireEqualSizes : Bool) (frame : Page.Frame) (remaining : Nat) : Except Cause Page.DataV1 :=
   match frame.value.kind with
   | .dataV1 info =>
     if ¬ (info.encoding = 0 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3)
       then .error (.encoding info.encoding info.definitionLevelEncoding info.repetitionLevelEncoding)
-    else if frame.value.uncompressedSize ≠ frame.value.compressedSize
+    else if requireEqualSizes = true ∧ frame.value.uncompressedSize ≠ frame.value.compressedSize
       then .error (.pageSizes frame.value.uncompressedSize frame.value.compressedSize)
     else if info.numValues > remaining then .error (.rowOverrun remaining info.numValues)
     else .ok info
   | other => .error (.pageKind other)
+
+def admitPage (frame : Page.Frame) (remaining : Nat) : Except Cause Page.DataV1 :=
+  admitPageWith true frame remaining
 
 /-- The supplied frame is checked against its original serialized payload.
 CRC is verified when present. The entire scalar suffix must be consumed. -/

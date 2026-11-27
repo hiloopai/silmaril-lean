@@ -44,13 +44,26 @@ theorem rejects_closed_continuation {leaf : Leaf} {ceiling rep defn : Nat}
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.rejects_closed_continuation
     classified continuation closed
 
-/-- Each original body is exhausted by the level sections and the signed
-word suffix. Returned words occupy exactly the present slots. -/
+/-- V1 binds the stored frame and its CRC to the bounded decoded body
+before interpreting the two serialized level sections and signed suffix. -/
+theorem decodeV1Page_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeV1Page limits codec leaf source frame start remaining rowCeiling = .ok decoded) :
+    PageWire limits leaf source frame start remaining rowCeiling decoded codec :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeV1Page_wire read
+
 theorem decodePage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
     (read : decodePage limits leaf source frame start remaining rowCeiling = .ok decoded) :
     PageWire limits leaf source frame start remaining rowCeiling decoded :=
-  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodePage_wire read
+  decodeV1Page_wire read
+
+theorem PageWire.counts {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : PageWire limits leaf source frame start remaining rowCeiling decoded codec) :
+    start.slot + decoded.levels.length = decoded.after.slot ∧
+      start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v1_state_counts wire
 
 theorem readV2Levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {bytes : Bytes}
     {levels : List Nat} (read : readV2Levels limits maximum count bytes = .ok levels) :

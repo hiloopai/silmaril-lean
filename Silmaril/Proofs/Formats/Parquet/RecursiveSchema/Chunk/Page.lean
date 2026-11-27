@@ -28,9 +28,13 @@ private theorem from_mapError {α ε δ : Type} {first : Except ε α} {wrap : �
   | error => simp [Except.mapError] at read
   | ok => simpa only [Except.mapError, Except.ok.injEq] using read
 
-theorem admit_wire {frame : Page.Frame} {remaining : Nat} {info : Page.DataV1}
-    (read : admitPage frame remaining = .ok info) : HeaderWire frame remaining info := by
-  cases source : frame.value.kind <;> simp only [admitPage, source] at read <;> try contradiction
+public theorem admit_with_wire {requireEqualSizes : Bool} {frame : Page.Frame} {remaining : Nat}
+    {info : Page.DataV1} (read : admitPageWith requireEqualSizes frame remaining = .ok info) :
+    frame.value.kind = .dataV1 info ∧
+      (info.encoding = 0 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
+      info.numValues ≤ remaining ∧
+      (requireEqualSizes = true → frame.value.uncompressedSize = frame.value.compressedSize) := by
+  cases source : frame.value.kind <;> simp only [admitPageWith, source] at read <;> try contradiction
   split at read
   · contradiction
   · rename_i encodings
@@ -41,7 +45,13 @@ theorem admit_wire {frame : Page.Frame} {remaining : Nat} {info : Page.DataV1}
       · contradiction
       · rename_i count
         cases Except.ok.inj read
-        exact ⟨source, Classical.not_not.mp encodings, Classical.not_not.mp sizes, by omega⟩
+        exact ⟨rfl, Classical.not_not.mp encodings, by omega,
+          fun identity => Classical.byContradiction fun different => sizes ⟨identity, different⟩⟩
+
+theorem admit_wire {frame : Page.Frame} {remaining : Nat} {info : Page.DataV1}
+    (read : admitPage frame remaining = .ok info) : HeaderWire frame remaining info := by
+  obtain ⟨kind, encodings, count, sizes⟩ := admit_with_wire read
+  exact ⟨kind, encodings, sizes rfl, count⟩
 
 theorem definitions_wire {leaf : Leaf} {limits : Hybrid.Limits} {count : Nat} {body : Bytes}
     {definitions : Definitions} (read : readDefinitions leaf limits count body = .ok definitions) :
