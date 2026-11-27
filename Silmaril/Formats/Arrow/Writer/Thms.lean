@@ -49,6 +49,18 @@ theorem packBuffers_exact (pieces : List KBytes) (wf : ∀ piece ∈ pieces, pie
   simpa only [List.nil_append, List.length_nil] using
     Proofs.Formats.Arrow.Writer.packBuffers_exact [] pieces wf
 
+theorem packBuffers_length (offset : Nat) (pieces : List KBytes) :
+    (packBuffers offset pieces).2.len = (pieces.map fun piece => piece.len + padding piece.len).sum :=
+  Proofs.Formats.Arrow.Writer.packBuffers_length offset pieces
+
+theorem packBuffers_aligned (offset : Nat) (pieces : List KBytes) :
+    (packBuffers offset pieces).2.len % 8 = 0 :=
+  Proofs.Formats.Arrow.Writer.packBuffers_aligned offset pieces
+
+theorem packBuffers_count (offset : Nat) (pieces : List KBytes) :
+    (packBuffers offset pieces).1.length = pieces.length :=
+  Proofs.Formats.Arrow.Writer.packBuffers_count offset pieces
+
 /-- Every admitted batch is writable. Reading its aligned physical buffers
 gives the original ordered observation and preserves the explicit row count. -/
 theorem emitBatch_of_admitted (limits : ObservationLimits) (input : BatchInput)

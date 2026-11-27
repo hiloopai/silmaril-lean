@@ -74,6 +74,9 @@ def schemaPayloadSize (fields : List Field) : Nat :=
 def schemaBytes (fields : List Field) (bodyLength : Nat) : KBytes :=
   messagePrefix 1 56 bodyLength ++ schemaPayload fields
 
+def batchSize (nodes buffers : Nat) : Nat :=
+  104 + 16 * nodes + 16 * buffers
+
 /-- The RecordBatch table starts at 64. The inline struct vectors have
 four-byte length words and eight-byte-aligned 16-byte elements. -/
 def batchBytes (batch : RecordBatch) (bodyLength : Nat) : KBytes :=
@@ -93,7 +96,7 @@ open Wire
 def wireSize (message : Message) : Nat :=
   match message.header with
   | .schema fields => 48 + schemaPayloadSize fields
-  | .recordBatch batch => 104 + 16 * batch.nodes.length + 16 * batch.buffers.length
+  | .recordBatch batch => batchSize batch.nodes.length batch.buffers.length
 
 def checkDomain (limits : Limits) (message : Message) : Except Error Unit := do
   if message.bodyLength ≥ 2^63 then throw (.malformed .bodyLength)

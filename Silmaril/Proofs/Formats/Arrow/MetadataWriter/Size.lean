@@ -94,7 +94,7 @@ private theorem schema_size (fields : List Field) (bodyLength : Nat) :
 
 private theorem batch_size (batch : RecordBatch) (bodyLength : Nat) :
     (batchBytes batch bodyLength).len = wireSize ⟨.recordBatch batch, bodyLength⟩ := by
-  simp only [batchBytes, messagePrefix, wireSize, words, longs, Writer.emitWords_length,
+  simp only [batchBytes, messagePrefix, wireSize, batchSize, words, longs, Writer.emitWords_length,
     append_length, List.length_cons, List.length_nil, pair_length]
   omega
 
@@ -120,7 +120,7 @@ theorem wireSize_aligned (message : Message) : 0 < wireSize message ∧ wireSize
     have aligned := schemaPayload_aligned fields
     omega
   | recordBatch batch =>
-    simp only [wireSize]
+    simp only [wireSize, batchSize]
     omega
 
 theorem serialize_extent {limits : Limits} {message : Message} {bytes : KBytes}

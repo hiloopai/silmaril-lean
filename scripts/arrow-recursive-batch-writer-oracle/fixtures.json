@@ -1,0 +1,56 @@
+{
+  "description": "Genuine recursive PyArrow IPC inputs and independently checked native Lean outputs",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c"
+  },
+  "genuine_ipc": {
+    "four_level": {
+      "bytes": 2096,
+      "sha256": "38187024f71d3fc1838651be6a3c85c0c5edb4979d4874c0e24e9861737f7295"
+    },
+    "hidden": {
+      "bytes": 1160,
+      "sha256": "2a331648bf77ffe0f5603db06355eb68e2195bf76ebe291c7b06e3e5a513cece"
+    },
+    "zero_width_multi": {
+      "bytes": 296,
+      "sha256": "e0dba8ad66569f6db1914596ad397b12db5d72b91f633b315dc23534fb161bd7"
+    },
+    "schema_only": {
+      "bytes": 632,
+      "sha256": "35e6ec6169c6719c86777d63a04ab16011ad1ffe0c3d26d1eca6fbfbbef544c0"
+    },
+    "repeated": {
+      "bytes": 768,
+      "sha256": "7b535fec61ca061f4710e1300d1acb138ac7e05fe8aca152231536262b357236"
+    }
+  },
+  "lean_ipc": {
+    "four_level": {
+      "bytes": 2584,
+      "sha256": "5b6f6d7611ba143be4d55d6d47a2f49c01f74840555dbb9677b9d89a14789aad"
+    },
+    "hidden": {
+      "bytes": 1472,
+      "sha256": "1c017035d3aca4364adfb7f2141bc4931605c8c39a4e3c0892e867382b2f50b2"
+    },
+    "zero_width_multi": {
+      "bytes": 424,
+      "sha256": "680bd81958880753404e2325d1a0c5d9162610eb3540b06124f2bbfa6498a1c1"
+    },
+    "schema_only": {
+      "bytes": 1080,
+      "sha256": "4c15e8c95112ed0351818db400a0891afbbc9e8da0df7d20599df4575fa59dee"
+    },
+    "repeated": {
+      "bytes": 936,
+      "sha256": "78d6e0de56f4ffda2327853ef9065f90ec1b1aeb414f33bd233dfa1bffd08d0d"
+    }
+  }
+}
