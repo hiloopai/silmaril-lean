@@ -1,0 +1,363 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "native": {
+    "9": {
+      "sha256": "b6f4cc28d89176693b920d0b1109ae3d91c128b40e18074aab1d88a61c5c7f3e",
+      "output_sha256": "7fa0046152a41ed9f5139aea08f62104ef6ec96c478fcab1465ded14e2eb61d3",
+      "output": 12288,
+      "blocks": [
+        [
+          1,
+          0,
+          0,
+          12288,
+          24
+        ]
+      ],
+      "ends": [
+        27080
+      ],
+      "types": [
+        1,
+        1,
+        2
+      ],
+      "switchCounts": [
+        [
+          2,
+          1
+        ]
+      ],
+      "switchTraceSha256": "f77883da8115459994e6e966690e6da06f64f2222898eb3df72251f33cc2f83a",
+      "ring": [
+        7609,
+        237,
+        869,
+        245
+      ]
+    },
+    "11": {
+      "sha256": "ac8ba0851fb288df3a2ade64937504756e499e6d436a2d2623ec25f790ca2cf5",
+      "output_sha256": "a54026f3a88280a54f96e6b0d24d89e551debcacdea4adb6063873e0b68df6fe",
+      "output": 49152,
+      "blocks": [
+        [
+          1,
+          0,
+          0,
+          49152,
+          24
+        ]
+      ],
+      "ends": [
+        90047
+      ],
+      "types": [
+        3,
+        2,
+        2
+      ],
+      "switchCounts": [
+        [
+          0,
+          5
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      "switchTraceSha256": "22f66c33e52f74915d8a19077cff21e80ca6c82f6bf3f92c6a654ce13ab1c201",
+      "ring": [
+        425,
+        27442,
+        28479,
+        28480
+      ]
+    }
+  },
+  "assembled": {
+    "switched pair": {
+      "wire_hex": "000180280a00845042a9a0a1164010442051114941280b9398a000208a02002194502a68a80510041148544452100a0b9318",
+      "sha256": "6fed84f41827c00cae668bd9e490bf5c6dfdc08768429e12d8ef921fbb210c32",
+      "plain_hex": "4143414341434143434143414143414141414141414143414341434143434143414143414141",
+      "blocks": [
+        [
+          0,
+          0,
+          0,
+          17,
+          21
+        ],
+        [
+          1,
+          0,
+          0,
+          21,
+          219
+        ]
+      ],
+      "ends": [
+        199,
+        399
+      ],
+      "switches": [
+        [
+          0,
+          2,
+          2,
+          1,
+          0,
+          1,
+          1,
+          185,
+          186,
+          188
+        ],
+        [
+          0,
+          3,
+          2,
+          0,
+          1,
+          0,
+          1,
+          192,
+          193,
+          195
+        ],
+        [
+          1,
+          3,
+          2,
+          1,
+          0,
+          1,
+          1,
+          385,
+          386,
+          388
+        ],
+        [
+          1,
+          4,
+          2,
+          0,
+          1,
+          0,
+          1,
+          392,
+          393,
+          395
+        ]
+      ],
+      "ring": [
+        3,
+        5,
+        2,
+        3
+      ]
+    },
+    "raw / metadata / switched pair": {
+      "wire_hex": "100010787996007461678000401405004228a154d0500b20082290a888a4209485494c500010450180104a281534d402088208242a2229088585490c",
+      "sha256": "b124ac12ed486ea19cf11a7cb45124371ea9b248ffae9bda2340e145fea75666",
+      "plain_hex": "78794143414341434143434143414143414141414141414143414341434143434143414143414141",
+      "blocks": [
+        [
+          0,
+          0,
+          1,
+          2,
+          21
+        ],
+        [
+          0,
+          1,
+          0,
+          3,
+          54
+        ],
+        [
+          0,
+          0,
+          0,
+          17,
+          100
+        ],
+        [
+          1,
+          0,
+          0,
+          21,
+          298
+        ]
+      ],
+      "ends": [
+        40,
+        80,
+        278,
+        478
+      ],
+      "switches": [
+        [
+          2,
+          2,
+          2,
+          1,
+          0,
+          1,
+          1,
+          264,
+          265,
+          267
+        ],
+        [
+          2,
+          3,
+          2,
+          0,
+          1,
+          0,
+          1,
+          271,
+          272,
+          274
+        ],
+        [
+          3,
+          3,
+          2,
+          1,
+          0,
+          1,
+          1,
+          464,
+          465,
+          467
+        ],
+        [
+          3,
+          4,
+          2,
+          0,
+          1,
+          0,
+          1,
+          471,
+          472,
+          474
+        ]
+      ],
+      "ring": [
+        3,
+        5,
+        2,
+        3
+      ]
+    }
+  },
+  "failures": {
+    "late-type-cap": {
+      "bit": 385,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.bitLimit",
+      "command": 3,
+      "stage": "switch-type"
+    },
+    "late-count-cap": {
+      "bit": 386,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.BlockTypes.Error.bitLimit",
+      "command": 3,
+      "stage": "switch-length"
+    },
+    "late-symbol-cap": {
+      "bit": 388,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Distance.Error.symbol\n  (Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.bitLimit)",
+      "command": 3,
+      "stage": "distance"
+    },
+    "late-truncation": {
+      "bit": 392,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.truncated",
+      "command": 4,
+      "stage": "switch-type"
+    },
+    "output-cap": {
+      "bit": 219,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.outputLimit)",
+      "command": null,
+      "stage": "envelope"
+    },
+    "block-cap": {
+      "bit": 199,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.stepLimit)",
+      "command": null,
+      "stage": "envelope"
+    },
+    "final-bit-cap": {
+      "bit": 399,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.bitLimit",
+      "command": null,
+      "stage": "envelope"
+    },
+    "nonzero-padding": {
+      "bit": 399,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.nonzeroPadding)",
+      "command": null,
+      "stage": "envelope"
+    },
+    "trailing-input": {
+      "bit": 399,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.trailingInput)",
+      "command": null,
+      "stage": "envelope"
+    },
+    "raw-alignment": {
+      "bit": 21,
+      "block": 0,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.nonzeroPadding)",
+      "command": null,
+      "stage": "envelope"
+    },
+    "input-cap": {
+      "bit": 0,
+      "block": null,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.inputLimit)",
+      "command": null,
+      "stage": "envelope"
+    },
+    "window-cap": {
+      "bit": 0,
+      "block": null,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.windowLimit)",
+      "command": null,
+      "stage": "envelope"
+    }
+  },
+  "native_dictionary": {
+    "sha256": "6a552bdbff1a5d0e76e4b71ab59c9121d7182142b96e0173f6be16823c2f4a11",
+    "failure": {
+      "bit": 465,
+      "block": 0,
+      "cause": [
+        28183,
+        8,
+        28174
+      ],
+      "command": 0,
+      "stage": "dictionary"
+    }
+  }
+}
