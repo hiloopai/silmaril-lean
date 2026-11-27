@@ -76,3 +76,41 @@ python3 -m venv /tmp/parquet-timestamp-snappy
 /tmp/parquet-timestamp-snappy/bin/pip install --no-deps --require-hashes -r tests/formats/columnar-timestamp-wire/requirements.txt
 /tmp/parquet-timestamp-snappy/bin/python -I scripts/parquet-timestamp-snappy-oracle/check.py
 ```
+
+## Optional stored CRC verification for PLAIN V2
+
+`Timestamp.Leaf.SnappyV2.convert` selects the codec-1 flat INT64 PLAIN V2
+profile explicitly. It uses the strict modern annotation binder. It admits
+required and optional fields, preserves millis, micros and nanos, and emits
+the original signed ticks with canonical UTC for adjusted timestamps and an
+absent timezone for local timestamps. The existing PLAIN, dictionary and
+mixed-profile entry points retain their admission policies.
+
+The reader checks selected chunk spans and the group slot total before page
+decoding. On each original frame it checks the stored size and verifies any
+declared CRC-32 against the complete stored payload, including the raw
+definition prefix. The scalar decoder then checks that prefix and the exact
+value suffix. It uses Snappy for a compressed suffix and the raw value bytes
+when the V2 flag is false. The proofs preserve frame order, original footer
+group positions, null slots and signed counts through native Arrow V5 EOS.
+The event trace retains complete earlier groups on a later error, and the
+converter returns that source cause before attempting Arrow writer admission.
+A CRC error includes the page ordinal and absolute header offset.
+
+The pinned comparator reads genuine PyArrow inputs with Thrift and checks
+both the stored CRC and the raw signed words independently. It covers all
+three units, required and optional fields, UTC and local timestamps, Int64
+endpoints, and both V2 value-suffix modes. Separate deterministic mutations
+damage a level prefix, damage a value suffix, or refresh a stored CRC after
+changing the Snappy size declaration. PyArrow independently checks refusal,
+and Lean checks the exact earlier event batches and typed source precedence.
+
+[Public laws](../../Silmaril/Formats/Parquet/Timestamp/Leaf/SnappyV2/Thms.lean) ·
+[Comparator](../../scripts/parquet-timestamp-snappy-v2-crc-oracle/check.py) ·
+[SHA-256 pins](../../scripts/parquet-timestamp-snappy-v2-crc-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Timestamp.Leaf.SnappyV2.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-timestamp-snappy-v2-crc-oracle/Axioms.lean
+/tmp/parquet-timestamp-snappy/bin/python -I scripts/parquet-timestamp-snappy-v2-crc-oracle/check.py
+```

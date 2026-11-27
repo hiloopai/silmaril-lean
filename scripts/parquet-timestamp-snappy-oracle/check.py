@@ -33,14 +33,14 @@ def groups():
     return [first, [None] * 32, [-1001, None, 0, -1001] * 8]
 
 
-def produce(unit, zone, page_version, rows):
+def produce(unit, zone, page_version, rows, *, checksum=False, nullable=True, codec="SNAPPY"):
     typ = pa.timestamp(unit, zone)
-    schema = pa.schema([pa.field("event_time", typ, nullable=True)])
+    schema = pa.schema([pa.field("event_time", typ, nullable=nullable)])
     sink = pa.BufferOutputStream()
     with pq.ParquetWriter(sink, schema, version="2.6", data_page_version=page_version,
-                          compression="SNAPPY", column_encoding="PLAIN", use_dictionary=False,
-                          store_schema=False, write_statistics=False, write_batch_size=16,
-                          data_page_size=1) as writer:
+                          compression=codec, column_encoding="PLAIN", use_dictionary=False,
+                          store_schema=False, write_statistics=False, write_page_checksum=checksum,
+                          write_batch_size=16, data_page_size=1) as writer:
         for group in rows:
             values = pa.array(group, type=pa.int64()).view(typ)
             writer.write_table(pa.Table.from_arrays([values], schema=schema))
@@ -156,9 +156,9 @@ def read_group(parquet, index):
     return parquet.read_row_group(index).column(0).cast(pa.int64()).to_pylist()
 
 
-def verify_ipc(name, parquet_wire, output, rows, typ):
+def verify_ipc(name, parquet_wire, output, rows, typ, *, nullable=True):
     parquet = pq.ParquetFile(pa.BufferReader(parquet_wire))
-    field = pa.field("event_time", typ, nullable=True)
+    field = pa.field("event_time", typ, nullable=nullable)
     assert parquet.schema.column(0).physical_type == "INT64"
     assert parquet.schema_arrow.field(0).equals(field)
     assert [read_group(parquet, i) for i in range(parquet.metadata.num_row_groups)] == rows

@@ -85,6 +85,7 @@ inductive Error where
   | framing (cause : Parquet.Page.Error)
   | rowCount (expected actual : Nat)
   | crcUnsupported (pageIndex : Nat)
+  | pageChecksum (pageIndex headerOffset : Nat) (cause : Parquet.Page.Checksum.Error)
   | page (pageIndex : Nat) (cause : Timestamp.Page.Error)
   | dictionaryChunkLimit
   | dictionaryMissing
