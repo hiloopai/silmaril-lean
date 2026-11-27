@@ -45,37 +45,48 @@ def body(nullable, slots, physical):
     return prefix + b"".join(struct.pack("<i", len(slot)) + slot for slot in slots if slot is not None)
 
 
-def check_group(thrift, wire, cursor, group, fields, slots, physical_order):
+def check_group(thrift, wire, cursor, group, fields, slots, physical_order, cuts):
     count = len(slots[0])
     assert len(slots[1]) == count and group[3] == (TType.I64, count)
     chunks = thrift["list_field"](group, 1)
     start = cursor
-    for chunk, (name, nullable), values, physical in zip(chunks, fields, slots, physical_order, strict=True):
+    for chunk, (name, nullable), values, physical, page_counts in zip(
+        chunks, fields, slots, physical_order, cuts, strict=True
+    ):
         assert chunk[2] == (TType.I64, 0)
         column = chunk[3][1]
-        page_size = column[7][1]
+        chunk_size = column[7][1]
         assert column == {
             1: (TType.I32, physical), 2: (TType.LIST, (TType.I32, [0, 3])),
             3: (TType.LIST, (TType.STRING, [name.encode()])), 4: (TType.I32, 0),
-            5: (TType.I64, count), 6: (TType.I64, page_size), 7: (TType.I64, page_size),
+            5: (TType.I64, count), 6: (TType.I64, chunk_size), 7: (TType.I64, chunk_size),
             9: (TType.I64, cursor),
         }
-        stop = cursor + page_size
-        page_memory = TMemoryBuffer(wire[cursor:stop])
-        header = thrift["read_struct"](TCompactProtocol(page_memory))
-        payload = wire[cursor + page_memory.cstringio_buf.tell():stop]
-        assert header == {
-            1: (TType.I32, 0), 2: (TType.I32, len(payload)), 3: (TType.I32, len(payload)),
-            5: (TType.STRUCT, {1: (TType.I32, count), 2: (TType.I32, 0),
-                               3: (TType.I32, 3), 4: (TType.I32, 3)}),
-        }
-        assert payload == body(nullable, values, physical)
-        cursor = stop
+        stop = cursor + chunk_size
+        first_slot = 0
+        for page_count in page_counts:
+            assert cursor < stop
+            page_memory = TMemoryBuffer(wire[cursor:stop])
+            header = thrift["read_struct"](TCompactProtocol(page_memory))
+            size = header[3][1]
+            data = cursor + page_memory.cstringio_buf.tell()
+            assert data + size <= stop
+            payload = wire[data:data + size]
+            assert header == {
+                1: (TType.I32, 0), 2: (TType.I32, len(payload)), 3: (TType.I32, len(payload)),
+                5: (TType.STRUCT, {1: (TType.I32, page_count), 2: (TType.I32, 0),
+                                   3: (TType.I32, 3), 4: (TType.I32, 3)}),
+            }
+            after = first_slot + page_count
+            assert payload == body(nullable, values[first_slot:after], physical)
+            cursor = data + size
+            first_slot = after
+        assert first_slot == count and cursor == stop
     assert group[2] == (TType.I64, cursor - start)
     return cursor
 
 
-def check_wire_groups(thrift, wire, fields, expected_groups, physical_order=(1, 6)):
+def check_wire_groups(thrift, wire, fields, expected_groups, physical_order=(1, 6), page_cuts=None):
     assert wire[:4] == wire[-4:] == b"PAR1"
     size, = struct.unpack_from("<I", wire, len(wire) - 8)
     start = len(wire) - 8 - size
@@ -90,8 +101,10 @@ def check_wire_groups(thrift, wire, fields, expected_groups, physical_order=(1, 
     for leaf, (name, nullable), physical in zip(leaves, fields, physical_order, strict=True):
         assert leaf == {1: (TType.I32, physical), 3: (TType.I32, int(nullable)), 4: (TType.STRING, name.encode())}
     cursor = 4
-    for group, slots in zip(thrift["list_field"](footer, 4), expected_groups, strict=True):
-        cursor = check_group(thrift, wire, cursor, group, fields, slots, physical_order)
+    if page_cuts is None:
+        page_cuts = [[[len(column)] for column in slots] for slots in expected_groups]
+    for group, slots, cuts in zip(thrift["list_field"](footer, 4), expected_groups, page_cuts, strict=True):
+        cursor = check_group(thrift, wire, cursor, group, fields, slots, physical_order, cuts)
     assert cursor == start
 
 

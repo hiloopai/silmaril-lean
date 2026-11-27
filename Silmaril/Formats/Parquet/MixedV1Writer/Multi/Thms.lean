@@ -15,6 +15,13 @@ theorem emitOrdered_checked {order : Order} {limits : Limits} {input : Input} {o
     certify limits input output = .ok () :=
   Proofs.Formats.Parquet.MixedV1Writer.Multi.emitOrdered_checked written
 
+/-- The shared readback checker compares every group at its original ordinal. -/
+theorem checkGroups_indexed {intField byteField : Int32ByteArrayGroup.Field}
+    (limits : Int32ByteArrayGroup.Limits) (opened : Int32ByteArrayGroup.Checked intField byteField)
+    (groups : List Group) (offset : Nat) (checked : checkGroups limits opened offset groups = .ok ()) :
+    ∀ i : Fin groups.length, opened.readGroup limits (offset + i.val) = .ok (groups.get i).rows :=
+  Proofs.Formats.Parquet.MixedV1Writer.Multi.checkGroups_indexed limits opened groups offset checked
+
 /-- The original paired slots survive at every ordinal under either physical leaf order. -/
 theorem emitOrdered_indexed {order : Order} {limits : Limits} {input : Input} {output : Encoded}
     (written : emitOrdered order limits input = .ok output) :

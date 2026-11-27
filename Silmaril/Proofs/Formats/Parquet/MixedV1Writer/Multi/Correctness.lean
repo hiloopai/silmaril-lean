@@ -42,7 +42,7 @@ theorem emitOrdered_checked {order : Order} {limits : Limits} {input : Input} {o
       · simp [emitOrdered, groups, rows, schema, assembled, checked, Bind.bind, Except.bind] at written
   · simp [emitOrdered, groups, rows, schema] at written
 
-private theorem checked_at {intField byteField : Int32ByteArrayGroup.Field}
+theorem checkGroups_indexed {intField byteField : Int32ByteArrayGroup.Field}
     (limits : Int32ByteArrayGroup.Limits) (opened : Int32ByteArrayGroup.Checked intField byteField)
     (groups : List Group) (offset : Nat) (checked : checkGroups limits opened offset groups = .ok ()) :
     ∀ i : Fin groups.length, opened.readGroup limits (offset + i.val) = .ok (groups.get i).rows := by
@@ -78,7 +78,7 @@ theorem emitOrdered_indexed {order : Order} {limits : Limits} {input : Input} {o
     · have all : checkGroups limits.writer.readback source 0 input.groups = .ok () := by
         simpa [opened, Except.mapError, Bind.bind, Except.bind, count] using checked
       refine ⟨source, rfl, count, fun i => ?_⟩
-      have read := checked_at limits.writer.readback source input.groups 0 all i
+      have read := checkGroups_indexed limits.writer.readback source input.groups 0 all i
       exact ⟨by simpa using read, Int32ByteArrayGroup.readGroup_wire (by simpa using read)⟩
     · simp [opened, Except.mapError, Bind.bind, Except.bind, count] at checked
 
