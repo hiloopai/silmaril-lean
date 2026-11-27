@@ -24,7 +24,7 @@ private theorem wordsLength (blocks : List FileBlock) :
     omega
 
 private theorem encode_length (footer : FileFooter) : (encode footer).len = wireSize footer := by
-  simp only [encode, wireSize, words, longs, Writer.emitWords_length, append_length,
+  simp only [encode, encodeWithSchema, wireSize, words, longs, Writer.emitWords_length, append_length,
     List.length_cons, List.length_nil, wordsLength, schemaPayload_size]
   omega
 

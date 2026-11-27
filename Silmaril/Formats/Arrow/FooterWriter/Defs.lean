@@ -15,11 +15,14 @@ def wireSize (footer : FileFooter) : Nat :=
 
 /-- The root table starts at 16. The block vector starts at 36 and its
 24-byte structs start at byte 40. The schema payload follows the vector. -/
-def encode (footer : FileFooter) : KBytes :=
-  let count := footer.blocks.length
+def encodeWithSchema (blocks : List FileBlock) (schema : KBytes) : KBytes :=
+  let count := blocks.length
   words [16, halfwords 12 16, halfwords 4 8, halfwords 0 12, 12, 4, 24 + 24 * count, 8, 0, count] ++
-    (longs (footer.blocks.flatMap fun block => [block.offset, block.metadataLength, block.bodyLength]) ++
-      schemaPayload footer.fields)
+    (longs (blocks.flatMap fun block => [block.offset, block.metadataLength, block.bodyLength]) ++
+      schema)
+
+def encode (footer : FileFooter) : KBytes :=
+  encodeWithSchema footer.blocks (schemaPayload footer.fields)
 
 def serialize (limits : Limits) (footer : FileFooter) : Except Error KBytes :=
   if footer.fields.length > limits.fields then .error (.limit .fields)

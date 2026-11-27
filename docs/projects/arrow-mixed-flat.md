@@ -918,3 +918,40 @@ one-byte and uneven incremental schedules.
 make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Admitted.Axioms +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Examples'
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Checked mixed-flat file writer
+
+`MixedFlat.FileWriter.emit` writes a strict Arrow IPC V5 file from ordered
+Int32, BinaryView and Utf8View fields and batches. It reuses the ordered
+record encoder, the primitive file writer's block packer, and the shared
+File.fbs footer layout. The embedded Schema and footer carry the same
+ordered names, kinds and nullability. The writer accepts schema-only
+files, explicit empty batches, and nonempty zero-width batches.
+
+The input row and cell totals are checked before encoding. IPC metadata,
+body and per-record view limits apply at their existing scopes. The file
+writer certifies the complete strict index and redecodes every original
+block in footer order before returning bytes. It retains exact row
+counts, nullable values, text, and BinaryView octets. A selected index
+agrees with the corresponding observation from ordered readback.
+`emit_block_offset` gives the original absolute offset as the end of the
+embedded Schema plus the spans of every preceding record. `emit_events`
+aligns the actual native file pull trace through EOS.
+
+The writer profile follows the ordered encoders. Plain UTF-8 admission
+remains available through the file reader. Dictionary and nested fields
+are outside this writer profile.
+
+The pinned little-endian PyArrow 26.0.1 oracle independently generates
+mixed, schema-only, empty and zero-width files, then checks their exact
+offsets and order. Lean reads those files and emits corresponding files.
+PyArrow checks both the footer-indexed batches and their order in the
+embedded message region.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/FileWriter/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/FileWriter/Thms.lean) ·
+[PyArrow oracle](../../scripts/arrow-mixed-flat/file_writer_oracle.py)
+
+```sh
+lake build +Silmaril.Formats.Arrow.MixedFlat.FileWriter.Examples +Silmaril.Formats.Arrow.MixedFlat.FileWriter.Axioms
+python3 -I scripts/arrow-mixed-flat/file_writer_oracle.py /tmp/arrow-mixed-file
+```
