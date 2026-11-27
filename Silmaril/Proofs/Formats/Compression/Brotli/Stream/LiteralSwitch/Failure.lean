@@ -37,9 +37,9 @@ private theorem run_not_initialOutput {header : CompressedHeader.Header} {block 
     (read : Execute.LiteralSwitch.Internal.run header block limits origin fuel index state before =
       .error (.initialOutput bit)) : False := by
   induction fuel generalizing index state before with
-  | zero => unfold Execute.LiteralSwitch.Internal.run at read; split at read <;> cases read
+  | zero => unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at read; split at read <;> cases read
   | succ fuel ih =>
-    unfold Execute.LiteralSwitch.Internal.run at read
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at read
     split at read
     · cases read
     cases step : Execute.LiteralSwitch.read header block
@@ -58,12 +58,12 @@ private theorem run_fuel_offset {header : CompressedHeader.Header} {block : Exec
     Offset before.totalRead input bit := by
   induction fuel generalizing index state before input with
   | zero =>
-    unfold Execute.LiteralSwitch.Internal.run at read
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at read
     split at read
     · cases read
     · cases read; exact Offset.here _ _
   | succ fuel ih =>
-    unfold Execute.LiteralSwitch.Internal.run at read
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at read
     split at read
     · cases read
     cases step : Execute.LiteralSwitch.read header block

@@ -137,17 +137,26 @@ inductive BlockError where
 
 namespace Internal
 
-def run (header : CompressedHeader.Header) (block : Block) (limits : Limits) (origin : LSBReader) :
-    Nat → Nat → InsertCopy.State → LSBReader → Except BlockError (InsertCopy.State × LSBReader)
+/-- Shared MLEN-bounded loop for the switched command executors. Error
+    constructors keep each profile's public failure type. -/
+def runWith {ε δ : Type}
+    (command : Limits → InsertCopy.State → LSBReader → Except ε (InsertCopy.Result × LSBReader))
+    (onCommand : Nat → ε → δ) (onFuel : Nat → Nat → δ)
+    (block : Block) (limits : Limits) (origin : LSBReader) :
+    Nat → Nat → InsertCopy.State → LSBReader → Except δ (InsertCopy.State × LSBReader)
   | fuel, index, state, before =>
     if state.execution.output.size = block.endOutput then .ok (state, before)
     else match fuel with
-    | 0 => .error (.fuel index before.totalRead)
+    | 0 => .error (onFuel index before.totalRead)
     | fuel + 1 => do
       let (result, after) ←
-        (read header block {limits with bits := remainingBits limits.bits origin before} state before).mapError
-          (BlockError.command index)
-      run header block limits origin fuel (index + 1) result.state after
+        (command {limits with bits := remainingBits limits.bits origin before} state before).mapError
+          (onCommand index)
+      runWith command onCommand onFuel block limits origin fuel (index + 1) result.state after
+
+def run (header : CompressedHeader.Header) (block : Block) (limits : Limits) (origin : LSBReader) :
+    Nat → Nat → InsertCopy.State → LSBReader → Except BlockError (InsertCopy.State × LSBReader) :=
+  runWith (read header block) BlockError.command BlockError.fuel block limits origin
 
 end Internal
 
