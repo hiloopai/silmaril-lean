@@ -1,0 +1,23 @@
+{
+  "native_none_references": "5c39321f3ae7d80f79d7863ea1ad89b4ed570735cbd47cffbe8010720a215ba6",
+  "native_none_fallback": "b2ac4da11c71292acbb48942ed97f5dc31f516aee3dfc9e28f81f435dde5fdfe",
+  "native_snappy_references": "5261c05fed6126002c6eee103c3be5a9bdc6f97bb8278caa4d4180e5edae84b0",
+  "native_snappy_fallback": "443957d3bbf9c2b53699a36d99f6d30737a91f73a556113176f2db058b1c1c99",
+  "native_gzip_references": "cd3792e267324c14e1c22cd6269e74263a142a6ea7ac68b6d00a8b52d2c91516",
+  "native_gzip_fallback": "987d19ea3d2ac366e96283fc7504b9601fb30eb27a2f1ed268aa2f0475fceed7",
+  "native_zstd_references": "879fd215a82133d32e784759e71d52df07cd8472fe4eb4897ed40fa33bc413de",
+  "native_zstd_fallback": "dffe86a6dea1963196e48adf19b9de6d63781c89c57c09c6df343756503e933b",
+  "native_local_snappy_references": "bdd45157d134db6743dd134666faede5750b0026cef3bd5d8ba333d8cb915645",
+  "native_scalar_delta": "4da945d0b1d8465e3b7d7d98f6a20672f3c706d867c3a3d16b1a04d56650f850",
+  "native_scalar_split": "ed9286335c186a2522310d3ebf1c4f35731d5296679ad2db4190b90939e72d5c",
+  "native_scalar_plain": "c874985104cb6278aa3e1b1e4b83416a5a0dc9580480c6f1b79facedfbf10eb2",
+  "assembled_mixed": "48fa2dd60ed25b03613c78de37ab9ed4883a444b50e50df3cfa33c312cc0aa18",
+  "mutated_late_zstd_crc": "bddfbe05a47e047ecc0f8f9982c6a5d502d4f21b363a0e18fee86259c3158671",
+  "mutated_late_gzip_crc": "686162907ab159769ab41acdbba2ac0fcf4b2ce9bd4c554856f4d2dcfd310e77",
+  "mutated_competing_crc": "15c189ce6a74488bbd3e7a5351a058e4f8bd57974478fabb2c1755541634eded",
+  "mutated_unsupported_codec": "e2ffc6bd2edbb6f93eb7a800dc7cae9c0b1233610b532f193d95bd10373e147b",
+  "mutated_dictionary_encodings": "124e69490656ce0ac75d015855d5ea5272f32cbd7f85fddbb118086519bff6ff",
+  "mutated_dictionary_data_tag": "a6ae785f82da81de8de2cb03decad52244d57615c1fa1cd194264850ed46ea2e",
+  "native_dictionary_v1_control": "7be99a5dea7b85ba3a700d99493afc9abcb14f36faf0539654496edb55af84fb",
+  "assembled_late_dictionary_v1": "59f419accd99ac343a082634c8da2f931737c18599601fd5127ce878430838c1"
+}
