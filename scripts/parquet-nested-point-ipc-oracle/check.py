@@ -46,30 +46,31 @@ def produce(field, groups):
     return sink.getvalue().to_pybytes()
 
 
-def inspect(wire, groups):
+def inspect(wire, groups, field=FIELD):
+    left_name, right_name = (child.name for child in field.type)
     footer = MIXED["metadata"](wire)
     root, parent, first, second = THRIFT["list_field"](footer, 2)
     assert root[5] == (TType.I32, 1) and parent[5] == (TType.I32, 2)
     assert parent[3] == (TType.I32, 1)
-    assert [item[4][1].decode() for item in (parent, first, second)] == [FIELD.name, LEFT, RIGHT]
+    assert [item[4][1].decode() for item in (parent, first, second)] == [field.name, left_name, right_name]
     for leaf, physical, requiredness in zip((first, second), (1, 2), (0, 1), strict=True):
         assert leaf[1] == (TType.I32, physical) and leaf[3] == (TType.I32, requiredness)
         assert not (set(leaf) & {6, 10})
     assert footer[3][1] == sum(map(len, groups))
     parquet = pq.ParquetFile(pa.BufferReader(wire))
-    assert list(parquet.schema_arrow) == [FIELD]
+    assert list(parquet.schema_arrow) == [field]
     assert parquet.num_row_groups == len(groups)
     result = []
     for ordinal, rows in enumerate(groups):
         rowgroup = parquet.metadata.row_group(ordinal)
         assert rowgroup.num_rows == len(rows)
         actual = parquet.read_row_group(ordinal).column(0).to_pylist()
-        assert actual == [None if row is None else {LEFT: row[0], RIGHT: row[1]} for row in rows]
+        assert actual == [None if row is None else {left_name: row[0], right_name: row[1]} for row in rows]
         columns = []
-        for position, (name, width, physical, code) in enumerate(((LEFT, 1, 1, "i"), (RIGHT, 2, 2, "q"))):
+        for position, (name, width, physical, code) in enumerate(((left_name, 1, 1, "i"), (right_name, 2, 2, "q"))):
             column = THRIFT["column_metadata"](footer, ordinal, position)
             assert column[1][1] == physical and column[4][1] == 0 and column[5][1] == len(rows)
-            assert THRIFT["list_field"](column, 3) == [FIELD.name.encode(), name.encode()]
+            assert THRIFT["list_field"](column, 3) == [field.name.encode(), name.encode()]
             assert not (set(column) & {10, 11})
             start, stop = MIXED["column_extent"](column)
             assert start == rowgroup.column(position).data_page_offset
