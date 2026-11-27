@@ -1,0 +1,64 @@
+{
+  "description": "Genuine recursive Arrow IPC rows and controlled semantic failures",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c"
+  },
+  "genuine_ipc": {
+    "four_level": {
+      "bytes": 2096,
+      "sha256": "38187024f71d3fc1838651be6a3c85c0c5edb4979d4874c0e24e9861737f7295"
+    },
+    "hidden": {
+      "bytes": 1160,
+      "sha256": "2a331648bf77ffe0f5603db06355eb68e2195bf76ebe291c7b06e3e5a513cece"
+    },
+    "empty_schema": {
+      "bytes": 144,
+      "sha256": "1e31d71e6ad5132110f1fc3f7cef27e9a51e6c7fc6631cef8f4469c1e60ba149"
+    },
+    "two_populated": {
+      "bytes": 1824,
+      "sha256": "f219c7f49167cd0d3e8344d03cd08d6be2b73d5cb78002fd7a1fbe6f0986bad4"
+    }
+  },
+  "labeled_edits": {
+    "null_count": {
+      "bytes": 1160,
+      "sha256": "784f74696041aa36bc7e7f60e7be0279816ba22f9994f9efa79105b4ca19ce3e"
+    },
+    "bitmap_bit": {
+      "bytes": 1160,
+      "sha256": "dbf1689864d64b590cb7dcd7a0c77017bf2ca463e1e1857066e65754a9e48f0e"
+    },
+    "hidden_null_count": {
+      "bytes": 1160,
+      "sha256": "249d5dfbb29bc7f326c7730a4ec3b8e716d47bf0f83ba395bdc817a839960f8a"
+    },
+    "struct_required_exposed": {
+      "bytes": 1160,
+      "sha256": "f18f4feb2c97e928989a75a044a6544b56db90390344680ac6327ca685de923e"
+    },
+    "list_required_exposed": {
+      "bytes": 1160,
+      "sha256": "f36f5cbc1ade1a847c53a810c896ba537c3f4fb4dfd6b1b3bb1d87894030aa91"
+    },
+    "layout_precedence": {
+      "bytes": 2096,
+      "sha256": "c2c86453ac9af7dd0f6088b93e0f4ae683dd86bb5b45744a086a33ec22cc42a3"
+    },
+    "bitmap_padding": {
+      "bytes": 1160,
+      "sha256": "d28c0056e66a2ef0466c5792c3ab5c0951dd0ad6689812a4fc1ec1f4f5c77ae3"
+    },
+    "late_null_count": {
+      "bytes": 1824,
+      "sha256": "1c90bc0f8f682cc537c0b4d1179c3d8ca29663ab8cb302b56ae3d4eda9d11738"
+    }
+  }
+}
