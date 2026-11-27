@@ -84,4 +84,39 @@ theorem convert_roundtrip {ipc : Arrow.MixedFlat.Limits} {csv : Limits} {input :
       subst output
       exact ⟨table, readScan_ok_iff.mp read, rfl, decode_encode encoded⟩
 
+private theorem decode_rows {limits : Limits} {schema : Rows.Schema} {wire : Csv.Bytes} {table : Rows.Table}
+    (read : decode limits schema wire = .ok table) :
+    ∃ rows, Csv.Typed.Utf8.decode (csvSchema schema) codecs wire = .ok rows ∧
+      table = ⟨schema, rows⟩ := by
+  by_cases over : limits.maxBytes < wire.length
+  · simp [decode, over, Bind.bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at read
+  cases profile : checkSchema schema with
+  | error cause => simp [decode, over, profile, Bind.bind, Except.bind] at read
+  | ok checked =>
+    cases checked
+    cases parsed : Csv.Typed.Utf8.Bounded.decode limits.maxRows (csvSchema schema) codecs wire with
+    | error cause =>
+      cases cause <;>
+        simp [decode, over, profile, parsed, Except.mapError, Bind.bind, Except.bind] at read
+    | ok rows =>
+      cases required : checkRequired schema rows with
+      | error cause =>
+        simp [decode, over, profile, parsed, required, Except.mapError, Bind.bind, Except.bind] at read
+      | ok checked =>
+        cases checked
+        have exact : (⟨schema, rows⟩ : Rows.Table) = table := by
+          simpa [decode, over, profile, parsed, required, Except.mapError, Bind.bind, Except.bind,
+            pure, Except.pure] using read
+        exact ⟨rows, ((Csv.Typed.Utf8.Bounded.decode_ok_iff _ _ _ _ _).mp parsed).1, exact.symm⟩
+
+theorem decode_agrees {leftLimits rightLimits : Limits} {schema : Rows.Schema} {wire : Csv.Bytes}
+    {left right : Rows.Table}
+    (leftRead : decode leftLimits schema wire = .ok left)
+    (rightRead : decode rightLimits schema wire = .ok right) :
+    left = right := by
+  obtain ⟨leftRows, leftRaw, leftTable⟩ := decode_rows leftRead
+  obtain ⟨rightRows, rightRaw, rightTable⟩ := decode_rows rightRead
+  have same := Except.ok.inj (leftRaw.symm.trans rightRaw)
+  rw [leftTable, rightTable, same]
+
 end Silmaril.Proofs.Formats.Csv.Typed.Utf8.MixedIpc

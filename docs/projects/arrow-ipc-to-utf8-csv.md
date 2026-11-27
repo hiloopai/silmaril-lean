@@ -88,3 +88,18 @@ independent comparator reads the four actual Lean streams in PyArrow,
 including both header-only forms and positive-row zero width.
 [Reverse bridge laws](../../Silmaril/Formats/Csv/Typed/Utf8/MixedIpc/ToIpc/Thms.lean) ·
 [Comparator](../../scripts/typed-csv-to-mixed-ipc-oracle/check.py)
+
+### Native IPC round trip through typed CSV
+
+When both checked conversions succeed, `MixedIpc.RoundTrip.readback`
+recovers the original ordered descriptor and dependent Scan rows in one
+output batch through exact EOS. The input reader, CSV export, CSV import,
+and IPC writer each apply their supplied limits. `RoundTrip.equivalent`
+compares the materialized rows and descriptor independently of batch
+partition.
+
+The pinned PyArrow input has batch sizes `[2, 0, 2]`. CPython compares
+the exported CSV to the input rows, and PyArrow checks the actual Lean
+output has the same descriptors and cells in a single four-row batch.
+[Round-trip laws](../../Silmaril/Formats/Csv/Typed/Utf8/MixedIpc/RoundTrip/Thms.lean) ·
+[Comparator](../../scripts/mixed-ipc-csv-row-roundtrip-oracle/check.py)

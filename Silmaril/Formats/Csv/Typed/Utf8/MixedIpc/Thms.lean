@@ -25,6 +25,15 @@ theorem decode_encode {limits : Limits} {table : Rows.Table} {wire : Csv.Bytes}
     decode limits table.schema wire = .ok table :=
   Proofs.Formats.Csv.Typed.Utf8.MixedIpc.decode_encode written
 
+/-- Successful checked imports of the same descriptor and bytes agree
+under independent byte and row caps. -/
+theorem decode_agrees {leftLimits rightLimits : Limits} {schema : Rows.Schema} {wire : Csv.Bytes}
+    {left right : Rows.Table}
+    (leftRead : decode leftLimits schema wire = .ok left)
+    (rightRead : decode rightLimits schema wire = .ok right) :
+    left = right :=
+  Proofs.Formats.Csv.Typed.Utf8.MixedIpc.decode_agrees leftRead rightRead
+
 /-- IPC → Scan → typed CSV → Scan commutes on every successful conversion.
 The result retains the original ordered Arrow descriptor and flattened rows. -/
 theorem convert_roundtrip {ipc : Arrow.MixedFlat.Limits} {csv : Limits} {input : KBytes} {output : Output}
