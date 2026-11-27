@@ -13,6 +13,14 @@ namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip
 open Silmaril.Relational
 open Silmaril.Numeric.Timestamp (Ticks)
 
+/-- The original V1 header supplies the chosen encoding and checked GZIP parameters. -/
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧ ∃ info, frame.value.kind = .dataV1 info ∧ admits info.encoding = true ∧
+      page.params = ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, bound.levels,
+        info.numValues, Payload.Codec.gzip.id, info.encoding, .v1 info.definitionLevelEncoding info.repetitionLevelEncoding⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.planDataWith_wire planned
+
 /-- The original V1 data header fixes the codec, level tags and reference count. -/
 theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :
@@ -48,6 +56,38 @@ theorem checkGroup_wire {limits : Limits} {leafLimits : Leaf.Limits}
       (∀ page ∈ checked.data, planData bound page.frame = .ok page) ∧
       (checked.data.map (·.params.numValues)).sum = checked.chunk.group.numRows.toNat :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.checkGroup_wire admitted
+
+/-- The V1 prepared body comes from the exact original stored GZIP member. -/
+theorem prepared_member {admits : Int → Bool} {leafLimits : Leaf.Limits} {bound : Bound}
+    {page : DataPage} {encoding : Int} {status : Parquet.Page.Checksum.Status}
+    {prepared : ScalarPage.Prepared}
+    (planned : planDataWith admits bound page.frame = .ok page)
+    (verified : Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame =
+      .ok status)
+    (preparedOk : ScalarPage.prepareFor encoding page.params leafLimits.page
+      (Leaf.Internal.body bound page.frame) = .ok prepared) :
+    ∃ expanded layout sections,
+      StoredMember bound page.frame leafLimits.page.compressedBytes leafLimits.page.uncompressedBytes expanded ∧
+      FlatPage.split layout leafLimits.page.levels.bytes (.v1 (Bytes.ofList expanded)) = .ok sections ∧
+      FlatPage.readMask layout page.params.numValues leafLimits.page.levels sections.definitions = .ok prepared.mask ∧
+      prepared.scalars = sections.scalars :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.prepared_member planned verified preparedOk
+
+/-- A decoded reference page retains its exact GZIP member, levels and index stream. -/
+theorem data_decodesWith {admits : Int → Bool} {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : List Int64} {page : DataPage} {slots : List (Option Int64)}
+    (planned : planDataWith admits bound page.frame = .ok page)
+    (read : Leaf.Dictionary.Snappy.DataWire limits.dictionary (limits.withFuel leafLimits)
+      bound entries.toArray page slots) :
+    ∃ expanded layout sections, ∃ prepared : ScalarPage.Prepared, ∃ width runs indices,
+      StoredMember bound page.frame leafLimits.page.compressedBytes leafLimits.page.uncompressedBytes expanded ∧
+      FlatPage.split layout leafLimits.page.levels.bytes (.v1 (Bytes.ofList expanded)) = .ok sections ∧
+      FlatPage.readMask layout page.params.numValues leafLimits.page.levels sections.definitions = .ok prepared.mask ∧
+      prepared.scalars = sections.scalars ∧ prepared.scalars.toList = width :: runs ∧
+      Hybrid.Wire width.toNat (prepared.mask.count true) runs indices ∧
+      slots.map Option.isSome = prepared.mask ∧
+      indices.map (fun index => entries.toArray[index]?) = (slots.filterMap id).map some :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.data_decodesWith planned read
 
 /-- The original V1 member expands to the checked levels and ordered signed dictionary lookups. -/
 theorem data_decodes {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}

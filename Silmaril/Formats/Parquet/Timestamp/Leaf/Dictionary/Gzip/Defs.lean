@@ -21,14 +21,17 @@ def readEntries (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound)
     (frame : Parquet.Page.Frame) : Except DictionaryPageError (List Int64) :=
   Snappy.readEntriesWithCodec .gzip .plain limits.dictionary (limits.withFuel leafLimits) bound frame
 
-/-- Admit only modern RLE_DICTIONARY V1 data headers with the original GZIP codec. -/
-def planData (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
+/-- Retain the original GZIP V1 header with the selected data encoding. -/
+def planDataWith (admits : Int → Bool) (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
   if let .dictionary _ := frame.value.kind then throw .misplacedDictionary
   let .dataV1 header := frame.value.kind | throw (.parameters .unsupportedPage)
-  if header.encoding ≠ 8 then throw (.encoding header.encoding)
+  if !admits header.encoding then throw (.encoding header.encoding)
   let params ← (Timestamp.Page.parameters bound.binding.leaf bound.levels
     Payload.Codec.gzip.id frame.value).mapError .parameters
   return ⟨frame, params⟩
+
+/-- Admit only modern RLE_DICTIONARY V1 data headers. -/
+def planData := planDataWith (· == 8)
 
 def checkGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
     Except Leaf.Error CheckedChunk :=
