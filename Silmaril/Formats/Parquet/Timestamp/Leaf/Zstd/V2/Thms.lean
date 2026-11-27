@@ -103,4 +103,57 @@ theorem convert_readback {limits : Limits} {inputLimits : Leaf.Events.ToIpc.Limi
           groups.map (List.map (Option.map Ticks.ticks)) :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Zstd.V2.convert_readback written
 
+/-- The supplied Zstandard reader supplies every group in original footer order. -/
+theorem readBoundWith_reference (bound : Bound) (read : Nat → Except GroupError (Slots bound)) :
+    let reference := Reader.denoteGroups (rowsAtWith bound read) (List.range bound.snapshot.groupCount)
+    readBoundWith bound read = .ok ⟨Leaf.Events.schema bound,
+      ⟨reference.1.map AlignedColumns.ofRows, reference.2⟩⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Zstd.V2.readBoundWith_reference bound read
+
+/-- The supplied reader retains the exact completed prefix and first indexed error. -/
+theorem readBoundWith_first_error {bound : Bound} {read : Nat → Except GroupError (Slots bound)}
+    {before after : List Nat} {index : Nat} {groups : List (Slots bound)} {cause : GroupError}
+    (split : List.range bound.snapshot.groupCount = before ++ index :: after)
+    (earlier : before.mapM read = .ok groups)
+    (failed : read index = .error cause) :
+    readBoundWith bound read = .ok ⟨Leaf.Events.schema bound,
+      ⟨groups.map (AlignedColumns.ofRows ∘ Leaf.Events.rows bound), .readError (.groupFailure index cause)⟩⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Zstd.V2.readBoundWith_first_error split earlier failed
+
+/-- The first original codec error precedes the IPC writer's checks. -/
+theorem convertWith_first_error {inputLimits : Leaf.Events.ToIpc.Limits}
+    {read : (bound : Bound) → Nat → Except GroupError (Slots bound)}
+    {output : Arrow.ObservationLimits} {input : Bytes} {ordinal index : Nat} {bound : Bound}
+    {before after : List Nat} {groups : List (Slots bound)} {cause : GroupError}
+    (opened : Leaf.Events.ToIpc.openBound inputLimits input ordinal = .ok bound)
+    (split : List.range bound.snapshot.groupCount = before ++ index :: after)
+    (earlier : before.mapM (read bound) = .ok groups)
+    (failed : read bound index = .error cause) :
+    convertWith inputLimits output input ordinal read = .error (.source (.groupFailure index cause)) :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Zstd.V2.convertWith_first_error opened split earlier failed
+
+/-- A supplied codec reader preserves the bound descriptor and complete batches through native EOS. -/
+theorem convertWith_readback {inputLimits : Leaf.Events.ToIpc.Limits}
+    {read : (bound : Bound) → Nat → Except GroupError (Slots bound)}
+    {output : Arrow.ObservationLimits} {input : Bytes} {ordinal : Nat} {wire : KBytes}
+    (written : convertWith inputLimits output input ordinal read = .ok wire) :
+    ∃ bound groups, Leaf.Events.ToIpc.openBound inputLimits input ordinal = .ok bound ∧
+      (List.range bound.snapshot.groupCount).mapM (read bound) = .ok groups ∧
+      readBoundWith bound (read bound) = .ok ⟨Leaf.Events.schema bound,
+        ⟨groups.map (AlignedColumns.ofRows ∘ Leaf.Events.rows bound), .eos⟩⟩ ∧
+      ∃ result, Arrow.TimestampStream.read output.ipc wire = .ok result ∧
+        result.binding = Leaf.Events.ToIpc.selectedBinding bound ∧
+        result.batches.map Arrow.TimestampBatch.Writer.tickCounts =
+          groups.map (List.map (Option.map Ticks.ticks)) :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Zstd.V2.convertWith_readback written
+
+/-- The original V2 flag selects literal bytes or one exact bounded Zstandard frame. -/
+theorem suffixWire_of {limits : Limits} {leafLimits : Leaf.Limits} {frame : Parquet.Page.Frame}
+    {header : Parquet.Page.DataV2} {encoded decoded : List UInt8}
+    (wire : FlatColumn.Zstd.PayloadWire limits.compression
+      (leafLimits.page.payloadBounds ⟨frame.value.compressedSize, frame.value.uncompressedSize⟩ header.definitionBytes)
+      (ScalarPage.v2Codec 6 (some header.isCompressed)) encoded decoded) :
+    SuffixWire limits leafLimits frame header encoded decoded :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Zstd.V2.suffixWire_of wire
+
 end Silmaril.Formats.Parquet.Timestamp.Leaf.Zstd.V2

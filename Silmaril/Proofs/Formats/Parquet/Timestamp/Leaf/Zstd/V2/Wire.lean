@@ -78,7 +78,7 @@ private theorem params_v2 {bound : Bound} {frame : Parquet.Page.Frame} {header :
     exact read.symm
   · contradiction
 
-private theorem suffix_wire {limits : Limits} {leafLimits : Leaf.Limits} {frame : Parquet.Page.Frame}
+theorem suffixWire_of {limits : Limits} {leafLimits : Leaf.Limits} {frame : Parquet.Page.Frame}
     {header : Parquet.Page.DataV2} {encoded decoded : List UInt8}
     (wire : FlatColumn.Zstd.PayloadWire limits.compression
       (leafLimits.page.payloadBounds ⟨frame.value.compressedSize, frame.value.uncompressedSize⟩ header.definitionBytes)
@@ -114,7 +114,7 @@ private theorem pageWire_of {limits : Limits} {leafLimits : Leaf.Limits} {bound 
   obtain ⟨nulls, rows, repetition, defStored, defExpanded, defCap, definitions, encoded,
     definitionSize, split, mask, present, payload⟩ := wire
   have suffix : SuffixWire limits leafLimits frame header encoded prepared.scalars.toList :=
-    suffix_wire payload
+    suffixWire_of payload
   obtain ⟨orderedMask, orderedWords⟩ := FlatPage.reconstruct_ok_iff.mp restored
   have count := congrArg List.length orderedMask
   rw [List.length_map, FlatPage.readMask_length mask] at count

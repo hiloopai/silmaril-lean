@@ -1,0 +1,19 @@
+{
+  "utc_nanos": "2574c4a8932dba7a8c5b71d343ffd40c98b1c050801313b44f5fcb74cb36c80d",
+  "local_micros": "5eae5b75e2168b520b3fbfa8ea6ecafe96197c8ec0afe6e394f268ab856d2676",
+  "mutated_dictionary_crc": "01a84a66143515a8c472697be76ff18cfa91e1d30f175803829a9da03ebb88be",
+  "mutated_reference_crc": "fa7c0437bc63e1cf1be07cd17cb108aceb627208d68d2f3cab84412761191b41",
+  "mutated_raw_crc": "ca4ab4aa52da57434b5323c213fff26e49859a145aca4e2f5daedca84bd49abd",
+  "mutated_dictionary_magic": "ecffd2baeef27322fdf704cae5a4fd57f52d43f73bf97f186e98480c7cb68f99",
+  "mutated_reference_magic": "060a6996bb2716aecc35c698e472af09cbf548098ab0434bc2b72130d08d273c",
+  "mutated_two_groups": "fb7b7b8ccd07427c2f694cabf24d34b087ea616a400ffa89baa30d83b164cab9",
+  "mutated_raw_flag_true": "0a5592ef0a0c927bf8d0eeda91f1e92c69f45f158d609207c24e9eaa1f37fa09",
+  "mutated_frame_flag_false": "9c39196821e0d181b3a5c37eaaf3974c8613b3ab670564105fbb4f951d52d12a",
+  "mutated_rows_before_crc": "b67de532a4eb40cbab2e4e96e9fa4a8ee0767846003dc5d0b928c97a6c5933a8",
+  "mutated_dictionary_encoding": "124fa49d34e8dbea359b78c545285c36acf7e67765b6ce223d2bb7400bf9ef15",
+  "mutated_reference_width": "eee4065023d1f5a07ed610400509b9b0188f09ee11648cbb64b2148a996a1219",
+  "mutated_reference_index": "5a0bbbb52e91b35805b4662a5c95fd5d4288250b56be5a0adc316137d29b2382",
+  "v1_dictionary": "08ff52c1dd6c576d754d4af11c3a66daf69928f313463c666eb00cf909e3d2b3",
+  "v2_plain": "10ea04d26e8c834aa4b7b9048cd91a3145eda66f9688bcb394187102723cf2e3",
+  "v2_fallback": "4cc1a8e98bfd614e0542ef93011aa1124954aa97f2482f49574ab230050cd290"
+}

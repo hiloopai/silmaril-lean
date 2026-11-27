@@ -24,6 +24,7 @@ inductive GroupError where
   | parameters (ordinal offset : Nat) (cause : Timestamp.Page.Error)
   | checksum (ordinal offset : Nat) (cause : Parquet.Page.Checksum.Error)
   | decode (ordinal offset : Nat) (cause : FlatColumn.Zstd.Error)
+  | references (ordinal offset : Nat) (cause : DictionaryIndex.Error)
   deriving DecidableEq, Repr
 
 inductive SourceError where
@@ -122,15 +123,21 @@ def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (inde
     decodePage limits leafLimits bound frame ordinal
   return pages.flatten.map (Option.map bound.binding.descriptor.decode)
 
-def rowsAt (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+def rowsAtWith (bound : Bound) (read : Nat → Except GroupError (Slots bound)) (index : Nat) :
     Except SourceError (Reader.RowGroup (Events.schema bound) Events.Cell) :=
-  (readGroup limits leafLimits bound index).map (Events.rows bound) |>.mapError (.groupFailure index)
+  (read index).map (Events.rows bound) |>.mapError (.groupFailure index)
+
+def rowsAt (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) :=
+  rowsAtWith bound (readGroup limits leafLimits bound)
 
 abbrev Source := Arrow.Events.EventStream String Events.Cell SourceError
 
-def readBound (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) : Source :=
+def readBoundWith (bound : Bound) (read : Nat → Except GroupError (Slots bound)) : Source :=
   Reader.readAll (.ok ⟨Events.schema bound, ⟨List.range bound.snapshot.groupCount,
-    rowsAt limits leafLimits bound, fun _ => .ok ()⟩⟩)
+    rowsAtWith bound read, fun _ => .ok ()⟩⟩)
+
+def readBound (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) : Source :=
+  readBoundWith bound (readGroup limits leafLimits bound)
 
 def emit (output : Arrow.ObservationLimits) (source : Source) : Except Error KBytes :=
   match source with
@@ -147,10 +154,15 @@ def emit (output : Arrow.ObservationLimits) (source : Source) : Except Error KBy
           (trace.batches.map fun batch => batch.values column)).mapError .writer
       else .error (.fieldCount schema.width)
 
+def convertWith (inputLimits : Events.ToIpc.Limits) (output : Arrow.ObservationLimits)
+    (input : Bytes) (ordinal : Nat) (read : (bound : Bound) → Nat → Except GroupError (Slots bound)) :
+    Except Error KBytes := do
+  let bound ← (Events.ToIpc.openBound inputLimits input ordinal).mapError .openFailure
+  emit output (readBoundWith bound (read bound))
+
 /-- Retain the original codec error until complete source EOS and native IPC emission. -/
 def convert (limits : Limits) (inputLimits : Events.ToIpc.Limits) (output : Arrow.ObservationLimits)
-    (input : Bytes) (ordinal : Nat) : Except Error KBytes := do
-  let bound ← (Events.ToIpc.openBound inputLimits input ordinal).mapError .openFailure
-  emit output (readBound limits inputLimits.leaf bound)
+    (input : Bytes) (ordinal : Nat) : Except Error KBytes :=
+  convertWith inputLimits output input ordinal (readGroup limits inputLimits.leaf)
 
 end Silmaril.Formats.Parquet.Timestamp.Leaf.Zstd.V2
