@@ -1,0 +1,80 @@
+PyArrow 26.0.1
+native-crc-v2.parquet SHA-256 b412931f8d1e671929b5f0abc5e00e530daf31cee042eb3076e1d8186ba521da, footer [308, 838)
+  group 0 page 0 header @4, rep [34, 36), def [36, 38), stored values [38, 38) -> 0 bytes, flag False, CRC -1183091435, slots 1, nulls 1, rows 1
+  group 0 page 1 header @38, rep [68, 70), def [70, 72), stored values [72, 72) -> 0 bytes, flag False, CRC -830716541, slots 1, nulls 1, rows 1
+  group 0 page 2 header @72, rep [102, 104), def [104, 107), stored values [107, 111) -> 4 bytes, flag False, CRC 1029618295, slots 2, nulls 1, rows 1
+  group 0 page 3 header @111, rep [141, 143), def [143, 145), stored values [145, 153) -> 8 bytes, flag False, CRC -425450832, slots 2, nulls 0, rows 1
+  group 1 page 0 header @153, rep [183, 185), def [185, 187), stored values [187, 187) -> 0 bytes, flag False, CRC -1183091435, slots 1, nulls 1, rows 1
+  group 1 page 1 header @187, rep [217, 219), def [219, 221), stored values [221, 221) -> 0 bytes, flag False, CRC -830716541, slots 1, nulls 1, rows 1
+  group 1 page 2 header @221, rep [251, 253), def [253, 255), stored values [255, 255) -> 0 bytes, flag False, CRC 1467290681, slots 1, nulls 1, rows 1
+  group 1 page 3 header @255, rep [286, 290), def [290, 295), stored values [295, 308) -> 156 bytes, flag True, CRC 692769468, slots 40, nulls 1, rows 1
+native-no-crc-v2.parquet SHA-256 b32ecc5fee092a63d57d7caa9673c70e886efdd415c63cba149812f4331dc39e, footer [260, 790)
+  group 0 page 0 header @4, rep [28, 30), def [30, 32), stored values [32, 32) -> 0 bytes, flag False, CRC None, slots 1, nulls 1, rows 1
+  group 0 page 1 header @32, rep [56, 58), def [58, 60), stored values [60, 60) -> 0 bytes, flag False, CRC None, slots 1, nulls 1, rows 1
+  group 0 page 2 header @60, rep [84, 86), def [86, 89), stored values [89, 93) -> 4 bytes, flag False, CRC None, slots 2, nulls 1, rows 1
+  group 0 page 3 header @93, rep [117, 119), def [119, 121), stored values [121, 129) -> 8 bytes, flag False, CRC None, slots 2, nulls 0, rows 1
+  group 1 page 0 header @129, rep [153, 155), def [155, 157), stored values [157, 157) -> 0 bytes, flag False, CRC None, slots 1, nulls 1, rows 1
+  group 1 page 1 header @157, rep [181, 183), def [183, 185), stored values [185, 185) -> 0 bytes, flag False, CRC None, slots 1, nulls 1, rows 1
+  group 1 page 2 header @185, rep [209, 211), def [211, 213), stored values [213, 213) -> 0 bytes, flag False, CRC None, slots 1, nulls 1, rows 1
+  group 1 page 3 header @213, rep [238, 242), def [242, 247), stored values [247, 260) -> 156 bytes, flag True, CRC None, slots 40, nulls 1, rows 1
+assembled-default-v2.parquet SHA-256 8d9ebdd4f9366601ddb3ee226a56a84d6b541d69715491564c6fe200b99c1d4d, footer [305, 475)
+  group 0 page 0 header @4, rep [34, 36), def [36, 38), stored values [38, 38) -> 0 bytes, flag False, CRC -1183091435, slots 1, nulls 1, rows 1
+  group 0 page 1 header @38, rep [68, 70), def [70, 72), stored values [72, 72) -> 0 bytes, flag False, CRC -830716541, slots 1, nulls 1, rows 1
+  group 0 page 2 header @72, rep [102, 104), def [104, 107), stored values [107, 111) -> 4 bytes, flag False, CRC 1029618295, slots 2, nulls 1, rows 1
+  group 0 page 3 header @111, rep [141, 143), def [143, 145), stored values [145, 153) -> 8 bytes, flag False, CRC -425450832, slots 2, nulls 0, rows 1
+  group 1 page 0 header @153, rep [183, 185), def [185, 187), stored values [187, 187) -> 0 bytes, flag False, CRC -1183091435, slots 1, nulls 1, rows 1
+  group 1 page 1 header @187, rep [217, 219), def [219, 221), stored values [221, 221) -> 0 bytes, flag False, CRC -830716541, slots 1, nulls 1, rows 1
+  group 1 page 2 header @221, rep [251, 253), def [253, 255), stored values [255, 255) -> 0 bytes, flag False, CRC 1467290681, slots 1, nulls 1, rows 1
+  group 1 page 3 header @255, rep [283, 287), def [287, 292), stored values [292, 305) -> 156 bytes, flag absent/default true, CRC 692769468, slots 40, nulls 1, rows 1
+native-crc-v2.arrows SHA-256 7dcd4115a7fb6b7cfe277a77750f7cc7c77e1e1167c904d967984738f9db0347, EOS [888, 896)
+native-no-crc-v2.arrows SHA-256 7dcd4115a7fb6b7cfe277a77750f7cc7c77e1e1167c904d967984738f9db0347, EOS [888, 896)
+assembled-default-v2.arrows SHA-256 7dcd4115a7fb6b7cfe277a77750f7cc7c77e1e1167c904d967984738f9db0347, EOS [888, 896)
+mutated-crc-level-v2.parquet SHA-256 caf8b568b052de009e7b7e58d86016de63bfbfc2234963cfea5085783a0e13e0
+crc-level: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.frame
+  3
+  255
+  (Silmaril.Formats.Parquet.ListFile.Multi.Snappy.FrameError.checksum
+    (Silmaril.Formats.Parquet.Page.Checksum.Error.mismatch 692769468 1722258291)); one retained batch and no IPC bytes
+mutated-crc-values-v2.parquet SHA-256 5f0df19f8530b0df98c11ef3ff2ad255f14c2f68381d57989149b9a26e6cd233
+crc-values: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.frame
+  3
+  255
+  (Silmaril.Formats.Parquet.ListFile.Multi.Snappy.FrameError.checksum
+    (Silmaril.Formats.Parquet.Page.Checksum.Error.mismatch 692769468 2300639147)); one retained batch and no IPC bytes
+assembled-geometry-v2.parquet SHA-256 4b505d1f041af89a9ecd68bc54284fa64610e1be2f2cd1dda0d8605ce18d6935
+geometry: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.framing
+  (Silmaril.Formats.Parquet.ListFile.ReadError.framing
+    (Silmaril.Formats.Parquet.Page.Error.header (Silmaril.Formats.Parquet.Page.HeaderError.invalidV2Lengths))); one retained batch and no IPC bytes
+assembled-level-split-v2.parquet SHA-256 e19378740feacd3dc371ed3835a37c4fffe910c4ba8f93fc691f8803caf7703d
+level-split: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.frame
+  3
+  255
+  (Silmaril.Formats.Parquet.ListFile.Multi.Snappy.FrameError.page
+    (Silmaril.Formats.Parquet.ListPage.Error.repetition (Silmaril.Formats.Parquet.Hybrid.Error.trailingBytes))); one retained batch and no IPC bytes
+assembled-continued-v2.parquet SHA-256 c3fbdcdb00091eefb1e8bbbce75608a6499100c7622d89140d83a6a42232e60e
+continued: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.frame
+  3
+  255
+  (Silmaril.Formats.Parquet.ListFile.Multi.Snappy.FrameError.v2Continuation); one retained batch and no IPC bytes
+assembled-page-rows-v2.parquet SHA-256 5aa7027ce62bb85d97fa716d9c27b6077039923fc08280da4fbaef93d65f722b
+page-rows: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.frame
+  3
+  255
+  (Silmaril.Formats.Parquet.ListFile.Multi.Snappy.FrameError.v2RowCount 2 1); one retained batch and no IPC bytes
+assembled-page-nulls-v2.parquet SHA-256 abc34787b2fe73b63bc74820406d5dd46a7bc7aa9de5c611d72401d4292c5247
+page-nulls: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.frame
+  3
+  255
+  (Silmaril.Formats.Parquet.ListFile.Multi.Snappy.FrameError.v2NullCount 0 1); one retained batch and no IPC bytes
+assembled-page-slots-v2.parquet SHA-256 14cfd59d2b6722bf654022cbb910c4af59a2888e7797f4dad7edafc828b94dc2
+page-slots: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.frame
+  3
+  255
+  (Silmaril.Formats.Parquet.ListFile.Multi.Snappy.FrameError.slotBudget 40 41); one retained batch and no IPC bytes
+assembled-group-rows-v2.parquet SHA-256 b02dd69e72b07d47736ae5b2c882dc0db076d96e7f09321d21b6612313fd5701
+group-rows: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.rowCount 5 4; one retained batch and no IPC bytes
+native-crc-v2.parquet SHA-256 b412931f8d1e671929b5f0abc5e00e530daf31cee042eb3076e1d8186ba521da
+budget: group 1, Silmaril.Formats.Parquet.ListFile.Multi.Snappy.GroupError.frame
+  3
+  255
+  (Silmaril.Formats.Parquet.ListFile.Multi.Snappy.FrameError.expandedBudget 164 165); one retained batch and no IPC bytes

@@ -101,6 +101,16 @@ structure Limits where
 @[expose] def valueMask (definitions : List Nat) : List Bool :=
   definitions.map (· == 3)
 
+/-- Decode separately bounded level streams and the exact PLAIN value suffix. -/
+def decodeSections (limits : Limits) (slots : Nat) (repetition definition scalars : Bytes) :
+    Except Error (List Event) := do
+  let reps ← (Hybrid.decode 1 slots limits.levels repetition).mapError .repetition
+  let defs ← (Hybrid.decode 2 slots limits.levels definition).mapError .definition
+  let mask := valueMask defs
+  let values ← (Plain.decodeInt32 (mask.count true) scalars).mapError .plain
+  let entries ← (FlatPage.reconstruct mask values).mapError .reconstruct
+  (reps.zip (defs.zip entries)).mapM readEvent
+
 /-- Read the exact V1 level streams and PLAIN values at this page's slot
 count. Row assembly and continuation policy belong to the consumer. -/
 def decodeEvents (limits : Limits) (slots : Nat) (body : Bytes) :
@@ -108,12 +118,7 @@ def decodeEvents (limits : Limits) (slots : Nat) (body : Bytes) :
   if limits.maxBodyBytes < body.length then return ← throw .bodyLimit
   let first ← (FlatPage.splitV1Optional limits.levels.bytes body).mapError .repetitionSection
   let second ← (FlatPage.splitV1Optional limits.levels.bytes first.scalars).mapError .definitionSection
-  let reps ← (Hybrid.decode 1 slots limits.levels first.definitions).mapError .repetition
-  let defs ← (Hybrid.decode 2 slots limits.levels second.definitions).mapError .definition
-  let mask := valueMask defs
-  let values ← (Plain.decodeInt32 (mask.count true) second.scalars).mapError .plain
-  let entries ← (FlatPage.reconstruct mask values).mapError .reconstruct
-  (reps.zip (defs.zip entries)).mapM readEvent
+  decodeSections limits slots first.definitions second.definitions second.scalars
 
 /-- Standalone page profile, with the original body-limit and row-limit precedence. -/
 def decodeBody (limits : Limits) (expectedRows slots : Nat) (body : Bytes) :
@@ -148,6 +153,16 @@ def decodeV1 (limits : Limits) (codec : Int) (header : Page.Header) (expectedRow
     (body : Bytes) : Except Error (List Row) := do
   let info ← checkV1 codec header body
   decodeBody limits expectedRows info.numValues body
+
+/-- Exact ordered slot triples for already separated level and value streams. -/
+structure SectionsWire (slots : Nat) (repetition definition scalars : Bytes) (events : List Event) : Prop where
+  slotCount : events.length = slots
+  data : ∃ (reps defs : List Nat) (values : List Int32) (entries : List (Option Int32)),
+    Hybrid.Wire 1 slots repetition.toList reps ∧ Hybrid.Wire 2 slots definition.toList defs ∧
+    reps.length = slots ∧ defs.length = slots ∧ entries.length = slots ∧
+    Plain.decodeInt32 ((valueMask defs).count true) scalars = .ok values ∧
+    entries.map Option.isSome = valueMask defs ∧ entries.filterMap id = values ∧
+    events.map Event.wire = reps.zip (defs.zip entries)
 
 /-- Exact original bytes and ordered slot triples for the two level streams
 and the PLAIN values. -/

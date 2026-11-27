@@ -4,7 +4,7 @@ public import Silmaril.Formats.Parquet.ListFile.Multi.ToIpc.Defs
 public import Silmaril.Formats.Parquet.Page.Checksum.Defs
 public import Silmaril.Formats.Parquet.Payload.Defs
 
-/-! Opt-in native LIST reading for Snappy-compressed PLAIN V1 pages. -/
+/-! Opt-in native LIST reading for a selected Snappy PLAIN data page version. -/
 
 @[expose] public section
 
@@ -26,6 +26,11 @@ inductive FrameError where
   | checksum (cause : Page.Checksum.Error)
   | payload (cause : Payload.Error)
   | indexedContinuation
+  | v2LevelExtent
+  | v2LevelLimit
+  | v2Continuation
+  | v2RowCount (expected actual : Nat)
+  | v2NullCount (expected actual : Nat)
   | page (cause : ListPage.Error)
   deriving DecidableEq, Repr
 
@@ -86,37 +91,151 @@ structure FrameWire (limits : Limits) (checked : ListFile.Checked) (column : Foo
     ListPage.EventsWire checked.limits.page info.numValues expanded events
   indexBoundary : column.offsetIndexOffset.isSome = true → Multi.startsWithinRow events = false
 
+inductive PageVersion where
+  | v1 | v2
+
+structure V2Sections where
+  repetition : Bytes
+  definition : Bytes
+  scalars : Bytes
+
+def v2LevelBytes (info : Page.DataV2) : Nat :=
+  info.repetitionBytes + info.definitionBytes
+
+def v2Codec (info : Page.DataV2) : Int :=
+  if info.isCompressed then 1 else 0
+
+def v2Bounds (limits : Limits) (checked : ListFile.Checked)
+    (frame : Page.Frame) (info : Page.DataV2) : Payload.Bounds :=
+  let levels := v2LevelBytes info
+  ⟨frame.value.compressedSize - levels, limits.maxStoredPageBytes,
+    frame.value.uncompressedSize - levels, checked.limits.page.maxBodyBytes - levels, 0⟩
+
+/-- The two level slices are stored raw. Only the scalar suffix uses the
+resolved compression flag. The complete body contributes to the caps. -/
+def prepareV2 (limits : Limits) (checked : ListFile.Checked)
+    (frame : Page.Frame) (info : Page.DataV2) (stored : Bytes) : Except FrameError V2Sections := do
+  let levels := v2LevelBytes info
+  if stored.length ≠ frame.value.compressedSize ∨ frame.value.compressedSize < levels ∨
+      frame.value.uncompressedSize < levels then return ← throw .v2LevelExtent
+  if checked.limits.page.levels.bytes < info.repetitionBytes ∨
+      checked.limits.page.levels.bytes < info.definitionBytes then return ← throw .v2LevelLimit
+  if checked.limits.page.maxBodyBytes < frame.value.uncompressedSize then
+    return ← throw (.payload .outputLimit)
+  let bytes := stored.toList
+  let afterRep := bytes.drop info.repetitionBytes
+  let output ← (Payload.decode (v2Bounds limits checked frame info)
+    (v2Codec info) (afterRep.drop info.definitionBytes)).mapError .payload
+  pure ⟨Bytes.ofList (bytes.take info.repetitionBytes), Bytes.ofList (afterRep.take info.definitionBytes),
+    Bytes.ofList output⟩
+
+def pageRows (events : List Event) : Nat :=
+  events.countP (fun event => event.wire.1 == 0)
+
+def pageNulls (events : List Event) : Nat :=
+  events.countP (fun event => event.wire.2.2.isNone)
+
+/-- V2 pages always start at a row boundary, even when the group has an open
+list from the preceding page. Null counts include every nonphysical slot. -/
+def checkV2Counts (info : Page.DataV2) (events : List Event) : Except FrameError Unit := do
+  if Multi.startsWithinRow events then return ← throw .v2Continuation
+  if pageRows events ≠ info.numRows then return ← throw (.v2RowCount info.numRows (pageRows events))
+  if pageNulls events ≠ info.numNulls then return ← throw (.v2NullCount info.numNulls (pageNulls events))
+
+def readV2Frame (limits : Limits) (checked : ListFile.Checked)
+    (budget : Budget) (frame : Page.Frame) : Except FrameError (List Event) := do
+  let .dataV2 info := frame.value.kind | throw (.page .pageKind)
+  if info.encoding ≠ 0 then return ← throw (.page .encoding)
+  if budget.slots < info.numValues then return ← throw (.slotBudget budget.slots info.numValues)
+  if budget.expanded < frame.value.uncompressedSize then
+    return ← throw (.expandedBudget budget.expanded frame.value.uncompressedSize)
+  let source := checked.snapshot.bytes
+  let _ ← (Page.Checksum.verify limits.maxStoredPageBytes source frame).mapError .checksum
+  let sections ← prepareV2 limits checked frame info (Page.Checksum.payloadBytes source frame)
+  let events ← (ListPage.decodeSections checked.limits.page info.numValues
+    sections.repetition sections.definition sections.scalars).mapError .page
+  checkV2Counts info events
+  pure events
+
+structure V2BodyWire (checked : ListFile.Checked) (frame : Page.Frame) (info : Page.DataV2)
+    (stored : Bytes) (sections : V2Sections) : Prop where
+  repetitionSize : sections.repetition.length = info.repetitionBytes
+  definitionSize : sections.definition.length = info.definitionBytes
+  repLimit : info.repetitionBytes ≤ checked.limits.page.levels.bytes
+  defLimit : info.definitionBytes ≤ checked.limits.page.levels.bytes
+  expandedCap : frame.value.uncompressedSize ≤ checked.limits.page.maxBodyBytes
+  exact : ∃ suffix codec,
+    stored.toList = sections.repetition.toList ++ sections.definition.toList ++ suffix ∧
+    suffix.length = frame.value.compressedSize - v2LevelBytes info ∧
+    sections.scalars.length = frame.value.uncompressedSize - v2LevelBytes info ∧
+    v2LevelBytes info + sections.scalars.length = frame.value.uncompressedSize ∧
+    Payload.Codec.ofId (v2Codec info) = some codec ∧
+    Payload.Decodes (frame.value.uncompressedSize - v2LevelBytes info) codec suffix sections.scalars.toList
+
+structure V2FrameWire (limits : Limits) (checked : ListFile.Checked) (frame : Page.Frame)
+    (events : List Event) : Prop where
+  data : ∃ status stored info sections,
+    Page.Checksum.verify limits.maxStoredPageBytes checked.snapshot.bytes frame = .ok status ∧
+    checked.snapshot.bytes.slice? frame.payload.start (some frame.payload.stop) = some stored ∧
+    stored.length = frame.value.compressedSize ∧ stored.length ≤ limits.maxStoredPageBytes ∧
+    frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧
+    V2BodyWire checked frame info stored sections ∧
+    ListPage.SectionsWire info.numValues sections.repetition sections.definition sections.scalars events ∧
+    Multi.startsWithinRow events = false ∧ pageRows events = info.numRows ∧
+    pageNulls events = info.numNulls ∧ sections.scalars.length = 4 * (info.numValues - info.numNulls)
+
+def readFrameFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked)
+    (column : Footer.ColumnChunk) (budget : Budget) (frame : Page.Frame) : Except FrameError (List Event) :=
+  match version with
+  | .v1 => readFrame limits checked column budget frame
+  | .v2 => readV2Frame limits checked budget frame
+
+def FrameWireFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked)
+    (column : Footer.ColumnChunk) (frame : Page.Frame) (events : List Event) : Prop :=
+  match version with
+  | .v1 => FrameWire limits checked column frame events
+  | .v2 => V2FrameWire limits checked frame events
+
 /-- Continue the open list through the original ordered frames. -/
-def readFrames (limits : Limits) (checked : ListFile.Checked) (column : Footer.ColumnChunk)
+def readFramesFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked) (column : Footer.ColumnChunk)
     (ordinal : Nat) (budget : Budget) (state : State) :
     List Page.Frame → Except GroupError (Budget × State)
   | [] => .ok (budget, state)
   | frame :: rest => do
-    let events ← (readFrame limits checked column budget frame).mapError (.frame ordinal frame.header.start)
+    let events ← (readFrameFor version limits checked column budget frame).mapError (.frame ordinal frame.header.start)
     let next ← (state.feed events).mapError (.frame ordinal frame.header.start ∘ .page)
-    readFrames limits checked column (ordinal + 1) (budget.use frame events) next rest
+    readFramesFor version limits checked column (ordinal + 1) (budget.use frame events) next rest
+
+def readFrames (limits : Limits) (checked : ListFile.Checked) (column : Footer.ColumnChunk)
+    (ordinal : Nat) (budget : Budget) (state : State) (frames : List Page.Frame) :
+    Except GroupError (Budget × State) :=
+  readFramesFor .v1 limits checked column ordinal budget state frames
 
 def expandedSize (frames : List Page.Frame) : Nat :=
   (frames.map (·.value.uncompressedSize)).sum
 
-def readGroup (limits : Limits) (checked : ListFile.Checked) (ordinal expanded : Nat) :
+def readGroupFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked) (ordinal expanded : Nat) :
     Except GroupError (List Row × Nat) := do
   let framed ← (checked.frameGroupFor 1 ordinal).mapError .framing
   let slotCount := framed.chunk.metadata.numValues.toNat
   let rowCount := framed.group.numRows.toNat
   if limits.parquet.maxGroupSlots < slotCount then return ← throw .slotLimit
   if checked.limits.page.maxRows < rowCount then return ← throw .rowLimit
-  let (left, state) ← readFrames limits checked framed.chunk 0 ⟨slotCount, expanded⟩ State.empty framed.frames
+  let (left, state) ← readFramesFor version limits checked framed.chunk 0 ⟨slotCount, expanded⟩ State.empty framed.frames
   if left.slots ≠ 0 then return ← throw (.missingSlots left.slots)
   let rows := state.finish
   if rows.length ≠ rowCount then return ← throw (.rowCount rowCount rows.length)
   pure (rows, left.expanded)
 
+def readGroup (limits : Limits) (checked : ListFile.Checked) (ordinal expanded : Nat) :
+    Except GroupError (List Row × Nat) :=
+  readGroupFor .v1 limits checked ordinal expanded
+
 structure GroupWire (limits : Limits) (checked : ListFile.Checked) (ordinal : Nat)
-    (rows : List Row) (spent : Nat) : Prop where
+    (rows : List Row) (spent : Nat) (version : PageVersion := .v1) : Prop where
   data : ∃ framed pages,
     ListFile.FramedGroupWire checked ordinal framed 1 ∧
-    List.Forall₂ (FrameWire limits checked framed.chunk) framed.frames pages ∧
+    List.Forall₂ (FrameWireFor version limits checked framed.chunk) framed.frames pages ∧
     pages.flatten.length = framed.chunk.metadata.numValues.toNat ∧
     rows.length = framed.group.numRows.toNat ∧
     ListPage.reconstruct pages.flatten = .ok rows ∧
@@ -127,15 +246,19 @@ structure GroupWire (limits : Limits) (checked : ListFile.Checked) (ordinal : Na
 
 /-- Preserve the successful groups before the first indexed failure. A single
 expansion budget is threaded through the whole file. -/
-def readGroups (limits : Limits) (checked : ListFile.Checked) (expanded : Nat) :
+def readGroupsFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked) (expanded : Nat) :
     List Nat → List (List Row) × Except SourceError Nat
   | [] => ([], .ok expanded)
   | ordinal :: rest =>
-    match readGroup limits checked ordinal expanded with
+    match readGroupFor version limits checked ordinal expanded with
     | .error cause => ([], .error (.groupFailure ordinal cause))
     | .ok (rows, left) =>
-      let (groups, outcome) := readGroups limits checked left rest
+      let (groups, outcome) := readGroupsFor version limits checked left rest
       (rows :: groups, outcome)
+
+def readGroups (limits : Limits) (checked : ListFile.Checked) (expanded : Nat) (groups : List Nat) :
+    List (List Row) × Except SourceError Nat :=
+  readGroupsFor .v1 limits checked expanded groups
 
 abbrev SourceTrace := Arrow.Events.EventStream String ListFile.Cell SourceError
 
@@ -148,27 +271,35 @@ structure Result where
   trace : SourceTrace
   wire : Except Error KBytes
 
-def convert (limits : Limits) (source : Bytes) : Result :=
+def convertFor (version : PageVersion) (limits : Limits) (source : Bytes) : Result :=
   match ListFile.openFile limits.parquet.file source with
   | .error cause => ⟨.error (.openFailure cause), .error (.source (.openFailure cause))⟩
   | .ok checked =>
-    let (groups, outcome) := readGroups limits checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount)
+    let (groups, outcome) := readGroupsFor version limits checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount)
     let batches := groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked)
     match outcome with
     | .error cause => ⟨.ok ⟨ListFile.schema checked, ⟨batches, .readError cause⟩⟩, .error (.source cause)⟩
     | .ok _ => ⟨.ok ⟨ListFile.schema checked, ⟨batches, .eos⟩⟩,
       (Arrow.ListInt32.Stream.Writer.emit limits.ipc (ToIpc.fieldOf checked) groups).mapError .writer⟩
 
-structure Readback (limits : Limits) (source : Bytes) (wire : KBytes) : Prop where
+def convert (limits : Limits) (source : Bytes) : Result :=
+  convertFor .v1 limits source
+
+/-- Select the strict V2 row-boundary profile. -/
+def convertV2 (limits : Limits) (source : Bytes) : Result :=
+  convertFor .v2 limits source
+
+structure Readback (limits : Limits) (source : Bytes) (wire : KBytes)
+    (version : PageVersion := .v1) : Prop where
   data : ∃ checked groups costs left decoded size,
     ListFile.openFile limits.parquet.file source = .ok checked ∧
     ListFile.OpenWire limits.parquet.file source checked ∧
-    readGroups limits checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount) =
+    readGroupsFor version limits checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount) =
       (groups, .ok left) ∧
-    List.Forall₂ (fun ordinal (batch : List Row × Nat) => GroupWire limits checked ordinal batch.1 batch.2)
+    List.Forall₂ (fun ordinal (batch : List Row × Nat) => GroupWire limits checked ordinal batch.1 batch.2 version)
       (List.range checked.snapshot.groupCount) (groups.zip costs) ∧
     costs.length = groups.length ∧ costs.sum + left = limits.maxExpandedBytes ∧
-    (convert limits source).trace = .ok ⟨ListFile.schema checked,
+    (convertFor version limits source).trace = .ok ⟨ListFile.schema checked,
       ⟨groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked), .eos⟩⟩ ∧
     Arrow.ListInt32.Stream.read limits.ipc wire = .ok decoded ∧
     Arrow.ListInt32.Stream.Writer.Agrees (ToIpc.fieldOf checked) groups decoded ∧

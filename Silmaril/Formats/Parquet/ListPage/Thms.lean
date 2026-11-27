@@ -62,6 +62,12 @@ theorem feed_next {state : State} (item : Option Int32) (rest : List Event) :
       | some (head, tail) => ({ state with active := some (head, item :: tail) } : State).feed rest :=
   Proofs.Formats.Parquet.ListPage.feed_next item rest
 
+/-- The already separated level and value slices determine all ordered event slots. -/
+theorem decodeSections_wire {limits : Limits} {slots : Nat} {repetition definition scalars : Bytes}
+    {events : List Event} (h : decodeSections limits slots repetition definition scalars = .ok events) :
+    SectionsWire slots repetition definition scalars events :=
+  Proofs.Formats.Parquet.ListPage.decodeSections_wire h
+
 /-- A page-local body decode consumes all bytes at the exact slot count. -/
 theorem decodeEvents_wire {limits : Limits} {slots : Nat} {body : Bytes}
     {events : List Event} (h : decodeEvents limits slots body = .ok events) :

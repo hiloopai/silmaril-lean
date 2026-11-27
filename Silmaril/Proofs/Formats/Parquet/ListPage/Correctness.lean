@@ -113,6 +113,38 @@ public theorem reconstruct_continuation (item : Option Int32) (rest : List Event
   rw [reconstruct, feed_next]
   rfl
 
+public theorem decodeSections_wire {limits : Limits} {slots : Nat} {repetition definition scalars : Bytes}
+    {events : List Event} (h : decodeSections limits slots repetition definition scalars = .ok events) :
+    SectionsWire slots repetition definition scalars events := by
+  unfold decodeSections at h
+  cases repRead : Hybrid.decode 1 slots limits.levels repetition with
+  | error => simp [repRead, Except.mapError, bind, Except.bind] at h
+  | ok reps =>
+    simp only [repRead, Except.mapError, bind, Except.bind] at h
+    cases defRead : Hybrid.decode 2 slots limits.levels definition with
+    | error => simp [defRead] at h
+    | ok defs =>
+      simp only [defRead] at h
+      cases plain : Plain.decodeInt32 ((valueMask defs).count true) scalars with
+      | error => simp [plain] at h
+      | ok values =>
+        simp only [plain] at h
+        cases filled : FlatPage.reconstruct (valueMask defs) values with
+        | error => simp [filled] at h
+        | ok entries =>
+          simp only [filled] at h
+          have exactEvents := readEvents_wire h
+          obtain ⟨mask, ordered⟩ := FlatPage.reconstruct_ok_iff.mp filled
+          have repCount := Hybrid.decode_length repRead
+          have defCount := Hybrid.decode_length defRead
+          have entryCount : entries.length = slots := by
+            simpa [valueMask, defCount] using congrArg List.length mask
+          have slotsExact : events.length = slots := by
+            simpa [repCount, defCount, entryCount] using congrArg List.length exactEvents
+          exact ⟨slotsExact, reps, defs, values, entries,
+            (Hybrid.decode_ok_iff.mp repRead).2.2.2.2, (Hybrid.decode_ok_iff.mp defRead).2.2.2.2,
+            repCount, defCount, entryCount, plain, mask, ordered, exactEvents⟩
+
 public theorem decodeEvents_wire {limits : Limits} {slots : Nat} {body : Bytes}
     {events : List Event} (h : decodeEvents limits slots body = .ok events) :
     EventsWire limits slots body events := by
@@ -128,45 +160,14 @@ public theorem decodeEvents_wire {limits : Limits} {slots : Nat} {body : Bytes}
     | error => simp [defSplit] at h
     | ok second =>
       simp only [defSplit] at h
-      cases repRead : Hybrid.decode 1 slots limits.levels first.definitions with
-      | error => simp [repRead] at h
-      | ok reps =>
-        simp only [repRead] at h
-        cases defRead : Hybrid.decode 2 slots limits.levels second.definitions with
-        | error => simp [defRead] at h
-        | ok defs =>
-          simp only [defRead] at h
-          cases plain : Plain.decodeInt32 ((valueMask defs).count true) second.scalars with
-          | error => simp [plain] at h
-          | ok values =>
-            simp only [plain] at h
-            cases filled : FlatPage.reconstruct (valueMask defs) values with
-            | error => simp [filled] at h
-            | ok entries =>
-              simp only [filled] at h
-              cases eventRead : (reps.zip (defs.zip entries)).mapM readEvent with
-              | error => rw [eventRead] at h; cases h
-              | ok decoded =>
-                rw [eventRead] at h
-                obtain rfl := Except.ok.inj h
-                obtain ⟨repLength, repWidth, repBytes, _, fromBody⟩ :=
-                  FlatPage.splitV1Optional_ok_iff.mp repSplit
-                obtain ⟨defLength, defWidth, defBytes, _, fromRest⟩ :=
-                  FlatPage.splitV1Optional_ok_iff.mp defSplit
-                obtain ⟨mask, ordered⟩ := FlatPage.reconstruct_ok_iff.mp filled
-                have repCount := Hybrid.decode_length repRead
-                have defCount := Hybrid.decode_length defRead
-                have entryCount : entries.length = slots := by
-                  simpa [valueMask, defCount] using congrArg List.length mask
-                have exactEvents := readEvents_wire eventRead
-                have slotsExact : decoded.length = slots := by
-                  simpa [repCount, defCount, entryCount] using congrArg List.length exactEvents
-                refine ⟨Nat.le_of_not_gt bodyCap, slotsExact,
-                  repLength, defLength, first.definitions, second.definitions, second.scalars,
-                  reps, defs, values, entries, repWidth, defWidth, repBytes, defBytes, ?_,
-                  (Hybrid.decode_ok_iff.mp repRead).2.2.2.2, (Hybrid.decode_ok_iff.mp defRead).2.2.2.2,
-                  repCount, defCount, entryCount, plain, mask, ordered, exactEvents⟩
-                simpa [fromRest, List.append_assoc] using fromBody
+      obtain ⟨repLength, repWidth, repBytes, _, fromBody⟩ := FlatPage.splitV1Optional_ok_iff.mp repSplit
+      obtain ⟨defLength, defWidth, defBytes, _, fromRest⟩ := FlatPage.splitV1Optional_ok_iff.mp defSplit
+      obtain ⟨exact, reps, defs, values, entries, repWire, defWire, repCount, defCount, entryCount,
+        plain, mask, ordered, exactEvents⟩ := decodeSections_wire h
+      exact ⟨Nat.le_of_not_gt bodyCap, exact, repLength, defLength, first.definitions, second.definitions,
+        second.scalars, reps, defs, values, entries, repWidth, defWidth, repBytes, defBytes,
+        by simpa [fromRest, List.append_assoc] using fromBody, repWire, defWire, repCount, defCount,
+        entryCount, plain, mask, ordered, exactEvents⟩
 
 public theorem decodeBody_wire {limits : Limits} {expectedRows slots : Nat} {body : Bytes}
     {rows : List Row} (h : decodeBody limits expectedRows slots body = .ok rows) :
