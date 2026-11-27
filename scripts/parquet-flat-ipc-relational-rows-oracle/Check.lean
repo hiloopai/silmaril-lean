@@ -1,11 +1,12 @@
 module
 
-import Silmaril.Formats.Parquet.FlatProjection.Composition.Ipc.Rows.Defs
+import Silmaril.Formats.Parquet.FlatProjection.ToScan.Thms
 import Lean.Data.Json
-meta import Silmaril.Formats.Parquet.FlatProjection.Composition.Ipc.Rows.Defs
+meta import Silmaril.Formats.Parquet.FlatProjection.ToScan.Defs
 meta import Lean.Data.Json
 
 open Lean Silmaril Silmaril.Relational Silmaril.Formats
+open Silmaril.Formats.Parquet.FlatProjection
 open Silmaril.Formats.Parquet.FlatProjection.Composition.Ipc
 
 private def readWire (directory : System.FilePath) (name : String) : IO KBytes := do
@@ -35,6 +36,24 @@ private def loadTable (directory : System.FilePath) (name : String) : IO Rows.Ta
   let some table := Rows.readRows {} wire | throw (IO.userError s!"table read failed for {name}")
   IO.FS.writeFile (directory / (name ++ ".rows.json")) (tableJson table).compress
   return table
+
+private def checkParquet (directory : System.FilePath) (source stream : String)
+    (ordinals expectedCounts : List Nat) : IO Unit := do
+  let input := Bytes.mk (← IO.FS.readBinFile (directory / (source ++ ".parquet")))
+  let limits : Limits :=
+    { maxFields := ordinals.length, maxFileRows := expectedCounts.sum, column := { maxFileBytes := input.length } }
+  let .ok checked := openFile limits input ordinals | throw (IO.userError s!"Parquet open failed for {source}")
+  match exhausted : checked.readAll limits with
+  | .error error => throw (IO.userError s!"Parquet exhaustion failed: {repr error}")
+  | .ok batches =>
+    let observed := ToScan.observeGroups checked batches
+    let direct := Rows.materialize observed (ToScan.observeGroups_aligned exhausted)
+    let wire ← readWire directory stream
+    let viaIpc ← loadTable directory stream
+    unless readEvents {} wire == some observed && observed.batches.map Prod.fst == expectedCounts &&
+        tableJson direct == tableJson viaIpc do
+      throw (IO.userError s!"direct Parquet and native IPC observations differ for {stream}")
+    IO.FS.writeFile (directory / (stream ++ ".direct.rows.json")) (tableJson direct).compress
 
 public def main (args : List String) : IO Unit := do
   let [root] := args | throw (IO.userError "expected fixture directory")
@@ -71,3 +90,8 @@ public def main (args : List String) : IO Unit := do
   unless (Rows.readRows {} (right.slice 0 (right.len - 8))).isNone do
     throw (IO.userError "missing EOS produced a relational table")
   IO.println "Typed repeated and zero-width projection, row equivalence, empty-batch counterexample and exact EOS checked."
+  checkParquet directory "wide" "wide-wide" [3, 0, 1, 2] [12, 6]
+  checkParquet directory "empty-middle" "empty-middle-repeat" [1, 0, 1, 2, 3] [12, 0, 6]
+  checkParquet directory "empty-middle" "empty-middle-zero-width" [] [12, 0, 6]
+  checkParquet directory "schema-only" "schema-only-repeat" [1, 0, 1, 2, 3] []
+  IO.println "Direct checked Parquet groups and native IPC agree on four materialized tables."

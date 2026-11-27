@@ -95,6 +95,15 @@ theorem readAll_indexed {limits : FlatProjection.Limits} {checked : Checked} {ba
   Proofs.Formats.Parquet.FlatProjection.readAll_indexed
     read
 
+/-- Conversion success uses the original admitted projection, its complete group read,
+and a successful checked emission of exactly those batches. -/
+theorem convert_ok_iff {parquet : FlatProjection.Limits} {ipc : Arrow.MixedFlat.Limits} {input : Bytes}
+    {ordinals : List Nat} {wire : KBytes} :
+    convert parquet ipc input ordinals = .ok wire ↔
+      ∃ checked batches, openFile parquet input ordinals = .ok checked ∧
+        checked.readAll parquet = .ok batches ∧ OrderedWriter.emit ipc checked.fields batches = .ok wire :=
+  Proofs.Formats.Parquet.FlatProjection.convert_ok_iff
+
 /-- Native V5 readback recovers the exact fields and all selected batch observations through EOS. -/
 theorem convert_readback {parquet : FlatProjection.Limits} {ipc : Arrow.MixedFlat.Limits} {input : Bytes}
     {ordinals : List Nat} {wire : KBytes} (written : convert parquet ipc input ordinals = .ok wire) :

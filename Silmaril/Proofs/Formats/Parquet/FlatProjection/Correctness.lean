@@ -225,6 +225,27 @@ theorem readAll_indexed {limits : FlatProjection.Limits} {checked : Checked} {ba
     List.Forall₂ (fun index batch => checked.readGroup limits index = .ok batch) checked.indices batches :=
   mapM_exact (fun _ _ h => h) read
 
+theorem convert_ok_iff {parquet : FlatProjection.Limits} {ipc : Arrow.MixedFlat.Limits} {input : Bytes}
+    {ordinals : List Nat} {wire : KBytes} :
+    convert parquet ipc input ordinals = .ok wire ↔
+      ∃ checked batches, openFile parquet input ordinals = .ok checked ∧
+        checked.readAll parquet = .ok batches ∧ OrderedWriter.emit ipc checked.fields batches = .ok wire := by
+  constructor
+  · intro written
+    cases opened : openFile parquet input ordinals with
+    | error cause => simp [convert, opened, Except.mapError, Bind.bind, Except.bind] at written
+    | ok checked =>
+      cases all : checked.readAll parquet with
+      | error cause => simp [convert, opened, all, Except.mapError, Bind.bind, Except.bind] at written
+      | ok batches =>
+        cases emitted : OrderedWriter.emit ipc checked.fields batches with
+        | error cause => simp [convert, opened, all, emitted, Except.mapError, Bind.bind, Except.bind] at written
+        | ok output =>
+          simp [convert, opened, all, emitted, Except.mapError, Bind.bind, Except.bind] at written
+          exact ⟨checked, batches, rfl, all, written ▸ emitted⟩
+  · rintro ⟨checked, batches, opened, all, emitted⟩
+    simp [convert, opened, all, emitted, Except.mapError, Bind.bind, Except.bind]
+
 theorem convert_readback {parquet : FlatProjection.Limits} {ipc : Arrow.MixedFlat.Limits} {input : Bytes}
     {ordinals : List Nat} {wire : KBytes} (written : convert parquet ipc input ordinals = .ok wire) :
     ∃ (checked : Checked) (batches : List OrderedWriter.BatchInput) (decoded : Stream.Observed),
@@ -236,22 +257,12 @@ theorem convert_readback {parquet : FlatProjection.Limits} {ipc : Arrow.MixedFla
       wire.wf = true ∧ ∃ start,
         Stream.readSchemaFrame ipc.observation.ipc wire = .ok (decoded.fields, start) ∧
         Stream.BatchesWire ipc wire decoded.fields ipc.observation.ipc.batches 0 start decoded.batches := by
-  cases opened : openFile parquet input ordinals with
-  | error cause => simp [convert, opened, Except.mapError, Bind.bind, Except.bind] at written
-  | ok checked =>
-    cases all : checked.readAll parquet with
-    | error cause => simp [convert, opened, all, Except.mapError, Bind.bind, Except.bind] at written
-    | ok batches =>
-      cases emitted : OrderedWriter.emit ipc checked.fields batches with
-      | error cause => simp [convert, opened, all, emitted, Except.mapError, Bind.bind, Except.bind] at written
-      | ok output =>
-        simp [convert, opened, all, emitted, Except.mapError, Bind.bind, Except.bind] at written
-        subst wire
-        obtain ⟨decoded, read, fields, observations, framing⟩ := OrderedWriter.emit_readback emitted
-        have counts := congrArg (List.map (fun item : StreamWriter.BatchObservation => item.1)) observations
-        refine ⟨checked, batches, decoded, rfl, (open_exact opened).2.1, all, read, fields, observations, ?_, framing⟩
-        simpa only [List.map_map, Function.comp_def, StreamWriter.observeBatch, OrderedWriter.BatchInput.observe]
-          using counts
+  obtain ⟨checked, batches, opened, all, emitted⟩ := convert_ok_iff.mp written
+  obtain ⟨decoded, read, fields, observations, framing⟩ := OrderedWriter.emit_readback emitted
+  have counts := congrArg (List.map (fun item : StreamWriter.BatchObservation => item.1)) observations
+  refine ⟨checked, batches, decoded, opened, (open_exact opened).2.1, all, read, fields, observations, ?_, framing⟩
+  simpa only [List.map_map, Function.comp_def, StreamWriter.observeBatch, OrderedWriter.BatchInput.observe]
+    using counts
 
 theorem convert_first_error {parquet : FlatProjection.Limits} {ipc : Arrow.MixedFlat.Limits} {input : Bytes}
     {ordinals : List Nat} {checked : Checked} {before after : List Nat} {index : Nat}

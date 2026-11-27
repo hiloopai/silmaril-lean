@@ -31,7 +31,7 @@ def make_empty_controls(out):
     write_stream(out / "pyarrow-one-empty.arrows", schema, [batches[1]])
 
 
-def compare_table(out, name):
+def compare_table(out, name, suffix=".rows.json"):
     wire = (out / f"{name}.arrows").read_bytes()
     with pa.ipc.open_stream(wire) as source:
         fields = [[field.name, field.nullable, str(field.type)] for field in source.schema]
@@ -43,7 +43,7 @@ def compare_table(out, name):
                 for i in range(batch.num_rows)
             ])
     expected = {"fields": fields, "rows": rows}
-    assert json.loads((out / f"{name}.rows.json").read_text()) == expected, name
+    assert json.loads((out / f"{name}{suffix}").read_text()) == expected, name
 
 
 def main():
@@ -61,6 +61,9 @@ def main():
     for name in ("empty-middle-wide", "empty-middle-repeat", "empty-middle-zero-width",
                  "pyarrow-wide", "pyarrow-empty-first", "pyarrow-schema-only", "pyarrow-one-empty"):
         compare_table(out, name)
+    for name in ("wide-wide", "empty-middle-repeat", "empty-middle-zero-width", "schema-only-repeat"):
+        compare_table(out, name, ".direct.rows.json")
+    print("PyArrow verified all four direct Parquet materializations against their IPC observations.")
     for name, expected in PINS.items():
         digest = sha256((out / name).read_bytes()).hexdigest()
         print(f"{digest}  {name}")

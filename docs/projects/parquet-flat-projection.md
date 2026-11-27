@@ -141,6 +141,23 @@ stream and a stream with the same schema and one explicit zero-row batch.
 They yield the same empty relational table and different complete events.
 [Relational row laws][relational-rows-laws]
 
+### Direct Parquet and IPC table agreement
+
+`ToScan.observeGroups` takes the ordered batch results from the checked
+Parquet projection. Successful source exhaustion supplies the shape
+witness for `Rows.materialize` directly. The observer uses the selected
+descriptors, each group's explicit row count, and the existing nullable
+slot normalization for INT32 and opaque BYTE_ARRAY.
+
+`ToScan.convert_rows` states that successful native IPC emission
+recovers the same complete group observation through exact EOS and the
+same ordered Scan table. It relates both results to the original
+projection ordinals and each original footer group. The property covers
+repeated positions, zero-row groups, and zero-width groups with nonzero
+row counts. The oracle compares both paths on the pinned five-leaf
+producer, framed empty group, and schema-only source.
+[Direct agreement laws][direct-agreement-laws]
+
 ```sh
 lake build --wfail +Silmaril.Formats.Parquet.FlatProjection.Checks
 python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-flat-projection
@@ -157,3 +174,4 @@ python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-fl
 [algebra-oracle]: ../../scripts/parquet-flat-ipc-observation-algebra-oracle/check.py
 [relational-rows-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Ipc/Rows/Thms.lean
 [relational-rows-oracle]: ../../scripts/parquet-flat-ipc-relational-rows-oracle/check.py
+[direct-agreement-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/ToScan/Thms.lean

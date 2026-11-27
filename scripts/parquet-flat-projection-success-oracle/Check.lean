@@ -31,7 +31,7 @@ private def describe (field : Arrow.MixedFlat.Field) : IO Json := do
 private def values : Arrow.MixedFlat.OrderedWriter.Column → IO Json
   | .int32 _ _ slots => pure (toJson (slots.map (Option.map Int32.toInt)))
   | .binary _ _ slots => pure (toJson (slots.map (Option.map (List.map UInt8.toNat ∘ KBytes.toList))))
-  | .utf8View .. => throw (IO.userError "unexpected textual values")
+  | .utf8 .. | .utf8View .. => throw (IO.userError "unexpected textual values")
 
 private def compare (file : Bytes) (positions counts : List Nat) : IO Json := do
   let .some ordinals := composeOrdinals original positions | throw (IO.userError "invalid fixture positions")
