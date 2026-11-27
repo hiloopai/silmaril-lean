@@ -38,6 +38,14 @@ theorem readEntries_wire {limits : Limits} {source : Bytes} {frame : Page.Frame}
       entries.length = header.numValues :=
   Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.readEntries_wire read
 
+/-- The selected data policy preserves the original header and exact codec parameters. -/
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧ admits page.params.encoding = true ∧
+      ∃ base, FlatScan.int32PageParameters bound.field frame.value = some base ∧
+        page.params = { base with codec := Payload.Codec.snappy.id } :=
+  Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.planDataWith_wire planned
+
 /-- The admitted tag and compression parameters come from the original data header. -/
 theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :
@@ -46,11 +54,29 @@ theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
         page.params = { base with codec := Payload.Codec.snappy.id } :=
   Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.planData_wire planned
 
+/-- A profile plan that retains frames uses the same original chunk, bounds and dictionary. -/
+theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
+    {plan : List Page.Frame → Except ε (List DataPage)} {admits : Int → Bool}
+    {valid : List DataPage → Prop} {limits : Limits} {bound : Bound} {index : Nat}
+    {checked : CheckedGroup}
+    (keeps : ∀ {frames data}, plan frames = .ok data →
+      data.map (·.frame) = frames ∧ (∀ page ∈ data, planDataWith admits bound page.frame = .ok page) ∧ valid data)
+    (accepted : checkGroupWith wrap plan limits bound index = .ok checked) :
+    GroupWire limits bound index checked admits ∧ valid checked.data :=
+  Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.checkGroupWith_wire keeps accepted
+
 /-- A checked group uses exactly the original selected frame chain and offsets. -/
 theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat}
     {checked : CheckedGroup} (accepted : checkGroup limits bound index = .ok checked) :
     GroupWire limits bound index checked :=
   Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.checkGroup_wire accepted
+
+/-- Each data CRC check verifies the original stored body. -/
+theorem verifyData_wire {limits : Limits} {source : Bytes} {page : DataPage}
+    {ordinal : Nat} {status : Page.Checksum.Status}
+    (verified : verifyData limits source page ordinal = .ok status) :
+    Page.Checksum.verify limits.scalar.compressedBytes source page.frame = .ok status :=
+  Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.verifyData_wire verified
 
 /-- A successful page has a checked stored body and exact dictionary decode. -/
 theorem decodePage_wire {limits : Limits} {source : Bytes} {entries : Array Int32}
@@ -140,7 +166,7 @@ theorem decodePage_checksum_error {limits : Limits} {source : Bytes} {entries : 
     {page : DataPage} {ordinal : Nat} {cause : Page.Checksum.Error}
     (failed : Page.Checksum.verify limits.scalar.compressedBytes source page.frame = .error cause) :
     decodePage limits source entries page ordinal = .error (atFrame ordinal page.frame (.checksum cause)) := by
-  simp [decodePage, failed, Except.mapError, Bind.bind, Except.bind]
+  simp [decodePage, verifyData, failed, Except.mapError, Bind.bind, Except.bind]
 
 /-- An open failure precedes group decoding and writer admission. -/
 theorem toIpc_openError {input : Snapshot.Limits} {limits : Limits} {output : Arrow.ObservationLimits}

@@ -82,25 +82,33 @@ theorem readEntries_wire {limits : Limits} {source : Bytes} {frame : Page.Frame}
     exact ⟨header, status, expanded, rfl, not_not.mp encoding, Nat.le_of_not_gt count,
       mapError_ok verified, expansion, size, cap, words, by simpa using rows⟩
 
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧ admits page.params.encoding = true ∧
+      ∃ base, FlatScan.int32PageParameters bound.field frame.value = some base ∧
+        page.params = { base with codec := Payload.Codec.snappy.id } := by
+  cases parameters : FlatScan.int32PageParameters bound.field frame.value with
+  | none => simp [planDataWith, parameters] at planned
+  | some base =>
+    simp only [planDataWith, parameters] at planned
+    split at planned
+    · contradiction
+    rename_i encoding
+    cases Except.ok.inj planned
+    exact ⟨rfl, by simpa using encoding, base, rfl, rfl⟩
+
 theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :
     page.frame = frame ∧ page.params.encoding = 8 ∧
       ∃ base, FlatScan.int32PageParameters bound.field frame.value = some base ∧
         page.params = { base with codec := Payload.Codec.snappy.id } := by
-  cases parameters : FlatScan.int32PageParameters bound.field frame.value with
-  | none => simp [planData, parameters] at planned
-  | some base =>
-    simp only [planData, parameters] at planned
-    split at planned
-    · contradiction
-    rename_i encoding
-    cases Except.ok.inj planned
-    exact ⟨rfl, not_not.mp encoding, base, rfl, rfl⟩
+  obtain ⟨same, admitted, params⟩ := planDataWith_wire planned
+  exact ⟨same, by simpa using admitted, params⟩
 
 private theorem planPages_wire {bound : Bound} {frames : List Page.Frame} {data : List DataPage}
-    (planned : (frames.zipIdx 1).mapM (fun (frame, ordinal) =>
-      (planData bound frame).mapError (atFrame ordinal frame)) = .ok data) :
+    (planned : planPages (planData bound) frames = .ok data) :
     data.map (·.frame) = frames ∧ ∀ page ∈ data, planData bound page.frame = .ok page := by
+  unfold planPages at planned
   have zipped := (List.mapM_eq_ok_iff_forall₂.mp planned).imp fun _ _ h => mapError_ok h
   have paired : List.Forall₂ (fun frame page => planData bound frame = .ok page) frames data := by
     rw [← List.zipIdx_map_fst 1 frames, List.forall₂_map_left_iff]
@@ -116,10 +124,15 @@ private theorem planPages_wire {bound : Bound} {frames : List Page.Frame} {data 
     · rwa [same]
     · exact ih.2 page rest
 
-theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat}
-    {checked : CheckedGroup} (accepted : checkGroup limits bound index = .ok checked) :
-    GroupWire limits bound index checked := by
-  unfold checkGroup at accepted
+theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
+    {plan : List Page.Frame → Except ε (List DataPage)} {admits : Int → Bool}
+    {valid : List DataPage → Prop} {limits : Limits} {bound : Bound} {index : Nat}
+    {checked : CheckedGroup}
+    (keeps : ∀ {frames data}, plan frames = .ok data →
+      data.map (·.frame) = frames ∧ (∀ page ∈ data, planDataWith admits bound page.frame = .ok page) ∧ valid data)
+    (accepted : checkGroupWith wrap plan limits bound index = .ok checked) :
+    GroupWire limits bound index checked admits ∧ valid checked.data := by
+  unfold checkGroupWith at accepted
   obtain ⟨chunk, selected, accepted⟩ := bind_ok accepted
   simp only at accepted
   split at accepted
@@ -156,16 +169,28 @@ theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat}
       rename_i count
       obtain ⟨entries, decoded, accepted⟩ := bind_ok accepted
       cases Except.ok.inj accepted
-      obtain ⟨order, dataReads⟩ := planPages_wire planned
+      obtain ⟨order, dataReads, validData⟩ := keeps planned
       have head := congrArg List.head? order
       rw [List.head?_map] at head
       have offset := congrArg (Option.map (fun frame : Page.Frame => (frame.header.start : Int))) head
-      refine ⟨mapError_ok selected, not_not.mp codec, Nat.le_of_not_gt stored, ?_, ?_, ?_,
-        not_not.mp dictionaryOffset, ?_, mapError_ok decoded, dataReads, not_not.mp count⟩
+      refine ⟨⟨mapError_ok selected, not_not.mp codec, Nat.le_of_not_gt stored, ?_, ?_, ?_,
+        not_not.mp dictionaryOffset, ?_, mapError_ok decoded, dataReads, not_not.mp count⟩, validData⟩
       · simpa [CheckedGroup.frames, order] using Nat.le_of_not_gt expanded
       · simpa [CheckedGroup.frames, order] using originalFrames
       · simpa [CheckedGroup.frames, order] using (Page.readChunk_chain originalFrames).2.2
       · simpa [Option.map_map, Function.comp_def, ← not_not.mp dataOffset] using offset
+
+theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat}
+    {checked : CheckedGroup} (accepted : checkGroup limits bound index = .ok checked) :
+    GroupWire limits bound index checked :=
+  (checkGroupWith_wire (valid := fun _ => True) (admits := (· == 8))
+    (fun planned => let ⟨order, data⟩ := planPages_wire planned; ⟨order, data, trivial⟩) accepted).1
+
+theorem verifyData_wire {limits : Limits} {source : Bytes} {page : DataPage}
+    {ordinal : Nat} {status : Page.Checksum.Status}
+    (verified : verifyData limits source page ordinal = .ok status) :
+    Page.Checksum.verify limits.scalar.compressedBytes source page.frame = .ok status :=
+  mapError_ok verified
 
 theorem decodePage_wire {limits : Limits} {source : Bytes} {entries : Array Int32}
     {page : DataPage} {ordinal : Nat} {slots : Slots}
@@ -173,7 +198,7 @@ theorem decodePage_wire {limits : Limits} {source : Bytes} {entries : Array Int3
     PageWire limits source entries page slots := by
   unfold decodePage at read
   obtain ⟨status, verified, decoded⟩ := bind_ok read
-  exact ⟨status, mapError_ok verified, mapError_ok decoded⟩
+  exact ⟨status, verifyData_wire verified, mapError_ok decoded⟩
 
 private theorem expanded_bound {encoding : Int} {params : ScalarPage.Parameters}
     {limits : ScalarPage.Limits} {source : Bytes} {layout : FlatPage.Layout}

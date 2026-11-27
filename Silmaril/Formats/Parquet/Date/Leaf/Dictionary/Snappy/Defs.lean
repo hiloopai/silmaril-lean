@@ -83,43 +83,55 @@ def readEntries (limits : Limits) (source : Bytes) (frame : Page.Frame) :
   (Plain.decodeInt32 header.numValues (Bytes.ofList expanded)).mapError .entries
 
 /-- Preserve the original header parameters and explicitly select the Snappy codec. -/
-def planData (bound : Bound) (frame : Page.Frame) : Except PageError DataPage := do
+def planDataWith (admits : Int → Bool) (bound : Bound) (frame : Page.Frame) : Except PageError DataPage := do
   let some base := FlatScan.int32PageParameters bound.field frame.value | throw .expectedData
-  if base.encoding ≠ 8 then throw (.encoding base.encoding)
+  if !admits base.encoding then throw (.encoding base.encoding)
   return ⟨frame, { base with codec := Payload.Codec.snappy.id }⟩
+
+def planData (bound : Bound) (frame : Page.Frame) : Except PageError DataPage :=
+  planDataWith (· == 8) bound frame
+
+def planPages (plan : Page.Frame → Except PageError DataPage) (frames : List Page.Frame) :
+    Except GroupError (List DataPage) :=
+  (frames.zipIdx 1).mapM fun (frame, ordinal) => (plan frame).mapError (atFrame ordinal frame)
 
 /-- Use the original selected range and declared offsets. All frame sizes
 contribute to the chunk-wide bound on expanded bytes before decoding. -/
-def checkGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError CheckedGroup := do
-  let selected ← (selectChunk bound index).mapError .selection
+def checkGroupWith {ε : Type} (wrap : GroupError → ε)
+    (plan : List Page.Frame → Except ε (List DataPage))
+    (limits : Limits) (bound : Bound) (index : Nat) : Except ε CheckedGroup := do
+  let selected ← (selectChunk bound index).mapError (wrap ∘ .selection)
   let metadata := selected.column.metadata
   let rows := selected.group.numRows.toNat
-  if metadata.codec ≠ Payload.Codec.snappy.id then .error (.codec metadata.codec)
-  else if metadata.indexPageOffset.isSome then .error .indexPage
-  else if metadata.numValues ≠ (rows : Int) then .error (.rowCount rows metadata.numValues)
-  else if limits.maxRows < rows then .error .rowLimit
-  else if limits.maxChunkBytes < selected.span.stop - selected.span.start then .error .chunkLimit
+  if metadata.codec ≠ Payload.Codec.snappy.id then .error (wrap (.codec metadata.codec))
+  else if metadata.indexPageOffset.isSome then .error (wrap .indexPage)
+  else if metadata.numValues ≠ (rows : Int) then .error (wrap (.rowCount rows metadata.numValues))
+  else if limits.maxRows < rows then .error (wrap .rowLimit)
+  else if limits.maxChunkBytes < selected.span.stop - selected.span.start then .error (wrap .chunkLimit)
   else do
-    let frames ← (Page.readChunk limits.page bound.snapshot.bytes selected.span).mapError .framing
+    let frames ← (Page.readChunk limits.page bound.snapshot.bytes selected.span).mapError (wrap ∘ .framing)
     if limits.maxExpandedChunkBytes < (frames.map (·.value.uncompressedSize)).sum then
-      .error .expandedChunkLimit
+      .error (wrap .expandedChunkLimit)
     else do
-      let dictionary :: rest := frames | throw .missingDictionary
-      if metadata.dictionaryPageOffset ≠ some (dictionary.header.start : Int) then .error .dictionaryOffset
+      let dictionary :: rest := frames | throw (wrap .missingDictionary)
+      if metadata.dictionaryPageOffset ≠ some (dictionary.header.start : Int) then .error (wrap .dictionaryOffset)
       else do
-        let first :: _ := rest | throw .missingData
-        if metadata.dataPageOffset ≠ (first.header.start : Int) then .error (atFrame 1 first .dataOffset)
+        let first :: _ := rest | throw (wrap .missingData)
+        if metadata.dataPageOffset ≠ (first.header.start : Int) then .error (wrap (atFrame 1 first .dataOffset))
         else do
-          let data ← (rest.zipIdx 1).mapM fun (frame, ordinal) =>
-            (planData bound frame).mapError (atFrame ordinal frame)
+          let data ← plan rest
           let declared := (data.map (·.params.numValues)).sum
-          if declared ≠ rows then .error (.rowCount rows declared)
+          if declared ≠ rows then .error (wrap (.rowCount rows declared))
           else do
-            let entries ← (readEntries limits bound.snapshot.bytes dictionary).mapError (atFrame 0 dictionary)
+            let entries ← (readEntries limits bound.snapshot.bytes dictionary).mapError (wrap ∘ atFrame 0 dictionary)
             return ⟨selected, dictionary, entries, data⟩
 
+def checkGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError CheckedGroup :=
+  checkGroupWith id (planPages (planData bound)) limits bound index
+
 /-- The original selected chunk and its typed Snappy framing. -/
-structure GroupWire (limits : Limits) (bound : Bound) (index : Nat) (checked : CheckedGroup) : Prop where
+structure GroupWire (limits : Limits) (bound : Bound) (index : Nat) (checked : CheckedGroup)
+    (admits : Int → Bool := (· == 8)) : Prop where
   selected : selectChunk bound index = .ok checked.selection
   codec : checked.selection.column.metadata.codec = Payload.Codec.snappy.id
   storedCap : checked.selection.span.stop - checked.selection.span.start ≤ limits.maxChunkBytes
@@ -131,15 +143,19 @@ structure GroupWire (limits : Limits) (bound : Bound) (index : Nat) (checked : C
   dataOffset : checked.data.head?.map (fun page => (page.frame.header.start : Int)) =
     some checked.selection.column.metadata.dataPageOffset
   dictionary : readEntries limits bound.snapshot.bytes checked.dictionary = .ok checked.entries
-  data : ∀ page ∈ checked.data, planData bound page.frame = .ok page
+  data : ∀ page ∈ checked.data, planDataWith admits bound page.frame = .ok page
   rows : (checked.data.map (·.params.numValues)).sum = checked.selection.group.numRows.toNat
+
+def verifyData (limits : Limits) (source : Bytes) (page : DataPage) (ordinal : Nat) :
+    Except GroupError Page.Checksum.Status :=
+  (Page.Checksum.verify limits.scalar.compressedBytes source page.frame).mapError
+    (atFrame ordinal page.frame ∘ .checksum)
 
 /-- The page checksum covers the stored V1 body or the entire stored V2
 body, including the raw level prefix. ScalarPage handles V2's compression flag. -/
 def decodePage (limits : Limits) (source : Bytes) (entries : Array Int32)
     (page : DataPage) (ordinal : Nat) : Except GroupError Slots := do
-  let _ ← (Page.Checksum.verify limits.scalar.compressedBytes source page.frame).mapError
-    (atFrame ordinal page.frame ∘ .checksum)
+  let _ ← verifyData limits source page ordinal
   (DictionaryIndex.decode entries page.params limits.scalar limits.indices
     (Page.Checksum.payloadBytes source page.frame)).mapError (atFrame ordinal page.frame ∘ .references)
 
