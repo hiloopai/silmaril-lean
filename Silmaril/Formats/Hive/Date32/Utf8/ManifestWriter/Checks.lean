@@ -3,11 +3,14 @@ module
 import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Pruning.Thms
 import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Thms
 import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.ToIpc.Thms
+import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.ToTypedIpc.Thms
+import Silmaril.Formats.Arrow.DateUtf8Stream.Thms
 import Silmaril.Formats.Hive.Manifest.Thms
 import Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.Thms
 meta import Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.Defs
 meta import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Pruning.Defs
 meta import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.ToIpc.Defs
+meta import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.ToTypedIpc.Defs
 
 namespace Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter
 
@@ -343,6 +346,63 @@ private def observesIpc (layout : Schema) (options : PartitionPath.Options) : Bo
 #print axioms ToIpc.convert_outcome
 #print axioms ToIpc.convert_readback
 
+private def keepNonnegativeOrNull (layout : Schema) : Scan.Predicate layout.keys.schema.toScan Value :=
+  fun keys => some ((keepDay layout (· ≥ 0) keys).getD true)
+
+private def observesTypedIpc (layout : Schema) (options : PartitionPath.Options) : Bool := Id.run do
+  let .ok [a, b, c] := make layout options | return false
+  let .ok wire := ToTypedIpc.convert layout options limits {} (keepNonnegativeOrNull layout)
+    [a, b, {c with bytes := .empty}, a] | return false
+  let .ok decoded := DateUtf8Stream.read {} wire | return false
+  let expected : List DateUtf8Stream.Batch :=
+    [⟨[19782, 19782].map some, ["café/blue", "café/blue"].map some⟩,
+      ⟨[some 19782], [some "café/blue"]⟩, ⟨[none, none], [some "", some ""]⟩,
+      ⟨[19782, 19782].map some, ["café/blue", "café/blue"].map some⟩,
+      ⟨[some 19782], [some "café/blue"]⟩]
+  return decide (decoded = ⟨ToTypedIpc.schema layout, expected⟩)
+
+#guard observesTypedIpc dateFirst {} && observesTypedIpc textFirst custom
+
+#guard Id.run do
+  let .ok (a :: _) := make dateFirst {} | return false
+  let some empty := emptyGroupFile dateFirst a.path | return false
+  let .ok zeroWire := ToTypedIpc.convert dateFirst {} limits {} (keepLeap dateFirst) [empty] | return false
+  let .ok absentWire := ToTypedIpc.convert dateFirst {} limits {} (fun _ => none) [empty] | return false
+  return decide (DateUtf8Stream.read {} zeroWire = .ok ⟨ToTypedIpc.schema dateFirst, [⟨[], []⟩]⟩ ∧
+    DateUtf8Stream.read {} absentWire = .ok ⟨ToTypedIpc.schema dateFirst, []⟩)
+
+#guard Id.run do
+  let .ok (a :: rest) := make textFirst custom | return false
+  let some damaged := corruptSecond textFirst a | return false
+  let files := damaged :: rest
+  let keep := keepLeap textFirst
+  let .ok trace := readSelected textFirst custom limits (ToTypedIpc.projection textFirst) keep files | return false
+  let .readError (expected@(.source path (.parquet (.groupFailure 1 _)))) := trace.termination | return false
+  match ToTypedIpc.convert textFirst custom limits {ipc.fields := 1} keep files with
+  | .error (.source (.readError actual)) =>
+    return decide (actual = expected) && path == a.path && trace.batches.map (·.rowCount) == [2]
+  | _ => return false
+
+#guard Id.run do
+  let .ok (a :: rest) := make dateFirst {} | return false
+  let invalid := {a with path := "day=2024-02-30/label=bad/part-0.parquet"}
+  let keep := keepLeap dateFirst
+  match ToTypedIpc.convert dateFirst {} limits {ipc.fields := 1} keep (a :: invalid :: rest),
+      ToTypedIpc.convert dateFirst {} limits {ipc.fields := 1} keep (a :: rest) with
+  | .error (.admission (.binding path (.conversion "day" (.invalidDate "2024-02-30")))),
+    .error (.writer (.ipc (.limit .fields))) => return path == invalid.path
+  | _, _ => return false
+
+-- An unannotated physical INT32 schema cannot be read as native Date32.
+#guard Id.run do
+  let expected := ToTypedIpc.schema dateFirst
+  let .ok wire := Arrow.StreamWriter.emit {} expected.physical [] | return false
+  return decide (DateUtf8Stream.read {} wire = .error .schema)
+
+#print axioms DateUtf8Stream.emit_readback
+#print axioms ToTypedIpc.convert_outcome
+#print axioms ToTypedIpc.convert_readback
+
 private def tracedResolve (run : String) (files : List File) (path : String) : Except Unit Bytes :=
   dbg_trace s!"open\t{run}\t{path}"
   resolve files path
@@ -387,6 +447,14 @@ private def writeNamed (root : System.FilePath) (layout : Schema)
     throw (IO.userError "zero-column table has cells")
   IO.FS.writeFile (root / "db-zero-count.txt") s!"{zeroRows.length}\n"
 
+private def writeEmptyGroup (emptyRoot : System.FilePath) (layout : Schema) (files : List File) : IO File := do
+  let some first := files.head? | throw (IO.userError "missing empty-group fixture path")
+  let some empty := emptyGroupFile layout first.path | throw (IO.userError "empty Parquet group emission failed")
+  let emptyPath := emptyRoot / empty.path
+  if let some parent := emptyPath.parent then IO.FS.createDirAll parent
+  IO.FS.writeBinFile emptyPath empty.bytes.data
+  return empty
+
 private def writeIpc (root emptyRoot : System.FilePath) (layout : Schema)
     (options : PartitionPath.Options) (files : List File) : IO Unit := do
   let .ok wire := ToIpc.convert layout options limits {} {}
@@ -396,20 +464,30 @@ private def writeIpc (root emptyRoot : System.FilePath) (layout : Schema)
   let .ok noneKept := ToIpc.convert layout options limits {} {} (fun _ => none) files |
     throw (IO.userError "empty selection BinaryView export failed")
   IO.FS.writeBinFile (root / "none-kept.arrow") noneKept.toByteArray
-  let some first := files.head? | throw (IO.userError "missing empty-group fixture path")
-  let some empty := emptyGroupFile layout first.path | throw (IO.userError "empty Parquet group emission failed")
-  let emptyPath := emptyRoot / empty.path
-  if let some parent := emptyPath.parent then IO.FS.createDirAll parent
-  IO.FS.writeBinFile emptyPath empty.bytes.data
+  let empty ← writeEmptyGroup emptyRoot layout files
   let .ok emptyWire := ToIpc.convert layout options limits {} {} (keepLeap layout) [empty] |
     throw (IO.userError "empty group BinaryView export failed")
   IO.FS.writeBinFile (emptyRoot / "selected.arrow") emptyWire.toByteArray
+
+private def writeTypedIpc (root emptyRoot : System.FilePath) (layout : Schema)
+    (options : PartitionPath.Options) (files : List File) : IO Unit := do
+  let write (path : System.FilePath) (keep : Scan.Predicate layout.keys.schema.toScan Value)
+      (manifest : List File) : IO Unit := do
+    let .ok wire := ToTypedIpc.convert layout options limits {} keep manifest |
+      throw (IO.userError s!"typed export failed for {path}")
+    IO.FS.writeBinFile path wire.toByteArray
+  write (root / "typed-selected.arrow") (keepNonnegativeOrNull layout) (files ++ files.take 1)
+  write (root / "typed-year-zero.arrow") (keepDay layout (· < 0)) files
+  write (root / "typed-none-kept.arrow") (fun _ => none) files
+  let empty ← writeEmptyGroup emptyRoot layout files
+  write (emptyRoot / "typed-selected.arrow") (keepLeap layout) [empty]
 
 private inductive FixtureMode where
   | base
   | pruning
   | named
   | ipc
+  | typedIpc
 
 private def writeFixture (base : System.FilePath) (name : String) (layout : Schema)
     (options : PartitionPath.Options) (mode : FixtureMode) : IO Unit := do
@@ -432,6 +510,7 @@ private def writeFixture (base : System.FilePath) (name : String) (layout : Sche
     writePruning root name layout options files
     writeNamed root layout options files
   | .ipc => writeIpc root (base / (name ++ "-empty")) layout options files
+  | .typedIpc => writeTypedIpc root (base / (name ++ "-empty")) layout options files
 
 public def runWriterChecks (args : List String) : IO Unit := do
   let (root, mode) ← match args with
@@ -439,7 +518,8 @@ public def runWriterChecks (args : List String) : IO Unit := do
     | ["pruning", root] => pure (System.FilePath.mk root, .pruning)
     | ["named", root] => pure (System.FilePath.mk root, .named)
     | ["ipc", root] => pure (System.FilePath.mk root, .ipc)
-    | _ => throw (IO.userError "usage: Checks.lean [pruning|named|ipc] <fixture-root>")
+    | ["typed-ipc", root] => pure (System.FilePath.mk root, .typedIpc)
+    | _ => throw (IO.userError "usage: Checks.lean [pruning|named|ipc|typed-ipc] <fixture-root>")
   writeFixture root "date-first" dateFirst {} mode
   writeFixture root "text-first" textFirst custom mode
 
