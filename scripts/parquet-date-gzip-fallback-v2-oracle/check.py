@@ -19,7 +19,7 @@ TESTS = ROOT / "Silmaril/Formats/Parquet/Date/Leaf/Fallback/Gzip/V2/Tests.lean"
 NAME, ORDINAL = "日付", 1
 
 
-def inspect(pa, pq, wire, settings, support, prior, fallback):
+def inspect(pa, pq, wire, settings, support, prior, fallback, *, dictionary_only=False):
     batch, nullable, checksum, rows = settings
     thrift, hybrid = support["THRIFT"], support["hybrid"]
     gzip_member, fingerprint, read_group = [prior[key] for key in ("gzip_member", "fingerprint", "read_group")]
@@ -54,7 +54,8 @@ def inspect(pa, pq, wire, settings, support, prior, fallback):
         assert dict_obs["declared_expanded_size"] == len(expanded)
         entries = [word for word, in struct.iter_unpack("<i", expanded)]
         assert [dictionary[1][7][1][i][1] for i in (1, 2)] == [len(entries), 0]
-        assert entries == list(dict.fromkeys(day for day in expected[:batch] if day is not None))
+        dictionary_rows = expected if dictionary_only else expected[:batch]
+        assert entries == list(dict.fromkeys(day for day in dictionary_rows if day is not None))
         assert dictionary[2] + len(dictionary[3]) == pages[0][0] == column.data_page_offset
         cursor, observations = 0, []
         for frame in pages:
@@ -85,7 +86,9 @@ def inspect(pa, pq, wire, settings, support, prior, fallback):
                                  "is_compressed": is_compressed, "member_crc": inner_crc,
                                  "raw_levels": fingerprint(definitions), "stored_suffix": fingerprint(suffix),
                                  "decoded_suffix": fingerprint(values)})
-        assert cursor == len(expected) and [page["tag"] for page in observations] == [8, 0, 0, 0]
+        tags = [page["tag"] for page in observations]
+        assert cursor == len(expected) and tags
+        assert tags == ([8] * len(tags) if dictionary_only else [8, 0, 0, 0])
         stop = dictionary[0] + column.total_compressed_size
         assert pages[-1][2] + len(pages[-1][3]) == stop
         checked.append({"span": [dictionary[0], stop],
