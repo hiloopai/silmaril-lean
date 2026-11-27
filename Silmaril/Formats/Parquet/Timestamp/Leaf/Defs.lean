@@ -85,6 +85,11 @@ theorem ChunkEncoding.plain_admitsMetadata (metadata : Footer.ColumnMetadata) (r
           (rows == 0 || metadata.encodings.contains 0) && metadata.dictionaryPageOffset.isNone)) := by
   rw [ChunkEncoding.admitsMetadata]
 
+theorem ChunkEncoding.gzipDictionaryV1_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
+    ChunkEncoding.gzipDictionaryV1.admitsMetadata metadata rows =
+      ChunkEncoding.gzipDictionaryV2.admitsMetadata metadata rows := by
+  simp [ChunkEncoding.admitsMetadata]
+
 theorem ChunkEncoding.gzipPlainV2_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
     ChunkEncoding.gzipPlainV2.admitsMetadata metadata rows = ChunkEncoding.plain.admitsMetadata metadata rows := by
   simp [ChunkEncoding.admitsMetadata]

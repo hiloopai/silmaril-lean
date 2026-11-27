@@ -1,0 +1,16 @@
+{
+  "native_snappy_references": "e3411bad520b25609ded07ddf84a5f47202ea5578b83ce2af84d8577e4187016",
+  "native_snappy_fallback": "c56ab7de105bccf0f6ce254f2789f4e3a43a98ccf6ffb9ba59f1468f2c23b1d2",
+  "native_gzip_references": "1b50277976e14984849da9068327c9cb588b0c6213ec8c6ed7069c2db44122c6",
+  "native_gzip_fallback": "d97f52996617dbf1f8f3cc6006e3cde57efdf55e2f839ff400cf36e370e3cf38",
+  "native_local_gzip_fallback": "a38c66325fcaa94309acba9f366043ee0cc288fa4ac41122c7e508f1c0e48ae7",
+  "native_gzip_v2": "987d19ea3d2ac366e96283fc7504b9601fb30eb27a2f1ed268aa2f0475fceed7",
+  "native_snappy_v2": "5261c05fed6126002c6eee103c3be5a9bdc6f97bb8278caa4d4180e5edae84b0",
+  "native_scalar": "9368a68560d24f518f73e2b93b6ff4913e4f1b9603781463ea75a37de24b6166",
+  "assembled_mixed": "26a10ee142b1974544dabd2c7f3fd0bc8563890b623b7c001ce9bf5a2b9aa758",
+  "mutated_v1_crc": "9ea2ba8d0da6888905ffc93382e828feca406759b1a2a8812fd92dfba73355c5",
+  "mutated_competing_crc": "9788c8fa5b8d426f9d0deeec2934d547011d6f80bb38d599a4409fafa577d4af",
+  "mutated_dictionary_crc": "59d1f59b7c6b1d62a2f85fbbe1d241129de7a94e189c578a62df445eb1b1c1aa",
+  "mutated_advertised_tag_2": "680e46e171e6516b029d97f6ef1da0c9aecec99d56fb87ed82146ec5816396bf",
+  "assembled_mixed_versions": "2e4855d21e27d64a644ff52fa3fd69167b94fdceaadd214805e50b563593c6b5"
+}
