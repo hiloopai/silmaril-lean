@@ -34,6 +34,14 @@ inductive OpenError where
   | otherAnnotation
   deriving DecidableEq, Repr
 
+inductive Container where
+  | nullable
+  | required
+
+@[expose] def Container.repetition : Container → Footer.Repetition
+  | .nullable => .optional
+  | .required => .required
+
 structure Shape where
   root : Footer.SchemaElement
   outer : Footer.SchemaElement
@@ -43,9 +51,9 @@ structure Shape where
 def Shape.path (shape : Shape) : List String :=
   [shape.outer.name, shape.repeated.name, shape.element.name]
 
-def Shape.admitted (shape : Shape) : Bool :=
+def Shape.admittedFor (shape : Shape) (container : Container) : Bool :=
   shape.root.numChildren == some 1 &&
-  shape.outer.physicalType.isNone && shape.outer.repetition == some .optional &&
+  shape.outer.physicalType.isNone && shape.outer.repetition == some container.repetition &&
   shape.outer.numChildren == some 1 &&
   shape.repeated.physicalType.isNone && shape.repeated.repetition == some .repeated &&
   shape.repeated.name == "list" && shape.repeated.numChildren == some 1 &&
@@ -53,12 +61,16 @@ def Shape.admitted (shape : Shape) : Bool :=
   shape.element.repetition == some .optional &&
   shape.element.name == "element" && shape.element.numChildren.getD 0 == 0
 
-def readShape (schema : List Footer.SchemaElement) : Except OpenError Shape :=
+def Shape.admitted (shape : Shape) : Bool := shape.admittedFor .nullable
+
+def readShapeFor (container : Container) (schema : List Footer.SchemaElement) : Except OpenError Shape :=
   match schema with
   | [root, outer, repeated, element] =>
     let shape : Shape := ⟨root, outer, repeated, element⟩
-    if shape.admitted then .ok shape else .error .shape
+    if shape.admittedFor container then .ok shape else .error .shape
   | _ => .error .shape
+
+def readShape := readShapeFor .nullable
 
 def unannotated (item : ColumnOrder.Item) : Bool :=
   !(item.fields.any fun field => field.id == 6 || field.id == 10)
@@ -98,16 +110,17 @@ structure AnnotationWire (reader : Traversal.Reader) (outer : ColumnOrder.Item) 
     Traversal.readStruct reader member.start = .ok ([], member.stop) ∧
     ColumnOrder.field? outer.fields 6 = .ok legacy ∧ ConvertedWire reader legacy
 
-structure Checked where
+structure Checked (container : Container := .nullable) where
   private mk ::
   snapshot : Snapshot.Checked
   shape : Shape
   limits : Limits
 
-def openFile (limits : Limits) (source : Bytes) : Except OpenError Checked := do
+def openFileFor (container : Container) (limits : Limits) (source : Bytes) :
+    Except OpenError (Checked container) := do
   if limits.maxFileBytes < source.length then return ← throw .fileLimit
   let snapshot ← (Snapshot.check (Failure := Unit) limits.snapshot source).mapError .snapshot
-  let shape ← readShape snapshot.metadata.schema
+  let shape ← readShapeFor container snapshot.metadata.schema
   let (container, items) ← (NestedLeaf.readItems limits.snapshot.footer snapshot).mapError .schemaItems
   let [root, outer, repeated, element] := items | throw .schemaExtent
   let reader := ColumnOrder.footerReader limits.snapshot.footer snapshot
@@ -118,15 +131,17 @@ def openFile (limits : Limits) (source : Bytes) : Except OpenError Checked := do
   checkList reader outer
   pure ⟨snapshot, shape, limits⟩
 
+def openFile := openFileFor .nullable
+
 /-- The four items retain the original schema ordinals. In this one-leaf
 schema the element at ordinal 3 is physical column 0. -/
-structure OpenWire (limits : Limits) (source : Bytes) (checked : Checked) : Prop where
+structure OpenWire (limits : Limits) (source : Bytes) {container : Container} (checked : Checked container) : Prop where
   cap : source.length ≤ limits.maxFileBytes
   limitsEq : checked.limits = limits
   snapshot : Snapshot.check (Failure := Unit) limits.snapshot source = .ok checked.snapshot
   shape : checked.snapshot.metadata.schema =
     [checked.shape.root, checked.shape.outer, checked.shape.repeated, checked.shape.element] ∧
-    checked.shape.admitted = true
+    checked.shape.admittedFor container = true
   wire : ∃ container root outer repeated element,
     let reader := ColumnOrder.footerReader limits.snapshot.footer checked.snapshot
     NestedLeaf.ItemsWire limits.snapshot.footer checked.snapshot container [root, outer, repeated, element] ∧
@@ -159,7 +174,7 @@ structure FramedGroup where
 
 /-- Select the original group and physical column ordinal 0 of the admitted
 LIST schema, then frame the entire declared chunk on the same snapshot. -/
-def Checked.frameGroupWith (checked : Checked) (codec : Int) (allowDictionary : Bool) (index : Nat) : Except ReadError FramedGroup := do
+def Checked.frameGroupWith {container : Container} (checked : Checked container) (codec : Int) (allowDictionary : Bool) (index : Nat) : Except ReadError FramedGroup := do
   let some group := checked.snapshot.groupAt index | throw (.groupOrdinal index)
   let [chunk] := group.columns | throw .column
   let metadata := chunk.metadata
@@ -173,11 +188,11 @@ def Checked.frameGroupWith (checked : Checked) (codec : Int) (allowDictionary : 
   pure ⟨group, chunk, span, frames⟩
 
 /-- The original non-dictionary profiles. -/
-def Checked.frameGroupFor (checked : Checked) (codec : Int) (index : Nat) : Except ReadError FramedGroup :=
+def Checked.frameGroupFor {container : Container} (checked : Checked container) (codec : Int) (index : Nat) : Except ReadError FramedGroup :=
   checked.frameGroupWith codec false index
 
 /-- The original uncompressed profile. -/
-def Checked.frameGroup (checked : Checked) (index : Nat) : Except ReadError FramedGroup :=
+def Checked.frameGroup {container : Container} (checked : Checked container) (index : Nat) : Except ReadError FramedGroup :=
   checked.frameGroupFor 0 index
 
 /-- The group is the row boundary. One complete frame must fill the chunk.
@@ -196,7 +211,7 @@ def Checked.readGroup (checked : Checked) (index : Nat) : Except ReadError (List
   (ListPage.decodeV1 checked.limits.page metadata.codec frame.value group.numRows.toNat body).mapError .page
 
 /-- Origin of the original selected chunk before a dictionary profile checks its offsets. -/
-structure ChunkFrameWire (checked : Checked) (index : Nat) (framed : FramedGroup)
+structure ChunkFrameWire {container : Container} (checked : Checked container) (index : Nat) (framed : FramedGroup)
     (codecId : Int) : Prop where
   group : checked.snapshot.groupAt index = some framed.group
   chunk : framed.group.columns = [framed.chunk]
@@ -208,7 +223,7 @@ structure ChunkFrameWire (checked : Checked) (index : Nat) (framed : FramedGroup
   frames : Page.readChunk checked.limits.framing checked.snapshot.bytes framed.span = .ok framed.frames
   chain : Page.Chain framed.span framed.span.start framed.span.stop framed.frames
 
-structure FramedGroupWire (checked : Checked) (index : Nat) (framed : FramedGroup)
+structure FramedGroupWire {container : Container} (checked : Checked container) (index : Nat) (framed : FramedGroup)
     (codecId : Int := 0) : Prop where
   group : checked.snapshot.groupAt index = some framed.group
   chunk : framed.group.columns = [framed.chunk]

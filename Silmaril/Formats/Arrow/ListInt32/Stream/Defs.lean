@@ -111,12 +111,14 @@ structure Observed where
   batches : List Batch
   deriving DecidableEq, Repr
 
-def readSchemaFrame (limits : Arrow.Limits) (input : KBytes) :
+def readSchemaFrameFor (parentNullable : Bool) (limits : Arrow.Limits) (input : KBytes) :
     Except Error (ListInt32.Field × Nat) := do
   let envelope ← (readEnvelope limits input 0).mapError .schemaEnvelope
   let .metadata size := envelope | throw .expectedSchema
-  let field ← (ListInt32.readSchema limits (input.slice 8 size)).mapError .schemaMetadata
+  let field ← (ListInt32.readSchemaFor parentNullable limits (input.slice 8 size)).mapError .schemaMetadata
   pure (field, 8 + size)
+
+def readSchemaFrame := readSchemaFrameFor true
 
 /-- Reuse the shared V5 RecordBatch parsing. Check running row and child
 budgets before decoding any body values. -/
@@ -149,12 +151,22 @@ def readBatches (limits : Limits) (input : KBytes) :
           (childrenBefore + batch.childCount) batch.next
         pure (batch :: rest)
 
-/-- Consume the exact original carrier through an explicit modern EOS. -/
-def read (limits : Limits) (input : KBytes) : Except Error Observed := do
+def checkParents (parentNullable : Bool) (batches : List Batch) : Except Error Unit :=
+  if parentNullable then .ok ()
+  else match batches.findIdx? (fun batch => batch.rows.any Option.isNone) with
+    | none => .ok ()
+    | some index => .error (.batch index .parentValidity)
+
+/-- Consume the exact carrier and enforce the selected LIST parent nullability. -/
+def readFor (parentNullable : Bool) (limits : Limits) (input : KBytes) : Except Error Observed := do
   if !input.wf then throw .source
-  let (field, first) ← readSchemaFrame limits.ipc input
+  let (field, first) ← readSchemaFrameFor parentNullable limits.ipc input
   let batches ← readBatches limits input limits.ipc.batches 0 0 0 first
+  checkParents parentNullable batches
   pure ⟨field, batches⟩
+
+/-- The original nullable parent profile. -/
+def read := readFor true
 
 /-- Original bitmap bit and signed, bounded offsets for one parent slot. -/
 def RowWire (bitmap offsets : KBytes) (children : Array (Option Int32))

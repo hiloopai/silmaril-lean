@@ -19,23 +19,28 @@ open Silmaril.Formats.Arrow.MetadataWriter.Wire
 private theorem append_length (a b : KBytes) : (a ++ b).len = a.len + b.len := rfl
 private theorem zeros_length (n : Nat) : (KBytes.zeros n).len = n := rfl
 
-private theorem parentFragment_size (name : String) :
-    (ListInt32.Stream.Writer.Wire.parentFragment name).len = ListInt32.Stream.Writer.Wire.parentSize name := by
+private theorem parentFragmentFor_size (parentNullable : Bool) (name : String) :
+    (ListInt32.Stream.Writer.Wire.parentFragmentFor parentNullable name).len = ListInt32.Stream.Writer.Wire.parentSize name := by
   have nameSize : name.toByteArray.data.toList.length = name.utf8ByteSize := rfl
-  simp only [ListInt32.Stream.Writer.Wire.parentFragment, ListInt32.Stream.Writer.Wire.parentSize, pad, words, Arrow.Writer.emitWords_length,
+  simp only [ListInt32.Stream.Writer.Wire.parentFragmentFor, ListInt32.Stream.Writer.Wire.parentSize, pad, words, Arrow.Writer.emitWords_length,
     append_length, zeros_length, List.length_cons, List.length_nil, List.length_map, nameSize]
   have size : 4 * 14 + (1 * name.utf8ByteSize + 1) = 57 + name.utf8ByteSize := by omega
   rw [size]
 
-public theorem schema_size (field : ListInt32.Field) : (ListInt32.Stream.Writer.Wire.schema field).len = ListInt32.Stream.Writer.Wire.schemaSize field := by
+private theorem schemaFor_size (parentNullable : Bool) (field : ListInt32.Field) :
+    (ListInt32.Stream.Writer.Wire.schemaFor parentNullable field).len = ListInt32.Stream.Writer.Wire.schemaSize field := by
   have nameSize : field.childName.toByteArray.data.toList.length = field.childName.utf8ByteSize := rfl
-  simp only [ListInt32.Stream.Writer.Wire.schema, ListInt32.Stream.Writer.Wire.schemaSize, ListInt32.Stream.Writer.Wire.childField, messagePrefix, fieldBytes, fieldFragment,
-    parentFragment_size, pad, words, longs, Arrow.Writer.emitWords_length, append_length, zeros_length,
+  simp only [ListInt32.Stream.Writer.Wire.schemaFor, ListInt32.Stream.Writer.Wire.schemaSize, ListInt32.Stream.Writer.Wire.childField, messagePrefix, fieldBytes, fieldFragment,
+    parentFragmentFor_size, pad, words, longs, Arrow.Writer.emitWords_length, append_length, zeros_length,
     List.length_cons, List.length_nil, List.length_map, nameSize]
   have size : 4 * 7 + (4 * 5 + (4 * 1 + (1 * field.childName.utf8ByteSize + 1))) =
       53 + field.childName.utf8ByteSize := by omega
   rw [size]
   omega
+
+public theorem schema_size (field : ListInt32.Field) :
+    (ListInt32.Stream.Writer.Wire.schema field).len = ListInt32.Stream.Writer.Wire.schemaSize field :=
+  schemaFor_size true field
 
 public theorem childSlots_length (rows : List Row) : (childSlots rows).length = childCount rows := by
   induction rows with
@@ -184,16 +189,16 @@ public theorem emitRecord_exact {ipc : Arrow.Limits} {rows : List Row} {frame : 
   refine ⟨wf, extent.trans (congrArg (208 + ·) bodyLen), envelope, parsed, body, slice, same, ?_⟩
   rwa [same]
 
-private theorem emit_checked {limits : ListInt32.Stream.Limits} {field : ListInt32.Field}
-    {batches : List (List Row)} {wire : KBytes} (h : emit limits field batches = .ok wire) :
-    serialize limits field batches = .ok wire ∧
-      ∃ decoded, ListInt32.Stream.read limits wire = .ok decoded ∧ Agrees field batches decoded := by
-  unfold emit at h
-  cases encoded : serialize limits field batches with
+private theorem emitFor_checked {parentNullable : Bool} {limits : ListInt32.Stream.Limits} {field : ListInt32.Field}
+    {batches : List (List Row)} {wire : KBytes} (h : emitFor parentNullable limits field batches = .ok wire) :
+    serializeFor parentNullable limits field batches = .ok wire ∧
+      ∃ decoded, ListInt32.Stream.readFor parentNullable limits wire = .ok decoded ∧ Agrees field batches decoded := by
+  unfold emitFor at h
+  cases encoded : serializeFor parentNullable limits field batches with
   | error e => simp [encoded, Bind.bind, Except.bind] at h
   | ok bytes =>
     simp only [encoded, Bind.bind, Except.bind, Except.mapError] at h
-    cases parsed : ListInt32.Stream.read limits bytes with
+    cases parsed : ListInt32.Stream.readFor parentNullable limits bytes with
     | error e => simp [parsed] at h
     | ok decoded =>
       simp only [parsed] at h
@@ -210,7 +215,7 @@ private theorem serialize_wire {limits : ListInt32.Stream.Limits} {field : ListI
       (batches.zipIdx.mapM fun (rows, index) => (emitRecord limits.ipc rows).mapError (ListInt32.Stream.Writer.Error.record index)) =
         .ok records ∧
       wire = schema ++ records.foldr (· ++ ·) StreamWriter.eos := by
-  unfold serialize at h
+  unfold serialize serializeFor at h
   split at h
   · contradiction
   split at h
@@ -218,7 +223,7 @@ private theorem serialize_wire {limits : ListInt32.Stream.Limits} {field : ListI
   split at h
   · contradiction
   simp only [Bind.bind, Except.bind] at h
-  cases schema : emitSchema limits.ipc field with
+  cases schema : emitSchemaFor true limits.ipc field with
   | error e => simp [schema] at h
   | ok bytes =>
     simp only [schema] at h
@@ -227,7 +232,7 @@ private theorem serialize_wire {limits : ListInt32.Stream.Limits} {field : ListI
     | error e => simp [records] at h
     | ok frames =>
       simp only [records] at h
-      exact ⟨bytes, frames, rfl, rfl, (Except.ok.inj h).symm⟩
+      exact ⟨bytes, frames, schema, rfl, (Except.ok.inj h).symm⟩
 
 public theorem emit_wire {limits : ListInt32.Stream.Limits} {field : ListInt32.Field}
     {batches : List (List Row)} {wire : KBytes} (h : emit limits field batches = .ok wire) :
@@ -236,7 +241,19 @@ public theorem emit_wire {limits : ListInt32.Stream.Limits} {field : ListInt32.F
       (batches.zipIdx.mapM fun (rows, index) => (emitRecord limits.ipc rows).mapError (ListInt32.Stream.Writer.Error.record index)) =
         .ok records ∧
       wire = schema ++ records.foldr (· ++ ·) StreamWriter.eos :=
-  serialize_wire (emit_checked h).1
+  serialize_wire (emitFor_checked h).1
+
+public theorem emitFor_readback {parentNullable : Bool} {limits : ListInt32.Stream.Limits} {field : ListInt32.Field}
+    {batches : List (List Row)} {wire : KBytes} (h : emitFor parentNullable limits field batches = .ok wire) :
+    ∃ decoded size, ListInt32.Stream.readFor parentNullable limits wire = .ok decoded ∧
+      Agrees field batches decoded ∧ wire.wf = true ∧
+      readEnvelope limits.ipc wire 0 = .ok (.metadata size) ∧
+      ListInt32.readSchemaFor parentNullable limits.ipc (wire.slice 8 size) = .ok field ∧
+      ListInt32.Stream.BatchesWire limits wire limits.ipc.batches 0 0 (8 + size) decoded.batches ∧
+      ListInt32.Stream.checkParents parentNullable decoded.batches = .ok () := by
+  obtain ⟨decoded, parsed, agrees⟩ := (emitFor_checked h).2
+  obtain ⟨wf, size, envelope, schema, records, parents⟩ := ListInt32.Stream.readFor_wire parsed
+  exact ⟨decoded, size, parsed, agrees, wf, envelope, agrees.1 ▸ schema, records, parents⟩
 
 public theorem emit_readback {limits : ListInt32.Stream.Limits} {field : ListInt32.Field}
     {batches : List (List Row)} {wire : KBytes} (h : emit limits field batches = .ok wire) :
@@ -245,8 +262,7 @@ public theorem emit_readback {limits : ListInt32.Stream.Limits} {field : ListInt
       readEnvelope limits.ipc wire 0 = .ok (.metadata size) ∧
       ListInt32.readSchema limits.ipc (wire.slice 8 size) = .ok field ∧
       ListInt32.Stream.BatchesWire limits wire limits.ipc.batches 0 0 (8 + size) decoded.batches := by
-  obtain ⟨decoded, parsed, agrees⟩ := (emit_checked h).2
-  obtain ⟨wf, size, envelope, schema, records⟩ := ListInt32.Stream.read_wire parsed
-  exact ⟨decoded, size, parsed, agrees, wf, envelope, agrees.1 ▸ schema, records⟩
+  obtain ⟨decoded, size, native, agrees, wf, envelope, schema, records, _⟩ := emitFor_readback h
+  exact ⟨decoded, size, native, agrees, wf, envelope, schema, records⟩
 
 end Silmaril.Proofs.Formats.Arrow.ListInt32.Stream.Writer

@@ -19,23 +19,27 @@ def parentSize (name : String) : Nat :=
   let size := 57 + name.utf8ByteSize
   size + Arrow.Writer.padding size
 
-def parentFragment (name : String) : KBytes :=
+def parentFragmentFor (parentNullable : Bool) (name : String) : KBytes :=
   let nameBytes := Arrow.Writer.emitWords 1 (name.toByteArray.data.toList.map UInt8.toNat)
   -- The vector element at byte 48 references the child table, 12 bytes into its fragment.
   let childOffset := parentSize name + 12 - 48
   pad (words [halfwords 16 20, halfwords 4 8, halfwords 9 12, halfwords 0 16,
-      16, 32, 1 + 12 * 256, 12, 12, halfwords 4 4, 4, 1, childOffset, nameBytes.len] ++
+      16, 32, parentNullable.toNat + 12 * 256, 12, 12, halfwords 4 4, 4, 1, childOffset, nameBytes.len] ++
     (nameBytes ++ KBytes.zeros 1))
+
+def parentFragment := parentFragmentFor true
 
 def childField (field : ListInt32.Field) : Arrow.Field :=
   ⟨field.childName, true, .int32⟩
 
 /-- The Schema vector at payload byte 16 points to the parent table at
 payload byte 40. The child reuses the checked primitive field layout. -/
-def schema (field : ListInt32.Field) : KBytes :=
+def schemaFor (parentNullable : Bool) (field : ListInt32.Field) : KBytes :=
   messagePrefix 1 56 0 ++
     (words [halfwords 8 8, halfwords 0 4, 8, 4, 1, 20] ++
-      (parentFragment field.name ++ fieldBytes (childField field)))
+      (parentFragmentFor parentNullable field.name ++ fieldBytes (childField field)))
+
+def schema := schemaFor true
 
 def schemaSize (field : ListInt32.Field) : Nat :=
   let childSize := 53 + field.childName.utf8ByteSize
@@ -95,12 +99,14 @@ def checkRecord (ipc : Arrow.Limits) (rows children : Nat) : Except RecordError 
   if ipc.bodyBytes < size then return ← throw (.ipc (.limit .bodyBytes))
   if ipc.metadataBytes < 200 then return ← throw (.ipc (.limit .metadataBytes))
 
-def emitSchema (ipc : Arrow.Limits) (field : ListInt32.Field) : Except Error KBytes := do
+def emitSchemaFor (parentNullable : Bool) (ipc : Arrow.Limits) (field : ListInt32.Field) : Except Error KBytes := do
   if ipc.fields = 0 then throw (.ipc (.limit .fields))
   let size := Wire.schemaSize field
   if 2^31 ≤ size then throw (.ipc (.malformed .metadataLength))
   if ipc.metadataBytes < size then throw (.ipc (.limit .metadataBytes))
-  return StreamWriter.envelopeBytes size ++ Wire.schema field
+  return StreamWriter.envelopeBytes size ++ Wire.schemaFor parentNullable field
+
+def emitSchema := emitSchemaFor true
 
 /-- Share the V5 record message writer and the common aligned buffer packer. -/
 def emitRecord (ipc : Arrow.Limits) (rows : List Row) : Except RecordError KBytes := do
@@ -108,14 +114,16 @@ def emitRecord (ipc : Arrow.Limits) (rows : List Row) : Except RecordError KByte
   let (buffers, body) := Arrow.Writer.packBuffers 0 (parts rows)
   (StreamWriter.emitFrame ipc ⟨.recordBatch (metadata rows buffers), body.len⟩ body).mapError .ipc
 
-def serialize (limits : Stream.Limits) (field : ListInt32.Field) (batches : List (List Row)) :
+def serializeFor (parentNullable : Bool) (limits : Stream.Limits) (field : ListInt32.Field) (batches : List (List Row)) :
     Except Error KBytes := do
   if limits.ipc.batches < batches.length then return ← throw (.ipc (.limit .batches))
   if limits.totalRows < (batches.map List.length).sum then return ← throw .rowLimit
   if limits.totalChildren < (batches.map childCount).sum then return ← throw .childLimit
-  let schema ← emitSchema limits.ipc field
+  let schema ← emitSchemaFor parentNullable limits.ipc field
   let records ← batches.zipIdx.mapM fun (rows, index) => (emitRecord limits.ipc rows).mapError (.record index)
   return schema ++ records.foldr (· ++ ·) StreamWriter.eos
+
+def serialize := serializeFor true
 
 def Agrees (field : ListInt32.Field) (batches : List (List Row)) (decoded : Stream.Observed) : Prop :=
   decoded.field = field ∧ decoded.batches.map Stream.Batch.rows = batches ∧
@@ -128,10 +136,12 @@ instance (field : ListInt32.Field) (batches : List (List Row)) (decoded : Stream
 
 /-- Certify the exact field, batch boundaries, nullable rows and child totals
 using the existing checked LIST reader over the complete emitted carrier. -/
-def emit (limits : Stream.Limits) (field : ListInt32.Field) (batches : List (List Row)) :
+def emitFor (parentNullable : Bool) (limits : Stream.Limits) (field : ListInt32.Field) (batches : List (List Row)) :
     Except Error KBytes := do
-  let wire ← serialize limits field batches
-  let decoded ← (Stream.read limits wire).mapError .readback
+  let wire ← serializeFor parentNullable limits field batches
+  let decoded ← (Stream.readFor parentNullable limits wire).mapError .readback
   if Agrees field batches decoded then return wire else throw .readbackMismatch
+
+def emit := emitFor true
 
 end Silmaril.Formats.Arrow.ListInt32.Stream.Writer

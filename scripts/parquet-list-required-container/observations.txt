@@ -1,0 +1,12 @@
+PyArrow 26.0.1
+native-required.parquet SHA-256 f38ed5f1da25a94f6d7e06894f5885a0658a938b330e1d3e43bf4fb3ef83a3d6, footer [96, 634)
+  group 0 page 0 @4, rep [27, 29) [0, 0, 0, 1, 1, 0, 1], def [33, 36) [0, 1, 2, 1, 2, 2, 2], values [36, 52) [-2147483648, 2147483647, 7, 7]
+  group 1 page 0 @52, rep [75, 77) [0, 1, 0, 0, 1, 1, 0], def [81, 84) [1, 1, 0, 2, 1, 2, 2], values [84, 96) [-7, 0, 2147483647]
+native-optional.parquet SHA-256 5fe74a7706b3ba307915ca5405d77dfb2965fd60faa8c2ea01f8a332ddbb6270
+lean-required.arrows SHA-256 3aa0c5ba7842a0bdb3244b6e9d79e8d39053e97cfac311fe1b3cb355829d4992, exact EOS [752, 760)
+mutated-definition-3.parquet SHA-256 c6b98c25e18ac9111c556f9550b3e507076dc8d94a2586b8eb638bebc8351a6f
+definition-3: group 1 page 0 @52; one original batch and no IPC bytes
+mutated-empty-continuation.parquet SHA-256 5465797776637ef236b83123172eff5d22631392b52cfba5c77d8f33e309550d
+empty-continuation: group 1 page 0 @52; one original batch and no IPC bytes
+mutated-leading-continuation.parquet SHA-256 5e947228065bca01f654595503c766309baa1e723efbb41bf1a404f2787d4658
+leading-continuation: group 1 page 0 @52; one original batch and no IPC bytes

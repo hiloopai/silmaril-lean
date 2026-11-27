@@ -199,18 +199,31 @@ public theorem readBatches_wire {limits : Limits} {input : KBytes}
             obtain rfl := Except.ok.inj h
             exact .next envelope (readRecord_wire record) (ih later)
 
-public theorem read_wire {limits : Limits} {input : KBytes} {observed : Observed}
-    (h : read limits input = .ok observed) :
+public theorem checkParents_required {batches : List Batch} (h : checkParents false batches = .ok ()) :
+    ∀ batch ∈ batches, ∀ row ∈ batch.rows, row.isSome = true := by
+  intro batch member row belongs
+  unfold checkParents at h
+  simp only [Bool.false_eq_true, ↓reduceIte] at h
+  cases found : batches.findIdx? (fun batch => batch.rows.any Option.isNone) with
+  | some index => simp [found] at h
+  | none =>
+    have valid := List.findIdx?_eq_none_iff.mp found batch member
+    have nonnull := List.any_eq_false.mp valid row belongs
+    cases row <;> simp_all
+
+public theorem readFor_wire {parentNullable : Bool} {limits : Limits} {input : KBytes} {observed : Observed}
+    (h : readFor parentNullable limits input = .ok observed) :
     input.wf = true ∧ ∃ size,
       readEnvelope limits.ipc input 0 = .ok (.metadata size) ∧
-      ListInt32.readSchema limits.ipc (input.slice 8 size) = .ok observed.field ∧
-      BatchesWire limits input limits.ipc.batches 0 0 (8 + size) observed.batches := by
-  unfold ListInt32.Stream.read at h
+      ListInt32.readSchemaFor parentNullable limits.ipc (input.slice 8 size) = .ok observed.field ∧
+      BatchesWire limits input limits.ipc.batches 0 0 (8 + size) observed.batches ∧
+      checkParents parentNullable observed.batches = .ok () := by
+  unfold readFor at h
   split at h
   · contradiction
   · rename_i wf
     have source : input.wf = true := by simpa using wf
-    unfold readSchemaFrame at h
+    unfold readSchemaFrameFor at h
     cases envelope : readEnvelope limits.ipc input 0 with
     | error e => simp [envelope, Except.mapError, Bind.bind, Except.bind] at h
     | ok env =>
@@ -218,7 +231,7 @@ public theorem read_wire {limits : Limits} {input : KBytes} {observed : Observed
       | eos => simp [envelope, Except.mapError, Bind.bind, Except.bind] at h
       | metadata size =>
         simp only [envelope, Except.mapError, Bind.bind, Except.bind] at h
-        cases schema : ListInt32.readSchema limits.ipc (input.slice 8 size) with
+        cases schema : ListInt32.readSchemaFor parentNullable limits.ipc (input.slice 8 size) with
         | error e => simp [schema] at h
         | ok field =>
           simp only [schema, Pure.pure, Except.pure] at h
@@ -226,8 +239,22 @@ public theorem read_wire {limits : Limits} {input : KBytes} {observed : Observed
           | error e => simp [decoded] at h
           | ok batches =>
             rw [decoded] at h
-            obtain rfl := Except.ok.inj h
-            exact ⟨source, size, rfl, schema, readBatches_wire decoded⟩
+            cases parents : checkParents parentNullable batches with
+            | error cause => simp [parents] at h
+            | ok accepted =>
+              cases accepted
+              simp only [parents] at h
+              obtain rfl := Except.ok.inj h
+              exact ⟨source, size, rfl, schema, readBatches_wire decoded, parents⟩
+
+public theorem read_wire {limits : Limits} {input : KBytes} {observed : Observed}
+    (h : read limits input = .ok observed) :
+    input.wf = true ∧ ∃ size,
+      readEnvelope limits.ipc input 0 = .ok (.metadata size) ∧
+      ListInt32.readSchema limits.ipc (input.slice 8 size) = .ok observed.field ∧
+      BatchesWire limits input limits.ipc.batches 0 0 (8 + size) observed.batches := by
+  obtain ⟨wf, size, frame, schema, batches, _⟩ := readFor_wire h
+  exact ⟨wf, size, frame, schema, batches⟩
 
 public theorem record_ranges {limits : Limits} {input : KBytes}
     {rowsBefore childrenBefore offset size : Nat} {batch : Batch}

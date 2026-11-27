@@ -22,20 +22,31 @@ theorem openFile_wire {limits : Limits} {source : Bytes} {checked : Checked}
     (h : openFile limits source = .ok checked) : OpenWire limits source checked :=
   Proofs.Formats.Parquet.ListFile.openFile_wire h
 
+/-- Admitted LIST shapes preserve both original repetition flags. -/
+theorem admittedFor_repetition {container : Container} {shape : Shape}
+    (h : shape.admittedFor container = true) :
+    shape.outer.repetition = some container.repetition ∧ shape.element.repetition = some .optional :=
+  Proofs.Formats.Parquet.ListFile.admittedFor_repetition h
+
+/-- Bind the chosen container repetition to the same original footer and LIST annotation. -/
+theorem openFileFor_wire {container : Container} {limits : Limits} {source : Bytes} {checked : Checked container}
+    (h : openFileFor container limits source = .ok checked) : OpenWire limits source checked :=
+  Proofs.Formats.Parquet.ListFile.openFileFor_wire h
+
 /-- A dictionary-aware caller still gets the original local ordered frame chain. -/
-theorem frameGroupWith_wire {checked : Checked} {codec : Int} {allowDictionary : Bool}
+theorem frameGroupWith_wire {container : Container} {checked : Checked container} {codec : Int} {allowDictionary : Bool}
     {index : Nat} {framed : FramedGroup} (h : checked.frameGroupWith codec allowDictionary index = .ok framed) :
     ChunkFrameWire checked index framed codec ∧
       (allowDictionary = false → framed.chunk.metadata.dictionaryPageOffset = none) :=
   Proofs.Formats.Parquet.ListFile.frameGroupWith_wire h
 
 /-- A codec-specific profile retains the original checked group and exact chunk. -/
-theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat} {framed : FramedGroup}
+theorem frameGroupFor_wire {container : Container} {checked : Checked container} {codec : Int} {index : Nat} {framed : FramedGroup}
     (h : checked.frameGroupFor codec index = .ok framed) : FramedGroupWire checked index framed codec :=
   Proofs.Formats.Parquet.ListFile.frameGroupFor_wire h
 
 /-- The frame list comes from the original checked group and exact chunk. -/
-theorem frameGroup_wire {checked : Checked} {index : Nat} {framed : FramedGroup}
+theorem frameGroup_wire {container : Container} {checked : Checked container} {index : Nat} {framed : FramedGroup}
     (h : checked.frameGroup index = .ok framed) : FramedGroupWire checked index framed :=
   Proofs.Formats.Parquet.ListFile.frameGroup_wire h
 

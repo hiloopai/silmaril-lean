@@ -32,6 +32,21 @@ theorem readBatches_wire {limits : Limits} {input : KBytes}
     BatchesWire limits input fuel rowsBefore childrenBefore offset batches :=
   Proofs.Formats.Arrow.ListInt32.Stream.readBatches_wire h
 
+/-- Every observed parent in the required profile is present. -/
+theorem checkParents_required {batches : List Batch} (h : checkParents false batches = .ok ()) :
+    ∀ batch ∈ batches, ∀ row ∈ batch.rows, row.isSome = true :=
+  Proofs.Formats.Arrow.ListInt32.Stream.checkParents_required h
+
+/-- The checked schema selects the parent flag and the record witness reaches exact EOS. -/
+theorem readFor_wire {parentNullable : Bool} {limits : Limits} {input : KBytes} {observed : Observed}
+    (h : readFor parentNullable limits input = .ok observed) :
+    input.wf = true ∧ ∃ size,
+      readEnvelope limits.ipc input 0 = .ok (.metadata size) ∧
+      ListInt32.readSchemaFor parentNullable limits.ipc (input.slice 8 size) = .ok observed.field ∧
+      BatchesWire limits input limits.ipc.batches 0 0 (8 + size) observed.batches ∧
+      checkParents parentNullable observed.batches = .ok () :=
+  Proofs.Formats.Arrow.ListInt32.Stream.readFor_wire h
+
 /-- The same checked schema and ordered frames determine the observation. -/
 theorem read_wire {limits : Limits} {input : KBytes} {observed : Observed}
     (h : read limits input = .ok observed) :

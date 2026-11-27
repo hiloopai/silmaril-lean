@@ -90,4 +90,15 @@ theorem emit_readback {limits : Stream.Limits} {field : ListInt32.Field}
       Stream.BatchesWire limits wire limits.ipc.batches 0 0 (8 + size) decoded.batches :=
   Proofs.Formats.Arrow.ListInt32.Stream.Writer.emit_readback h
 
+/-- Checked native readback for the chosen LIST parent nullability. -/
+theorem emitFor_readback {parentNullable : Bool} {limits : ListInt32.Stream.Limits} {field : ListInt32.Field}
+    {batches : List (List Row)} {wire : KBytes} (h : emitFor parentNullable limits field batches = .ok wire) :
+    ∃ decoded size, ListInt32.Stream.readFor parentNullable limits wire = .ok decoded ∧
+      Agrees field batches decoded ∧ wire.wf = true ∧
+      readEnvelope limits.ipc wire 0 = .ok (.metadata size) ∧
+      ListInt32.readSchemaFor parentNullable limits.ipc (wire.slice 8 size) = .ok field ∧
+      ListInt32.Stream.BatchesWire limits wire limits.ipc.batches 0 0 (8 + size) decoded.batches ∧
+      ListInt32.Stream.checkParents parentNullable decoded.batches = .ok () :=
+  Proofs.Formats.Arrow.ListInt32.Stream.Writer.emitFor_readback h
+
 end Silmaril.Formats.Arrow.ListInt32.Stream.Writer

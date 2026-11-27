@@ -572,14 +572,14 @@ public def BinaryView.readBatchMetadata (limits : Limits) (maxDataBuffers : Nat)
 
 /-- A single List (type tag 12) whose sole child uses the existing
 checked primitive field decoder. The legacy flat ASTs remain independent. -/
-private def listInt32Field (bytes : KBytes) (pos : Nat) : Except Error ListInt32.Field := do
+private def listInt32Field (parentNullable : Bool) (bytes : KBytes) (pos : Nat) : Except Error ListInt32.Field := do
   let value ← table bytes pos
   tableShape value 7
   let name ← string bytes value 0
   let nullable ← bool bytes value 1
   let tag ← scalar bytes value 2 1
   if tag ≠ 12 then throw (.unsupported (.fieldType tag))
-  if !nullable then throw (.unsupported .nested)
+  if nullable != parentNullable then throw (.unsupported .nested)
   let payload ← table bytes (← require (← reference bytes value 3))
   tableShape payload 0
   noTable bytes value 4 .dictionary
@@ -591,15 +591,17 @@ private def listInt32Field (bytes : KBytes) (pos : Nat) : Except Error ListInt32
   return ⟨name, child.name⟩
 
 /-- Admit a bodyless, little-endian V5 List<Int32> schema message. -/
-public def ListInt32.readSchema (limits : Limits) (bytes : KBytes) : Except Error ListInt32.Field := do
+public def ListInt32.readSchemaFor (parentNullable : Bool) (limits : Limits) (bytes : KBytes) : Except Error ListInt32.Field := do
   let (tag, payload, bodyLength) ← messageParts limits bytes
   if tag ≠ 1 then throw (.unsupported (.messageKind tag))
   if bodyLength ≠ 0 then throw (.malformed .bodyLength)
   let (_, fields) ← schemaWith { limits with fields := min 1 limits.fields } bytes payload
     (fun endian => if endian = 0 then .ok () else .error (.unsupported (.endianness endian)))
-    (listInt32Field bytes)
+    (listInt32Field parentNullable bytes)
   let [selected] := fields | throw (.unsupported .nested)
   return selected
+
+@[expose] public def ListInt32.readSchema := ListInt32.readSchemaFor true
 
 private def mixedFieldKind (bytes : KBytes) (tag : Nat) (payload : Table) :
     Except Error MixedFlat.Kind := do

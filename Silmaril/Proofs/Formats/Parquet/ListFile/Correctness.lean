@@ -87,10 +87,16 @@ public theorem checkList_wire {reader : Traversal.Reader} {outer : ColumnOrder.I
                       read, tag, kind, readMarker, rfl, checkConvertedList_wire h⟩
           · contradiction
 
-private theorem readShape_wire {schema : List Footer.SchemaElement} {shape : Shape}
-    (h : readShape schema = .ok shape) :
-    schema = [shape.root, shape.outer, shape.repeated, shape.element] ∧ shape.admitted = true := by
-  unfold readShape at h
+public theorem admittedFor_repetition {container : Container} {shape : Shape}
+    (h : shape.admittedFor container = true) :
+    shape.outer.repetition = some container.repetition ∧ shape.element.repetition = some .optional := by
+  simp only [Shape.admittedFor, Bool.and_eq_true, beq_iff_eq] at h
+  grind
+
+private theorem readShapeFor_wire {container : Container} {schema : List Footer.SchemaElement} {shape : Shape}
+    (h : readShapeFor container schema = .ok shape) :
+    schema = [shape.root, shape.outer, shape.repeated, shape.element] ∧ shape.admittedFor container = true := by
+  unfold readShapeFor at h
   split at h
   · dsimp only at h
     split at h
@@ -99,9 +105,9 @@ private theorem readShape_wire {schema : List Footer.SchemaElement} {shape : Sha
     · contradiction
   · contradiction
 
-public theorem openFile_wire {limits : ListFile.Limits} {source : Bytes} {checked : Checked}
-    (h : openFile limits source = .ok checked) : OpenWire limits source checked := by
-  unfold openFile at h
+public theorem openFileFor_wire {container : Container} {limits : ListFile.Limits} {source : Bytes} {checked : Checked container}
+    (h : openFileFor container limits source = .ok checked) : OpenWire limits source checked := by
+  unfold openFileFor at h
   split at h
   · contradiction
   · rename_i cap
@@ -110,7 +116,7 @@ public theorem openFile_wire {limits : ListFile.Limits} {source : Bytes} {checke
     | error err => simp [snapshotRead] at h
     | ok snapshot =>
       simp only [snapshotRead] at h
-      cases shapeRead : readShape snapshot.metadata.schema with
+      cases shapeRead : readShapeFor container snapshot.metadata.schema with
       | error err => simp [shapeRead] at h
       | ok shape =>
         simp only [shapeRead] at h
@@ -136,12 +142,16 @@ public theorem openFile_wire {limits : ListFile.Limits} {source : Bytes} {checke
                   cases accepted
                   simp only [tag, Pure.pure, Except.pure] at h
                   cases h
-                  exact ⟨Nat.le_of_not_gt cap, rfl, snapshotRead, readShape_wire shapeRead,
+                  exact ⟨Nat.le_of_not_gt cap, rfl, snapshotRead, readShapeFor_wire shapeRead,
                     container, root, outer, repeated, element, NestedLeaf.readItems_wire raw,
                     extents.1, extents.2, unmarked.1, unmarked.2.1, unmarked.2.2, checkList_wire tag⟩
           · contradiction
 
-public theorem frameGroupWith_wire {checked : Checked} {codec : Int} {allowDictionary : Bool}
+public theorem openFile_wire {limits : ListFile.Limits} {source : Bytes} {checked : Checked}
+    (h : openFile limits source = .ok checked) : OpenWire limits source checked :=
+  openFileFor_wire h
+
+public theorem frameGroupWith_wire {container : Container} {checked : Checked container} {codec : Int} {allowDictionary : Bool}
     {index : Nat} {framed : FramedGroup} (h : checked.frameGroupWith codec allowDictionary index = .ok framed) :
     ChunkFrameWire checked index framed codec ∧
       (allowDictionary = false → framed.chunk.metadata.dictionaryPageOffset = none) := by
@@ -180,13 +190,13 @@ public theorem frameGroupWith_wire {checked : Checked} {codec : Int} {allowDicti
                   bounds, parsed, (Page.readChunk_chain parsed).2.2⟩, dictionaryAbsent⟩
     · contradiction
 
-public theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat} {framed : FramedGroup}
+public theorem frameGroupFor_wire {container : Container} {checked : Checked container} {codec : Int} {index : Nat} {framed : FramedGroup}
     (h : checked.frameGroupFor codec index = .ok framed) : FramedGroupWire checked index framed codec := by
   obtain ⟨origin, absent⟩ := frameGroupWith_wire (allowDictionary := false) h
   exact ⟨origin.group, origin.chunk, origin.path, origin.physical, origin.codec, absent rfl,
     origin.indexPageOffset, origin.span, origin.frames, origin.chain⟩
 
-public theorem frameGroup_wire {checked : Checked} {index : Nat} {framed : FramedGroup}
+public theorem frameGroup_wire {container : Container} {checked : Checked container} {index : Nat} {framed : FramedGroup}
     (h : checked.frameGroup index = .ok framed) : FramedGroupWire checked index framed :=
   frameGroupFor_wire h
 
