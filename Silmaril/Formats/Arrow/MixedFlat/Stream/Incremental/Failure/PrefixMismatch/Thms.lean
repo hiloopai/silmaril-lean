@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.PrefixMismatch.Defs
 import Silmaril.Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.PrefixMismatch
+import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Field.Thms
 
 public section
 
@@ -22,7 +23,7 @@ theorem feed_field_wire {size packed : Nat} {cursor : Cursor} {chunk : KBytes}
     ordinal = running.ordinal ∧ offset = cursor.messageOffset ∧
       ∃ range, range.offset = offset ∧
         FieldFailureWire cursor.limits (.leaf size packed) fields running range index cause :=
-  Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.PrefixMismatch.feed_field_wire held incoming phase failed
+  Field.feed_field_wire held incoming phase failed
 
 /-- A rejected field on an admitted frame gives the same immutable record error. -/
 theorem record_field_error {limits : Incremental.Limits} {input : KBytes}
@@ -31,7 +32,7 @@ theorem record_field_error {limits : Incremental.Limits} {input : KBytes}
     (wire : FieldFailureWire limits input fields running range index cause) :
     MixedFlat.Stream.readRecord limits.mixed input fields running.rows range.offset range.metadataSize =
       .error (.decode (.field index cause)) :=
-  Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.PrefixMismatch.record_field_error wire
+  Field.record_field_error wire
 
 /-- The immutable pull and eager suffix stop at the original indexed field error. -/
 theorem field_terminal {limits : Incremental.Limits} {input : KBytes}
@@ -43,7 +44,7 @@ theorem field_terminal {limits : Incremental.Limits} {input : KBytes}
       .error (.message running.ordinal range.offset (.decode (.field index cause))) ∧
     MixedFlat.Stream.readBatches limits.mixed input fields remaining running.ordinal running.rows range.offset =
       .error (.batch running.ordinal (.decode (.field index cause))) :=
-  Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.PrefixMismatch.field_terminal wire
+  Field.field_terminal wire
 
 /-- The complete published prefix replays on the immutable reader, followed
 by the exact view prefix mismatch in the original complete frame. -/

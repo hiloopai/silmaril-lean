@@ -1,27 +1,12 @@
 module
 
-public import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Defs
+public import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Field.Defs
 
-/-! Exact semantic errors from checked complete RecordBatch frames. -/
+/-! Exact external view prefix mismatches. -/
 
 @[expose] public section
 
 namespace Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure
-
-/-- An actual semantic field failure after the framing, metadata and running
-checks. The complete frame still refers to the original carrier. -/
-def FieldFailureWire (limits : Incremental.Limits) (input : KBytes) (fields : List MixedFlat.Field)
-    (running : Running) (range : Stream.BatchRange) (index : Nat) (cause : MixedFlat.ColumnError) : Prop :=
-  readEnvelope limits.mixed.observation.ipc input range.offset = .ok (.metadata range.metadataSize) ∧
-  running.ordinal < limits.mixed.observation.ipc.batches ∧
-  ∃ metadata body,
-    MixedFlat.readMetadata limits.mixed.observation.ipc limits.mixed.view.dataBuffers
-      limits.mixed.totalDataBuffers fields (range.metadataSlice input) = .ok metadata ∧
-    metadata.bodyLength = range.bodyLength ∧
-    readBody limits.mixed.observation.ipc input range.bodyStart range.bodyLength = .ok body ∧
-    running.dataBuffers + metadata.counts.sum ≤ limits.totalDataBuffers ∧
-    Body.checkBudget limits.mixed.observation fields.length (running.rows + metadata.batch.rowCount) = .ok () ∧
-    MixedFlat.readParsed limits.mixed fields metadata body = .error (.field index cause)
 
 namespace PrefixMismatch
 
@@ -47,6 +32,11 @@ structure Run (limits : Incremental.Limits) (wire : KBytes) where
     RecordSteps wire.len (wire.read 0 wire.len) fields opened batches final ∧
     Arrow.Framing.Incremental.Window (Portable.reference wire) final.position chunk ∧
     feed final chunk = .error (mismatchError ordinal offset field slot)
+
+/-- The prefix mismatch schedule is an admitted field failure. -/
+def Run.toField {limits : Incremental.Limits} {wire : KBytes} (run : Run limits wire) :
+    Field.Run limits wire :=
+  ⟨run.fields, run.batches, run.ordinal, run.offset, run.field, columnCause run.slot, run.ran⟩
 
 def Run.ranges {limits : Incremental.Limits} {wire : KBytes} (run : Run limits wire) :
     List Stream.BatchRange :=

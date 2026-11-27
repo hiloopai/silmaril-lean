@@ -1,0 +1,191 @@
+module
+
+public import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Field.Defs
+import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Thms
+import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Thms
+import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Portable.Thms
+import Silmaril.Formats.Arrow.MixedFlat.Stream.Events.Thms
+
+public section
+
+namespace Silmaril.Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Field
+
+open Silmaril.Formats Silmaril.Formats.Arrow
+open MixedFlat.Stream.Incremental MixedFlat.Stream.Incremental.Failure
+open MixedFlat.Stream.Incremental.Failure.Field
+open MixedFlat.Stream.Incremental.Portable (reference reference_congr completed_exact)
+open MixedFlat.Stream (BatchRange)
+open Arrow.Framing.Incremental (Window metadataBytes)
+
+theorem feed_field_wire {size packed : Nat} {cursor : Cursor} {chunk : KBytes}
+    {fields : List MixedFlat.Field} {running : Running} {ordinal offset index : Nat}
+    {cause : MixedFlat.ColumnError}
+    (held : cursor.input.InCarrier cursor.limits.mixed.observation.ipc (.leaf size packed))
+    (incoming : Window (.leaf size packed) cursor.position chunk)
+    (phase : cursor.phase = .records fields running)
+    (failed : feed cursor chunk = .error (.batch ordinal offset (.record (.decode (.field index cause))))) :
+    ordinal = running.ordinal ∧ offset = cursor.messageOffset ∧
+      ∃ range, range.offset = offset ∧
+        FieldFailureWire cursor.limits (.leaf size packed) fields running range index cause := by
+  obtain ⟨_, clash, _⟩ | ⟨frame, _, _, typed, tag, raw, decoded⟩ := feed_late_failure phase failed
+  · contradiction
+  · obtain ⟨ordinalExact, offsetExact, typedExact⟩ := MixedFlat.Stream.Incremental.Error.batch.inj tag
+    rw [← typedExact] at decoded
+    obtain ⟨frameOffset, wire, bodyWf⟩ := completed_frame_at held incoming raw
+    obtain ⟨metadata, metadataRead, available, dataBudget, rowsBudget, extent, parsed⟩ :=
+      decode_field_checked decoded
+    obtain ⟨metadataMatch, bodyRead⟩ := packed_frame wire bodyWf
+    rw [metadataMatch] at metadataRead
+    refine ⟨ordinalExact, offsetExact, frameRange frame, frameOffset.trans offsetExact.symm,
+      wire.1, available, metadata, metadataBytes frame.body, metadataRead, extent, bodyRead,
+      dataBudget, rowsBudget, parsed⟩
+
+theorem record_field_error {limits : MixedFlat.Stream.Incremental.Limits} {input : KBytes}
+    {fields : List MixedFlat.Field} {running : Running} {range : BatchRange} {index : Nat}
+    {cause : MixedFlat.ColumnError}
+    (wire : FieldFailureWire limits input fields running range index cause) :
+    MixedFlat.Stream.readRecord limits.mixed input fields running.rows range.offset range.metadataSize =
+      .error (.decode (.field index cause)) := by
+  obtain ⟨_, _, metadata, body, metadataRead, extent, bodyRead, _, budget, parsed⟩ := wire
+  simp only [BatchRange.metadataSlice] at metadataRead
+  simp only [BatchRange.bodyStart] at bodyRead
+  simp [MixedFlat.Stream.readRecord, metadataRead, extent, BatchRange.bodyStart, bodyRead,
+    budget, parsed, bind, Except.bind, Except.mapError]
+
+theorem field_terminal {limits : MixedFlat.Stream.Incremental.Limits} {input : KBytes}
+    {fields : List MixedFlat.Field} {running : Running} {range : BatchRange} {index : Nat}
+    {cause : MixedFlat.ColumnError}
+    (wire : FieldFailureWire limits input fields running range index cause) :
+    let remaining := limits.mixed.observation.ipc.batches - running.ordinal
+    MixedFlat.Stream.Events.readNext limits.mixed input fields remaining running.ordinal running.rows range.offset =
+      .error (.message running.ordinal range.offset (.decode (.field index cause))) ∧
+    MixedFlat.Stream.readBatches limits.mixed input fields remaining running.ordinal running.rows range.offset =
+      .error (.batch running.ordinal (.decode (.field index cause))) := by
+  have nonempty : limits.mixed.observation.ipc.batches - running.ordinal ≠ 0 := by
+    have available := wire.2.1
+    omega
+  have read := record_field_error wire
+  refine ⟨?_, ?_⟩
+  · simp only [MixedFlat.Stream.Events.readNext, wire.1, Except.mapError, bind, Except.bind, nonempty, ite_false]
+    split
+    · rename_i fault rejected
+      rw [read] at rejected
+      have same := Except.error.inj rejected
+      subst fault
+      rfl
+    · rename_i _ accepted
+      rw [read] at accepted
+      contradiction
+  · obtain ⟨fuel, remaining⟩ := Nat.exists_eq_succ_of_ne_zero nonempty
+    rw [remaining, MixedFlat.Stream.readBatches]
+    simp [wire.1, read, bind, Except.bind, Except.mapError]
+
+theorem field_exact {limits : MixedFlat.Stream.Incremental.Limits} {wire : KBytes}
+    (run : Run limits wire) : Agreement limits wire run := by
+  obtain ⟨opened, final, chunk, opening, records, incoming, failed⟩ := run.ran
+  obtain ⟨openedHeld, openedLimits, phase, readSchema⟩ := open_agrees opening
+  change MixedFlat.Stream.readSchemaFrame limits.mixed.observation.ipc (reference wire) =
+    .ok (run.fields, opened.messageOffset) at readSchema
+  rw [← openedLimits] at openedHeld
+  obtain ⟨running, finalHeld, finalLimits, finalPhase, _, eagerSuffix⟩ :=
+    steps_agree records openedHeld phase
+  obtain ⟨replayed, replayPhase, replay⟩ := steps_replay records openedHeld phase
+  have runningExact := (Phase.records.inj (finalPhase.symm.trans replayPhase)).2
+  subst replayed
+  rw [← finalLimits] at finalHeld
+  obtain ⟨ordinal, offset, range, rangeOffset, admitted⟩ := feed_field_wire finalHeld incoming finalPhase failed
+  rw [finalLimits, openedLimits] at admitted
+  obtain ⟨native, terminal⟩ := field_terminal admitted
+  rw [rangeOffset, ← ordinal] at native terminal
+  refine ⟨opened.messageOffset, running, range, readSchema, ?_, ordinal.symm, rangeOffset, admitted,
+    ?_, ?_⟩
+  · simpa only [openedLimits, ← offset, reference] using replay
+  · simpa only [Position.readNext, Position.ofRunning, ordinal, reference] using native
+  · simp only [openedLimits, ← offset, ← ordinal] at eagerSuffix
+    change MixedFlat.Stream.readBatches limits.mixed (reference wire) run.fields
+      limits.mixed.observation.ipc.batches 0 0 opened.messageOffset = _ at eagerSuffix
+    rw [terminal] at eagerSuffix
+    have valid : (reference wire).wf = true := rfl
+    simp [MixedFlat.Stream.read, valid, readSchema, eagerSuffix, bind, Except.bind, Except.map]
+
+private theorem replay_pull_failure {limits : MixedFlat.Limits} {input : KBytes}
+    {fields : List MixedFlat.Field} {before final : Position} {batches : List (Published fields)}
+    {cause : MixedFlat.Stream.Events.Error}
+    (replay : Replay limits input fields before batches final)
+    (failed : final.readNext limits input fields = .error cause)
+    (acc : List (MixedFlat.Events.Batch (MixedFlat.Events.schema fields))) :
+    Arrow.Events.BatchReader.read.pull (MixedFlat.Stream.Events.reader limits)
+      (MixedFlat.Events.schema fields) (before.remaining + 1)
+      (.at input fields before.remaining before.ordinal before.rows before.offset) acc =
+        ⟨acc.reverse ++ batches.map Prod.snd, .readError cause⟩ := by
+  induction replay generalizing acc with
+  | stop position =>
+    simp [Arrow.Events.BatchReader.read.pull, MixedFlat.Stream.Events.reader,
+      Position.readNext] at failed ⊢
+    simp [failed, Except.map]
+  | @next before final decoded following read _ ih =>
+    obtain ⟨fuel, available, _⟩ := MixedFlat.Stream.Events.readNext_record read
+    have step : (MixedFlat.Stream.Events.reader limits).next
+        (.at input fields before.remaining before.ordinal before.rows before.offset) =
+        .ok (some (decoded.event, .at input fields (before.remaining - 1) (before.ordinal + 1)
+          (before.rows + decoded.record.observed.rowCount) decoded.record.range.next)) := by
+      simp [MixedFlat.Stream.Events.reader, Position.readNext] at read ⊢
+      simp [read, Except.map]
+    rw [Arrow.Events.BatchReader.read.pull, step]
+    simpa [Position.after, available, List.reverse_cons, List.append_assoc] using
+      ih failed (decoded.event :: acc)
+
+theorem field_pull_exact {limits : MixedFlat.Stream.Incremental.Limits} {wire : KBytes}
+    (run : Run limits wire) :
+    MixedFlat.Stream.Events.readAll limits.mixed (reference wire) =
+      .ok ⟨MixedFlat.Events.schema run.fields, ⟨run.batches.map Delivered.event,
+        .readError run.nativeCause⟩⟩ := by
+  obtain ⟨startOffset, _, _, schemaRead, replay, _, _, _, failed, _⟩ := field_exact run
+  have trace := replay_pull_failure replay failed []
+  simp only [Position.ofRunning, Nat.sub_zero, List.reverse_nil,
+    List.nil_append, List.map_map, Function.comp_def, Delivered.published] at trace
+  have openedInput : (MixedFlat.Stream.Events.reader limits.mixed).openInput (reference wire) =
+      .ok ⟨MixedFlat.Events.schema run.fields, .at (reference wire) run.fields
+        limits.mixed.observation.ipc.batches 0 0 startOffset⟩ := by
+    simp [MixedFlat.Stream.Events.reader, MixedFlat.Stream.Events.admit, show (reference wire).wf = true from rfl,
+      schemaRead, Except.map, Except.mapError]
+  rw [MixedFlat.Stream.Events.readAll, Arrow.Events.BatchReader.read, openedInput]
+  simp only [Except.map, trace, Run.nativeCause]
+
+theorem schedules_field_equivalent {limits : MixedFlat.Stream.Incremental.Limits} {left right : KBytes}
+    (leftWf : left.wf = true) (rightWf : right.wf = true) (octets : left.toList = right.toList)
+    (a : Run limits left) (b : Run limits right) :
+    a.ranges = b.ranges ∧ a.cause = b.cause ∧ a.trace = b.trace := by
+  have sameRef := reference_congr leftWf rightWf octets
+  have checkedA := field_exact a
+  have checkedB := field_exact b
+  rcases a with ⟨fieldsA, batchesA, ordinalA, offsetA, fieldA, faultA, runA⟩
+  rcases b with ⟨fieldsB, batchesB, ordinalB, offsetB, fieldB, faultB, runB⟩
+  obtain ⟨startA, runningA, rangeA, schemaA, replayA, _, _, _, failedA, _⟩ := checkedA
+  obtain ⟨startB, runningB, rangeB, schemaB, replayB, _, _, _, failedB, _⟩ := checkedB
+  rw [sameRef] at schemaA replayA failedA
+  obtain ⟨fieldsEq, startEq⟩ := Prod.mk.inj (Except.ok.inj (schemaA.symm.trans schemaB))
+  dsimp only at fieldsEq startEq
+  subst fieldsB
+  subst startB
+  obtain ⟨publishedEq, _, coordinates⟩ := replay_unique_at_error replayA replayB failedA failedB
+  have rangesEq := congrArg (List.map fun (item : Published fieldsA) => item.1.range) publishedEq
+  have eventsEq := congrArg (List.map fun (item : Published fieldsA) => item.2) publishedEq
+  have exact : ordinalA = ordinalB ∧ offsetA = offsetB ∧ fieldA = fieldB ∧ faultA = faultB := by
+    simpa using coordinates
+  obtain ⟨ordinalEq, offsetEq, fieldEq, faultEq⟩ := exact
+  simp only [List.map_map, Function.comp_def, Delivered.published] at rangesEq eventsEq
+  simp [Run.ranges, Run.trace, Run.cause, fieldError, rangesEq, eventsEq,
+    ordinalEq, offsetEq, fieldEq, faultEq]
+
+theorem field_no_success {limits : MixedFlat.Stream.Incremental.Limits} {left right : KBytes}
+    (leftWf : left.wf = true) (rightWf : right.wf = true) (octets : left.toList = right.toList)
+    (failed : Run limits left) (succeeded : Portable.Completed limits right) :
+    False := by
+  obtain ⟨_, _, _, _, _, _, _, _, _, immutableError⟩ := field_exact failed
+  rw [reference_congr leftWf rightWf octets] at immutableError
+  have immutableSuccess := (completed_exact succeeded).2.1
+  rw [immutableError] at immutableSuccess
+  contradiction
+
+end Silmaril.Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Field

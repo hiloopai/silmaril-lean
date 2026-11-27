@@ -72,8 +72,8 @@ private def stopsAs (limits : Incremental.Limits) (expected : Stream.Observed)
     trace.batches.reverse = (expected.batches.take ordinal).map observe ∧
     trace.terminal = some (.failed error))
 
-private def rejectsMismatch (limits : Incremental.Limits) (good damaged : KBytes)
-    (ordinal field slot : Nat) : Bool := Id.run do
+private def rejectsField (limits : Incremental.Limits) (good damaged : KBytes)
+    (ordinal field : Nat) (cause : MixedFlat.ColumnError) : Bool := Id.run do
   let .ok expected := Stream.read limits.mixed good | return false
   let some batch := expected.batches[ordinal]? | return false
   let range := batch.range
@@ -82,10 +82,11 @@ private def rejectsMismatch (limits : Incremental.Limits) (good damaged : KBytes
   let .error eager := Stream.read limits.mixed damaged | return false
   let .ok ⟨_, pulled⟩ := Stream.Events.readAll limits.mixed damaged | return false
   let .readError pullError := pulled.termination | return false
-  let fault := Stream.BatchError.decode (.field field (columnCause slot))
-  let error := mismatchError ordinal range.offset field slot
+  let fault := Stream.BatchError.decode (.field field cause)
+  let error := Field.fieldError ordinal range.offset field cause
   return decide (size = range.metadataSize ∧ eager = .batch ordinal fault ∧
-    pullError = .message ordinal range.offset fault) &&
+    pullError = .message ordinal range.offset fault ∧
+    pulled.batches.map (·.rowCount) = (expected.batches.take ordinal).map (·.observed.rowCount)) &&
     stopsAs limits expected ordinal error (singleBytes damaged) &&
     stopsAs limits expected ordinal error (uneven damaged range)
 
@@ -96,7 +97,7 @@ private def exactLimits : Incremental.Limits :=
 -- Synthetic edit to the external prefix in the pinned PyArrow third record.
 private def damagedPyArrow : KBytes := multi.write lastViewPrefix 4 0
 
-#guard rejectsMismatch exactLimits multi damagedPyArrow 2 3 0
+#guard rejectsField exactLimits multi damagedPyArrow 2 3 (columnCause 0)
 
 -- The native writer controls the layout. Locate and edit its external
 -- prefix through the admitted fourth descriptor in the original frame.
@@ -118,7 +119,41 @@ private def damagedPyArrow : KBytes := multi.write lastViewPrefix 4 0
   let some views := metadata.batch.buffers[3]? | return false
   let absolute := last.range.bodyStart + views.offset + 16 + 4
   return decide (wire.read absolute 4 = 0x1234) &&
-    rejectsMismatch limits wire (wire.write absolute 4 0) 2 1 1
+    rejectsField limits wire (wire.write absolute 4 0) 2 1 (columnCause 1)
+
+-- Synthetic edit to an inline BinaryView slot in the pinned PyArrow stream.
+-- Keep the slot's length and value intact and set its first padding octet.
+#guard Id.run do
+  let .ok expected := Stream.read exactLimits.mixed multi | return false
+  let some last := expected.batches[2]? | return false
+  let .ok metadata := MixedFlat.readMetadata exactLimits.mixed.observation.ipc
+    exactLimits.mixed.view.dataBuffers exactLimits.mixed.totalDataBuffers expected.fields
+    (last.range.metadataSlice multi) | return false
+  let some views := metadata.batch.buffers[3]? | return false
+  let slot := last.range.bodyStart + views.offset + 16
+  return decide (multi.read slot 5 = 0xff00000001 ∧ multi.read (slot + 5) 1 = 0) &&
+    rejectsField exactLimits multi (multi.write (slot + 5) 1 1) 2 1 (.view (.slot 1 .invalidPadding))
+
+-- Synthetic edit to the native Int32 validity bitmap. The final field node
+-- still declares one null. The complete preceding batches have 1 and 0 rows.
+#guard Id.run do
+  let batches : List OrderedWriter.BatchInput := [
+    ⟨1, [.int32 "i" true [some 3]]⟩,
+    ⟨0, [.int32 "i" true []]⟩,
+    ⟨2, [.int32 "i" true [some (-8), none]]⟩]
+  let fields := (batches.headD ⟨0, []⟩).fields
+  let limits : Incremental.Limits :=
+    { mixed := { observation := { ipc := { batches := 3 }, totalRows := 3, totalCells := 3 } }
+      totalDataBuffers := 0 }
+  let .ok wire := OrderedWriter.emit limits.mixed fields batches | return false
+  let .ok expected := Stream.read limits.mixed wire | return false
+  let some last := expected.batches[2]? | return false
+  let .ok metadata := MixedFlat.readMetadata limits.mixed.observation.ipc limits.mixed.view.dataBuffers
+    limits.mixed.totalDataBuffers fields (last.range.metadataSlice wire) | return false
+  let some bitmap := metadata.batch.buffers[0]? | return false
+  let absolute := last.range.bodyStart + bitmap.offset
+  return decide (bitmap.length > 0 ∧ wire.read absolute 1 = 1) &&
+    rejectsField limits wire (wire.write absolute 1 3) 2 0 (.primitive (.malformed .validityBitmap))
 
 private def budgetControl (limits : Incremental.Limits) (error : Incremental.BatchError)
     (native : Stream.BatchError) : Bool := Id.run do
