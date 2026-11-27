@@ -119,12 +119,17 @@ def schema_term(fields):
         fields.get(7, (None, True))[1]).lower() + "⟩"
 
 
-def capture(wire, schema, rows, *, codec=0):
+def snappy_block(codec, stored, size):
+    assert codec == 1
+    return pa.Codec("snappy").decompress(stored, size).to_pybytes()
+
+
+def capture(wire, schema, rows, *, codec=0, decode_block=snappy_block):
     _, leaves = SCHEMA["describe"](wire, schema, rows)
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     for (group, index), metadata, start, stop in columns(wire):
         column_codec = metadata[4][1] if codec is None else codec
-        assert column_codec in (0, 1) and metadata[4][1] == column_codec
+        assert column_codec in (0, 1, 7) and metadata[4][1] == column_codec
         (_, path), scalar, steps, repeated = leaves[index]
         group_rows = parquet.read_row_group(group).to_pylist()
         expected = [event for row in group_rows
@@ -154,8 +159,8 @@ def capture(wire, schema, rows, *, codec=0):
                 values = body[scalar_at:]
                 raw_values = fields[2][1] - scalar_at
                 assert raw_values >= 0
-                if column_codec == 1 and info.get(7, (None, True))[1]:
-                    values = pa.Codec("snappy").decompress(values, raw_values).to_pybytes()
+                if column_codec != 0 and info.get(7, (None, True))[1]:
+                    values = decode_block(column_codec, values, raw_values)
                 assert len(values) == raw_values
                 assert not rep or rep[0] == 0
                 assert rep.count(0) == rows_on_page and sum(d != len(steps) for d in defs) == nulls
@@ -163,7 +168,7 @@ def capture(wire, schema, rows, *, codec=0):
                           f"⟨{payload+rl}, {payload+scalar_at}⟩, ⟨{payload+scalar_at}, {payload+len(body)}⟩⟩))")
             else:
                 assert tag == 0
-                raw = body if column_codec == 0 else pa.Codec("snappy").decompress(body, fields[2][1]).to_pybytes()
+                raw = body if column_codec == 0 else decode_block(column_codec, body, fields[2][1])
                 assert len(raw) == fields[2][1]
                 count = fields[5][1][1][1]
                 rep, rest = CHUNK["level_section"](raw, int(repeated is not None), count)

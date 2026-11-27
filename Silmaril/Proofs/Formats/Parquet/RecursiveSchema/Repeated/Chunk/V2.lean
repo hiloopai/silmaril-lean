@@ -135,16 +135,17 @@ public theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf :
         exact .raw uncompressed same
       · contradiction
     · rename_i notRaw
-      have snappy : codec.v2 info = 1 := by
-        cases codec <;> cases flag : info.isCompressed <;>
-          simp [ColumnCodec.v2, ColumnCodec.id, ColumnCodec.payload, ScalarPage.v2Codec, Payload.Codec.id, flag] at *
+      have compressed : info.isCompressed = true := by
+        cases flag : info.isCompressed
+        · exact False.elim (notRaw (by simp [ColumnCodec.v2, ScalarPage.v2Codec, Payload.Codec.id, flag]))
+        · rfl
       split at read
       · contradiction
       · rename_i bounded
         split at read
         · contradiction
-        · obtain ⟨model, before, _, after, _⟩ := decodeSnappy_wire read
-          exact .snappy snappy model before after (by omega)
+        · obtain ⟨model, before, _, after, _⟩ := decodePayload_wire read
+          exact .compressed compressed notRaw model before after (by omega)
 
 public theorem decodeV2Page_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}

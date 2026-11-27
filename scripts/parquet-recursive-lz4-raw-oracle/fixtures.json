@@ -1,0 +1,78 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "liblz4": "ebb370ca83af193212df4dcbadcc5d87bc0de2f0",
+  "genuine_parquet": {
+    "v1": {
+      "bytes": 2330,
+      "sha256": "508dc9969609b89dad4c16a5984b9546bbc60b61c386a64e69edc5d3dfc97be6"
+    },
+    "v2": {
+      "bytes": 2304,
+      "sha256": "2a938a4104e02da1125aea83d726c2deea88b030eb807862419d7a1aa96714d8"
+    },
+    "pageless": {
+      "bytes": 2496,
+      "sha256": "320c95cb2e45a921c6bee7c29447356ed358ddd5a7904e89736ee266fc4c65aa"
+    }
+  },
+  "labeled_edits": {
+    "v1_stored_crc": {
+      "bytes": 2336,
+      "sha256": "29a702fee132740aac9ed13f11426018fa9576ac7d64601ae957a023cf025394"
+    },
+    "v1_malformed": {
+      "bytes": 2299,
+      "sha256": "8518f149ccd4fb17fb738926e1699605facf0a640ed2dca682e806794751e225"
+    },
+    "v1_wrong_decoded_extent": {
+      "bytes": 2299,
+      "sha256": "ed203393c9691d43d65e87e384160adaf2a66528ef38cc0d3a4cbeb24edea1e4"
+    },
+    "v1_framed_lz4": {
+      "bytes": 2351,
+      "sha256": "8756b2eba8615b59aea309690ab1b5eec7dbac02ac4ba33cfd80d7c6a536ccb3"
+    },
+    "v1_footer_total": {
+      "bytes": 2330,
+      "sha256": "0c058e6c571454fde78c4fdaa7b9eeae9a45965eb76d5b0707542de494c20c75"
+    },
+    "v1_legacy_id": {
+      "bytes": 2330,
+      "sha256": "937313b8966a058dbe81dfb6f81a92826562cec92ea0094da44859b2e660fc1c"
+    },
+    "v2_stored_crc": {
+      "bytes": 2310,
+      "sha256": "73e47908ab986825b7f321f8945e36ca311be10627e4960e6417649852f6da98"
+    },
+    "v2_malformed": {
+      "bytes": 2295,
+      "sha256": "6e8866a807e8f347bd41c5089e7adb77cd665a35a7aee3f072acd3b4a99f940a"
+    },
+    "v2_wrong_decoded_extent": {
+      "bytes": 2296,
+      "sha256": "6c11e578a3e26c7805624bd0003cb3006f92c969b7bac768b220c99c911f3bf2"
+    },
+    "v2_footer_total": {
+      "bytes": 2304,
+      "sha256": "0012ef0ea811a6d42c0d4aa16b5dea5736ed095b11ba9800dbb055ce0271962b"
+    },
+    "v2_legacy_id": {
+      "bytes": 2304,
+      "sha256": "ec2424df99b7b3e967997c3a21cec0f0f78768cd3e18e341ffb099c1889c3c09"
+    }
+  },
+  "lean_ipc": {
+    "v1": {
+      "bytes": 3992,
+      "sha256": "2a9f0548ca9576078713f7150cfdf8426684dcaa7ec47c39e284760778638eb7"
+    },
+    "v2": {
+      "bytes": 3992,
+      "sha256": "2a9f0548ca9576078713f7150cfdf8426684dcaa7ec47c39e284760778638eb7"
+    }
+  }
+}

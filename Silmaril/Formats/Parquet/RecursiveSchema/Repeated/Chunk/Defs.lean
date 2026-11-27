@@ -4,7 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Defs
 public import Silmaril.Formats.Parquet.ScalarPage.Defs
 
-/-! Checked unindexed PLAIN V1/V2 chunks with Snappy or identity codecs, at most one
+/-! Checked unindexed PLAIN V1/V2 chunks with UNCOMPRESSED, Snappy or LZ4_RAW, at most one
 repeated ancestor and independent bounds on slots and row starts. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -30,15 +30,17 @@ instance (chunk : Footer.ColumnChunk) : Decidable (Unindexed chunk) := by
   unfold Unindexed
   infer_instance
 
-/-- The recursive reader admits the identity and Snappy column codecs. -/
+/-- Only the identity codec and the two raw block codecs in this profile. -/
 inductive ColumnCodec where
   | uncompressed
   | snappy
+  | lz4Raw
   deriving DecidableEq, Repr
 
 def ColumnCodec.payload : ColumnCodec → Payload.Codec
   | .uncompressed => .uncompressed
   | .snappy => .snappy
+  | .lz4Raw => .lz4Raw
 
 def ColumnCodec.id (codec : ColumnCodec) : Int :=
   codec.payload.id
@@ -46,6 +48,7 @@ def ColumnCodec.id (codec : ColumnCodec) : Int :=
 def ColumnCodec.ofId : Int → Option ColumnCodec
   | 0 => some .uncompressed
   | 1 => some .snappy
+  | 7 => some .lz4Raw
   | _ => none
 
 def ColumnCodec.v2 (codec : ColumnCodec) (info : Page.DataV2) : Int :=
@@ -319,8 +322,9 @@ structure DecodedWire (leaf : Leaf) (repetitions definitions : List Nat) (suffix
     decoded.words.map Option.isSome = decoded.levels.map LevelSlot.present ∧
     decoded.words.filterMap id = original.map (RecursiveSchema.Chunk.readWord leaf.kind)
 
-def decodeSnappy (bounds : Payload.Bounds) (stored : Bytes) : Except PageCause Bytes :=
-  ((Payload.decode bounds Payload.Codec.snappy.id stored.toList).mapError .payload).map Bytes.ofList
+def decodePayload (codec : ColumnCodec) (bounds : Payload.Bounds) (stored : Bytes) :
+    Except PageCause Bytes :=
+  ((Payload.decode bounds codec.id stored.toList).mapError .payload).map Bytes.ofList
 
 def v1BodyBounds (limits : Limits) (frame : Page.Frame) : Payload.Bounds :=
   ⟨frame.value.compressedSize, limits.maxBodyBytes, frame.value.uncompressedSize, limits.maxBodyBytes, 0⟩
@@ -333,7 +337,7 @@ def readV1Body (limits : Limits) (codec : ColumnCodec) (source : Bytes) (frame :
   let stored := Page.Checksum.payloadBytes source frame
   match codec with
   | .uncompressed => return stored
-  | .snappy => decodeSnappy (v1BodyBounds limits frame) stored
+  | .snappy | .lz4Raw => decodePayload codec (v1BodyBounds limits frame) stored
 
 structure V1BodyWire (limits : Limits) (codec : ColumnCodec) (source : Bytes) (frame : Page.Frame)
     (body : Bytes) : Prop where
@@ -431,7 +435,7 @@ def v2ValueBounds (limits : Limits) (frame : Page.Frame) (info : Page.DataV2) : 
     frame.value.uncompressedSize - levels, limits.maxBodyBytes - levels, 0⟩
 
 /-- Check both extents before subtracting the original raw level prefix.
-Only the independently bounded stored value suffix enters Snappy. -/
+Only the independently bounded stored value suffix enters the codec. -/
 def readV2Suffix (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
     (frame : Page.Frame) (info : Page.DataV2) (stored : Bytes) : Except PageCause Bytes := do
   let levels := v2LevelBytes info
@@ -445,15 +449,15 @@ def readV2Suffix (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
     if frame.value.uncompressedSize > limits.maxBodyBytes then throw (.payload .outputLimit)
     let expected := (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind
     if bounds.expectedSize ≠ expected then throw (.v2SignedExtent bounds.expectedSize expected)
-    decodeSnappy bounds stored
+    decodePayload codec bounds stored
 
 inductive V2SuffixWire (limits : Limits) (codec : ColumnCodec) (frame : Page.Frame)
     (info : Page.DataV2) (stored : Bytes) : Bytes → Prop where
   | raw : codec.v2 info = 0 → stored.length = (v2ValueBounds limits frame info).expectedSize →
       V2SuffixWire limits codec frame info stored stored
-  | snappy {raw : Bytes} :
-      codec.v2 info = 1 →
-      Payload.Decodes (v2ValueBounds limits frame info).expectedSize .snappy stored.toList raw.toList →
+  | compressed {raw : Bytes} :
+      info.isCompressed = true → codec.v2 info ≠ 0 →
+      Payload.Decodes (v2ValueBounds limits frame info).expectedSize codec.payload stored.toList raw.toList →
       stored.length = (v2ValueBounds limits frame info).compressedSize →
       raw.length = (v2ValueBounds limits frame info).expectedSize →
       frame.value.uncompressedSize ≤ limits.maxBodyBytes →

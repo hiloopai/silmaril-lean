@@ -70,7 +70,7 @@ theorem readV2Levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {bytes 
     V2LevelWire limits maximum count bytes levels ∧ levels.length = count :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2_levels_wire read
 
-/-- The original value suffix is used raw or expands by the checked Snappy
+/-- The original value suffix is used raw or expands by the selected checked
 payload relation, after both header subtractions are shown in bounds. -/
 theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf}
     {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes}
