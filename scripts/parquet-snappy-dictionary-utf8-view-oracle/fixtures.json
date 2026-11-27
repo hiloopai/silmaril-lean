@@ -1,0 +1,17 @@
+{
+  "v1-absent.parquet": "1a1f98927deee948eedfb694e95b59e5f841270e4368def81723858d179caa56",
+  "v1-crc.parquet": "10d7440d3738226e69bee7e5bf9763131a310831bc186e1805117f7e1562286e",
+  "v2-absent.parquet": "df21f3ca16b9762d0a5c3dc9d3eabc4635273b716c40c8f8ca94c32b81ca95ed",
+  "v2-crc.parquet": "1f56516b5e52ac5516eb47b5713870881cf9f8ef1459004d771c7d8d8556ff7b",
+  "bad-unused.parquet": "6a711b67889cd70bd25a8c7cf7886fd83f99dfa94ba398d762c9e4b5e4d3ed3b",
+  "bad-index.parquet": "838ac0d354f41c2d1be97b696d9f4444e8f2673e4d521be7733567c95ef69ce8",
+  "bad-dictionary-crc.parquet": "ab18d61377a8e44b10f6e457aafd6c4c42cf87b9b49130eaefc5f0b76b4477f8",
+  "bad-data-crc.parquet": "b6c3d03d8aa886e72b1259e3be13eb2bdcfdbcd6393f535b0ee84bbdbdf8a004",
+  "bad-expanded-count.parquet": "ce6f9b9f3175cee525ae2415c7c7a0cee89e0ab63027729b64def346bc7f65e7",
+  "uncompressed.parquet": "99bc923b4928cb1ddb7da38775ad30aebdb202009a2de9361f600d5880cc72bb",
+  "plain.parquet": "627a79888d920404195c8798f14bef6996a91dc43e6ea59f55f05abe6860dfd1",
+  "v1-absent.arrows": "3c011cc9e4ce27fdbf303998c385b27501b3babb9be1df46319a05eb6a7c160c",
+  "v1-crc.arrows": "3c011cc9e4ce27fdbf303998c385b27501b3babb9be1df46319a05eb6a7c160c",
+  "v2-absent.arrows": "3c011cc9e4ce27fdbf303998c385b27501b3babb9be1df46319a05eb6a7c160c",
+  "v2-crc.arrows": "3c011cc9e4ce27fdbf303998c385b27501b3babb9be1df46319a05eb6a7c160c"
+}

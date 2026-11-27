@@ -70,19 +70,23 @@ def openFile (limits : Limits) (input : Bytes) (name : String) :
     Except Plain.ByteArray.File.Error (Checked name) :=
   Plain.ByteArray.File.openFile limits.file input name .optional
 
-def locateFor (profile : Profile) (limits : Limits) (leaf : Footer.SchemaElement) (group : Footer.RowGroup)
+def locateForCodec (codec : Payload.Codec) (expandedChunkCap : Nat) (profile : Profile) (limits : Limits)
+    (leaf : Footer.SchemaElement) (group : Footer.RowGroup)
     (metadata : Footer.ColumnMetadata) (footerStart : Nat) : Except FlatColumn.ColumnError Footer.Span :=
   if ¬ (metadata.pathInSchema = [leaf.name] ∧ metadata.physicalType = .byteArray ∧
       metadata.numValues = group.numRows) then .error .association
-  else if metadata.codec ≠ 0 then .error (.codec metadata.codec)
+  else if metadata.codec ≠ codec.id then .error (.codec metadata.codec)
   else if !metadata.encodings.all profile.advertised then .error .encodings
   else if metadata.indexPageOffset.isSome then .error .unsupportedOffsets
   else if metadata.totalCompressedSize > (limits.file.column.maxChunkBytes : Int) ||
-      metadata.totalUncompressedSize > (limits.file.column.maxChunkBytes : Int) then .error .chunkLimit
+      metadata.totalUncompressedSize > (expandedChunkCap : Int) then .error .chunkLimit
   else
     match Page.columnSpan footerStart metadata with
     | none => .error .bounds
     | some span => .ok span
+
+def locateFor (profile : Profile) (limits : Limits) :=
+  locateForCodec .uncompressed limits.file.column.maxChunkBytes profile limits
 
 def splitLeading : List Page.Frame → Option Page.Frame × List Page.Frame
   | frame :: rest =>
@@ -165,8 +169,8 @@ def readFramesFor (profile : Profile) (limits : Limits) (metadata : Footer.Colum
 
 /-- Frame the selected chunk from the same snapshot as the binding, then
 pass the original frames to the chunk-local reader. -/
-def readBoundGroupWith {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
-    (profile : Profile) (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩)
+def readBoundGroupWithCodec {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
+    (codec : Payload.Codec) (expandedChunkCap : Nat) (profile : Profile) (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩)
     (limits : Limits)
     (read : Footer.ColumnMetadata → Bytes → Nat → Nat → String → Nat → List Page.Frame →
       Except (FlatColumn.Error ε) (List (Option α)))
@@ -179,9 +183,17 @@ def readBoundGroupWith {snapshot : Snapshot.Checked} {name : String} {α ε : Ty
   else do
     let some column := group.columns[ordinal]? | throw (failColumn .missing)
     let metadata := column.metadata
-    let span ← (locateFor profile limits binding.leaf group metadata snapshot.footer.start).mapError failColumn
+    let span ← (locateForCodec codec expandedChunkCap profile limits binding.leaf group metadata
+      snapshot.footer.start).mapError failColumn
     let frames ← (Page.readChunk limits.file.column.framing snapshot.bytes span).mapError (failColumn ∘ .framing)
     read metadata snapshot.bytes index ordinal name rows frames
+
+def readBoundGroupWith {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
+    (profile : Profile) (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩)
+    (limits : Limits)
+    (read : Footer.ColumnMetadata → Bytes → Nat → Nat → String → Nat → List Page.Frame →
+      Except (FlatColumn.Error ε) (List (Option α))) (index : Nat) : Except (FlatColumn.Error ε) (List (Option α)) :=
+  readBoundGroupWithCodec .uncompressed limits.file.column.maxChunkBytes profile binding limits read index
 
 /-- Read the selected group from the same snapshot as its binding. Dictionary
 state is local to this chunk and publication waits for all frames to succeed. -/
@@ -237,8 +249,8 @@ def FramesWireFor (profile : Profile) (limits : Limits) (source : Bytes) (metada
     List.Forall₂ (PageWireFor profile limits source entries) data pages ∧ slots = pages.flatten ∧ slots.length = rows
 
 /-- Attach a chunk-level relation to the selected original frames. -/
-def BoundGroupWireWith {snapshot : Snapshot.Checked} {name : String} {α : Type}
-    (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩) (limits : Limits)
+def BoundGroupWireWithCodec {snapshot : Snapshot.Checked} {name : String} {α : Type}
+    (codec : Payload.Codec) (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩) (limits : Limits)
     (wire : Footer.ColumnMetadata → Bytes → Nat → List Page.Frame → List (Option α) → Prop)
     (index : Nat) (group : Footer.RowGroup) (slots : List (Option α)) : Prop :=
   ∃ column span frames,
@@ -246,10 +258,16 @@ def BoundGroupWireWith {snapshot : Snapshot.Checked} {name : String} {α : Type}
     snapshot.groupAt index = some group ∧
     group.columns[binding.columnOrdinal]? = some column ∧
     column.metadata.pathInSchema = [binding.leaf.name] ∧ column.metadata.physicalType = .byteArray ∧
-    column.metadata.numValues = group.numRows ∧ column.metadata.codec = 0 ∧
+    column.metadata.numValues = group.numRows ∧ column.metadata.codec = codec.id ∧
     Page.columnSpan snapshot.footer.start column.metadata = some span ∧
     Page.readChunk limits.file.column.framing snapshot.bytes span = .ok frames ∧
     wire column.metadata snapshot.bytes group.numRows.toNat frames slots
+
+def BoundGroupWireWith {snapshot : Snapshot.Checked} {name : String} {α : Type}
+    (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩) (limits : Limits)
+    (wire : Footer.ColumnMetadata → Bytes → Nat → List Page.Frame → List (Option α) → Prop)
+    (index : Nat) (group : Footer.RowGroup) (slots : List (Option α)) : Prop :=
+  BoundGroupWireWithCodec .uncompressed binding limits wire index group slots
 
 def BoundGroupWireFor (profile : Profile) {snapshot : Snapshot.Checked} {name : String}
     (binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩) (limits : Limits)

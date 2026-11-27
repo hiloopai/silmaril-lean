@@ -27,7 +27,7 @@ private theorem entry_exact {entry : Bytes × Nat} {text : String}
     rfl
   · simp [decodeEntry, String.fromUTF8?, valid] at h
 
-private theorem entries_exact {raw : List Bytes} {text : List String}
+theorem decodeEntries_exact {raw : List Bytes} {text : List String}
     (h : raw.zipIdx.mapM decodeEntry = .ok text) : text.map octets = raw := by
   have reads := (List.mapM_eq_ok_iff_forall₂.mp h).flip.imp (fun _ _ h => entry_exact h)
   have same : List.Forall₂ (· = ·) (text.map octets) (raw.zipIdx.map Prod.fst) :=
@@ -48,7 +48,7 @@ theorem readDictionary_wire {limits : Utf8.Dictionary.Limits} {metadata : Footer
           Pure.pure, Except.pure] using read
       have exactBytes : text.map octets = raw := by
         apply Array.toList_inj.mp
-        simp [← output, entries_exact strict]
+        simp [← output, decodeEntries_exact strict]
       unfold DictionaryWire
       rw [exactBytes]
       exact ByteArrayFallback.readDictionary_wire physical

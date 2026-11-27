@@ -178,6 +178,52 @@ lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.Check
 python3 scripts/parquet-fallback-utf8-view-oracle/check.py "$(mktemp -d)"
 ```
 
+## Opt-in Snappy dictionary STRING
+
+`Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.convert` selects one
+named flat optional STRING/UTF8 BYTE_ARRAY leaf. Its codec-1 chunks
+require one leading PLAIN dictionary (tag 0) and only RLE_DICTIONARY
+data pages (tag 8). V1 expands the complete body and reads RLE levels.
+V2 retains the original raw definition levels and lets the original
+compression flag select Snappy or raw decoding of the index suffix.
+The profile verifies any CRC over the entire stored body before expansion,
+including the raw levels in V2. PLAIN fallback and legacy dictionary
+tags are separate profiles.
+
+The selected chunk uses separate stored and expanded caps. The stored
+extent is the sum of original header and stored body lengths. The
+expanded extent sums those same headers and declared expanded bodies,
+checks the expanded cap before decoding, and requires the exact footer
+size. The dictionary also has entry-count, stored-byte, expanded-byte
+and individual value limits. The read validates every dictionary entry
+as strict UTF-8, including unused entries.
+
+`readGroup_wire` retains the original chunk and exact byte totals, a
+CRC-checked dictionary that round-trips all entries, and original data
+frames with exact level masks and index streams. `convert_readback`
+preserves the original nullable octets and group boundaries through
+native IPC EOS. The first source failure preserves the original indexed
+cause before writer limits are applied.
+
+PyArrow 26.0.1 produces genuine V1 and V2 Snappy dictionary files with
+and without CRC, and both V2 compression flags occur. Thrift 0.25.0
+checks the stored and expanded chunk totals, CRCs, and original page
+headers. Independent decoding compares all `[257, 129]` nullable slots
+with Lean's native Utf8View batches, including distinct composed and
+decomposed strings and empty values. The edits exercise invalid unused
+UTF-8, out-of-range indices, the original dictionary and data CRC
+errors, and a false expanded footer size. Separate controls check both
+page and chunk caps before IPC admission.
+
+[Definitions](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Dictionary/Snappy/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Dictionary/Snappy/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-snappy-dictionary-utf8-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.Checks
+python3 scripts/parquet-snappy-dictionary-utf8-view-oracle/check.py "$(mktemp -d)"
+```
+
 ## Native Utf8View to Parquet STRING
 
 `Parquet.Plain.ByteArray.Utf8.FromIpc.convert` reads one explicitly

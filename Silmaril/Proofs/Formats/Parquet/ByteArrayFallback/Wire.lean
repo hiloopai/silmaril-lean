@@ -38,12 +38,13 @@ private theorem mapM_order {α β ε : Type} (read : α → Except ε β)
 
 variable {profile : Profile}
 
-private theorem locate_wire {limits : Limits} {leaf : Footer.SchemaElement} {group : Footer.RowGroup}
+private theorem locate_wire {codec : Payload.Codec} {expandedChunkCap : Nat} {limits : Limits} {leaf : Footer.SchemaElement} {group : Footer.RowGroup}
     {metadata : Footer.ColumnMetadata} {footerStart : Nat} {span : Footer.Span}
-    (h : locateFor profile limits leaf group metadata footerStart = .ok span) :
+    (h : locateForCodec codec expandedChunkCap profile limits leaf group metadata footerStart = .ok span) :
     (metadata.pathInSchema = [leaf.name] ∧ metadata.physicalType = .byteArray ∧ metadata.numValues = group.numRows) ∧
-    metadata.codec = 0 ∧ Page.columnSpan footerStart metadata = some span := by
-  unfold locateFor at h
+    metadata.codec = codec.id ∧ Page.columnSpan footerStart metadata = some span ∧
+    metadata.totalCompressedSize ≤ (limits.file.column.maxChunkBytes : Int) := by
+  unfold locateForCodec at h
   split at h
   · contradiction
   · rename_i matched
@@ -53,11 +54,16 @@ private theorem locate_wire {limits : Limits} {leaf : Footer.SchemaElement} {gro
       split at h <;> try contradiction
       split at h <;> try contradiction
       split at h <;> try contradiction
+      rename_i budget
       split at h
       · contradiction
       · rename_i selected
         cases h
-        exact ⟨Decidable.not_not.mp matched, Decidable.not_not.mp codec, selected⟩
+        have fits : ¬ ((limits.file.column.maxChunkBytes : Int) < metadata.totalCompressedSize ∨
+            (expandedChunkCap : Int) < metadata.totalUncompressedSize) := by
+          simpa only [Bool.or_eq_true, decide_eq_true_eq] using budget
+        exact ⟨Decidable.not_not.mp matched, Decidable.not_not.mp codec, selected,
+          Int.le_of_not_gt (fun oversize => fits (.inl oversize))⟩
 
 private theorem bodyLimits_ok {maxBytes : Nat} {header : Page.Header}
     (h : bodyLimits maxBytes header = .ok ()) :
@@ -236,14 +242,15 @@ theorem readFramesWith_wire {δ α ε : Type}
     exact ⟨dictionary, data, entries, pages, order, Decidable.not_not.mp (fun e => offsets (.inl e)),
       Decidable.not_not.mp (fun e => offsets (.inr e)), Decidable.not_not.mp counted, leading, ordered, rfl⟩
 
-theorem readBoundGroupWith_wire {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
+theorem readBoundGroupWithCodec_wire {codec : Payload.Codec} {expandedChunkCap : Nat} {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
     {binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩} {limits : Limits}
     {read : Footer.ColumnMetadata → Bytes → Nat → Nat → String → Nat → List Page.Frame →
       Except (FlatColumn.Error ε) (List (Option α))}
-    {index : Nat} {slots : List (Option α)} (h : readBoundGroupWith profile binding limits read index = .ok slots) :
-    ∃ group, BoundGroupWireWith binding limits (fun metadata source rows frames output =>
+    {index : Nat} {slots : List (Option α)} (h : readBoundGroupWithCodec codec expandedChunkCap profile binding limits read index = .ok slots) :
+    ∃ group, BoundGroupWireWithCodec codec binding limits (fun metadata source rows frames output =>
+      metadata.totalCompressedSize ≤ (limits.file.column.maxChunkBytes : Int) ∧
       read metadata source index binding.columnOrdinal name rows frames = .ok output) index group slots := by
-  unfold readBoundGroupWith at h
+  unfold readBoundGroupWithCodec at h
   split at h <;> try contradiction
   rename_i group selected
   dsimp only at h
@@ -252,9 +259,20 @@ theorem readBoundGroupWith_wire {snapshot : Snapshot.Checked} {name : String} {�
   rename_i column matched
   obtain ⟨span, located, h⟩ := bind_ok h
   obtain ⟨frames, framed, decoded⟩ := bind_ok h
-  obtain ⟨⟨path, physical, count⟩, codec, bounded⟩ := locate_wire (mapError_ok located)
+  obtain ⟨⟨path, physical, count⟩, actualCodec, bounded, stored⟩ := locate_wire (mapError_ok located)
   exact ⟨group, column, span, frames, binding.leafAt, selected, matched, path,
-    physical, count, codec, bounded, mapError_ok framed, decoded⟩
+    physical, count, actualCodec, bounded, mapError_ok framed, stored, decoded⟩
+
+theorem readBoundGroupWith_wire {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
+    {binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩} {limits : Limits}
+    {read : Footer.ColumnMetadata → Bytes → Nat → Nat → String → Nat → List Page.Frame →
+      Except (FlatColumn.Error ε) (List (Option α))}
+    {index : Nat} {slots : List (Option α)} (h : readBoundGroupWith profile binding limits read index = .ok slots) :
+    ∃ group, BoundGroupWireWith binding limits (fun metadata source rows frames output =>
+      read metadata source index binding.columnOrdinal name rows frames = .ok output) index group slots := by
+  obtain ⟨group, column, span, frames, leaf, selected, matched, path, physical, count, codec, bounded,
+    framed, _, decoded⟩ := readBoundGroupWithCodec_wire h
+  exact ⟨group, column, span, frames, leaf, selected, matched, path, physical, count, codec, bounded, framed, decoded⟩
 
 theorem readBoundGroup_wire {snapshot : Snapshot.Checked} {name : String}
     {binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩} {limits : Limits}

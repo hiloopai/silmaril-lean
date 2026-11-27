@@ -71,6 +71,18 @@ theorem readFramesWith_wire {δ α ε : Type}
       List.Forall₂ (fun frame page => decodePage entries frame = .ok page) data pages ∧ slots = pages.flatten :=
   Proofs.Formats.Parquet.ByteArrayFallback.readFramesWith_wire h
 
+/-- The explicit codec walk preserves the selected original frames and the
+stored chunk cap before running the client decoder. -/
+theorem readBoundGroupWithCodec_wire {profile : Profile} {codec : Payload.Codec} {expandedChunkCap : Nat} {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
+    {binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩} {limits : Limits}
+    {read : Footer.ColumnMetadata → Bytes → Nat → Nat → String → Nat → List Page.Frame →
+      Except (FlatColumn.Error ε) (List (Option α))}
+    {index : Nat} {slots : List (Option α)} (h : readBoundGroupWithCodec codec expandedChunkCap profile binding limits read index = .ok slots) :
+    ∃ group, BoundGroupWireWithCodec codec binding limits (fun metadata source rows frames output =>
+      metadata.totalCompressedSize ≤ (limits.file.column.maxChunkBytes : Int) ∧
+      read metadata source index binding.columnOrdinal name rows frames = .ok output) index group slots :=
+  Proofs.Formats.Parquet.ByteArrayFallback.readBoundGroupWithCodec_wire h
+
 /-- The callback consumes the original selected frames from the bound snapshot. -/
 theorem readBoundGroupWith_wire {profile : Profile} {snapshot : Snapshot.Checked} {name : String} {α ε : Type}
     {binding : FlatColumn.Binding snapshot ⟨name, .byteArray, .optional⟩} {limits : Limits}

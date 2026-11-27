@@ -15,6 +15,11 @@ theorem decodeEntry_invalid {entry : Bytes} {ordinal : Nat} (invalid : ¬entry.d
     decodeEntry (entry, ordinal) = .error (.invalidEntry ordinal) := by
   simp [decodeEntry, String.fromUTF8?, invalid]
 
+/-- Strict traversal of the complete dictionary preserves every original octet. -/
+theorem decodeEntries_exact {raw : List Bytes} {text : List String}
+    (decoded : raw.zipIdx.mapM decodeEntry = .ok text) : text.map octets = raw :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.decodeEntries_exact decoded
+
 /-- Every typed entry round-trips to the original PLAIN dictionary, even when unused. -/
 theorem readDictionary_wire {limits : Limits} {metadata : Footer.ColumnMetadata} {source : Bytes}
     {frame : Page.Frame} {text : Array String}
