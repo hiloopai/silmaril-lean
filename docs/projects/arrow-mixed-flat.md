@@ -576,3 +576,38 @@ PyArrow streams, including a late typed failure and late truncation.
 make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Axioms'
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Ordered writer and incremental schedules
+
+`MixedFlat.Stream.Incremental.Portable.schedules_equivalent` compares
+two successful schedules under the same explicit incremental limits.
+For well-formed carriers with identical octets, it gives equal final
+offsets, absolute RecordBatch ranges and keep-all projected traces.
+The projection can select, reorder, repeat or omit fields. Zero-width
+rows and explicit empty batches remain separately observable.
+
+`Portable.Completed` records actual successful feed calls and finish.
+The laws use a packed immutable reference of those same octets and
+the existing eager and pull agreement laws. `Portable.writer_readback`
+relates any such schedule to an ordered writer result after
+`checkWriterReadback` confirms the expected fields and batch observations
+on that reference. This offline check compares the same bytes in the
+proof representation. The live cursor continues to consume fragments
+and apply its configured stream-wide caps.
+
+One-byte and uneven schedules exercise both the checked writer and
+independently emitted PyArrow 26.0.1 streams. Three BinaryView positions
+use count vectors `[1, 0, 1]`, `[0, 1, 0]`, and `[0, 0, 0]`. The
+projection `[3, 0, 3, 1]` retains the repeated value and nullable
+octets in row order. The separate zero-width stream has batch row
+counts `[3, 0]`. The mixed fixture succeeds at the stream-wide
+data-buffer cap of three and fails at the second batch with a cap of two.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Portable/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Portable/Thms.lean) ·
+[Lean guards](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Portable/Examples.lean)
+
+```sh
+make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Portable.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Portable.Axioms'
+python3 -I scripts/arrow-mixed-flat/ordered_incremental_fixtures.py
+python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
+```
