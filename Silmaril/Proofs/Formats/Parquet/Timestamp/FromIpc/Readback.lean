@@ -66,7 +66,7 @@ theorem readSource_exact {ipc : Arrow.Limits} {limits : Limits} {input : KBytes}
       exact ⟨by simp [Arrow.TimestampStream.read, wf, mapError_ok schema, mapError_ok batchRead,
         Bind.bind, Except.bind, Pure.pure, Except.pure], admitted⟩
 
-private theorem certify_sound {limits : Limits} {source : Source} {wire : Bytes}
+theorem certify_sound {limits : Limits} {source : Source} {wire : Bytes}
     (certified : Internal.certify limits source wire = .ok ()) :
     ∃ bound groups, Leaf.openLeaf limits.snapshot wire 1 = .ok bound ∧
       Internal.readGroups limits.leaf bound = .ok groups ∧ Internal.ReadbackMatches source bound groups := by
