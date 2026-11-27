@@ -38,7 +38,7 @@ theorem readGroup_frame_error {checked : Checked} {ordinal : Nat}
     (selected : checked.frameGroup ordinal = .ok framed) (single : framed.frames = [frame])
     (failed : readFrame checked framed frame = .error cause) :
     readGroup checked ordinal = .error (.frame 0 frame.header.start cause) := by
-  simp [readGroup, selected, single, failed, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readGroupUsing, selected, single, failed, Except.mapError, Bind.bind, Except.bind]
 
 /-- Every decoded event has its exact required-container raw slot triple. -/
 theorem readEvent_wire {entry : Triple} {event : Event}
@@ -51,6 +51,14 @@ theorem decodeSections_wire {limits : ListPage.Limits} {slots : Nat}
     (h : decodeSections limits slots repetition definition scalars = .ok events) :
     SectionsWire slots repetition definition scalars events :=
   Proofs.Formats.Parquet.ListFile.RequiredContainer.decodeSections_wire h
+
+/-- Required-container level events reconstruct only present parent lists. -/
+theorem reconstruct_present {slots : Nat} {repetition definition scalars : Bytes}
+    {events : List Event} {rows : List Row}
+    (sections : SectionsWire slots repetition definition scalars events)
+    (assembled : ListPage.reconstruct events = .ok rows) :
+    ∀ row ∈ rows, row.isSome = true :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.reconstruct_present sections assembled
 
 /-- The original V1 extents are consumed in serialized order. -/
 theorem decodeEvents_wire {limits : ListPage.Limits} {slots : Nat} {body : Bytes}
@@ -84,5 +92,22 @@ theorem convert_first_error {limits : Limits} {source : Bytes} {checked : Checke
 theorem convert_readback {limits : Limits} {source : Bytes} {wire : KBytes}
     (h : (convert limits source).wire = .ok wire) : Readback limits source wire :=
   Proofs.Formats.Parquet.ListFile.RequiredContainer.convert_readback h
+
+theorem convertUsing_first_error {error : Type} {read : GroupReader error} {limits : Limits} {source : Bytes} {checked : Checked}
+    {before after : List Nat} {ordinal : Nat} {groups : List (List Row)} {cause : error}
+    (opened : openFile limits.parquet source = .ok checked)
+    (split : List.range checked.snapshot.groupCount = before ++ ordinal :: after)
+    (earlier : before.mapM (read checked) = .ok groups)
+    (failed : read checked ordinal = .error cause) :
+    (convertUsing read limits source).trace = .ok ⟨schema checked,
+      ⟨groups.map (AlignedColumns.ofRows ∘ rowsOf checked), .readError (.groupFailure ordinal cause)⟩⟩ ∧
+    (convertUsing read limits source).wire = .error (.source (.groupFailure ordinal cause)) :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.convertUsing_first_error opened split earlier failed
+
+theorem convertUsing_readback {error : Type} {read : GroupReader error} {witness : GroupWitness}
+    (sound : ∀ {checked ordinal rows}, read checked ordinal = .ok rows → witness checked ordinal rows)
+    {limits : Limits} {source : Bytes} {wire : KBytes}
+    (h : (convertUsing read limits source).wire = .ok wire) : ReadbackUsing read witness limits source wire :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.convertUsing_readback sound h
 
 end Silmaril.Formats.Parquet.ListFile.RequiredContainer

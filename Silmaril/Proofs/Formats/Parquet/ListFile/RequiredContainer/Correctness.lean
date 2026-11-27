@@ -104,15 +104,22 @@ public theorem decodeEvents_wire {limits : ListPage.Limits} {slots : Nat} {body 
         second.scalars, repWidth, defWidth, repBytes, defBytes,
         by simpa [fromRest, List.append_assoc] using fromBody, decodeSections_wire h⟩
 
-private theorem noNullEvent {limits : ListPage.Limits} {slots : Nat} {body : Bytes}
-    {events : List Event} (wire : EventsWire limits slots body events) :
-    Event.nullList ∉ events := by
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, sections⟩ := wire.data
+public theorem reconstruct_present {slots : Nat} {repetition definition scalars : Bytes}
+    {events : List Event} {rows : List Row}
+    (sections : SectionsWire slots repetition definition scalars events)
+    (assembled : ListPage.reconstruct events = .ok rows) :
+    ∀ row ∈ rows, row.isSome = true := by
   obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, ordered⟩ := sections.data
-  intro member
-  have invalid : none ∈ events.map eventWire := List.mem_map.mpr ⟨.nullList, member, rfl⟩
-  rw [ordered] at invalid
-  simp at invalid
+  intro row member
+  cases row with
+  | some children => rfl
+  | none =>
+    have absent : Event.nullList ∈ events := by
+      rw [← ListPage.reconstruct_wire assembled]
+      exact List.mem_flatMap.mpr ⟨none, member, by simp [ListPage.rowEvents]⟩
+    have invalid : none ∈ events.map eventWire := List.mem_map.mpr ⟨.nullList, absent, rfl⟩
+    rw [ordered] at invalid
+    simp at invalid
 
 public theorem readFrame_wire {checked : Checked} {framed : ListFile.FramedGroup} {frame : Page.Frame}
     {rows : List Row} (h : readFrame checked framed frame = .ok rows) : FrameWire checked framed frame rows := by
@@ -147,20 +154,13 @@ public theorem readFrame_wire {checked : Checked} {framed : ListFile.FramedGroup
           obtain rfl := Except.ok.inj h
           have order := ListPage.reconstruct_wire assembled
           have wire := decodeEvents_wire decoded
-          refine ⟨?_, body, info, sliced, ListPage.checkV1_wire header, not_not.mp slots,
-            Nat.le_of_not_gt rowCap, not_not.mp count, order ▸ wire⟩
-          intro row member
-          cases row with
-          | some children => rfl
-          | none =>
-            have absent : Event.nullList ∈ events := by
-              rw [← order]
-              exact List.mem_flatMap.mpr ⟨none, member, by simp [ListPage.rowEvents]⟩
-            exact (noNullEvent wire absent).elim
+          obtain ⟨_, _, _, _, _, _, _, _, _, _, sections⟩ := wire.data
+          exact ⟨reconstruct_present sections assembled, body, info, sliced, ListPage.checkV1_wire header,
+            not_not.mp slots, Nat.le_of_not_gt rowCap, not_not.mp count, order ▸ wire⟩
 
 public theorem readGroup_wire {checked : Checked} {ordinal : Nat} {rows : List Row}
     (h : readGroup checked ordinal = .ok rows) : GroupWire checked ordinal rows := by
-  unfold readGroup at h
+  unfold readGroup readGroupUsing at h
   cases selected : checked.frameGroup ordinal with
   | error err => simp [selected, Except.mapError, Bind.bind, Except.bind] at h
   | ok framed =>
@@ -174,78 +174,82 @@ public theorem readGroup_wire {checked : Checked} {ordinal : Nat} {rows : List R
         exact ⟨framed, frame, ListFile.frameGroup_wire selected, single, readFrame_wire decoded⟩
     · contradiction
 
-private theorem denote_prefix {checked : Checked} {before after : List Nat} {groups : List (List Row)}
-    (h : before.mapM (readGroup checked) = .ok groups) :
-    Reader.denoteGroups (readAt checked) (before ++ after) =
-      let suffix := Reader.denoteGroups (readAt checked) after
+private theorem denote_prefix {error : Type} {read : GroupReader error} {checked : Checked} {before after : List Nat} {groups : List (List Row)}
+    (h : before.mapM (read checked) = .ok groups) :
+    Reader.denoteGroups (readAtUsing read checked) (before ++ after) =
+      let suffix := Reader.denoteGroups (readAtUsing read checked) after
       (groups.map (rowsOf checked) ++ suffix.1, suffix.2) := by
   induction before generalizing groups with
   | nil => cases h; rfl
   | cons ordinal rest ih =>
-    cases decoded : readGroup checked ordinal with
+    cases decoded : read checked ordinal with
     | error err => simp [List.mapM_cons, decoded, Bind.bind, Except.bind] at h
     | ok rows =>
-      cases reads : rest.mapM (readGroup checked) with
+      cases reads : rest.mapM (read checked) with
       | error err => simp [List.mapM_cons, decoded, reads, Bind.bind, Except.bind] at h
       | ok earlier =>
         simp [List.mapM_cons, decoded, reads, Bind.bind, Except.bind, Pure.pure, Except.pure] at h
         subst groups
-        simp [Reader.denoteGroups, readAt, decoded, Except.map, Except.mapError, ih reads]
+        simp [Reader.denoteGroups, readAtUsing, decoded, Except.map, Except.mapError, ih reads]
 
-public theorem convert_first_error {limits : Limits} {source : Bytes} {checked : Checked}
-    {before after : List Nat} {ordinal : Nat} {groups : List (List Row)} {cause : GroupError}
+public theorem convertUsing_first_error {error : Type} {read : GroupReader error} {limits : Limits} {source : Bytes} {checked : Checked}
+    {before after : List Nat} {ordinal : Nat} {groups : List (List Row)} {cause : error}
     (opened : openFile limits.parquet source = .ok checked)
     (split : List.range checked.snapshot.groupCount = before ++ ordinal :: after)
-    (earlier : before.mapM (readGroup checked) = .ok groups)
-    (failed : readGroup checked ordinal = .error cause) :
-    (convert limits source).trace = .ok ⟨schema checked,
+    (earlier : before.mapM (read checked) = .ok groups)
+    (failed : read checked ordinal = .error cause) :
+    (convertUsing read limits source).trace = .ok ⟨schema checked,
       ⟨groups.map (AlignedColumns.ofRows ∘ rowsOf checked), .readError (.groupFailure ordinal cause)⟩⟩ ∧
-    (convert limits source).wire = .error (.source (.groupFailure ordinal cause)) := by
-  simp [convert, opened, split, denote_prefix earlier, Reader.denoteGroups, readAt, failed, writeBatches,
+    (convertUsing read limits source).wire = .error (.source (.groupFailure ordinal cause)) := by
+  simp [convertUsing, opened, split, denote_prefix earlier, Reader.denoteGroups, readAtUsing, failed, writeBatchesUsing,
     Except.map, Except.mapError, List.map_map]
 
-private theorem completed {checked : Checked} {indices : List Nat}
-    (ended : (Reader.denoteGroups (readAt checked) indices).2 = .eos) :
-    ∃ groups, indices.mapM (readGroup checked) = .ok groups ∧
-      List.Forall₂ (GroupWire checked) indices groups ∧
-      (Reader.denoteGroups (readAt checked) indices).1 = groups.map (rowsOf checked) := by
+private theorem completed {error : Type} {read : GroupReader error} {witness : GroupWitness}
+    (sound : ∀ {checked ordinal rows}, read checked ordinal = .ok rows → witness checked ordinal rows)
+    {checked : Checked} {indices : List Nat}
+    (ended : (Reader.denoteGroups (readAtUsing read checked) indices).2 = .eos) :
+    ∃ groups, indices.mapM (read checked) = .ok groups ∧
+      List.Forall₂ (witness checked) indices groups ∧
+      (Reader.denoteGroups (readAtUsing read checked) indices).1 = groups.map (rowsOf checked) := by
   induction indices with
   | nil => exact ⟨[], rfl, .nil, rfl⟩
   | cons ordinal rest ih =>
     rw [Reader.denoteGroups] at ended
-    cases decoded : readGroup checked ordinal with
-    | error err => simp [readAt, decoded, Except.map, Except.mapError] at ended
+    cases decoded : read checked ordinal with
+    | error err => simp [readAtUsing, decoded, Except.map, Except.mapError] at ended
     | ok rows =>
-      have tail : (Reader.denoteGroups (readAt checked) rest).2 = .eos := by
-        simpa [readAt, decoded, Except.map, Except.mapError] using ended
+      have tail : (Reader.denoteGroups (readAtUsing read checked) rest).2 = .eos := by
+        simpa [readAtUsing, decoded, Except.map, Except.mapError] using ended
       obtain ⟨groups, reads, original, ordered⟩ := ih tail
-      refine ⟨rows :: groups, ?_, .cons (readGroup_wire decoded) original, ?_⟩
+      refine ⟨rows :: groups, ?_, .cons (sound decoded) original, ?_⟩
       · simp [List.mapM_cons, decoded, reads, Bind.bind, Except.bind, Pure.pure, Except.pure]
-      · simp [Reader.denoteGroups, readAt, decoded, Except.map, Except.mapError, ordered]
+      · simp [Reader.denoteGroups, readAtUsing, decoded, Except.map, Except.mapError, ordered]
 
 private theorem rows_project (checked : Checked) (groups : List (List Row)) :
     (groups.map fun rows => (AlignedColumns.ofRows (rowsOf checked rows)).values (0 : Fin 1)) = groups := by
   simp [List.map_map, Function.comp_def, AlignedColumns.ofRows, rowsOf]
 
-public theorem convert_readback {limits : Limits} {source : Bytes} {wire : KBytes}
-    (h : (convert limits source).wire = .ok wire) : Readback limits source wire := by
+public theorem convertUsing_readback {error : Type} {read : GroupReader error} {witness : GroupWitness}
+    (sound : ∀ {checked ordinal rows}, read checked ordinal = .ok rows → witness checked ordinal rows)
+    {limits : Limits} {source : Bytes} {wire : KBytes}
+    (h : (convertUsing read limits source).wire = .ok wire) : ReadbackUsing read witness limits source wire := by
   cases opened : openFile limits.parquet source with
-  | error err => simp [convert, opened] at h
+  | error err => simp [convertUsing, opened] at h
   | ok checked =>
-    let reference := Reader.denoteGroups (readAt checked) (List.range checked.snapshot.groupCount)
-    simp only [convert, opened] at h
-    change writeBatches limits.ipc checked (reference.1.map AlignedColumns.ofRows) reference.2 = .ok wire at h
+    let reference := Reader.denoteGroups (readAtUsing read checked) (List.range checked.snapshot.groupCount)
+    simp only [convertUsing, opened] at h
+    change writeBatchesUsing limits.ipc checked (reference.1.map AlignedColumns.ofRows) reference.2 = .ok wire at h
     have ended : reference.2 = .eos := by
-      cases result : reference.2 <;> simp_all [writeBatches]
-    obtain ⟨groups, reads, original, ordered⟩ := completed ended
-    have trace : (convert limits source).trace = .ok ⟨schema checked,
+      cases result : reference.2 <;> simp_all [writeBatchesUsing]
+    obtain ⟨groups, reads, original, ordered⟩ := completed sound ended
+    have trace : (convertUsing read limits source).trace = .ok ⟨schema checked,
         ⟨groups.map (AlignedColumns.ofRows ∘ rowsOf checked), .eos⟩⟩ := by
-      simp only [convert, opened]
+      simp only [convertUsing, opened]
       change (Except.ok ⟨schema checked, ⟨reference.1.map AlignedColumns.ofRows, reference.2⟩⟩ :
-        Arrow.Events.EventStream String Cell SourceError) = _
+        Arrow.Events.EventStream String Cell (SourceError error)) = _
       rw [ended, ordered, List.map_map]
     rw [ended, ordered] at h
-    unfold writeBatches at h
+    unfold writeBatchesUsing at h
     simp only [List.map_map] at h
     change (Arrow.ListInt32.Stream.Writer.emitFor false limits.ipc (fieldOf checked)
       (groups.map fun rows => (AlignedColumns.ofRows (rowsOf checked rows)).values (0 : Fin 1))).mapError
@@ -258,5 +262,20 @@ public theorem convert_readback {limits : Limits} {source : Bytes} {wire : KByte
       Arrow.ListInt32.Stream.Writer.emitFor_readback written
     exact ⟨checked, groups, decoded, size, opened, ListFile.openFileFor_wire opened,
       reads, original, trace, native, agrees, wf, envelope, descriptor, batches, parents⟩
+
+public theorem convert_first_error {limits : Limits} {source : Bytes} {checked : Checked}
+    {before after : List Nat} {ordinal : Nat} {groups : List (List Row)} {cause : GroupError}
+    (opened : openFile limits.parquet source = .ok checked)
+    (split : List.range checked.snapshot.groupCount = before ++ ordinal :: after)
+    (earlier : before.mapM (readGroup checked) = .ok groups)
+    (failed : readGroup checked ordinal = .error cause) :
+    (convert limits source).trace = .ok ⟨schema checked,
+      ⟨groups.map (AlignedColumns.ofRows ∘ rowsOf checked), .readError (.groupFailure ordinal cause)⟩⟩ ∧
+    (convert limits source).wire = .error (.source (.groupFailure ordinal cause)) :=
+  convertUsing_first_error opened split earlier failed
+
+public theorem convert_readback {limits : Limits} {source : Bytes} {wire : KBytes}
+    (h : (convert limits source).wire = .ok wire) : Readback limits source wire :=
+  convertUsing_readback readGroup_wire h
 
 end Silmaril.Proofs.Formats.Parquet.ListFile.RequiredContainer

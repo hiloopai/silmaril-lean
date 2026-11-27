@@ -94,10 +94,19 @@ inductive GroupError where
   | frame (ordinal offset : Nat) (cause : ListFile.ReadError)
   deriving DecidableEq, Repr
 
-def readGroup (checked : Checked) (ordinal : Nat) : Except GroupError (List Row) := do
-  let framed ← (checked.frameGroup ordinal).mapError .framing
-  let [frame] := framed.frames | throw (.framing .pageCount)
-  (readFrame checked framed frame).mapError (.frame 0 frame.header.start)
+abbrev GroupReader (error : Type) := Checked → Nat → Except error (List Row)
+
+/-- Delegate the original singleton frame after checked local chunk admission. -/
+def readGroupUsing {error : Type} (framingError : ListFile.ReadError → error)
+    (read : Checked → FramedGroup → Page.Frame → Except error (List Row)) : GroupReader error :=
+  fun checked ordinal => do
+    let framed ← (checked.frameGroup ordinal).mapError framingError
+    let [frame] := framed.frames | throw (framingError .pageCount)
+    read checked framed frame
+
+def readGroup : GroupReader GroupError :=
+  readGroupUsing .framing fun checked framed frame =>
+    (readFrame checked framed frame).mapError (.frame 0 frame.header.start)
 
 structure FrameWire (checked : Checked) (framed : FramedGroup) (frame : Page.Frame) (rows : List Row) : Prop where
   parents : ∀ row ∈ rows, row.isSome = true
@@ -125,57 +134,65 @@ abbrev schema (checked : Checked) : Scan.Schema String Kind :=
 def rowsOf (checked : Checked) (slots : List Row) : Reader.RowGroup (schema checked) Cell :=
   slots.map fun slot _ => slot
 
-inductive SourceError where
+inductive SourceError (error : Type := GroupError) where
   | openFailure (cause : ListFile.OpenError)
-  | groupFailure (ordinal : Nat) (cause : GroupError)
+  | groupFailure (ordinal : Nat) (cause : error)
   deriving DecidableEq, Repr
 
-def readAt (checked : Checked) (index : Nat) :
-    Except SourceError (Reader.RowGroup (schema checked) Cell) :=
-  ((readGroup checked index).mapError (.groupFailure index)).map (rowsOf checked)
+def readAtUsing {error : Type} (read : GroupReader error) (checked : Checked) (index : Nat) :
+    Except (SourceError error) (Reader.RowGroup (schema checked) Cell) :=
+  ((read checked index).mapError (.groupFailure index)).map (rowsOf checked)
+
+def readAt := readAtUsing readGroup
 
 structure Limits where
   parquet : ListFile.Limits := {}
   ipc : Arrow.ListInt32.Stream.Limits := {}
 
-inductive Error where
-  | source (cause : SourceError)
+inductive Error (error : Type := GroupError) where
+  | source (cause : SourceError error)
   | closed
   | writer (cause : Arrow.ListInt32.Stream.Writer.Error)
   deriving DecidableEq, Repr
 
-structure Result where
-  trace : Arrow.Events.EventStream String Cell SourceError
-  wire : Except Error KBytes
+structure Result (error : Type := GroupError) where
+  trace : Arrow.Events.EventStream String Cell (SourceError error)
+  wire : Except (Error error) KBytes
 
 def fieldOf (checked : Checked) : Arrow.ListInt32.Field :=
   ⟨checked.shape.outer.name, checked.shape.element.name⟩
 
-def writeBatches (limits : Arrow.ListInt32.Stream.Limits) (checked : Checked)
+def writeBatchesUsing {error : Type} (limits : Arrow.ListInt32.Stream.Limits) (checked : Checked)
     (batches : List (Arrow.Events.Batch (schema checked) Cell)) :
-    Arrow.Events.Termination SourceError → Except Error KBytes
+    Arrow.Events.Termination (SourceError error) → Except (Error error) KBytes
   | .eos => (Arrow.ListInt32.Stream.Writer.emitFor false limits (fieldOf checked)
       (batches.map (·.values (0 : Fin 1)))).mapError .writer
   | .readError cause | .closeError cause => .error (.source cause)
   | .closed => .error .closed
 
+def writeBatches := @writeBatchesUsing GroupError
+
 /-- Keep complete earlier groups on a source failure; only complete source EOS
 can reach native writer admission. -/
-def convert (limits : Limits) (source : Bytes) : Result :=
+def convertUsing {error : Type} (read : GroupReader error) (limits : Limits) (source : Bytes) : Result error :=
   match openFile limits.parquet source with
   | .error cause => ⟨.error (.openFailure cause), .error (.source (.openFailure cause))⟩
   | .ok checked =>
-    let (groups, ending) := Reader.denoteGroups (readAt checked) (List.range checked.snapshot.groupCount)
+    let (groups, ending) := Reader.denoteGroups (readAtUsing read checked) (List.range checked.snapshot.groupCount)
     let batches := groups.map AlignedColumns.ofRows
-    ⟨.ok ⟨schema checked, ⟨batches, ending⟩⟩, writeBatches limits.ipc checked batches ending⟩
+    ⟨.ok ⟨schema checked, ⟨batches, ending⟩⟩, writeBatchesUsing limits.ipc checked batches ending⟩
 
-structure Readback (limits : Limits) (source : Bytes) (wire : KBytes) : Prop where
+def convert := convertUsing readGroup
+
+abbrev GroupWitness := Checked → Nat → List Row → Prop
+
+structure ReadbackUsing {error : Type} (read : GroupReader error) (witness : GroupWitness) (limits : Limits) (source : Bytes) (wire : KBytes) : Prop where
   data : ∃ checked groups decoded size,
     openFile limits.parquet source = .ok checked ∧
     ListFile.OpenWire limits.parquet source checked ∧
-    (List.range checked.snapshot.groupCount).mapM (readGroup checked) = .ok groups ∧
-    List.Forall₂ (GroupWire checked) (List.range checked.snapshot.groupCount) groups ∧
-    (convert limits source).trace = .ok ⟨schema checked,
+    (List.range checked.snapshot.groupCount).mapM (read checked) = .ok groups ∧
+    List.Forall₂ (witness checked) (List.range checked.snapshot.groupCount) groups ∧
+    (convertUsing read limits source).trace = .ok ⟨schema checked,
       ⟨groups.map (AlignedColumns.ofRows ∘ rowsOf checked), .eos⟩⟩ ∧
     Arrow.ListInt32.Stream.readFor false limits.ipc wire = .ok decoded ∧
     Arrow.ListInt32.Stream.Writer.Agrees (fieldOf checked) groups decoded ∧
@@ -184,5 +201,7 @@ structure Readback (limits : Limits) (source : Bytes) (wire : KBytes) : Prop whe
     Arrow.ListInt32.readSchemaFor false limits.ipc.ipc (wire.slice 8 size) = .ok (fieldOf checked) ∧
     Arrow.ListInt32.Stream.BatchesWire limits.ipc wire limits.ipc.ipc.batches 0 0 (8 + size) decoded.batches ∧
     Arrow.ListInt32.Stream.checkParents false decoded.batches = .ok ()
+
+abbrev Readback := ReadbackUsing readGroup GroupWire
 
 end Silmaril.Formats.Parquet.ListFile.RequiredContainer
