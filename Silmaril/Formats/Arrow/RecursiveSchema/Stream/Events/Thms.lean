@@ -60,6 +60,18 @@ theorem read_eos {limits : Batch.Limits} {input : KBytes} {events : Σ source : 
     ∃ offset, EnvelopeWire limits.schema.ipc input.toList offset .eos ∧ offset + 8 = input.len :=
   Proofs.Formats.Arrow.RecursiveSchema.Stream.Events.read_eos accepted eos
 
+/-- Shared Events of a successful strict stream have its original ordered
+declarations, complete observations and EOS. -/
+theorem read_checked_eos {limits : Batch.Limits} {input : KBytes}
+    {original : Stream.Trace} {ordinal offset : Nat} {events : Σ source : Signature, Trace source}
+    (checked : Stream.read limits input = .ok original)
+    (ending : original.terminal = .eos ordinal offset)
+    (accepted : read limits input = .ok events) :
+    declarations events.1 = original.schema.fields.map (fun field => (fieldName field, field)) ∧
+      events.2.batches.map eraseBatch = original.batches.map Stream.Completed.observed ∧
+      events.2.termination = .eos :=
+  Proofs.Formats.Arrow.RecursiveSchema.Stream.Events.read_checked_eos checked ending accepted
+
 /-- Projection preserves every batch count at any output width. -/
 theorem projectTrace_counts {source : Signature} {Failure : Type} (projection : Scan.Projection source)
     (trace : Formats.Arrow.Events.Trace source Value Failure) :

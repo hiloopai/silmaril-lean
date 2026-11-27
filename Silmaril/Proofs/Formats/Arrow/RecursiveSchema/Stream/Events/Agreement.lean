@@ -106,4 +106,18 @@ theorem read_eos {limits : Formats.Arrow.RecursiveSchema.Batch.Limits} {input : 
   | eos ordinal offset =>
     exact ⟨offset, (Formats.Arrow.RecursiveSchema.Stream.readTrace_eos readTrace ended).2⟩
 
+theorem read_checked_eos {limits : Formats.Arrow.RecursiveSchema.Batch.Limits} {input : KBytes}
+    {original : Formats.Arrow.RecursiveSchema.Stream.Trace} {ordinal offset : Nat} {events : Σ source : Signature, Trace source}
+    (checked : Formats.Arrow.RecursiveSchema.Stream.read limits input = .ok original)
+    (ending : original.terminal = .eos ordinal offset)
+    (accepted : Formats.Arrow.RecursiveSchema.Stream.Events.read limits input = .ok events) :
+    declarations events.1 = original.schema.fields.map (fun field => (fieldName field, field)) ∧
+      events.2.batches.map eraseBatch = original.batches.map Formats.Arrow.RecursiveSchema.Stream.Completed.observed ∧
+      events.2.termination = .eos := by
+  have opened := (Formats.Arrow.RecursiveSchema.Stream.read_iff.mp checked).1
+  obtain ⟨observed, parsed, _, declarations, batches, outcome⟩ := (read_wire accepted).trace
+  rw [opened] at parsed
+  cases Except.ok.inj parsed
+  exact ⟨declarations, batches, by rw [outcome, ending]; rfl⟩
+
 end Silmaril.Proofs.Formats.Arrow.RecursiveSchema.Stream.Events

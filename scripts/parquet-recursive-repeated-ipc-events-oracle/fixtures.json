@@ -1,0 +1,35 @@
+{
+  "description": "Actual Lean native Arrow V5 streams from pinned recursive repeated Parquet",
+  "fixture_license": "MIT",
+  "source_pins": "../parquet-recursive-repeated-rows-oracle/fixtures.json",
+  "lean_ipc": {
+    "nested": {
+      "bytes": 1944,
+      "sha256": "496b742a95ca93f202091f34a0f8746affabd1a9e232b53e933202d2c3d4a1d2"
+    },
+    "mixed_required": {
+      "bytes": 1200,
+      "sha256": "507941866e2910a86cebd21ca20cbbb170c6f0a2663b0ba38855341a5506af2d"
+    },
+    "multipage_crc": {
+      "bytes": 3680,
+      "sha256": "964d5b7793bde25cdebc3027817838ec9eea64a29a2aa93aef1eb025f678774b"
+    },
+    "authored_continuation": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    },
+    "nested_siblings": {
+      "bytes": 1104,
+      "sha256": "bcd07bc907f402534df1d75ea4c9345b9dc6db164300d726665c103704e7a62e"
+    },
+    "schema_only": {
+      "bytes": 624,
+      "sha256": "06948d7a3c2691d0dd6b1968a2a147c61254691ad2e00a69ec8158ff7c88b204"
+    },
+    "explicit_empty": {
+      "bytes": 2400,
+      "sha256": "67232bb993632244d59217a313ab0827b3e8806f3545a0ccb695a64c31b8b9d5"
+    }
+  }
+}
