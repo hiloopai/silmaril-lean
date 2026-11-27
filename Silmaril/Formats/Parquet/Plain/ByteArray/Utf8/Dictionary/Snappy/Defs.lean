@@ -98,13 +98,20 @@ def decodePage (limits : Limits) (metadata : Footer.ColumnMetadata) (source : By
       (DictionaryIndex.decode entries params limits.scalar limits.indices
         (Page.Checksum.payloadBytes source frame)).mapError (.decode ∘ .indices)
 
-def readFrames (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
-    (group column : Nat) (name : String) (rows : Nat) (frames : List Page.Frame) :
-    Except GroupError (List (Option String)) :=
+/-- Check the expanded frame sum and the exact footer extent before the client
+can read a dictionary or data body. -/
+def checkExpandedChunk {ε : Type} (limits : Limits) (metadata : Footer.ColumnMetadata)
+    (group column : Nat) (name : String) (frames : List Page.Frame) : Except (FlatColumn.Error ε) Unit :=
   let size := expandedBytes frames
   if limits.maxExpandedChunkBytes < size then .error (.column group column name .chunkLimit)
   else if (size : Int) ≠ metadata.totalUncompressedSize then .error (.column group column name .bounds)
-  else ByteArrayFallback.readFramesWith (readDictionary limits metadata source)
+  else .ok ()
+
+def readFrames (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (group column : Nat) (name : String) (rows : Nat) (frames : List Page.Frame) :
+    Except GroupError (List (Option String)) := do
+  checkExpandedChunk limits metadata group column name frames
+  ByteArrayFallback.readFramesWith (readDictionary limits metadata source)
     (decodePage limits metadata source) metadata group column name rows frames
 
 def readGroup {name : String} (limits : Limits) (checked : Checked name) (index : Nat) :

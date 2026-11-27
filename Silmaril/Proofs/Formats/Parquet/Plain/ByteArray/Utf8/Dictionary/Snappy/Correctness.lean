@@ -118,17 +118,26 @@ private theorem pages_count {limits : Utf8.Dictionary.Snappy.Limits} {source : B
     obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, count⟩ := wire
     simp [count, ih]
 
+theorem checkExpandedChunk_wire {ε : Type} {limits : Utf8.Dictionary.Snappy.Limits}
+    {metadata : Footer.ColumnMetadata} {group column : Nat} {name : String} {frames : List Page.Frame}
+    (checked : checkExpandedChunk (ε := ε) limits metadata group column name frames = .ok ()) :
+    expandedBytes frames ≤ limits.maxExpandedChunkBytes ∧ (expandedBytes frames : Int) = metadata.totalUncompressedSize := by
+  unfold checkExpandedChunk at checked
+  dsimp only at checked
+  split at checked <;> try contradiction
+  rename_i fits
+  split at checked <;> try contradiction
+  rename_i size
+  exact ⟨Nat.le_of_not_gt fits, Decidable.not_not.mp size⟩
+
 private theorem readFrames_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {group column rows : Nat} {name : String} {frames : List Page.Frame} {slots : List (Option String)}
     (read : readFrames limits metadata source group column name rows frames = .ok slots) :
     FramesWire limits metadata source rows frames slots := by
   unfold readFrames at read
-  dsimp only at read
-  split at read <;> try contradiction
-  rename_i fits
-  split at read <;> try contradiction
-  rename_i size
-  refine ⟨Nat.le_of_not_gt fits, Decidable.not_not.mp size, ?_⟩
+  obtain ⟨_, checked, read⟩ := bind_ok read
+  have ⟨fits, size⟩ := checkExpandedChunk_wire checked
+  refine ⟨fits, size, ?_⟩
   obtain ⟨dictionary, data, entries, pages, order, dictionaryAt, dataAt, count, leading, ordered, flatten⟩ :=
     ByteArrayFallback.readFramesWith_wire read
   cases dictionary with
@@ -165,14 +174,21 @@ theorem storedBytes_chain {chunk : Footer.Span} {start stop : Nat} {frames : Lis
     simp only [storedBytes, List.map_cons, List.sum_cons] at exact ⊢
     omega
 
+theorem storedBytes_exact {limits : Page.Limits} {source : Bytes} {footerStart : Nat}
+    {metadata : Footer.ColumnMetadata} {chunk : Footer.Span} {frames : List Page.Frame}
+    (located : Page.columnSpan footerStart metadata = some chunk)
+    (framed : Page.readChunk limits source chunk = .ok frames) :
+    (storedBytes frames : Int) = metadata.totalCompressedSize := by
+  have exact := (storedBytes_chain (Page.readChunk_chain framed).2.2).2
+  have ⟨starts, stops, _, ordered, _⟩ := Footer.checkDataSpan_some_iff.mp located
+  omega
+
 theorem readGroup_wire {parquet : Utf8.Dictionary.Snappy.Limits} {name : String} {checked : Checked name}
     {index : Nat} {slots : List (Option String)} (read : readGroup parquet checked index = .ok slots) :
     ∃ group, GroupWire parquet checked index group slots := by
   obtain ⟨group, column, span, frames, leaf, groupAt, columnAt, path, physical, count,
     codec, located, framed, storedCap, decoded⟩ := ByteArrayFallback.readBoundGroupWithCodec_wire read
-  have exact := (storedBytes_chain (Page.readChunk_chain framed).2.2).2
-  have ⟨starts, stops, _, ordered, _⟩ := Footer.checkDataSpan_some_iff.mp located
-  have stored : (storedBytes frames : Int) = column.metadata.totalCompressedSize := by omega
+  have stored := storedBytes_exact located framed
   refine ⟨group, column, span, frames, leaf, groupAt, columnAt, path, physical, count, codec, located,
     framed, stored, ?_, readFrames_wire decoded⟩
   omega

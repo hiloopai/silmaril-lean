@@ -10,10 +10,16 @@ namespace Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Fallback
 
 open Arrow.MixedFlat
 
+/-- The phase check can retain the client's indexed transition error type. -/
+theorem checkPhasesWith_wire {ε : Type} {dictionaryAfterPlain : ε}
+    {group column firstOrdinal : Nat} {name : String} {data : List Page.Frame}
+    (passed : checkPhasesWith dictionaryAfterPlain group column name firstOrdinal data = .ok ⟨⟩) : Phases data :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.checkPhasesWith_wire passed
+
 /-- Both phases are nonempty and their exact original order is dictionary then PLAIN. -/
 theorem checkPhases_wire {group column firstOrdinal : Nat} {name : String} {data : List Page.Frame}
     (passed : checkPhases group column name firstOrdinal data = .ok ⟨⟩) : Phases data :=
-  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.checkPhases_wire passed
+  checkPhasesWith_wire passed
 
 /-- Each original frame determines the dictionary or PLAIN wire relation for the exact text slots. -/
 theorem decodeData_wire {limits : Limits} {leaf : Footer.SchemaElement}

@@ -33,24 +33,30 @@ def dataEncoding (frame : Page.Frame) : Option Int :=
 
 def isDictionaryData (frame : Page.Frame) : Bool := dataEncoding frame == some 8
 
-def checkPlainTag (group column : Nat) (name : String) (ordinal : Nat) (frame : Page.Frame) :
-    Except GroupError PUnit :=
+def checkPlainTagWith {ε : Type} (dictionaryAfterPlain : ε)
+    (group column : Nat) (name : String) (ordinal : Nat) (frame : Page.Frame) :
+    Except (FlatColumn.Error ε) PUnit :=
   let fail := FlatColumn.Error.page group column name ordinal frame.header.start
   match dataEncoding frame with
   | some 0 => .ok ⟨⟩
-  | some 8 => .error (fail (.decode .dictionaryAfterPlain))
+  | some 8 => .error (fail (.decode dictionaryAfterPlain))
   | some actual => .error (fail (.encoding actual))
   | none => .error (fail .unsupportedKind)
 
 /-- Check the whole tag schedule on the original headers before decoding
 any bodies. A missing phase is a column-level encoding refusal. -/
-def checkPhases (group column : Nat) (name : String) (firstOrdinal : Nat)
-    (data : List Page.Frame) : Except GroupError PUnit := do
+def checkPhasesWith {ε : Type} (dictionaryAfterPlain : ε)
+    (group column : Nat) (name : String) (firstOrdinal : Nat)
+    (data : List Page.Frame) : Except (FlatColumn.Error ε) PUnit := do
   let dictionaryPages := data.takeWhile isDictionaryData
   let plainPages := data.dropWhile isDictionaryData
   if dictionaryPages.isEmpty || plainPages.isEmpty then throw (.column group column name .encodings)
   plainPages.zipIdx (firstOrdinal + dictionaryPages.length) |>.forM fun (frame, ordinal) =>
-    checkPlainTag group column name ordinal frame
+    checkPlainTagWith dictionaryAfterPlain group column name ordinal frame
+
+def checkPlainTag := checkPlainTagWith DecodeError.dictionaryAfterPlain
+
+def checkPhases := checkPhasesWith DecodeError.dictionaryAfterPlain
 
 def decodePlain (limits : Limits) (leaf : Footer.SchemaElement) (metadata : Footer.ColumnMetadata)
     (source : Bytes) (frame : Page.Frame) : Except (FlatColumn.PageError DecodeError) (List (Option String)) := do

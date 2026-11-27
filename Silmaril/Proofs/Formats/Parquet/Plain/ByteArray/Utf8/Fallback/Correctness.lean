@@ -33,14 +33,16 @@ private theorem forM_member {α ε : Type} {check : α → Except ε PUnit} {ite
       · exact tested
       · exact ih (by simpa [tested, Bind.bind, Except.bind] using passed) member
 
-private theorem checkPlainTag_ok {group column ordinal : Nat} {name : String} {frame : Page.Frame}
-    (passed : checkPlainTag group column name ordinal frame = .ok ⟨⟩) : dataEncoding frame = some 0 := by
-  unfold checkPlainTag at passed
+private theorem checkPlainTag_ok {ε : Type} {dictionaryAfterPlain : ε}
+    {group column ordinal : Nat} {name : String} {frame : Page.Frame}
+    (passed : checkPlainTagWith dictionaryAfterPlain group column name ordinal frame = .ok ⟨⟩) : dataEncoding frame = some 0 := by
+  unfold checkPlainTagWith at passed
   split at passed <;> first | contradiction | assumption
 
-theorem checkPhases_wire {group column firstOrdinal : Nat} {name : String} {data : List Page.Frame}
-    (passed : checkPhases group column name firstOrdinal data = .ok ⟨⟩) : Phases data := by
-  unfold checkPhases at passed
+theorem checkPhasesWith_wire {ε : Type} {dictionaryAfterPlain : ε}
+    {group column firstOrdinal : Nat} {name : String} {data : List Page.Frame}
+    (passed : checkPhasesWith dictionaryAfterPlain group column name firstOrdinal data = .ok ⟨⟩) : Phases data := by
+  unfold checkPhasesWith at passed
   dsimp only at passed
   split at passed <;> try contradiction
   rename_i both
@@ -132,7 +134,7 @@ private theorem readFrames_wire {limits : Utf8.Fallback.Limits} {leaf : Footer.S
     | error cause => rw [checked] at read; contradiction
     | ok value =>
       cases value
-      have schedule := checkPhases_wire checked
+      have schedule := checkPhasesWith_wire checked
       rw [checked] at read
       obtain ⟨dictionary, data, entries, pages, order, dictionaryAt, dataAt, count, opened, ordered, flatten⟩ :=
         ByteArrayFallback.readFramesWith_wire read

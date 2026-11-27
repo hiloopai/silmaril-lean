@@ -33,6 +33,21 @@ theorem storedBytes_chain {chunk : Footer.Span} {start stop : Nat} {frames : Lis
     (chain : Page.Chain chunk start stop frames) : start ≤ stop ∧ storedBytes frames = stop - start :=
   Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.storedBytes_chain chain
 
+/-- The expanded frame sum obeys its cap and equals the exact footer size. -/
+theorem checkExpandedChunk_wire {ε : Type} {limits : Limits}
+    {metadata : Footer.ColumnMetadata} {group column : Nat} {name : String} {frames : List Page.Frame}
+    (checked : checkExpandedChunk (ε := ε) limits metadata group column name frames = .ok ()) :
+    expandedBytes frames ≤ limits.maxExpandedChunkBytes ∧ (expandedBytes frames : Int) = metadata.totalUncompressedSize :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.checkExpandedChunk_wire checked
+
+/-- The original frame chain accounts for the complete stored footer size. -/
+theorem storedBytes_exact {limits : Page.Limits} {source : Bytes} {footerStart : Nat}
+    {metadata : Footer.ColumnMetadata} {chunk : Footer.Span} {frames : List Page.Frame}
+    (located : Page.columnSpan footerStart metadata = some chunk)
+    (framed : Page.readChunk limits source chunk = .ok frames) :
+    (storedBytes frames : Int) = metadata.totalCompressedSize :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.storedBytes_exact located framed
+
 /-- The selected chunk retains exact byte totals, the original dictionary and ordered pages. -/
 theorem readGroup_wire {parquet : Limits} {name : String} {checked : Checked name}
     {index : Nat} {slots : List (Option String)} (read : readGroup parquet checked index = .ok slots) :

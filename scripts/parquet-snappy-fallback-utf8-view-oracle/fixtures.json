@@ -1,0 +1,17 @@
+{
+  "v1-absent.parquet": "dc013b63cc389385ae8fb97a2a240f2c93ee81f8a38e4bc15e5d0b73a7b84d21",
+  "v1-crc.parquet": "b87ff723214b75785759888a72bedbfd6ed4d830ee282eb4fa105af6247e7791",
+  "v2-absent.parquet": "5acd841bf8b156ed855023921c39758f77994f8e83221f81e2682827c36e6077",
+  "v2-crc.parquet": "efc0c64e679142231543aa0fa3924def7452f9579f08d5c2c71c803f12e69f7f",
+  "bad-unused-text.parquet": "adaa3c8deeb0f77fc30ad2f9274308a80d8cf336ea61c8fa0058e252645690bf",
+  "bad-late-plain.parquet": "8d0571a0ce89550f7d211ea31364b764f99592315538412378f01e77c069c83b",
+  "bad-late-crc.parquet": "d5d4ca9c48e971d08d87b777bff6f46a888b97257d1d7dfb0d0ed4a119299f3a",
+  "dictionary-after-plain.parquet": "8c075e04df00b299990347b9b482a6aa69df389a699a88bfc25931aa1a91227e",
+  "bad-expanded-total.parquet": "23974d8a05556f4731fd19a8fc0bbb28c33b09e220fa674a41c80a17afeb83d9",
+  "plain-only.parquet": "3c8bb6ebf7476730318727eb815440f2e9313d9037c21e406778f889b6632eb7",
+  "dictionary-only.parquet": "d399ef8d64fde66f7732fb6ba98a09aefc8f5218940c0eca1927442a1ea86128",
+  "v1-absent.arrows": "e210f8e7109f84752f0246899d641be493c274c4ebd38b45bea32af0c70f13a1",
+  "v1-crc.arrows": "e210f8e7109f84752f0246899d641be493c274c4ebd38b45bea32af0c70f13a1",
+  "v2-absent.arrows": "e210f8e7109f84752f0246899d641be493c274c4ebd38b45bea32af0c70f13a1",
+  "v2-crc.arrows": "e210f8e7109f84752f0246899d641be493c274c4ebd38b45bea32af0c70f13a1"
+}

@@ -224,6 +224,51 @@ lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Sna
 python3 scripts/parquet-snappy-dictionary-utf8-view-oracle/check.py "$(mktemp -d)"
 ```
 
+## Opt-in Snappy dictionary-to-PLAIN STRING
+
+`Parquet.Plain.ByteArray.Utf8.Fallback.Snappy.convert` selects one flat
+optional STRING/UTF8 BYTE_ARRAY leaf. It requires codec 1, a leading
+PLAIN dictionary, a nonempty tag-8 data prefix and a nonempty tag-0
+suffix. The same one-way phase check as the uncompressed profile
+runs on original headers before body decoding, with an indexed error
+for a return to tag 8. Stored and expanded chunk totals include the
+original header bytes and must match the footer under separate caps.
+
+The reader checks every dictionary entry as strict UTF-8 and keeps
+all dictionary and data bodies attached to their original CRC and
+byte limits. V1 expands the complete body and reads RLE levels.
+V2 retains the raw definition levels and uses the original flag for
+the index or value suffix. It verifies any CRC over the entire stored
+body before decoding and validates each present PLAIN value as strict
+UTF-8. PLAIN text failures use the original page-relative logical
+slot, including any preceding nulls.
+
+The wire laws tie both data phases to the original selected chunk and
+preserve the exact nullable UTF-8 octets and group boundaries through
+native IPC EOS. The first indexed source error takes precedence over
+IPC admission.
+
+PyArrow 26.0.1 produces V1 and V2 files with and without CRC. Thrift
+0.25.0 observes five dictionary pages then four PLAIN pages in each
+of two 66-row groups. The V2 PLAIN suffix includes three compressed
+pages and one raw page. PyArrow compares the original Parquet values
+with each Lean IPC batch. The edited V2 controls cover a late invalid
+PLAIN value at logical slot 1 after a null, the same edit under CRC,
+a bad expanded footer total, and the late PLAIN expansion cap. Two
+independently assembled controls redirect the sole index away from
+an invalid dictionary entry and swap two intact frames to return to
+tag 8 with both CRCs still valid. Separate producer files cover either
+missing phase.
+
+[Definitions](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Fallback/Snappy/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Fallback/Snappy/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-snappy-fallback-utf8-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.Snappy.Checks
+python3 scripts/parquet-snappy-fallback-utf8-view-oracle/check.py "$(mktemp -d)"
+```
+
 ## Native Utf8View to Parquet STRING
 
 `Parquet.Plain.ByteArray.Utf8.FromIpc.convert` reads one explicitly
