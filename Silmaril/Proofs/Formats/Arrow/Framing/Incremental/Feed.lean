@@ -318,4 +318,111 @@ theorem finish_refines {limits : Limits} {input : KBytes} {state : State} {last 
   obtain ⟨startOffset, endAt, envelope⟩ := held
   exact ⟨exhausted, startOffset, endAt.symm, envelope⟩
 
+theorem feed_tail_exact {limits : Limits} {input chunk : KBytes} {state : State} {tail : Nat}
+    (wf : input.wf = true) (held : state.InCarrier limits input)
+    (incoming : Window input state.position chunk)
+    (failed : feed limits state chunk = .error ⟨.tail, tail, .malformed .trailingBytes⟩) :
+    let markerOf : State → Nat := fun
+      | .prefix offset _ | .metadata offset _ _ | .body offset _ _ _ => offset
+      | .ended offset => offset - 8
+    let marker := markerOf state
+    tail = marker + 8 ∧ tail < input.len ∧ readEnvelope limits input marker = .ok .eos := by
+  have valid := incoming.source
+  cases state <;> dsimp only
+  case «prefix» offset pending =>
+    let filled := pending.feed chunk valid
+    by_cases aligned : offset % 8 = 0
+    · by_cases short : filled.buffered.bytes.len < 8
+      · simp [feed, valid, aligned, ← show filled = pending.feed chunk valid from rfl, short,
+          pure, Except.pure] at failed
+      · cases header : readPrefix limits (filled.buffered.bytes.read 0 4)
+            (filled.buffered.bytes.read 4 4) with
+        | error cause =>
+          simp [feed, valid, aligned, ← show filled = pending.feed chunk valid from rfl, short,
+            header, bind, Except.bind, Except.mapError] at failed
+        | ok result =>
+          cases result with
+          | metadata size =>
+            simp [feed, valid, aligned, ← show filled = pending.feed chunk valid from rfl, short,
+              header, bind, Except.bind, Except.mapError, pure, Except.pure] at failed
+          | eos =>
+            by_cases empty : filled.rest.len = 0
+            · simp [feed, valid, aligned, ← show filled = pending.feed chunk valid from rfl, short,
+                header, empty, bind, Except.bind, Except.mapError, pure, Except.pure] at failed
+            · simp [feed, valid, aligned, ← show filled = pending.feed chunk valid from rfl, short,
+                header, empty, bind, Except.bind, Except.mapError, throw, throwThe, MonadExceptOf.throw] at failed
+              obtain ⟨collected, rest, _, _⟩ := feedWindow wf pending valid held incoming
+              have full : filled.buffered.bytes.len = 8 :=
+                Nat.le_antisymm filled.buffered.bounded (Nat.le_of_not_gt short)
+              change Window input offset filled.buffered.bytes at collected
+              change Window input (offset + filled.buffered.bytes.len) filled.rest at rest
+              have marker := word wf collected (start := 0) (width := 4) (by rw [full]; decide)
+              have size := word wf collected (start := 4) (width := 4) (by rw [full]; decide)
+              rw [Nat.add_zero] at marker
+              rw [marker, size] at header
+              have bounded := rest.bounded
+              have tailFits : offset + 8 < input.len := by omega
+              exact ⟨failed.symm, by omega,
+                by simp [readEnvelope, aligned, Nat.not_lt.mpr (Nat.le_of_lt tailFits), header]⟩
+    · simp [feed, valid, aligned, bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at failed
+  case metadata offset size pending =>
+    let filled := pending.feed chunk valid
+    by_cases short : filled.buffered.bytes.len < size
+    · simp [feed, valid, ← show filled = pending.feed chunk valid from rfl, short,
+        pure, Except.pure] at failed
+    · cases planned : plan limits filled.buffered.bytes <;>
+        simp [feed, valid, ← show filled = pending.feed chunk valid from rfl, short, planned,
+          bind, Except.bind, Except.mapError, pure, Except.pure] at failed
+  case body offset header size pending =>
+    let filled := pending.feed chunk valid
+    by_cases short : filled.buffered.bytes.len < size <;>
+      simp [feed, valid, ← show filled = pending.feed chunk valid from rfl, short, pure, Except.pure] at failed
+  case ended endAt =>
+    by_cases empty : chunk.len = 0
+    · simp [feed, valid, empty] at failed
+    · simp [feed, valid, empty] at failed
+      obtain ⟨marker, afterMarker, envelope⟩ := held
+      have bounded := incoming.bounded
+      change endAt + chunk.len ≤ input.len at bounded
+      have markerExact : endAt - 8 = marker := by omega
+      refine ⟨by omega, by omega, ?_⟩
+      change readEnvelope limits input (endAt - 8) = .ok .eos
+      rwa [markerExact]
+
+theorem feed_prefix_tail {limits : Limits} {input chunk : KBytes} {offset : Nat}
+    {pending : Buffer 8} (wf : input.wf = true) (held : Window input offset pending.bytes)
+    (incoming : Window input (offset + pending.bytes.len) chunk)
+    (eos : readEnvelope limits input offset = .ok .eos)
+    (offered : offset + 8 < offset + pending.bytes.len + chunk.len) :
+    feed limits (.prefix offset pending) chunk =
+      .error ⟨.tail, offset + 8, .malformed .trailingBytes⟩ := by
+  have valid := incoming.source
+  let filled := pending.feed chunk valid
+  obtain ⟨collected, _, extent, shortRest⟩ := feedWindow wf pending valid held incoming
+  change Window input offset filled.buffered.bytes at collected
+  change filled.buffered.bytes.len + filled.rest.len = pending.bytes.len + chunk.len at extent
+  change (filled.buffered.bytes.len < 8 → filled.rest.len = 0) at shortRest
+  have full : filled.buffered.bytes.len = 8 := by
+    have bounded := filled.buffered.bounded
+    by_cases short : filled.buffered.bytes.len < 8
+    · have empty := shortRest short
+      omega
+    · omega
+  have nonempty : filled.rest.len ≠ 0 := by omega
+  have marker := word wf collected (start := 0) (width := 4) (by rw [full]; decide)
+  have count := word wf collected (start := 4) (width := 4) (by rw [full]; decide)
+  rw [Nat.add_zero] at marker
+  obtain ⟨aligned, bounded, continuation, lengthZero⟩ := (readEnvelope_iff _ _ _ _ wf).mp eos
+  rw [KBytes.length_toList input wf] at bounded
+  change KBytes.leVal ((input.toList.drop offset).take 4) = 0xffffffff at continuation
+  change KBytes.leVal ((input.toList.drop (offset + 4)).take 4) = 0 at lengthZero
+  rw [← KBytes.read_eq input offset 4 wf (by omega)] at continuation
+  rw [← KBytes.read_eq input (offset + 4) 4 wf (by omega)] at lengthZero
+  have header : readPrefix limits (filled.buffered.bytes.read 0 4)
+      (filled.buffered.bytes.read 4 4) = .ok .eos := by
+    simp [marker, count, continuation, lengthZero, readPrefix]
+  have long : ¬filled.buffered.bytes.len < 8 := by omega
+  simp [feed, valid, aligned, ← show filled = pending.feed chunk valid from rfl, long,
+    header, nonempty, bind, Except.bind, Except.mapError, throw, throwThe, MonadExceptOf.throw]
+
 end Silmaril.Proofs.Formats.Arrow.Framing.Incremental

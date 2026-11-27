@@ -611,3 +611,46 @@ make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.P
 python3 -I scripts/arrow-mixed-flat/ordered_incremental_fixtures.py
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Observable failure after EOS
+
+`Incremental.Failure.TailFailure` describes a finite schedule with a
+checked Schema, a delivered record prefix and a terminal feed error.
+The fragments are well-formed windows of a complete reference carrier
+under fixed limits. The final call supplies a byte after EOS. It can
+complete the EOS marker and supply the byte in the same fragment, or
+follow provisional EOS from an earlier call.
+
+`tail_exact` identifies the exact immutable successful pulls and their
+absolute ranges, followed by the immutable trailing-data error. The
+typed feed error retains the next record ordinal, the tail part, the
+first tail byte offset, and the trailing-bytes cause. The immutable
+pull reports the same ordinal at the EOS marker eight bytes earlier.
+`schedules_tail_equivalent` compares the complete prefix and exact feed
+cause across schedules that reach this failure on equal octets.
+`tail_no_success` rules out successful finish for any complete schedule
+over those same octets and limits. The offending call supplies no
+successor cursor.
+
+These comparisons apply to tails after a complete EOS. A source cutoff
+uses `finish` and supplies its own declared end of input. A cutoff before
+the actual tail is a different carrier. An incomplete request reports
+its original part and truncation cause at finalization. Malformed input
+fragments and feeder-specific refusals fall outside the admitted window
+schedule. The wire metadata and body caps retain their own limit
+diagnostics. Row, batch, data-buffer, and semantic decode failures retain
+their typed causes. These failure classes have no cross-schedule theorem
+in this slice.
+
+The Lean guards append synthetic tail bytes to pinned PyArrow and native
+ordered-writer output, and compare one-byte and uneven fragments. They
+also exercise a synthetic body cutoff and a synthetic view-prefix edit
+and compare the exact distinct causes across both schedules.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/Thms.lean) ·
+[Lean guards](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/Examples.lean)
+
+```sh
+make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Axioms'
+python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
+```

@@ -45,4 +45,28 @@ theorem feed_ended_tail {limits : Limits} {offset : Nat} {chunk : KBytes}
     feed limits (.ended offset) chunk = .error ⟨.tail, offset, .malformed .trailingBytes⟩ := by
   simp [feed, valid, nonempty]
 
+/-- The first tail byte follows the original EOS, whether the same fragment
+completed EOS or the reader reached it on an earlier fragment. -/
+theorem feed_tail_exact {limits : Limits} {input chunk : KBytes} {state : State} {tail : Nat}
+    (wf : input.wf = true) (held : state.InCarrier limits input)
+    (incoming : Window input state.position chunk)
+    (failed : feed limits state chunk = .error ⟨.tail, tail, .malformed .trailingBytes⟩) :
+    let markerOf : State → Nat := fun
+      | .prefix offset _ | .metadata offset _ _ | .body offset _ _ _ => offset
+      | .ended offset => offset - 8
+    let marker := markerOf state
+    tail = marker + 8 ∧ tail < input.len ∧ readEnvelope limits input marker = .ok .eos :=
+  Proofs.Formats.Arrow.Framing.Incremental.feed_tail_exact wf held incoming failed
+
+/-- Supplying the first tail byte while completing the original EOS
+necessarily produces the exact tail failure. -/
+theorem feed_prefix_tail {limits : Limits} {input chunk : KBytes} {offset : Nat}
+    {pending : Buffer 8} (wf : input.wf = true) (held : Window input offset pending.bytes)
+    (incoming : Window input (offset + pending.bytes.len) chunk)
+    (eos : readEnvelope limits input offset = .ok .eos)
+    (offered : offset + 8 < offset + pending.bytes.len + chunk.len) :
+    feed limits (.prefix offset pending) chunk =
+      .error ⟨.tail, offset + 8, .malformed .trailingBytes⟩ :=
+  Proofs.Formats.Arrow.Framing.Incremental.feed_prefix_tail wf held incoming eos offered
+
 end Silmaril.Formats.Arrow.Framing.Incremental
