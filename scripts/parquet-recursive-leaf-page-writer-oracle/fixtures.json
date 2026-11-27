@@ -1,0 +1,49 @@
+{
+  "description": "Lean emitted signed recursive V1 pages and test-only PyArrow footer splices",
+  "fixture_license": "MIT",
+  "source_pins": "../parquet-recursive-repeated-chunk-oracle/fixtures.json",
+  "test_only_containers": {
+    "nested": {
+      "bytes": 1354,
+      "sha256": "d318e36998fe0b0f87dfe9472439f6ada63abf116b6c45ee772b08fe67ece057"
+    },
+    "mixed_required": {
+      "bytes": 705,
+      "sha256": "847cab1502f6c26fab1b88d3888d11070a3b484937dfb3a7d59b8516d331d360"
+    },
+    "multipage_crc": {
+      "bytes": 3659,
+      "sha256": "b739c4165ecb8e0c3509dbcbf35b9b1e140862bd873b833ae52c45edd6520b0c"
+    },
+    "authored_continuation": {
+      "bytes": 618,
+      "sha256": "fa5a4f2230d7d63d90443b0f09478fb3440ea02def1dd8488108324df0e0885a"
+    }
+  },
+  "lean_page_series": {
+    "nested": {
+      "bytes": 385,
+      "sha256": "cdee7959fa5aefa230d3245b4bcf9bd05e1ec8295404f3c820c1c49ea2740a87"
+    },
+    "mixed_required": {
+      "bytes": 163,
+      "sha256": "9cde7dd03ac985fe9ac13bc1c79310c6df5393cc1e2dcbf9958f7baa4d4fd82b"
+    },
+    "multipage_crc": {
+      "bytes": 2605,
+      "sha256": "f0b83ba3fc64df98bb847696e9034167d5d9f3eb3d56839be5b1e019a2657f0b"
+    },
+    "authored_continuation": {
+      "bytes": 156,
+      "sha256": "9f9abc433a4e9233b9a86d1fbe53f1c0956e1070eba496726cefb83390b0642e"
+    },
+    "empty-repeated": {
+      "bytes": 31,
+      "sha256": "cbc8b21ef4247bb6c8ab55be16c75e91fb070d0974be959b2fc2d1cfea69e45f"
+    },
+    "empty-required": {
+      "bytes": 17,
+      "sha256": "b46627d1c8750535ac29d1e4b1bc7a14d26291aecb57178f919c6a2553d99be4"
+    }
+  }
+}

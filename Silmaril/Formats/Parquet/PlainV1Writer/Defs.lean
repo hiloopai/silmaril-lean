@@ -83,6 +83,19 @@ def encodeHeader (count size : Nat) : Option Bytes := do
   return Bytes.ofList ([0x15, 0, 0x15] ++ sizeWord.toList ++ [0x15] ++ sizeWord.toList ++
     [0x2c, 0x15] ++ countWord.toList ++ [0x15, 0, 0x15, 6, 0x15, 6, 0, 0])
 
+/-- Add field 4 as Compact signed i32, keeping the CRC's unsigned bit
+pattern. The V1 detail follows it at field delta one. -/
+def encodeHeaderWithChecksum (count size : Nat) (crc : Option UInt32) : Option Bytes :=
+  match crc with
+  | none => encodeHeader count size
+  | some digest => do
+    let sizeWord ← ThriftCompact.encodeSigned? .i32 size
+    let countWord ← ThriftCompact.encodeSigned? .i32 count
+    let crcWord ← ThriftCompact.encodeSigned? .i32 digest.toInt32.toInt
+    return Bytes.ofList ([0x15, 0, 0x15] ++ sizeWord.toList ++ [0x15] ++ sizeWord.toList ++
+      [0x15] ++ crcWord.toList ++ [0x1c, 0x15] ++ countWord.toList ++
+      [0x15, 0, 0x15, 6, 0x15, 6, 0, 0])
+
 structure Encoded where
   header : Page.Header
   headerBytes : Bytes
