@@ -78,8 +78,8 @@ end Internal
 
 /-- Decode one exact standard-window stream in the insert-and-copy
     switching profile. Errors carry no partial output. -/
-def decode : Limits → List UInt8 → Except Error Execute.State :=
-  Stream.Internal.decodeWith Error.envelope Internal.readBody
+def decode (limits : Limits) (input : List UInt8) : Except Error Execute.State :=
+  Stream.Internal.decodeWith Error.envelope Internal.readBody limits input
 
 /-- Successful commands preceding the first failure at the given cursor. -/
 inductive PassedCommands (limits : Limits) (header : CompressedHeader.Header) (block : Execute.Block) :

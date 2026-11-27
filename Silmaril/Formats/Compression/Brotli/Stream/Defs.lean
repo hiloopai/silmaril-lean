@@ -284,7 +284,9 @@ def readSinglePayload : ReadPayload Error :=
     if !Execute.oneType header then .error ⟨headerBit, some index, none, .command .blockTypes⟩
     else runCommands limits header block index block.length 0 initial before
 
-def readBody : ReadBody Error := readBodyWith id readSinglePayload
+def readBody (limits : Limits) (window index : Nat) (header : Header)
+    (initial : Execute.State) (before : LSBReader) : Except Error (Execute.State × LSBReader) :=
+  readBodyWith id readSinglePayload limits window index header initial before
 
 def PayloadSound {ε : Type} (read : ReadPayload ε) (wire : PayloadWire) : Prop :=
   ∀ {limits index headerBit header block initial final before after input},
@@ -322,8 +324,9 @@ def readBlocksWith {ε : Type} (onError : Error → ε) (body : ReadBody ε) (li
       return next
     else readBlocksWith onError body limits window fuel (index + 1) next after
 
-def readBlocks : Limits → Nat → Nat → Nat → Execute.State → LSBReader → Except Error Execute.State :=
-  readBlocksWith id readBody
+def readBlocks (limits : Limits) (window : Nat) :
+    Nat → Nat → Execute.State → LSBReader → Except Error Execute.State :=
+  readBlocksWith id readBody limits window
 
 def decodeWith {ε : Type} (onError : Error → ε) (body : ReadBody ε)
     (limits : Limits) (input : List UInt8) : Except ε Execute.State := do
@@ -339,8 +342,8 @@ end Internal
 
 /-- Decode one exact dictionary-free standard-window stream.
     There is no returned partial state on failure. -/
-def decode : Limits → List UInt8 → Except Error Execute.State :=
-  Internal.decodeWith id Internal.readBody
+def decode (limits : Limits) (input : List UInt8) : Except Error Execute.State :=
+  Internal.decodeWith id Internal.readBody limits input
 
 /-- The lower operation that produced a failure, at its actual start cursor.
     A caller cap or an unsupported profile branch has its own guard witness. -/

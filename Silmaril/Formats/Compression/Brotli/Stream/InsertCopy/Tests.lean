@@ -21,8 +21,9 @@ private def output : Execute.State :=
     0x41, 0x41, 0x41, 0x41, 0x41, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
     0x41, 0x41, 0x41, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42], ⟨1, 1, 1, 1⟩⟩
 
-#guard decode limits fixture = .ok output
-#guard Stream.decode limits fixture = .error ⟨21, some 0, none, .command .blockTypes⟩
+#guard decode (limits := limits) (input := fixture) = .ok output
+#guard Stream.decode (limits := limits) (input := fixture) =
+  .error ⟨21, some 0, none, .command .blockTypes⟩
 #guard decode {limits with bits := 120} fixture =
   .error (.command 0 2 (.switch ⟨119, .insertCopy, .typeSymbol .bitLimit⟩))
 #guard decode {limits with bits := 289} fixture =
