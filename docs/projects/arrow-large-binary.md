@@ -41,3 +41,36 @@ a null slot, and a final offset beyond the descriptor into body padding.
 python scripts/arrow-large-binary/stream_fixture.py
 lake build --wfail Silmaril.Formats.Arrow.LargeBinary.Stream.Examples Silmaril.Formats.Arrow.LargeBinary.Stream.Axioms
 ```
+
+## Canonical modern stream writer
+
+Import `Silmaril.Formats.Arrow.LargeBinary.StreamWriter.Defs` and call
+`StreamWriter.emit limits field batches` with ordered lists of optional
+`KBytes`. The tag-19 Schema and each RecordBatch use modern continuation
+framing with an explicit EOS. The writer emits one node and three packed
+descriptors per batch. The i64 offset words start at zero and follow the
+prefix sums of the data lengths. Nulls and present empty slots repeat an
+offset, and validity bits distinguish them. Data bytes are copied in slot
+order without UTF-8 interpretation.
+
+The checks apply row, metadata and padded body limits per message, with a
+stream-wide batch-count limit. The terminal data length fits a nonnegative
+signed i64 and required fields reject nulls. Emission constructs a complete
+carrier and certifies it with the checked modern LargeBinary reader.
+
+`StreamWriter.emit_readback` in the `Thms` module preserves the field,
+optional opaque octets and ordered RecordBatch boundaries through exact
+EOS. Its writer witness specifies the exact offsets and buffer windows,
+padded body extent and per-message admission bounds. A schema-only stream
+has no batches. A zero-row RecordBatch has its own frame and a single zero
+offset word.
+
+The PyArrow 26.0.1 reader independently checks four Lean outputs, including
+required and nullable fields, non-UTF-8 bytes, nulls and present empty
+values, a zero-row batch and schema-only output. The comparator also checks
+each signed i64 offset word and the physical data and validity bytes.
+
+```sh
+lake build --wfail Silmaril.Formats.Arrow.LargeBinary.StreamWriter.Examples Silmaril.Formats.Arrow.LargeBinary.StreamWriter.Axioms
+python scripts/arrow-large-binary/stream_writer_oracle.py /tmp/large-binary-oracle
+```

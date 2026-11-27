@@ -16,6 +16,12 @@ theorem emitWords_length (width : Nat) (words : List Nat) :
     (emitWords width words).len = width * words.length :=
   Proofs.Formats.Arrow.Writer.emitWords_length width words
 
+theorem readLE_emitWords (width : Nat) (words : List Nat) (index : Nat)
+    (bound : index < words.length) :
+    (emitWords width words).readLE (width * index) width =
+      some (words[index] % 256^width) :=
+  Proofs.Formats.Arrow.Writer.readLE_emitWords width words index bound
+
 theorem emitBytes_bytes (bytes : List UInt8) :
     (emitWords 1 (bytes.map UInt8.toNat)).toList = bytes :=
   Proofs.Formats.Arrow.Writer.emitBytes_bytes bytes

@@ -3,10 +3,16 @@ module
 public import Silmaril.Formats.Arrow.BinaryView.Column.Writer.Defs
 import Silmaril.Proofs.Formats.Arrow.BinaryView.Column.Writer
 import Silmaril.Proofs.Formats.Arrow.BinaryView.Column.Writer.Readback
+import Silmaril.Proofs.Formats.Arrow.BinaryView.Column.Writer.Layout
 
 @[expose] public section
 
 namespace Silmaril.Formats.Arrow.BinaryView.Column.Writer
+
+theorem join_spec (pieces : List KBytes) (wf : ∀ piece ∈ pieces, piece.wf = true) :
+    (join pieces).wf = true ∧ (join pieces).toList = pieces.flatMap KBytes.toList ∧
+      (join pieces).len = (pieces.map KBytes.len).sum :=
+  Proofs.Formats.Arrow.BinaryView.Column.Writer.join_spec pieces wf
 
 /-- Successful emission fixes the node, buffer extents, validity, and exact
 inline and external byte windows in logical row order. -/

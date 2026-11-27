@@ -18,17 +18,21 @@ private theorem appendLen (first second : KBytes) :
 
 private theorem zerosLen (size : Nat) : (KBytes.zeros size).len = size := rfl
 
-theorem schema_extent (field : Binary.Field) : (Wire.schema field).len = Wire.schemaSize field := by
-  have nameSize : field.name.toByteArray.data.toList.length = field.name.utf8ByteSize := rfl
-  simp only [Wire.schema, Wire.schemaSize, messagePrefix, schemaPayloadOf, fieldOffsets, fieldFragment,
+theorem schemaFor_extent (width : Binary.Offsets.Width) (name : String) (nullable : Bool) :
+    (Wire.schemaFor width name nullable).len = Wire.schemaSizeFor name := by
+  have nameSize : name.toByteArray.data.toList.length = name.utf8ByteSize := rfl
+  simp only [Wire.schemaFor, Wire.schemaSizeFor, messagePrefix, schemaPayloadOf, fieldOffsets, fieldFragment,
     pad, words, longs, Writer.emitWords_length, appendLen, zerosLen, List.length_cons,
     List.length_nil, List.foldr_cons, List.foldr_nil, List.length_map, nameSize]
-  have fragment : 4 * 7 + (4 * 5 + (4 * 1 + (1 * field.name.utf8ByteSize + 1))) =
-      53 + field.name.utf8ByteSize := by omega
+  have fragment : 4 * 7 + (4 * 5 + (4 * 1 + (1 * name.utf8ByteSize + 1))) =
+      53 + name.utf8ByteSize := by omega
   rw [fragment]
-  change 48 + (24 + (0 + (53 + field.name.utf8ByteSize +
-    Writer.padding (53 + field.name.utf8ByteSize) + 0))) = _
+  change 48 + (24 + (0 + (53 + name.utf8ByteSize +
+    Writer.padding (53 + name.utf8ByteSize) + 0))) = _
   omega
+
+theorem schema_extent (field : Binary.Field) : (Wire.schema field).len = Wire.schemaSize field :=
+  schemaFor_extent .i32 field.name field.nullable
 
 theorem emit_readback {limits : Limits} {field : Binary.Field}
     {batches : List Binary.Column} {wire : KBytes}
