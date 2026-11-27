@@ -77,6 +77,46 @@ lake build --wfail +Silmaril.Formats.Parquet.PlainByteArrayV1Writer.File.Checks
 python3.13 -B scripts/parquet-plain-byte-array-file-writer-oracle/check.py --out /tmp/parquet-byte-array-file
 ```
 
+## Ordered row groups
+
+`PlainByteArrayV1Writer.File.Groups.emit` accepts one field name and
+required or optional layout with an ordered list of nullable octet
+groups. Each group gets one uncompressed PLAIN V1 page and one footer
+entry at its original ordinal. An empty group list writes a schema-only
+file with the footer at byte four. An explicit empty group keeps a
+positive page frame and its own zero-row footer entry, including in
+the middle of the file. A required group rejects null at the group's
+ordinal. The existing singleton entry point remains available.
+
+The group count is bounded by the smaller of `maxGroups` (4096 by
+default) and the Compact collection limit. Total rows and file bytes
+must fit their configured caps and the signed 64-bit range. The writer
+measures and places every page and budgets the footer before allocating
+page bodies. Page, value, chunk, header and footer limits also apply.
+The reader checks the complete footer and decodes the original groups
+by index before the writer returns the file.
+
+`emit_indexed` gives exact footer and selected-column readback for every
+original group. `emit_footer_groups` connects each footer entry to its
+exact chunk bytes and original row count, and gives the aggregate footer
+row count. `emit_checked` and `emit_group_extent` give contiguous page spans
+from the leading magic to the footer and the exact signed offsets.
+[Writer laws](../../Silmaril/Formats/Parquet/PlainByteArrayV1Writer/File/Groups/Thms.lean)
+
+PyArrow 26.0.1 reads five complete Lean-emitted files. The required
+and optional multi-group fixtures have interior empty groups and
+preserve nulls, present empty values and opaque bytes. Thrift 0.25.0
+checks the physical schema and exact chunk and page extents in footer
+order, including the separate schema-only and explicit empty files.
+The singleton comparison pins byte equality with the existing writer.
+[Comparator](../../scripts/parquet-plain-byte-array-group-writer-oracle/check.py) ·
+[File pins](../../scripts/parquet-plain-byte-array-group-writer-oracle/sha256.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.PlainByteArrayV1Writer.File.Groups.Checks
+python3.13 -B scripts/parquet-plain-byte-array-group-writer-oracle/check.py --out /tmp/parquet-byte-array-groups
+```
+
 [plain]: ../../Silmaril/Formats/Parquet/Plain/ByteArray/Thms.lean
 [laws]: ../../Silmaril/Formats/Parquet/PlainByteArrayV1Writer/Thms.lean
 [encoding]: https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md
