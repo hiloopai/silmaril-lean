@@ -134,6 +134,16 @@ end ListInt32
 
 namespace StructInt32
 
+/-- Explicit second-child profile. The first child is always signed Int32. -/
+inductive RightWidth where
+  | int32
+  | int64
+  deriving DecidableEq, Repr
+
+abbrev RightWidth.Value : RightWidth → Type
+  | .int32 => Int32
+  | .int64 => Int64
+
 structure Child where
   name : String
   nullable : Bool
@@ -431,15 +441,18 @@ private def optionalString (bytes : KBytes) (value : Table) (index : Nat) :
 private def string (bytes : KBytes) (value : Table) (index : Nat) : Except Error String := do
   return (← optionalString bytes value index).getD ""
 
+private def checkSignedInteger (bytes : KBytes) (payload : Table) (expected : Nat) : Except Error Unit := do
+  tableShape payload 2
+  let width ← scalar bytes payload 0 4
+  let signed ← bool bytes payload 1
+  check (width == 8 || width == 16 || width == 32 || width == 64)
+  if width != expected || !signed then throw (.unsupported .fieldInteger)
+
 private def primitiveFieldType (bytes : KBytes) (tag : Nat) (payload : Table) :
     Except Error FieldType := do
   match tag with
   | 2 => do
-    tableShape payload 2
-    let width ← scalar bytes payload 0 4
-    let signed ← bool bytes payload 1
-    check (width == 8 || width == 16 || width == 32 || width == 64)
-    if width != 32 || !signed then throw (.unsupported .fieldInteger)
+    checkSignedInteger bytes payload 32
     return .int32
   | 5 => do
     tableShape payload 0
@@ -676,7 +689,19 @@ public def ListInt32.readSchemaFor (parentNullable : Bool) (limits : Limits) (by
 
 @[expose] public def ListInt32.readSchema := ListInt32.readSchemaFor true
 
-private def structInt32Field (bytes : KBytes) (pos : Nat) : Except Error StructInt32.Field := do
+private def structRightChild (width : StructInt32.RightWidth) (bytes : KBytes) (pos : Nat) :
+    Except Error (StructInt32.Child × Bool) :=
+  match width with
+  | .int32 => (field bytes pos).map (fun child => (⟨child.name, child.nullable⟩, child.type == .int32))
+  | .int64 =>
+    fieldWith bytes pos
+      (fun tag payload => do
+        if tag ≠ 2 then throw (.unsupported (.fieldType tag))
+        checkSignedInteger bytes payload 64)
+      (fun name nullable () => (⟨name, nullable⟩, true))
+
+private def structInt32Field (width : StructInt32.RightWidth) (bytes : KBytes) (pos : Nat) :
+    Except Error StructInt32.Field := do
   let value ← table bytes pos
   tableShape value 7
   let name ← string bytes value 0
@@ -690,23 +715,27 @@ private def structInt32Field (bytes : KBytes) (pos : Nat) : Except Error StructI
   let (start, count) ← vector bytes value 5 4 4
   if count ≠ 2 then throw (.unsupported .nested)
   let left ← field bytes (← target bytes start)
-  let right ← field bytes (← target bytes (start + 4))
-  if left.type != .int32 || right.type != .int32 then throw (.unsupported .nested)
+  let (right, rightType) ← structRightChild width bytes (← target bytes (start + 4))
+  if left.type != .int32 || !rightType then throw (.unsupported .nested)
   emptyVector bytes value 6 4 4 .customMetadata
-  return ⟨name, ⟨left.name, left.nullable⟩, ⟨right.name, right.nullable⟩⟩
+  return ⟨name, ⟨left.name, left.nullable⟩, right⟩
 
-/-- Admit one bodyless little-endian V5 Schema with a nullable Struct
-(type tag 13) and exactly two signed Int32 leaves. -/
-public def StructInt32.readSchema (limits : Limits) (bytes : KBytes) : Except Error StructInt32.Field := do
+/-- Admit the explicitly selected signed second-child width, with a signed
+Int32 first child, in one bodyless little-endian V5 Struct Schema. -/
+public def StructInt32.readSchemaFor (width : StructInt32.RightWidth) (limits : Limits) (bytes : KBytes) :
+    Except Error StructInt32.Field := do
   let (tag, payload, bodyLength) ← messageParts limits bytes
   if tag ≠ 1 then throw (.unsupported (.messageKind tag))
   if bodyLength ≠ 0 then throw (.malformed .bodyLength)
   if limits.fields < 3 then throw (.limit .fields)
   let (_, fields) ← schemaWith { limits with fields := 1 } bytes payload
     (fun endian => if endian = 0 then .ok () else .error (.unsupported (.endianness endian)))
-    (structInt32Field bytes)
+    (structInt32Field width bytes)
   let [selected] := fields | throw (.unsupported .nested)
   return selected
+
+/-- The original profile requires two signed Int32 children. -/
+@[expose] public def StructInt32.readSchema := StructInt32.readSchemaFor .int32
 
 private def mixedFieldKind (bytes : KBytes) (tag : Nat) (payload : Table) :
     Except Error MixedFlat.Kind := do

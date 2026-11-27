@@ -74,7 +74,7 @@ def inspect_wire(wire, field, expected, *, canonical):
         assert (nullable is not None and bool(scalar(schema, nullable, "B"))) == child.nullable
         assert scalar(schema, slot(schema, table, 2), "B") == 2
         payload = target(schema, slot(schema, table, 3))
-        assert scalar(schema, slot(schema, payload, 0), "i") == 32
+        assert scalar(schema, slot(schema, payload, 0), "i") == child.type.bit_width
         assert scalar(schema, slot(schema, payload, 1), "B") == 1
 
     assert struct.unpack_from("<II", wire, 0) == (0xFFFFFFFF, len(schema))
@@ -101,7 +101,9 @@ def inspect_wire(wire, field, expected, *, canonical):
         for child_index, (bits, values) in enumerate([(left_bits, left_words), (right_bits, right_words)]):
             expected_slots = [row[child_index + 1] if row[0] or not canonical
                               else None if field.type[child_index].nullable else 0 for row in rows]
-            observed = [struct.unpack_from("<i", values, 4 * r)[0] if valid(bits, r) else None
+            width = field.type[child_index].type.bit_width // 8
+            word_format = {4: "<i", 8: "<q"}[width]
+            observed = [struct.unpack_from(word_format, values, width * r)[0] if valid(bits, r) else None
                         for r in range(count)]
             assert observed == expected_slots
             assert nodes[child_index + 1][1] == expected_slots.count(None)

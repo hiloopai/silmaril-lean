@@ -1,0 +1,20 @@
+{
+  "inputs": {
+    "edited_short_wide": "bdc7f285949316a33143bc3bdc564c7feb866fb7fa579dee63a99ca976f70f77",
+    "edited_trailing": "ceffb0361c125ccd0489d8504334521485675b8eb06da582bd7fdac19653d372",
+    "edited_wide_null_count": "946ba890f9ded6995686d3522c09308e00ec96b7970f90030428ec94fdce867e",
+    "float": "80a812638108fbfbf7984880a13a861bbfd5f6bfdc05d8e39f3c735b8d17ee17",
+    "nested_point_shape": "ead6202df923d6213ecdcebefb3f0de8c73c1e1026b2815de6dcbec3157de2f0",
+    "required_visible": "e29079c3a8bcedecf178ae21f91a0ea8abc54cfb765428c818487f34aff0e65a",
+    "required_wide": "cb68c6c028142aaf83990e4278a5a4912701bcc31b3e6857045cae5e4dc5f071",
+    "schema_only": "df3e6cba37b7c842112b4ab0aa44c7d1aec09f57f1147bcd8f91a565c8877cb7",
+    "swapped": "241eb381426ef96ebd572ae5e021b528cb66838760387b332d30d9d904c9ad23",
+    "timestamp": "4800deee70fe9140964831f1307d9e48bfe9e557d3a7576c1039e2dac466211e",
+    "unsigned": "d0a60f9679d610365581d58c536e9f765e41cb001631439bc7d95abeac03bd63"
+  },
+  "legacy_outputs": {
+    "mixed": "cb6dc6e7c11bfa635ba5adbabc856f331548ddaabb973ca28bd3d997038b8729",
+    "repeated": "f539b99490c0018e39b4225363e2fc15560a455dc8bc1cfae66eddd007588363",
+    "schema_only": "d6a3159fa60d3b2f98becd3d0c17bdd34aeb474d9fc8f3f6eccb41d0f97db85e"
+  }
+}

@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Formats.Arrow.StructInt32.Stream.Defs
 import Silmaril.Formats.Arrow.Body.Thms
+import Silmaril.Formats.Parquet.Plain.Thms
 import Batteries.Data.List.Lemmas
 import Mathlib.Data.List.Forall2
 
@@ -11,6 +12,8 @@ namespace Silmaril.Proofs.Formats.Arrow.StructInt32.Stream
 
 open Silmaril.Formats.Arrow hiding Row readRows
 open Silmaril.Formats.Arrow.StructInt32.Stream
+open Silmaril.Formats.Arrow.StructInt32 (RightWidth)
+open Silmaril.Formats.Parquet
 
 private theorem bind_ok {α β ε : Type} {input : Except ε α} {next : α → Except ε β} {out : β}
     (read : (input >>= next) = .ok out) : ∃ value, input = .ok value ∧ next value = .ok out := by
@@ -23,30 +26,75 @@ private theorem mapError_ok {α ε δ : Type} {input : Except ε α} {wrap : ε 
   cases input <;> cases read
   rfl
 
-theorem readRow_wire {field : StructInt32.Field} {bitmap : KBytes} {left right : Array (Option Int32)}
-    {index : Nat} {row : Row} (read : readRow field bitmap left right index = .ok row) :
-    RowWire field bitmap left right index row := by
+theorem readRowFor_wire {α : Type} {field : StructInt32.Field} {bitmap : KBytes}
+    {left : Array (Option Int32)} {right : Array (Option α)}
+    {index : Nat} {row : RowFor α} (read : readRowFor field bitmap left right index = .ok row) :
+    RowWireFor field bitmap left right index row := by
   cases valid : Body.validAt bitmap index with
-  | none => simp [readRow, valid] at read
+  | none => simp [readRowFor, valid] at read
   | some bit =>
     cases bit with
-    | false => exact ⟨false, valid, by simpa [readRow, valid] using read.symm⟩
+    | false => exact ⟨false, valid, by simpa [readRowFor, valid] using read.symm⟩
     | true =>
       cases first : left[index]? with
-      | none => simp [readRow, valid, first] at read
+      | none => simp [readRowFor, valid, first] at read
       | some lhs =>
         cases second : right[index]? with
-        | none => simp [readRow, valid, first, second] at read
+        | none => simp [readRowFor, valid, first, second] at read
         | some rhs =>
-          cases admitted : missingRequired field (lhs, rhs) with
-          | some position => simp [readRow, valid, first, second, admitted] at read
+          cases admitted : missingRequiredFor field (lhs, rhs) with
+          | some position => simp [readRowFor, valid, first, second, admitted] at read
           | none =>
-            have same : row = some (lhs, rhs) := by simpa [readRow, valid, first, second, admitted] using read.symm
+            have same : row = some (lhs, rhs) := by simpa [readRowFor, valid, first, second, admitted] using read.symm
             exact ⟨true, valid, lhs, rhs, first, second, admitted, same⟩
 
-theorem readRows_wire {field : StructInt32.Field} {layout : Layout} {body : KBytes} {rows : List Row}
-    (read : readRows field layout body = .ok rows) : RowsWire field layout body rows := by
-  unfold readRows at read
+private theorem wideSlot_wire {bitmap : KBytes} {entry : Int64 × Nat} {slot : Option Int64}
+    (read : wideSlot bitmap entry = .ok slot) :
+    ∃ valid, Body.validAt bitmap entry.2 = some valid ∧ slot = (if valid then some entry.1 else none) := by
+  cases valid : Body.validAt bitmap entry.2 with
+  | none => simp [wideSlot, valid] at read
+  | some bit =>
+    exact ⟨bit, rfl, by simpa [wideSlot, valid, pure, Except.pure] using read.symm⟩
+
+theorem readWideColumn_wire {node : FieldNode} {bitmap values : KBytes} {slots : List (Option Int64)}
+    (read : readWideColumn node bitmap values = .ok slots) : WideColumnWire node bitmap values slots := by
+  unfold readWideColumn at read
+  split at read
+  · contradiction
+  · rename_i bitmapFits
+    dsimp only at read
+    split at read
+    · contradiction
+    · rename_i extent
+      obtain ⟨decoded, decodedOk, read⟩ := bind_ok read
+      obtain ⟨placed, placedOk, read⟩ := bind_ok read
+      split at read
+      · contradiction
+      · rename_i count
+        cases Except.ok.inj read
+        have raw := mapError_ok decodedOk
+        change Plain.decodeFixedWidth 8 node.length _ _ = .ok decoded at raw
+        obtain ⟨_, words, fromBytes, length, sized, reconstruct⟩ := Plain.decodeFixedWidth_ok_iff.mp raw
+        have positions : words.zipIdx.mapM
+            (fun (word, index) => wideSlot bitmap ((UInt64.ofNat (KBytes.leVal word)).toInt64, index)) =
+              .ok slots := by
+          rw [reconstruct, List.zipIdx_map, List.mapM_map] at placedOk
+          exact placedOk
+        exact ⟨Decidable.of_not_not bitmapFits, Nat.le_of_not_gt extent, Decidable.of_not_not count,
+          words, fromBytes, length, sized, (List.mapM_eq_ok_iff_forall₂.mp positions).imp
+            (fun _ _ slotRead => wideSlot_wire slotRead)⟩
+
+private theorem readRightColumn_wire {width : RightWidth} {layout : Layout} {body : KBytes}
+    {slots : RightPhysical width} (read : readRightColumn width layout body = .ok slots) :
+    RightColumnWire width layout body slots := by
+  cases width with
+  | int32 => exact (Body.readColumn_iff _ _ _).mp read
+  | int64 => exact readWideColumn_wire read
+
+theorem readRowsFor_wire {width : RightWidth} {field : StructInt32.Field}
+    {layout : Layout} {body : KBytes} {rows : List (RowFor width.Value)}
+    (read : readRowsFor width field layout body = .ok rows) : RowsWireFor width field layout body rows := by
+  unfold readRowsFor at read
   split at read
   · contradiction
   · rename_i fit
@@ -62,10 +110,10 @@ theorem readRows_wire {field : StructInt32.Field} {layout : Layout} {body : KByt
       · rename_i count
         cases Except.ok.inj read
         have slots := (List.mapM_eq_ok_iff_forall₂.mp decoded).imp
-          (fun _ _ read => readRow_wire read)
+          (fun _ _ read => readRowFor_wire read)
         exact ⟨Decidable.of_not_not fit, Decidable.of_not_not bitmap, by simpa using slots.length_eq.symm,
           Decidable.of_not_not count, left, right, (Body.readColumn_iff _ _ _).mp (mapError_ok first),
-          (Body.readColumn_iff _ _ _).mp (mapError_ok second), slots⟩
+          readRightColumn_wire (mapError_ok second), slots⟩
 
 private theorem layout_exact {metadata : RecordBatch} {layout : Layout}
     (checked : layoutOf metadata = .ok layout) :
@@ -81,11 +129,12 @@ private theorem layout_exact {metadata : RecordBatch} {layout : Layout}
     · contradiction
   · contradiction
 
-theorem readRecord_wire {limits : ObservationLimits} {field : StructInt32.Field} {input : KBytes}
-    {rowsBefore offset size : Nat} {batch : Batch}
-    (read : readRecord limits field input rowsBefore offset size = .ok batch) :
-    RecordWire limits field input rowsBefore offset size batch := by
-  unfold readRecord at read
+theorem readRecordFor_wire {width : RightWidth} {limits : ObservationLimits}
+    {field : StructInt32.Field} {input : KBytes}
+    {rowsBefore offset size : Nat} {batch : Batch width.Value}
+    (read : readRecordFor width limits field input rowsBefore offset size = .ok batch) :
+    RecordWireFor width limits field input rowsBefore offset size batch := by
+  unfold readRecordFor at read
   obtain ⟨message, parsed, read⟩ := bind_ok read
   split at read
   · rename_i metadata header
@@ -97,16 +146,17 @@ theorem readRecord_wire {limits : ObservationLimits} {field : StructInt32.Field}
     obtain ⟨nodes, buffers, parent, left, right⟩ := layout_exact layoutRead
     have matched : message = ⟨.recordBatch metadata, message.bodyLength⟩ := by cases message; simp_all
     exact ⟨metadata, layout, body, matched ▸ mapError_ok parsed, layoutRead, nodes, buffers, parent,
-      left, right, mapError_ok budget, mapError_ok bodyRead, readRows_wire rowsRead, rfl, rfl⟩
+      left, right, mapError_ok budget, mapError_ok bodyRead, readRowsFor_wire rowsRead, rfl, rfl⟩
   · contradiction
 
-private theorem readBatches_wire {limits : ObservationLimits} {field : StructInt32.Field} {input : KBytes}
-    {fuel index rowsBefore offset : Nat} {batches : List Batch}
-    (read : readBatches limits field input fuel index rowsBefore offset = .ok batches) :
-    BatchesWire limits field input fuel rowsBefore offset batches := by
+private theorem readBatchesFor_wire {width : RightWidth} {limits : ObservationLimits}
+    {field : StructInt32.Field} {input : KBytes}
+    {fuel index rowsBefore offset : Nat} {batches : List (Batch width.Value)}
+    (read : readBatchesFor width limits field input fuel index rowsBefore offset = .ok batches) :
+    BatchesWireFor width limits field input fuel rowsBefore offset batches := by
   induction fuel generalizing index rowsBefore offset batches with
   | zero =>
-    rw [readBatches] at read
+    rw [readBatchesFor] at read
     obtain ⟨env, envelope, read⟩ := bind_ok read
     cases env with
     | metadata size => contradiction
@@ -118,7 +168,7 @@ private theorem readBatches_wire {limits : ObservationLimits} {field : StructInt
         exact .eos (mapError_ok envelope) (by assumption)
       · contradiction
   | succ fuel ih =>
-    rw [readBatches] at read
+    rw [readBatchesFor] at read
     obtain ⟨env, envelope, read⟩ := bind_ok read
     cases env with
     | eos =>
@@ -132,28 +182,29 @@ private theorem readBatches_wire {limits : ObservationLimits} {field : StructInt
       obtain ⟨batch, record, read⟩ := bind_ok read
       obtain ⟨rest, later, read⟩ := bind_ok read
       obtain rfl := Except.ok.inj read
-      exact .next (mapError_ok envelope) (readRecord_wire (mapError_ok record)) (ih later)
+      exact .next (mapError_ok envelope) (readRecordFor_wire (mapError_ok record)) (ih later)
 
-theorem read_wire {limits : ObservationLimits} {input : KBytes} {observed : Observed}
-    (checked : StructInt32.Stream.read limits input = .ok observed) :
+theorem readFor_wire {width : RightWidth} {limits : ObservationLimits} {input : KBytes}
+    {observed : Observed width.Value}
+    (checked : readFor width limits input = .ok observed) :
     input.wf = true ∧ ∃ size,
       readEnvelope limits.ipc input 0 = .ok (.metadata size) ∧
-      StructInt32.readSchema limits.ipc (input.slice 8 size) = .ok observed.field ∧
-      BatchesWire limits observed.field input limits.ipc.batches 0 (8 + size) observed.batches := by
-  unfold StructInt32.Stream.read at checked
+      StructInt32.readSchemaFor width limits.ipc (input.slice 8 size) = .ok observed.field ∧
+      BatchesWireFor width limits observed.field input limits.ipc.batches 0 (8 + size) observed.batches := by
+  unfold readFor at checked
   split at checked
   · contradiction
   · rename_i wf
     obtain ⟨⟨field, first⟩, schemaFrame, checked⟩ := bind_ok checked
     obtain ⟨batches, records, checked⟩ := bind_ok checked
     cases Except.ok.inj checked
-    unfold readSchemaFrame at schemaFrame
+    unfold readSchemaFrameFor at schemaFrame
     obtain ⟨env, envelope, schemaFrame⟩ := bind_ok schemaFrame
     cases env with
     | eos => contradiction
     | metadata size =>
       obtain ⟨header, schema, schemaFrame⟩ := bind_ok schemaFrame
       cases Except.ok.inj schemaFrame
-      exact ⟨by simpa using wf, size, mapError_ok envelope, mapError_ok schema, readBatches_wire records⟩
+      exact ⟨by simpa using wf, size, mapError_ok envelope, mapError_ok schema, readBatchesFor_wire records⟩
 
 end Silmaril.Proofs.Formats.Arrow.StructInt32.Stream

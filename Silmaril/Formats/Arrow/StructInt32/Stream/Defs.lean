@@ -1,16 +1,22 @@
 module
 
 public import Silmaril.Formats.Arrow.Body.Defs
+public import Silmaril.Formats.Parquet.Plain.Defs
 public import Batteries.Data.List.Basic
 
-/-! Checked native V5 observation of one nullable Struct with two signed Int32 children. -/
+/-! Checked native V5 observation of one nullable Struct with signed Int32 and explicit signed second-child width. -/
 
 @[expose] public section
 
 namespace Silmaril.Formats.Arrow.StructInt32.Stream
 
-abbrev Children := Option Int32 × Option Int32
-abbrev Row := Option Children
+open StructInt32 (RightWidth)
+open Silmaril.Formats.Parquet
+
+abbrev ChildrenFor (α : Type) := Option Int32 × Option α
+abbrev RowFor (α : Type) := Option (ChildrenFor α)
+abbrev Children := ChildrenFor Int32
+abbrev Row := RowFor Int32
 
 inductive BatchError where
   | envelope (cause : Arrow.Error)
@@ -70,72 +76,111 @@ def int32Slot : Option Value → Option Int32
   | some (.int32 value) => some value
   | _ => none
 
-def missingRequired (field : StructInt32.Field) (children : Children) : Option Nat :=
+def missingRequiredFor {α : Type} (field : StructInt32.Field) (children : ChildrenFor α) : Option Nat :=
   if !field.left.nullable && children.1.isNone then some 0
   else if !field.right.nullable && children.2.isNone then some 1
   else none
 
+abbrev missingRequired := @missingRequiredFor Int32
+
+def wideSlot (bitmap : KBytes) (entry : Int64 × Nat) : Except Arrow.Error (Option Int64) := do
+  let some valid := Body.validAt bitmap entry.2 | throw (.malformed .validityBitmap)
+  return if valid then some entry.1 else none
+
+/-- The buffer descriptor can include padding. Only its exact logical
+prefix of eight-byte signed words is passed to the shared integer codec. -/
+def readWideColumn (node : FieldNode) (bitmap values : KBytes) : Except Arrow.Error (List (Option Int64)) := do
+  if ¬ Body.BitmapExtent bitmap node.length then throw (.malformed .validityBitmap)
+  let extent := 8 * node.length
+  if values.len < extent then throw (.malformed .bodyValues)
+  let words ← (Plain.decodeInt64 node.length ⟨(values.slice 0 extent).toByteArray⟩).mapError
+    fun _ => .malformed .bodyValues
+  let slots ← words.zipIdx.mapM (wideSlot bitmap)
+  if slots.countP Option.isNone ≠ node.nullCount then throw (.malformed .validityBitmap)
+  return slots
+
+abbrev RightPhysical : RightWidth → Type
+  | .int32 => Column
+  | .int64 => List (Option Int64)
+
+def readRightColumn : (width : RightWidth) → Layout → KBytes → Except Arrow.Error (RightPhysical width)
+  | .int32, layout, body => Body.readColumn layout.right (layout.rightBuffers body)
+  | .int64, layout, body =>
+    readWideColumn layout.right (Body.sliceBuffer body layout.rightValidity) (Body.sliceBuffer body layout.rightValues)
+
+def rightSlots : (width : RightWidth) → RightPhysical width → List (Option width.Value)
+  | .int32, slots => slots.map int32Slot
+  | .int64, slots => slots
+
 /-- Only the parent bit controls whole-row absence. Child requiredness
 is checked for visible slots. Both physical child buffers are checked separately. -/
-def readRow (field : StructInt32.Field) (bitmap : KBytes) (left right : Array (Option Int32))
-    (index : Nat) : Except BatchError Row :=
+def readRowFor {α : Type} (field : StructInt32.Field) (bitmap : KBytes)
+    (left : Array (Option Int32)) (right : Array (Option α)) (index : Nat) : Except BatchError (RowFor α) :=
   match Body.validAt bitmap index with
   | none => .error .parentValidity
   | some false => .ok none
   | some true =>
     match left[index]?, right[index]? with
     | some lhs, some rhs =>
-      match missingRequired field (lhs, rhs) with
+      match missingRequiredFor field (lhs, rhs) with
       | none => .ok (some (lhs, rhs))
       | some position => .error (.requiredChild position index)
     | _, _ => .error .layout
 
-def readRows (field : StructInt32.Field) (layout : Layout) (body : KBytes) :
-    Except BatchError (List Row) := do
+abbrev readRow := @readRowFor Int32
+
+def readRowsFor (width : RightWidth) (field : StructInt32.Field) (layout : Layout) (body : KBytes) :
+    Except BatchError (List (RowFor width.Value)) := do
   if ¬ BuffersFit body.len 0 layout.buffers then throw .layout
   let bitmap := Body.sliceBuffer body layout.parentValidity
   if ¬ Body.BitmapExtent bitmap layout.parent.length then throw .parentValidity
   let left ← (Body.readColumn layout.left (layout.leftBuffers body)).mapError (.child 0)
-  let right ← (Body.readColumn layout.right (layout.rightBuffers body)).mapError (.child 1)
+  let right ← (readRightColumn width layout body).mapError (.child 1)
   let rows ← (List.range layout.parent.length).mapM
-    (readRow field bitmap (left.map int32Slot).toArray (right.map int32Slot).toArray)
+    (readRowFor field bitmap (left.map int32Slot).toArray (rightSlots width right).toArray)
   if rows.countP Option.isNone ≠ layout.parent.nullCount then throw .parentValidity
   return rows
 
-structure Batch where
+abbrev readRows := readRowsFor .int32
+
+structure Batch (α : Type := Int32) where
   offset : Nat
   metadataSize : Nat
   bodyLength : Nat
-  rows : List Row
+  rows : List (RowFor α)
   deriving DecidableEq, Repr
 
-def Batch.next (batch : Batch) : Nat :=
+def Batch.next {α : Type} (batch : Batch α) : Nat :=
   batch.offset + 8 + batch.metadataSize + batch.bodyLength
 
-structure Observed where
+structure Observed (α : Type := Int32) where
   field : StructInt32.Field
-  batches : List Batch
+  batches : List (Batch α)
   deriving DecidableEq, Repr
 
-def readSchemaFrame (limits : Arrow.Limits) (input : KBytes) : Except Error (StructInt32.Field × Nat) := do
+def readSchemaFrameFor (width : RightWidth) (limits : Arrow.Limits) (input : KBytes) : Except Error (StructInt32.Field × Nat) := do
   let envelope ← (readEnvelope limits input 0).mapError .schemaEnvelope
   let .metadata size := envelope | throw .expectedSchema
-  let field ← (StructInt32.readSchema limits (input.slice 8 size)).mapError .schemaMetadata
+  let field ← (StructInt32.readSchemaFor width limits (input.slice 8 size)).mapError .schemaMetadata
   return (field, 8 + size)
 
-def readRecord (limits : ObservationLimits) (field : StructInt32.Field) (input : KBytes)
-    (rowsBefore offset size : Nat) : Except BatchError Batch := do
+abbrev readSchemaFrame := readSchemaFrameFor .int32
+
+def readRecordFor (width : RightWidth) (limits : ObservationLimits) (field : StructInt32.Field) (input : KBytes)
+    (rowsBefore offset size : Nat) : Except BatchError (Batch width.Value) := do
   let parsed ← (readMessage { limits.ipc with fields := min 3 limits.ipc.fields }
     (input.slice (offset + 8) size)).mapError .metadata
   let .recordBatch metadata := parsed.header | throw .expectedRecord
   let layout ← layoutOf metadata
   (Body.checkBudget limits 3 (rowsBefore + metadata.rowCount)).mapError .budget
   let body ← (readBody limits.ipc input (offset + 8 + size) parsed.bodyLength).mapError .body
-  let rows ← readRows field layout body
+  let rows ← readRowsFor width field layout body
   return ⟨offset, size, parsed.bodyLength, rows⟩
 
-def readBatches (limits : ObservationLimits) (field : StructInt32.Field) (input : KBytes) :
-    (fuel index rowsBefore offset : Nat) → Except Error (List Batch)
+abbrev readRecord := readRecordFor .int32
+
+def readBatchesFor (width : RightWidth) (limits : ObservationLimits) (field : StructInt32.Field) (input : KBytes) :
+    (fuel index rowsBefore offset : Nat) → Except Error (List (Batch width.Value))
   | fuel, index, rowsBefore, offset => do
     let envelope ← (readEnvelope limits.ipc input offset).mapError (.batch index ∘ .envelope)
     match envelope with
@@ -146,38 +191,68 @@ def readBatches (limits : ObservationLimits) (field : StructInt32.Field) (input 
       match fuel with
       | 0 => throw (.batch index .batchLimit)
       | remaining + 1 =>
-        let batch ← (readRecord limits field input rowsBefore offset size).mapError (.batch index)
-        let rest ← readBatches limits field input remaining (index + 1)
+        let batch ← (readRecordFor width limits field input rowsBefore offset size).mapError (.batch index)
+        let rest ← readBatchesFor width limits field input remaining (index + 1)
           (rowsBefore + batch.rows.length) batch.next
         return batch :: rest
 
-def read (limits : ObservationLimits) (input : KBytes) : Except Error Observed := do
+abbrev readBatches := readBatchesFor .int32
+
+def readFor (width : RightWidth) (limits : ObservationLimits) (input : KBytes) :
+    Except Error (Observed width.Value) := do
   if !input.wf then throw .source
-  let (field, first) ← readSchemaFrame limits.ipc input
-  let batches ← readBatches limits field input limits.ipc.batches 0 0 first
+  let (field, first) ← readSchemaFrameFor width limits.ipc input
+  let batches ← readBatchesFor width limits field input limits.ipc.batches 0 0 first
   return ⟨field, batches⟩
+
+/-- The strict two-Int32 entry point. -/
+abbrev read := readFor .int32
+
+/-- Preserve signed little-endian words and the independent child bitmap,
+including physical slots that the parent may hide. -/
+def WideColumnWire (node : FieldNode) (bitmap values : KBytes) (slots : List (Option Int64)) : Prop :=
+  Body.BitmapExtent bitmap node.length ∧ 8 * node.length ≤ values.len ∧
+    slots.countP Option.isNone = node.nullCount ∧
+    ∃ words : List (List UInt8),
+      (values.slice 0 (8 * node.length)).toList = words.flatten ∧
+      words.length = node.length ∧ (∀ word ∈ words, word.length = 8) ∧
+      List.Forall₂ (fun (word, index) slot =>
+        ∃ valid, Body.validAt bitmap index = some valid ∧
+          slot = (if valid then some (UInt64.ofNat (KBytes.leVal word)).toInt64 else none))
+        words.zipIdx slots
+
+def RightColumnWire : (width : RightWidth) → Layout → KBytes → RightPhysical width → Prop
+  | .int32, layout, body, slots => Body.ColumnWire layout.right (layout.rightBuffers body) slots
+  | .int64, layout, body, slots =>
+    WideColumnWire layout.right (Body.sliceBuffer body layout.rightValidity)
+      (Body.sliceBuffer body layout.rightValues) slots
 
 /-- Preserve an independent parent bit, and the two ordered physical slots
 whenever the parent is present. -/
-def RowWire (field : StructInt32.Field) (bitmap : KBytes) (left right : Array (Option Int32))
-    (index : Nat) (row : Row) : Prop :=
+def RowWireFor {α : Type} (field : StructInt32.Field) (bitmap : KBytes)
+    (left : Array (Option Int32)) (right : Array (Option α)) (index : Nat) (row : RowFor α) : Prop :=
   ∃ valid : Bool, Body.validAt bitmap index = some valid ∧
     if valid then ∃ lhs rhs, left[index]? = some lhs ∧ right[index]? = some rhs ∧
-      missingRequired field (lhs, rhs) = none ∧ row = some (lhs, rhs)
+      missingRequiredFor field (lhs, rhs) = none ∧ row = some (lhs, rhs)
     else row = none
 
-def RowsWire (field : StructInt32.Field) (layout : Layout) (body : KBytes) (rows : List Row) : Prop :=
+abbrev RowWire := @RowWireFor Int32
+
+def RowsWireFor (width : RightWidth) (field : StructInt32.Field) (layout : Layout) (body : KBytes)
+    (rows : List (RowFor width.Value)) : Prop :=
   let bitmap := Body.sliceBuffer body layout.parentValidity
   BuffersFit body.len 0 layout.buffers ∧ Body.BitmapExtent bitmap layout.parent.length ∧
     rows.length = layout.parent.length ∧ rows.countP Option.isNone = layout.parent.nullCount ∧
     ∃ left right,
       Body.ColumnWire layout.left (layout.leftBuffers body) left ∧
-      Body.ColumnWire layout.right (layout.rightBuffers body) right ∧
-      List.Forall₂ (RowWire field bitmap (left.map int32Slot).toArray (right.map int32Slot).toArray)
+      RightColumnWire width layout body right ∧
+      List.Forall₂ (RowWireFor field bitmap (left.map int32Slot).toArray (rightSlots width right).toArray)
         (List.range layout.parent.length) rows
 
-structure RecordWire (limits : ObservationLimits) (field : StructInt32.Field) (input : KBytes)
-    (rowsBefore offset size : Nat) (batch : Batch) : Prop where
+abbrev RowsWire := RowsWireFor .int32
+
+structure RecordWireFor (width : RightWidth) (limits : ObservationLimits) (field : StructInt32.Field) (input : KBytes)
+    (rowsBefore offset size : Nat) (batch : Batch width.Value) : Prop where
   data : ∃ metadata layout body,
     readMessage { limits.ipc with fields := min 3 limits.ipc.fields }
       (input.slice (offset + 8) size) = .ok ⟨.recordBatch metadata, batch.bodyLength⟩ ∧
@@ -186,18 +261,32 @@ structure RecordWire (limits : ObservationLimits) (field : StructInt32.Field) (i
     layout.right.length = metadata.rowCount ∧
     Body.checkBudget limits 3 (rowsBefore + metadata.rowCount) = .ok () ∧
     readBody limits.ipc input (offset + 8 + size) batch.bodyLength = .ok body ∧
-    RowsWire field layout body batch.rows ∧ batch.offset = offset ∧ batch.metadataSize = size
+    RowsWireFor width field layout body batch.rows ∧ batch.offset = offset ∧ batch.metadataSize = size
+
+abbrev RecordWire := RecordWireFor .int32
+
+namespace RecordWire
+abbrev mk := @RecordWireFor.mk .int32
+abbrev data := @RecordWireFor.data .int32
+end RecordWire
 
 /-- Each original record consumes a batch, including explicit zero-row records. -/
-inductive BatchesWire (limits : ObservationLimits) (field : StructInt32.Field) (input : KBytes) :
-    Nat → Nat → Nat → List Batch → Prop where
+inductive BatchesWireFor (width : RightWidth) (limits : ObservationLimits) (field : StructInt32.Field) (input : KBytes) :
+    Nat → Nat → Nat → List (Batch width.Value) → Prop where
   | eos {fuel rows offset} :
       readEnvelope limits.ipc input offset = .ok .eos → offset + 8 = input.len →
-      BatchesWire limits field input fuel rows offset []
+      BatchesWireFor width limits field input fuel rows offset []
   | next {fuel rows offset size batch rest} :
       readEnvelope limits.ipc input offset = .ok (.metadata size) →
-      RecordWire limits field input rows offset size batch →
-      BatchesWire limits field input fuel (rows + batch.rows.length) batch.next rest →
-      BatchesWire limits field input (fuel + 1) rows offset (batch :: rest)
+      RecordWireFor width limits field input rows offset size batch →
+      BatchesWireFor width limits field input fuel (rows + batch.rows.length) batch.next rest →
+      BatchesWireFor width limits field input (fuel + 1) rows offset (batch :: rest)
+
+abbrev BatchesWire := BatchesWireFor .int32
+
+namespace BatchesWire
+abbrev eos := @BatchesWireFor.eos .int32
+abbrev next := @BatchesWireFor.next .int32
+end BatchesWire
 
 end Silmaril.Formats.Arrow.StructInt32.Stream
