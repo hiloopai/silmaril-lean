@@ -121,3 +121,34 @@ has one batch through EOS, including a zero-row batch for a schema-only
 source. Positive-row zero-width tables keep their row count.
 [Named bridge laws](../../Silmaril/Formats/Csv/Typed/Utf8/MixedIpc/NamedTable/Thms.lean) ·
 [PyArrow and CPython comparator](../../scripts/typed-mixed-csv-named-table-oracle/check.py)
+
+## Opaque Binary and BinaryView
+
+`Csv.Typed.Utf8.OpaqueIpc` supports one flat BinaryView or plain Binary
+field in a modern Arrow IPC V5 stream. The caller chooses the source
+layout and carries the exact name, nullability and layout alongside the
+CSV. The CSV header checks the field name under the existing UTF-8 wire
+rules. Present octets use two uppercase hexadecimal digits per byte
+after the `T` tag. For example, `T00FF` represents bytes `00 ff`, `T`
+represents present empty bytes, and `N` represents null. The decoder
+rejects lowercase letters, odd lengths, prefixes and whitespace within
+the hex payload. Required fields reject null.
+
+`toCsv` consumes the checked source through EOS and flattens batches in
+order. `fromCsv` checks the complete typed CSV before invoking the
+selected native writer. It emits one RecordBatch through modern EOS,
+including one zero-row batch for header-only input. The round-trip law
+preserves the exact descriptor and nullable octets whenever both calls
+succeed under their individual CSV and IPC limits.
+
+The pinned PyArrow and CPython comparator covers both layouts with
+null, present empty bytes, embedded zero and all 256 octet values.
+It also checks schema-only input, a required field, and independently
+written CSV inputs. [Round-trip laws](../../Silmaril/Formats/Csv/Typed/Utf8/OpaqueIpc/Thms.lean) ·
+[Comparator](../../scripts/typed-csv-opaque-ipc-oracle/check.py)
+
+```sh
+lake build --wfail +Silmaril.Formats.Csv.Typed.Utf8.OpaqueIpc.Checks
+python3.13 -m pip install --require-hashes -r tests/formats/arrow-ipc/requirements.txt
+python3.13 -Bu scripts/typed-csv-opaque-ipc-oracle/check.py --out /tmp/typed-csv-opaque-ipc
+```
