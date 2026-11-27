@@ -51,6 +51,16 @@ theorem decodePage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame 
     PageWire limits leaf source frame start remaining rowCeiling decoded :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodePage_wire read
 
+/-- The strict lower-level walk covers the supplied carrier span and
+attains its exact counts, including when writing before footer construction. -/
+theorem walk_empty_prefix_wire {limits : Limits} {carrier : Carrier} {budget : Nat}
+    {cursor : Cursor} {pages : List ObservedPage}
+    (read : walk limits carrier budget cursor [] = .ok pages) :
+    ∃ stop, pages.length ≤ budget ∧ stop.byte = carrier.span.stop ∧
+      stop.state.slot = carrier.slots ∧ stop.state.rows = carrier.rows ∧
+      ChainWire limits carrier cursor stop pages :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.walk_empty_prefix_wire read
+
 theorem ChainWire.originalFrames {limits : Limits} {carrier : Carrier} {start stop : Cursor}
     {pages : List ObservedPage} (wire : ChainWire limits carrier start stop pages) :
     Page.Chain carrier.span start.byte stop.byte (pages.map ObservedPage.frame) :=

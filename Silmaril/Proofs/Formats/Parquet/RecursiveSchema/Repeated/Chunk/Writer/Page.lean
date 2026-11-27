@@ -47,6 +47,13 @@ public theorem construction {limits : Repeated.Chunk.Limits} {input : Input} {ou
             · exact Nat.le_of_not_gt headerCap
             · simpa [Output.wire, PlainV1Writer.Encoded.wire] using Nat.le_of_not_gt frameCap
 
+public theorem agrees_exact {input : Input} {after : Repeated.Chunk.State}
+    {page : Repeated.Chunk.DecodedPage} (checked : agrees input after page = true) :
+    page.levels = input.atoms.map (·.levels) ∧
+      page.words = input.atoms.map (·.word) ∧ page.after = after := by
+  simp only [agrees, Bool.and_eq_true, decide_eq_true_eq] at checked
+  exact ⟨list_eq_of_check checked.1.1, list_eq_of_check checked.1.2, checked.2⟩
+
 public theorem readback {limits : Repeated.Chunk.Limits} {input : Input} {output : Output}
     (checked : certify limits input output = .ok ()) : Readback limits input output := by
   unfold certify at checked
@@ -66,9 +73,8 @@ public theorem readback {limits : Repeated.Chunk.Limits} {input : Input} {output
         simp only [decoded] at checked
         split at checked
         · rename_i agreement
-          simp only [agrees, Bool.and_eq_true, decide_eq_true_eq] at agreement
           exact ⟨framed, page, decoded, Repeated.Chunk.decodePage_wire decoded,
-            list_eq_of_check agreement.1.1, list_eq_of_check agreement.1.2, agreement.2⟩
+            agrees_exact agreement⟩
         · contradiction
 
 public theorem state_counts {limits : Repeated.Chunk.Limits} {input : Input} {output : Output}

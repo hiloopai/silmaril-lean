@@ -1,0 +1,44 @@
+{
+  "description": "Native Lean recursive leaf chunks and test-only PyArrow footer assemblies",
+  "fixture_license": "MIT",
+  "source_pins": [
+    "../parquet-recursive-repeated-chunk-oracle/fixtures.json",
+    "../parquet-recursive-repeated-rows-oracle/fixtures.json"
+  ],
+  "lean_chunk_series": {
+    "mixed_required": {
+      "bytes": 163,
+      "sha256": "9cde7dd03ac985fe9ac13bc1c79310c6df5393cc1e2dcbf9958f7baa4d4fd82b"
+    },
+    "multipage_crc": {
+      "bytes": 2605,
+      "sha256": "f0b83ba3fc64df98bb847696e9034167d5d9f3eb3d56839be5b1e019a2657f0b"
+    },
+    "authored_continuation": {
+      "bytes": 156,
+      "sha256": "9f9abc433a4e9233b9a86d1fbe53f1c0956e1070eba496726cefb83390b0642e"
+    },
+    "explicit_empty": {
+      "bytes": 493,
+      "sha256": "0fd5151b32e2cec0fd84015b18039b33c79de1e2532333178f7b7434cda50d7b"
+    }
+  },
+  "test_only_containers": {
+    "mixed_required": {
+      "bytes": 705,
+      "sha256": "847cab1502f6c26fab1b88d3888d11070a3b484937dfb3a7d59b8516d331d360"
+    },
+    "multipage_crc": {
+      "bytes": 3659,
+      "sha256": "b739c4165ecb8e0c3509dbcbf35b9b1e140862bd873b833ae52c45edd6520b0c"
+    },
+    "authored_continuation": {
+      "bytes": 618,
+      "sha256": "fa5a4f2230d7d63d90443b0f09478fb3440ea02def1dd8488108324df0e0885a"
+    },
+    "explicit_empty": {
+      "bytes": 1733,
+      "sha256": "4e34c4147548b722925cfbbe6027b5e3fcb4df7e4d1457e3106714b50f9176ee"
+    }
+  }
+}

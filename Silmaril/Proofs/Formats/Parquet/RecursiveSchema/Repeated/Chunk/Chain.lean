@@ -57,6 +57,17 @@ private theorem walk_wire {limits : Limits} {carrier : Carrier} {budget : Nat}
             byte, slots, rows, .more parsed rfl (decodePage_wire decoded) chain⟩
           simpa [List.reverse_cons, List.append_assoc] using pages
 
+public theorem walk_empty_prefix_wire {limits : Limits} {carrier : Carrier}
+    {budget : Nat} {cursor : Cursor} {pages : List ObservedPage}
+    (read : walk limits carrier budget cursor [] = .ok pages) :
+    ∃ stop, pages.length ≤ budget ∧ stop.byte = carrier.span.stop ∧
+      stop.state.slot = carrier.slots ∧ stop.state.rows = carrier.rows ∧
+      ChainWire limits carrier cursor stop pages := by
+  obtain ⟨stop, tail, ordered, cap, byte, slots, rows, chain⟩ := walk_wire read
+  simp only [List.reverse_nil, List.nil_append] at ordered
+  subst tail
+  exact ⟨stop, cap, byte, slots, rows, chain⟩
+
 public theorem chain_frames {limits : Limits} {carrier : Carrier} {start stop : Cursor}
     {pages : List ObservedPage} (wire : ChainWire limits carrier start stop pages) :
     Page.Chain carrier.span start.byte stop.byte (pages.map ObservedPage.frame) := by
@@ -106,9 +117,7 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
             | ok pages =>
               simp only [walked, Except.map, Except.ok.injEq] at accepted
               subst output
-              obtain ⟨stop, tail, ordered, cap, byteEnd, slotEnd, rowEnd, chain⟩ := walk_wire walked
-              simp only [List.reverse_nil, List.nil_append] at ordered
-              subst tail
+              obtain ⟨stop, cap, byteEnd, slotEnd, rowEnd, chain⟩ := walk_empty_prefix_wire walked
               obtain ⟨_, slotsExact, rowsExact⟩ := chain_counts chain
               have frames := chain_frames chain
               exact ⟨Classical.not_not.mp within, Nat.le_of_not_gt bytes, Nat.le_of_not_gt slots,
