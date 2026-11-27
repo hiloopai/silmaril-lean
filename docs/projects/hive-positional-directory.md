@@ -226,3 +226,40 @@ lake env lean --run scripts/hive-positional-path-oracle/Generate.lean --scan > /
 lake env lean --run Silmaril/Formats/Hive/Manifest/ParquetSnapshot/Int32ByteArray/RenderedPositional/Checks.lean /tmp/positional.csv /tmp/positional-zero.csv
 python -I scripts/hive-positional-path-oracle/Oracle.py data/parquet-int32-byte-array-file/empty-middle-v2.parquet /tmp/positional-scan-directories.txt /tmp/positional.csv /tmp/positional-zero.csv
 ```
+
+## Restore the named table from typed CSV
+
+[`NamedTable.FromRenderedPositional.FromCsv.importCsv`](../../Silmaril/Formats/Relational/NamedTable/FromRenderedPositional/FromCsv/Defs.lean)
+takes an expected and a declared ordered String/Kind schema. The declared
+schema determines the exact UTF-8 header and canonical Int32 and octet
+codecs. The expected schema must agree exactly, including positional
+labels, duplicate labels, kinds and layout tags. Kinds travel out of
+band. Cells use the shared nullable table semantics.
+
+An occupied destination is rejected before reading. For a vacant
+destination, the importer checks the inclusive wire byte cap before
+decoding. The input bytes are already supplied by the caller. The
+shared typed decoder allocates the lexical and typed tables before the
+inclusive admitted-row check. This row cap bounds the published table,
+including zero-column rows. A header, cell or cap error returns the
+original typed cause with no updated database. Exact schema matching
+takes place at insertion after successful decoding and cap checks.
+
+`readCsv_ok_iff` specifies exact decoding and both caps.
+`importCsv_ok_iff` specifies the single-name update.
+`import_convert` proves that a successful forward conversion imports
+into a vacant target under the same projected schema exactly when the
+reverse byte and row caps admit it. The update contains the original
+String labels and ordered nullable cells and preserves every other name.
+
+Pass an additional output directory to the independent oracle command
+above to generate six CPython-authored inputs from the pinned PyArrow
+rows. The valid projected and zero-column inputs use Python's minimal
+CSV quoting. The other four exercise an incorrect header, noncanonical
+byte and Int32 cells, and an incorrect zero-column marker. Replay them
+against the actual importer.
+
+```sh
+python -I scripts/hive-positional-path-oracle/Oracle.py data/parquet-int32-byte-array-file/empty-middle-v2.parquet /tmp/positional-scan-directories.txt /tmp/positional.csv /tmp/positional-zero.csv /tmp/positional-csv-inputs
+lake env lean --run Silmaril/Formats/Hive/Manifest/ParquetSnapshot/Int32ByteArray/RenderedPositional/Checks.lean --check-csv /tmp/positional-csv-inputs
+```

@@ -36,6 +36,31 @@ def keys(profile, path):
     return ds.get_partition_keys(profile.parse(path))
 
 
+def write_import_controls(directory, labels, arrow_rows, row_count):
+    def tagged(value):
+        if value is None:
+            return "N"
+        if isinstance(value, int):
+            return "T" + str(value)
+        return "T" + quote_from_bytes(value, safe="-._~")
+
+    def write(filename, records):
+        with (directory / filename).open("w", encoding="utf-8", newline="") as output:
+            csv.writer(output).writerows(records)
+
+    directory.mkdir(parents=True, exist_ok=True)
+    body = [[tagged(value) for value in row] for row in arrow_rows]
+    write("projected.csv", [labels, *body])
+    write("zero.csv", [[""]] * (row_count + 1))
+    write("wrong-header.csv", [["wrong", *labels[1:]], *body])
+    bad_bytes = [*body[0][:4], "T%ff%00"]
+    write("bad-bytes.csv", [labels, bad_bytes, *body[1:]])
+    bad_int = [*body[0][:2], "T+7", *body[0][3:]]
+    write("bad-int.csv", [labels, bad_int, *body[1:]])
+    write("bad-zero.csv", [[""], ["unexpected"]])
+    print("CPython wrote two valid CSV inputs and four independent refusal controls.")
+
+
 for profile, marker_alias in ((uri, marker), (literal, alias)):
     assert keys(profile, "west/") == {"region": "west"}
     assert keys(profile, "/") == {}
@@ -161,7 +186,7 @@ if len(sys.argv) > 2:
             print("Ordered positional scan: five data occurrences, four retained, twenty projected rows.")
 
             if len(sys.argv) > 3:
-                projected_file, zero_file = (Path(arg) for arg in sys.argv[3:])
+                projected_file, zero_file = (Path(arg) for arg in sys.argv[3:5])
                 with projected_file.open(encoding="utf-8", newline="") as source:
                     header, *records = csv.reader(source, strict=True)
                 assert header == columns
@@ -191,3 +216,5 @@ if len(sys.argv) > 2:
                 with zero_file.open(encoding="utf-8", newline="") as source:
                     assert list(csv.reader(source, strict=True)) == [[""]] * (zero.num_rows + 1)
                 print("CPython CSV readback matches PyArrow rows, duplicate headers, and zero-width count.")
+                if len(sys.argv) > 5:
+                    write_import_controls(Path(sys.argv[5]), columns, arrow_rows, zero.num_rows)

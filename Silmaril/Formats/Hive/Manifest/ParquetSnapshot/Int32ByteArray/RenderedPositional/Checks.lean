@@ -7,10 +7,12 @@ import Silmaril.Formats.Hive.Manifest.Inventory.Thms
 import Silmaril.Formats.Hive.PartitionPath.Positional.Render.Thms
 import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.Thms
 import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.ToCsv.Thms
+import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.FromCsv.Thms
 import Silmaril.Formats.Relational.NamedTable.Thms
 meta import Silmaril.Data.IncludeBytes
 meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.Defs
 meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.ToCsv.Defs
+meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.FromCsv.Defs
 meta import Silmaril.Formats.Hive.Manifest.ParquetSnapshot.Int32ByteArray.RenderedPositional.Defs
 meta import Silmaril.Formats.Hive.Manifest.ParquetSnapshot.Int32ByteArray.Ingress.Defs
 
@@ -171,16 +173,19 @@ private def otherPreserved (loaded : Database String) : Bool :=
   | some table, none => table.schema.width == 0 && table.rowCount == 1
   | _, _ => false
 
-#guard Id.run do
-  let .ok paths := listing | return false
-  let .ok loaded := load "dest" projection 20 paths | return false
-  let some table := Scan.observePacked loaded "dest" | return false
+private def observesLoadedProjection (loaded : Database String) (name : String) : Bool := Id.run do
+  let some table := Scan.observePacked loaded name | return false
   if same : NamedTable.schemaMatches projection.schema table.schema = true then
     let exactSchema := (NamedTable.schemaMatches_eq_true_iff _ _).mp same
     let actual : Scan.Table projection.schema Value :=
       cast (congrArg (fun schema => Scan.Table schema Value) exactSchema.symm) table.rows
     return projectedRows actual == rows && table.rowCount == 20 && otherPreserved loaded
   else return false
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok loaded := load "dest" projection 20 paths | return false
+  return observesLoadedProjection loaded "dest"
 
 #guard Id.run do
   let .ok paths := listing | return false
@@ -286,6 +291,86 @@ private def exportCsv (selected : Scan.Projection (partitions.extend physical))
 #print axioms ToCsv.convert_roundTrip
 #print axioms ToCsv.convert_eq_reference
 
+
+private def restoredName := "restored"
+
+private def reimport (declared : Scan.Schema String Kind) (caps : FromCsv.Limits) (wire : Csv.Bytes) :=
+  FromCsv.importCsv database restoredName declared declared caps wire
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv projection 20 4096 paths | return false
+  let .ok restored := reimport projection.schema ⟨result.wire.length, 20⟩ result.wire | return false
+  return observesLoadedProjection restored restoredName
+
+private def observesLoadedZero (loaded : Database String) : Bool :=
+  match Scan.observePacked loaded restoredName with
+  | some table => table.schema.width == 0 && table.rowCount == 20 && otherPreserved loaded
+  | none => false
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv zero 20 4096 paths | return false
+  let .ok restored := reimport zero.schema ⟨84, 20⟩ result.wire | return false
+  return observesLoadedZero restored
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv zero 20 4096 paths | return false
+  let .error (.openError (.byteLimit 83 84)) := reimport zero.schema ⟨83, 0⟩ result.wire | return false
+  let .error (.openError (.rowLimit 19 20)) := reimport zero.schema ⟨84, 19⟩ result.wire | return false
+  return true
+
+private def changedKind : Scan.Schema String Kind :=
+  ⟨projection.schema.width, fun i =>
+    let column := projection.schema.kind i
+    if i.val = 0 then (column.1, .byteArray .required) else column⟩
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv projection 20 4096 paths | return false
+  let .error .schemaMismatch :=
+    FromCsv.importCsv database restoredName changedKind projection.schema ⟨4096, 20⟩ result.wire | return false
+  return true
+
+#guard match FromCsv.importCsv database "other" zero.schema zero.schema ⟨0, 0⟩ [0] with
+  | .error .nameConflict => true
+  | _ => false
+
+#guard match reimport zero.schema ⟨0, 0⟩ [0] with
+  | .error (.openError (.byteLimit 0 1)) => true
+  | _ => false
+
+/-- Replay independently written CSV on the actual named importer. -/
+public def checkCsvInputs (directory : System.FilePath) : IO Unit := do
+  let wire ← IO.FS.readBinFile (directory / "projected.csv")
+  let .ok restored := reimport projection.schema ⟨wire.size, 20⟩ wire.data.toList |
+    throw (IO.userError "independent projected CSV refused")
+  unless observesLoadedProjection restored restoredName do
+    throw (IO.userError "independent projected CSV changed the ordered named observation")
+  let wire ← IO.FS.readBinFile (directory / "zero.csv")
+  let .ok restored := reimport zero.schema ⟨wire.size, 20⟩ wire.data.toList |
+    throw (IO.userError "independent zero-column CSV refused")
+  unless observesLoadedZero restored do
+    throw (IO.userError "independent zero-column CSV changed the row count")
+  let rejected := [
+    ("wrong-header.csv", projection.schema, Csv.Typed.Error.headerMismatch),
+    ("bad-bytes.csv", projection.schema, .parseCell 4),
+    ("bad-int.csv", projection.schema, .parseCell 2),
+    ("bad-zero.csv", zero.schema, .zeroColumnMarker)]
+  for (file, schema, expected) in rejected do
+    let wire ← IO.FS.readBinFile (directory / file)
+    let .error (.openError (.csv actual)) := reimport schema ⟨wire.size, 20⟩ wire.data.toList |
+      throw (IO.userError s!"{file}: expected typed refusal")
+    unless actual == expected do
+      throw (IO.userError s!"{file}: expected {reprStr expected}, got {reprStr actual}")
+  IO.println "Independent CSV imports matched the projected rows and zero-width count. Four typed refusals matched."
+
+#print axioms FromCsv.readCsv_ok_iff
+#print axioms FromCsv.importCsv_ok_iff
+#print axioms FromCsv.importCsv_read_error
+#print axioms FromCsv.import_convert
+
 /-- Emit the actual converted bytes for the independent CSV reader. -/
 public def emitCsv (projectedFile zeroFile : System.FilePath) : IO Unit := do
   let .ok paths := listing | throw (IO.userError "positional fixture rendering failed")
@@ -300,6 +385,8 @@ end Silmaril.Formats.Hive.Manifest.RenderedPositional
 
 public def main (args : List String) : IO Unit :=
   match args with
+  | ["--check-csv", directory] =>
+    Silmaril.Formats.Hive.Manifest.RenderedPositional.checkCsvInputs directory
   | [projectedFile, zeroFile] =>
     Silmaril.Formats.Hive.Manifest.RenderedPositional.emitCsv projectedFile zeroFile
-  | _ => throw (IO.userError "expected projected and zero-column CSV output paths")
+  | _ => throw (IO.userError "expected CSV output paths or --check-csv and its input directory")
