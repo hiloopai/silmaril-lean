@@ -9,6 +9,11 @@ namespace Silmaril.Formats.Parquet.PlainByteArrayV1Writer.File
 
 variable {limits : Limits} {input : Input} {output : Encoded}
 
+theorem Input.ofSlots_exact {name : String} {layout : FlatColumn.Layout} {slots : List (Option Bytes)}
+    (prepared : ofSlots name layout slots = some input) :
+    input.name = name ∧ input.layout = layout ∧ input.page.slots = slots :=
+  Proofs.Formats.Parquet.PlainByteArrayV1Writer.File.ofSlots_exact prepared
+
 /-- The file consists of the original bounded V1 page at byte four,
 the serialized Compact footer, its exact length word, and both magic markers. -/
 theorem emit_wire (written : emit limits input = .ok output) :
@@ -31,6 +36,16 @@ theorem emit_readback (written : emit limits input = .ok output) :
       checked.readGroup limits 0 = .ok input.page.slots ∧
       Plain.ByteArray.File.GroupWire checked limits 0 (rowGroup input output) input.page.slots :=
   Proofs.Formats.Parquet.PlainByteArrayV1Writer.File.emit_readback written
+
+/-- Checked emission recovers the original arguments of the slot adapter. -/
+theorem emit_ofSlots_readback {name : String} {layout : FlatColumn.Layout} {slots : List (Option Bytes)}
+    (prepared : Input.ofSlots name layout slots = some input) (written : emit limits input = .ok output) :
+    Footer.readFooter limits.snapshot.footer output.bytes = .ok (output.footer, metadata input output) ∧
+    ∃ checked : Plain.ByteArray.File.Checked name layout,
+      Plain.ByteArray.File.openFile limits output.bytes name layout = .ok checked ∧
+      checked.binding.columnOrdinal = 0 ∧ checked.snapshot.groupCount = 1 ∧
+      checked.readGroup limits 0 = .ok slots :=
+  Proofs.Formats.Parquet.PlainByteArrayV1Writer.File.emit_ofSlots_readback prepared written
 
 /-- Assembly failures retain their typed cause before readback. -/
 theorem emit_assembly_error {cause : Error} (failed : assemble limits input = .error cause) :

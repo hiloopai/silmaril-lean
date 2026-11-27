@@ -15,36 +15,6 @@ open Silmaril.Formats.Parquet.Plain.ByteArray
 open Silmaril.Formats.Parquet.Plain.ByteArray.FromCsv
 open Silmaril.Formats.Csv.Typed.Utf8
 
-private theorem requiredSlots {slots : List (Option Bytes)} {values : List Bytes}
-    (prepared : slots.mapM id = some values) : values.map some = slots := by
-  induction slots generalizing values with
-  | nil => simpa using prepared.symm
-  | cons slot rest ih =>
-    cases slot with
-    | none => simp [List.mapM_cons] at prepared
-    | some value =>
-      cases read : rest.mapM id with
-      | none => simp [List.mapM_cons, read] at prepared
-      | some tail =>
-        simp [List.mapM_cons, read] at prepared
-        subst values
-        simp [ih read]
-
-private theorem prepare_exact {field : OpaqueIpc.Descriptor} {values : OpaqueIpc.Slots}
-    {prepared : PlainByteArrayV1Writer.File.Input} (checked : prepare field values = some prepared) :
-    prepared.name = field.name ∧ prepared.layout = layout field.nullable ∧
-      prepared.page.slots = values.map (Option.map Bytes.ofList) := by
-  cases nullable : field.nullable
-  · cases admitted : (values.map (Option.map Bytes.ofList)).mapM id with
-    | none => simp [prepare, nullable, admitted] at checked
-    | some present =>
-      simp [prepare, nullable, admitted] at checked
-      subst prepared
-      exact ⟨rfl, by simp [PlainByteArrayV1Writer.File.Input.layout, layout], requiredSlots admitted⟩
-  · simp [prepare, nullable] at checked
-    subst prepared
-    exact ⟨rfl, by simp [PlainByteArrayV1Writer.File.Input.layout, layout], rfl⟩
-
 private theorem convert_steps {csv : OpaqueIpc.CsvLimits} {limits : PlainByteArrayV1Writer.File.Limits}
     {field : OpaqueIpc.Descriptor} {input : Csv.Bytes} {output : PlainByteArrayV1Writer.File.Encoded}
     (converted : convert csv limits field input = .ok output) :
@@ -64,26 +34,6 @@ private theorem convert_steps {csv : OpaqueIpc.CsvLimits} {limits : PlainByteArr
           simp_all [convert, Except.mapError, Bind.bind, Except.bind]
   · simp [convert, profile, Bind.bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at converted
 
-private theorem reopen {limits : PlainByteArrayV1Writer.File.Limits} {field : OpaqueIpc.Descriptor} {values : OpaqueIpc.Slots}
-    {prepared : PlainByteArrayV1Writer.File.Input} {output : PlainByteArrayV1Writer.File.Encoded}
-    (packed : prepare field values = some prepared)
-    (written : PlainByteArrayV1Writer.File.emit limits prepared = .ok output) :
-    ∃ checked : File.Checked field.name (layout field.nullable),
-      File.openFile limits output.bytes field.name (layout field.nullable) = .ok checked ∧
-      checked.binding.columnOrdinal = 0 ∧ checked.snapshot.groupCount = 1 ∧
-      checked.readGroup limits 0 = .ok (values.map (Option.map Bytes.ofList)) := by
-  obtain ⟨exactName, exactLayout, exactSlots⟩ := prepare_exact packed
-  obtain ⟨_, _, checked, opened, ordinal, count, read, _⟩ := PlainByteArrayV1Writer.File.emit_readback written
-  let observed := fun name layout slots =>
-    ∃ selected : File.Checked name layout,
-      File.openFile limits output.bytes name layout = .ok selected ∧
-      selected.binding.columnOrdinal = 0 ∧ selected.snapshot.groupCount = 1 ∧
-      selected.readGroup limits 0 = .ok slots
-  have exact : observed prepared.name prepared.layout prepared.page.slots :=
-    ⟨checked, opened, ordinal, count, read⟩
-  rw [exactName, exactLayout, exactSlots] at exact
-  exact exact
-
 theorem convert_readback {csv : OpaqueIpc.CsvLimits} {limits : PlainByteArrayV1Writer.File.Limits}
     {field : OpaqueIpc.Descriptor} {input : Csv.Bytes} {output : PlainByteArrayV1Writer.File.Encoded}
     (converted : convert csv limits field input = .ok output) :
@@ -98,9 +48,11 @@ theorem convert_readback {csv : OpaqueIpc.CsvLimits} {limits : PlainByteArrayV1W
         checked.binding.columnOrdinal = 0 ∧ checked.snapshot.groupCount = 1 ∧
         checked.readGroup limits 0 = .ok (values.map (Option.map Bytes.ofList)) := by
   obtain ⟨profile, values, prepared, parsed, packed, written⟩ := convert_steps converted
-  obtain ⟨name, shape, slots⟩ := prepare_exact packed
-  exact ⟨values, prepared, profile, parsed, name, shape, slots, (PlainByteArrayV1Writer.File.emit_readback written).2.1,
-    reopen packed written⟩
+  have admitted : PlainByteArrayV1Writer.File.Input.ofSlots field.name (layout field.nullable)
+      (values.map (Option.map Bytes.ofList)) = some prepared := packed
+  obtain ⟨name, shape, slots⟩ := PlainByteArrayV1Writer.File.Input.ofSlots_exact admitted
+  exact ⟨values, prepared, profile, parsed, name, shape, slots,
+    PlainByteArrayV1Writer.File.emit_ofSlots_readback admitted written⟩
 
 theorem roundtrip {source sink : File.Limits} {ipc : OpaqueIpc.IpcLimits}
     {exportLimits importLimits : OpaqueIpc.CsvLimits} {input : Bytes} {name : String}

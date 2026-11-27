@@ -23,9 +23,8 @@ def layout (nullable : Bool) : FlatColumn.Layout :=
 
 def prepare (field : OpaqueIpc.Descriptor) (values : OpaqueIpc.Slots) :
     Option PlainByteArrayV1Writer.File.Input :=
-  let slots := values.map (Option.map Bytes.ofList)
-  if field.nullable then some ⟨field.name, .optional slots⟩
-  else (slots.mapM id).map fun present => ⟨field.name, .required present⟩
+  PlainByteArrayV1Writer.File.Input.ofSlots field.name (layout field.nullable)
+    (values.map (Option.map Bytes.ofList))
 
 /-- Check the out-of-band BinaryView descriptor and the complete typed CSV
 before offering one group of original nullable octets to the file writer.

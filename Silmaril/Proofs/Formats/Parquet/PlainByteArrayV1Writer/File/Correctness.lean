@@ -14,6 +14,37 @@ open Silmaril.Formats.Parquet.PlainByteArrayV1Writer.File
 
 variable {limits : Limits} {input : Input} {output : Encoded}
 
+private theorem requiredSlots {slots : List (Option Bytes)} {values : List Bytes}
+    (prepared : slots.mapM id = some values) : values.map some = slots := by
+  induction slots generalizing values with
+  | nil => simpa using prepared.symm
+  | cons slot rest ih =>
+    cases slot with
+    | none => simp [List.mapM_cons] at prepared
+    | some value =>
+      cases read : rest.mapM id with
+      | none => simp [List.mapM_cons, read] at prepared
+      | some tail =>
+        simp [List.mapM_cons, read] at prepared
+        subst values
+        simp [ih read]
+
+theorem ofSlots_exact {name : String} {layout : FlatColumn.Layout} {slots : List (Option Bytes)}
+    (prepared : Input.ofSlots name layout slots = some input) :
+    input.name = name ∧ input.layout = layout ∧ input.page.slots = slots := by
+  cases layout with
+  | optional =>
+    simp [Input.ofSlots] at prepared
+    subst input
+    exact ⟨rfl, rfl, rfl⟩
+  | required =>
+    cases all : slots.mapM id with
+    | none => simp [Input.ofSlots, all] at prepared
+    | some values =>
+      simp [Input.ofSlots, all] at prepared
+      subst input
+      exact ⟨rfl, rfl, requiredSlots all⟩
+
 private theorem assemble_wire (assembled : assemble limits input = .ok output) :
     ∃ footer : Bytes, PlainByteArrayV1Writer.emit (pageLimits limits) input.page = .ok output.page ∧
       serializeFooter input limits output.pageSpan = .ok footer ∧
@@ -114,5 +145,23 @@ theorem emit_readback (written : emit limits input = .ok output) :
   have exactGroup : rowGroup input output = group := Option.some.inj groupAt
   subst group
   exact ⟨fileBound, readFooter, checked, opened, ordinal, count, read, groupWire⟩
+
+theorem emit_ofSlots_readback {name : String} {layout : FlatColumn.Layout} {slots : List (Option Bytes)}
+    (prepared : Input.ofSlots name layout slots = some input) (written : emit limits input = .ok output) :
+    Footer.readFooter limits.snapshot.footer output.bytes = .ok (output.footer, metadata input output) ∧
+    ∃ checked : Plain.ByteArray.File.Checked name layout,
+      Plain.ByteArray.File.openFile limits output.bytes name layout = .ok checked ∧
+      checked.binding.columnOrdinal = 0 ∧ checked.snapshot.groupCount = 1 ∧
+      checked.readGroup limits 0 = .ok slots := by
+  obtain ⟨exactName, exactLayout, exactSlots⟩ := ofSlots_exact prepared
+  obtain ⟨_, footer, checked, opened, ordinal, count, read, _⟩ := emit_readback written
+  let observed := fun name layout slots =>
+    ∃ selected : Plain.ByteArray.File.Checked name layout,
+      Plain.ByteArray.File.openFile limits output.bytes name layout = .ok selected ∧
+      selected.binding.columnOrdinal = 0 ∧ selected.snapshot.groupCount = 1 ∧
+      selected.readGroup limits 0 = .ok slots
+  have exact : observed input.name input.layout input.page.slots := ⟨checked, opened, ordinal, count, read⟩
+  rw [exactName, exactLayout, exactSlots] at exact
+  exact ⟨footer, exact⟩
 
 end Silmaril.Proofs.Formats.Parquet.PlainByteArrayV1Writer.File

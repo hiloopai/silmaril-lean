@@ -1,0 +1,14 @@
+{
+  "explicit-empty.parquet": "23e74defaa3297dc70899e7c51a9caccd4d87f3391e128f98ac4aa24f1c4a89d",
+  "optional.parquet": "747d108edb9959e4a1db9f517be650fab7612c0ff7a62988bca5e2b753d200b7",
+  "required.parquet": "915cf4e5546c9cce4b882bae755e35d59ec85554c1611e92fb92057570d26144",
+  "schema-only.parquet": "dd194392bb279f093e4c48dde8025b525376f7daf8f142f1897ca020866b0cd0",
+  "source/explicit-empty.arrows": "dd5058f34fb6e3699fd5a36c3607aa7df068c81ddd1efa0261e1108250ee15b0",
+  "source/missing-eos.arrows": "244d979073f88e84bbe5071a80afc8c2f0138064b26a0b92d2960afca3bc062e",
+  "source/optional.arrows": "27d21f9a7313dab58177bb8bf6872c62a03f539906fc11231f4fe33a5d1c32f3",
+  "source/required-null.arrows": "0b3755beb649468ff5125abcd48549f14143f840ca52fa31ae5e317d29f142a5",
+  "source/required.arrows": "8b46f681f82d9bf170e584eb64eae039ab27e76d17f57e206d1a6737de0ffc5f",
+  "source/schema-only.arrows": "f96291846e9595b0a989b10f1466be50328ae1347f8fa3416b300de3963778cc",
+  "source/text.arrows": "633e1a52ffce8e740b4b7881a1cd64ead799780f2b085aa06603df3fb18952da",
+  "source/trailing.arrows": "73c2257263153714040618ae4b9f79bf04ea8bf3a889478778c40be67738a514"
+}

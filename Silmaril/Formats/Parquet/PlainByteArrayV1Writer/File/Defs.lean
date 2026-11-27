@@ -26,6 +26,14 @@ def Input.layout (input : Input) : FlatColumn.Layout :=
 def Input.column (input : Input) (span : Footer.Span) : ColumnIndex :=
   ⟨input.name, decide (input.layout = .optional), span⟩
 
+/-- Turn one ordered group of nullable octets into the selected page layout.
+A required input must supply a present value at every position. -/
+def Input.ofSlots (name : String) (layout : FlatColumn.Layout)
+    (slots : List (Option Bytes)) : Option Input :=
+  match layout with
+  | .optional => some ⟨name, .optional slots⟩
+  | .required => (slots.mapM id).map fun values => ⟨name, .required values⟩
+
 structure Encoded where
   bytes : Bytes
   footer : Footer.Span
