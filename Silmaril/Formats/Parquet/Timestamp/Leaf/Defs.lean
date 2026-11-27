@@ -19,7 +19,7 @@ structure Limits where
   allowSnappy : Bool := false
 
 /-- Admit uncompressed chunks and, if requested, raw Snappy blocks. -/
-def Limits.admitsCodec (limits : Limits) (code : Int) : Bool :=
+@[expose] def Limits.admitsCodec (limits : Limits) (code : Int) : Bool :=
   code == 0 || (limits.allowSnappy && code == 1)
 
 inductive ChunkEncoding where
