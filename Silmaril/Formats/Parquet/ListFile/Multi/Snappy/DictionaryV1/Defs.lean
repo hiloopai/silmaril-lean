@@ -175,9 +175,8 @@ structure Chunk where
   firstData : Page.Frame
   rest : List Page.Frame
 
-/-- Select the exact original local chunk and require both advertised frame offsets. -/
-def selectChunk (checked : ListFile.Checked) (ordinal : Nat) : Except GroupError Chunk := do
-  let framed ← (checked.frameGroupWith 1 true ordinal).mapError .framing
+/-- Require both advertised frame offsets in the original local chunk. -/
+def selectFramedChunk (framed : ListFile.FramedGroup) : Except GroupError Chunk := do
   let dictionary :: data := framed.frames | throw .missingDictionary
   let first :: rest := data | throw .missingData
   let metadata := framed.chunk.metadata
@@ -186,6 +185,10 @@ def selectChunk (checked : ListFile.Checked) (ordinal : Nat) : Except GroupError
   if metadata.dataPageOffset ≠ (first.header.start : Int) then
     return ← throw (.dataOffset metadata.dataPageOffset first.header.start)
   pure ⟨framed, dictionary, first, rest⟩
+
+def selectChunk (checked : ListFile.Checked) (ordinal : Nat) : Except GroupError Chunk := do
+  let framed ← (checked.frameGroupWith 1 true ordinal).mapError .framing
+  selectFramedChunk framed
 
 structure ChunkWire (checked : ListFile.Checked) (ordinal : Nat) (chunk : Chunk) : Prop where
   origin : ListFile.ChunkFrameWire checked ordinal chunk.framed 1
@@ -200,9 +203,8 @@ abbrev DataWalk := ListFile.Checked → Footer.ColumnChunk → Array Int32 →
 abbrev WalkWitness := ListFile.Checked → Footer.ColumnChunk → Array Int32 →
   List Page.Frame → List (List Event) → Prop
 
-def readGroupWith (limits : Limits) (walk : DataWalk) (checked : ListFile.Checked) (ordinal expanded : Nat) :
-    Except GroupError (List Row × Nat) := do
-  let selected ← selectChunk checked ordinal
+def readSelectedGroupWith (limits : Limits) (walk : DataWalk) (checked : ListFile.Checked)
+    (selected : Chunk) (expanded : Nat) : Except GroupError (List Row × Nat) := do
   let column := selected.framed.chunk
   let slots := column.metadata.numValues.toNat
   let expectedRows := selected.framed.group.numRows.toNat
@@ -217,6 +219,11 @@ def readGroupWith (limits : Limits) (walk : DataWalk) (checked : ListFile.Checke
   let rows := state.finish
   if rows.length ≠ expectedRows then return ← throw (.rowCount expectedRows rows.length)
   pure (rows, left.expanded)
+
+def readGroupWith (limits : Limits) (walk : DataWalk) (checked : ListFile.Checked) (ordinal expanded : Nat) :
+    Except GroupError (List Row × Nat) := do
+  let selected ← selectChunk checked ordinal
+  readSelectedGroupWith limits walk checked selected expanded
 
 def readGroupUsing (limits : Limits) (read : DataReader) :=
   readGroupWith limits (fun checked column entries => readFramesUsing (read checked column entries))

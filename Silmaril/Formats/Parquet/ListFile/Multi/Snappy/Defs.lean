@@ -217,10 +217,9 @@ def expandedSize (frames : List Page.Frame) : Nat :=
 abbrev GroupWalk :=
   Footer.ColumnChunk → Budget → List Page.Frame → Except GroupError (Budget × State)
 
-/-- Frame the original column once and enforce the shared group counts. -/
-def readGroupUsing (limits : Limits) (checked : ListFile.Checked) (walk : GroupWalk)
-    (ordinal expanded : Nat) : Except GroupError (List Row × Nat) := do
-  let framed ← (checked.frameGroupFor 1 ordinal).mapError .framing
+/-- Enforce the group counts and budgets on the selected original frames. -/
+def readFramedGroupUsing (limits : Limits) (checked : ListFile.Checked) (walk : GroupWalk)
+    (framed : ListFile.FramedGroup) (expanded : Nat) : Except GroupError (List Row × Nat) := do
   let slotCount := framed.chunk.metadata.numValues.toNat
   let rowCount := framed.group.numRows.toNat
   if limits.parquet.maxGroupSlots < slotCount then return ← throw .slotLimit
@@ -230,6 +229,17 @@ def readGroupUsing (limits : Limits) (checked : ListFile.Checked) (walk : GroupW
   let rows := state.finish
   if rows.length ≠ rowCount then return ← throw (.rowCount rowCount rows.length)
   pure (rows, left.expanded)
+
+/-- Frame the original non-dictionary column and enforce the shared group counts. -/
+def readGroupUsing (limits : Limits) (checked : ListFile.Checked) (walk : GroupWalk)
+    (ordinal expanded : Nat) : Except GroupError (List Row × Nat) := do
+  let framed ← (checked.frameGroupFor 1 ordinal).mapError .framing
+  readFramedGroupUsing limits checked walk framed expanded
+
+def readFramedGroupFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked)
+    (framed : ListFile.FramedGroup) (expanded : Nat) : Except GroupError (List Row × Nat) :=
+  readFramedGroupUsing limits checked
+    (fun column budget => readFramesFor version limits checked column 0 budget State.empty) framed expanded
 
 def readGroupFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked)
     (ordinal expanded : Nat) : Except GroupError (List Row × Nat) :=

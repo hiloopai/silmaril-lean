@@ -306,6 +306,40 @@ public theorem readFramesFor_wire {version : PageVersion} {limits : Limits} {che
         · simp only [expandedSize, List.map_cons, List.sum_cons, Budget.use] at bytes ⊢
           omega
 
+private theorem readFramedGroupUsing_checked {limits : Limits} {checked : ListFile.Checked} {walk : GroupWalk}
+    {framed : ListFile.FramedGroup} {expanded left : Nat} {rows : List Row}
+    (h : readFramedGroupUsing limits checked walk framed expanded = .ok (rows, left)) :
+    ∃ budget state,
+      walk framed.chunk ⟨framed.chunk.metadata.numValues.toNat, expanded⟩ framed.frames = .ok (budget, state) ∧
+      budget.slots = 0 ∧ budget.expanded = left ∧ state.finish = rows ∧
+      rows.length = framed.group.numRows.toNat ∧
+      framed.chunk.metadata.numValues.toNat ≤ limits.parquet.maxGroupSlots ∧
+      framed.group.numRows.toNat ≤ checked.limits.page.maxRows := by
+  unfold readFramedGroupUsing at h
+  dsimp only at h
+  split at h
+  · contradiction
+  · rename_i slotCap
+    split at h
+    · contradiction
+    · rename_i rowCap
+      cases read : walk framed.chunk ⟨framed.chunk.metadata.numValues.toNat, expanded⟩ framed.frames with
+      | error e => simp [read, Bind.bind, Except.bind] at h
+      | ok result =>
+        obtain ⟨budget, state⟩ := result
+        simp only [read, Bind.bind, Except.bind] at h
+        split at h
+        · contradiction
+        · rename_i noSurplus
+          push Not at noSurplus
+          split at h
+          · contradiction
+          · rename_i rowCount
+            push Not at rowCount
+            obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj h)
+            exact ⟨budget, state, rfl, noSurplus, rfl, rfl,
+              rowCount, Nat.le_of_not_gt slotCap, Nat.le_of_not_gt rowCap⟩
+
 public theorem readGroupUsing_checked {limits : Limits} {checked : ListFile.Checked} {walk : GroupWalk}
     {ordinal expanded left : Nat} {rows : List Row}
     (h : readGroupUsing limits checked walk ordinal expanded = .ok (rows, left)) :
@@ -321,40 +355,32 @@ public theorem readGroupUsing_checked {limits : Limits} {checked : ListFile.Chec
   | error e => simp [selected, Except.mapError, Bind.bind, Except.bind] at h
   | ok framed =>
     simp only [selected, Except.mapError, Bind.bind, Except.bind] at h
-    split at h
-    · contradiction
-    · rename_i slotCap
-      split at h
-      · contradiction
-      · rename_i rowCap
-        cases read : walk framed.chunk ⟨framed.chunk.metadata.numValues.toNat, expanded⟩ framed.frames with
-        | error e => simp [read] at h
-        | ok result =>
-          obtain ⟨budget, state⟩ := result
-          simp only [read] at h
-          split at h
-          · contradiction
-          · rename_i noSurplus
-            push Not at noSurplus
-            split at h
-            · contradiction
-            · rename_i rowCount
-              push Not at rowCount
-              obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj h)
-              exact ⟨framed, budget, state, ListFile.frameGroupFor_wire selected, read, noSurplus, rfl, rfl,
-                rowCount, Nat.le_of_not_gt slotCap, Nat.le_of_not_gt rowCap⟩
+    obtain ⟨budget, state, facts⟩ := readFramedGroupUsing_checked h
+    exact ⟨framed, budget, state, ListFile.frameGroupFor_wire selected, facts⟩
 
-public theorem readGroupFor_wire {version : PageVersion} {limits : Limits} {checked : ListFile.Checked}
-    {ordinal expanded left : Nat} {rows : List Row}
-    (h : readGroupFor version limits checked ordinal expanded = .ok (rows, left)) :
+public theorem readFramedGroupFor_wire {version : PageVersion} {limits : Limits} {checked : ListFile.Checked}
+    {ordinal expanded left : Nat} {framed : ListFile.FramedGroup} {rows : List Row}
+    (origin : ListFile.FramedGroupWire checked ordinal framed 1)
+    (h : readFramedGroupFor version limits checked framed expanded = .ok (rows, left)) :
     GroupWire limits checked ordinal rows (expanded - left) version ∧ left ≤ expanded := by
-  obtain ⟨framed, budget, state, origin, read, noSurplus, remaining, rfl, rowCount, slotCap, rowCap⟩ :=
-    readGroupUsing_checked (walk := fun column budget => readFramesFor version limits checked column 0 budget State.empty) h
+  obtain ⟨budget, state, read, noSurplus, remaining, rfl, rowCount, slotCap, rowCap⟩ :=
+    readFramedGroupUsing_checked (walk := fun column budget => readFramesFor version limits checked column 0 budget State.empty) h
   obtain ⟨pages, wire, count, bytes, fed, order⟩ := readFramesFor_wire read
   change pages.flatten.length + budget.slots = _ at count
   change expandedSize framed.frames + budget.expanded = expanded at bytes
   exact ⟨⟨framed, pages, origin, wire, by simpa [noSurplus] using count, rowCount,
     ListPage.reconstruct_of_feed fed, by simpa [ListPage.finish_empty] using order, slotCap, rowCap, by omega⟩, by omega⟩
+
+public theorem readGroupFor_wire {version : PageVersion} {limits : Limits} {checked : ListFile.Checked}
+    {ordinal expanded left : Nat} {rows : List Row}
+    (h : readGroupFor version limits checked ordinal expanded = .ok (rows, left)) :
+    GroupWire limits checked ordinal rows (expanded - left) version ∧ left ≤ expanded := by
+  unfold readGroupFor readGroupUsing at h
+  cases selected : checked.frameGroupFor 1 ordinal with
+  | error cause => simp [selected, Except.mapError, Bind.bind, Except.bind] at h
+  | ok framed =>
+    simp only [selected, Except.mapError, Bind.bind, Except.bind] at h
+    exact readFramedGroupFor_wire (ListFile.frameGroupFor_wire selected) h
 
 public theorem pageRows_of_rows (rows : List Row) :
     pageRows (rows.flatMap ListPage.rowEvents) = rows.length := by

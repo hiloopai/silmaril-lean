@@ -177,6 +177,14 @@ theorem convertFor_readback {version : PageVersion} {limits : Limits} {source : 
     (h : (convertFor version limits source).wire = .ok wire) : Readback limits source wire version :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertFor_readback h
 
+/-- Read a selected original PLAIN group without parsing its headers again. -/
+theorem readFramedGroupFor_wire {version : PageVersion} {limits : Limits} {checked : ListFile.Checked}
+    {ordinal expanded left : Nat} {framed : ListFile.FramedGroup} {rows : List Row}
+    (origin : ListFile.FramedGroupWire checked ordinal framed 1)
+    (h : readFramedGroupFor version limits checked framed expanded = .ok (rows, left)) :
+    GroupWire limits checked ordinal rows (expanded - left) version ∧ left ≤ expanded :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.readFramedGroupFor_wire origin h
+
 /-- The shared group checks bind the original frame walk and checked footer totals. -/
 theorem readGroupUsing_checked {limits : Limits} {checked : ListFile.Checked} {walk : GroupWalk}
     {ordinal expanded left : Nat} {rows : List Row}

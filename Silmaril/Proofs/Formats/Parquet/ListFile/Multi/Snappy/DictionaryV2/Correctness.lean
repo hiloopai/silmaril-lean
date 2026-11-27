@@ -174,7 +174,8 @@ public theorem readGroup_dictionary_error {limits : Limits} {checked : ListFile.
     (rows : chunk.framed.group.numRows.toNat ≤ checked.limits.page.maxRows)
     (failed : ListFile.Multi.Snappy.DictionaryV1.readEntries limits checked expanded chunk.dictionary = .error cause) :
     readGroup limits checked ordinal expanded = .error (.frame 0 chunk.dictionary.header.start cause) := by
-  simp [readGroup, ListFile.Multi.Snappy.DictionaryV1.readGroupUsing, ListFile.Multi.Snappy.DictionaryV1.readGroupWith, selected,
+  simp [readGroup, ListFile.Multi.Snappy.DictionaryV1.readGroupUsing, ListFile.Multi.Snappy.DictionaryV1.readGroupWith,
+    ListFile.Multi.Snappy.DictionaryV1.readSelectedGroupWith, selected,
     Nat.not_lt.mpr slots, Nat.not_lt.mpr rows, failed, Except.mapError, Bind.bind, Except.bind]
 
 public theorem convert_first_error {limits : Limits} {source : Bytes} {checked : ListFile.Checked}

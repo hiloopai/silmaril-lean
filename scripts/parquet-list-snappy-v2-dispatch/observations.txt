@@ -1,0 +1,23 @@
+PyArrow 26.0.1
+native-plain-v2.parquet SHA-256 ad8ad2bca994e2c4218b4b705d413e43a6370f59e2e06169920d33f38466741a, footer [131, 581)
+  group 0 [4, 131), tags [0, 0, 0], rows 4, slots 37, expanded 152, frame offsets [4, 39, 82]
+native-dictionary-and-fallback-v2.parquet SHA-256 754a94ce2df4ffb3c50bba6529e0796330b5257cf9a37f3c1a05c85aec199bc9, footer [733, 1292)
+  group 0 [4, 358), tags ['dict', 8, 8, 8, 8, 8, 8, 8, 8, 8], rows 8, slots 27, expanded 63, frame offsets [4, 34, 69, 104, 142, 179, 213, 250, 289, 320]
+  group 1 [358, 733), tags ['dict', 8, 8, 8, 8, 8, 0, 0, 0], rows 8, slots 66, expanded 234, frame offsets [358, 408, 443, 478, 516, 553, 592, 631, 680]
+assembled-three-profiles-v2.parquet SHA-256 2f83ca57515a1b63c9529d5eaed9fc6924c95ebc17d317373bfd7d881d6c0f50, footer [860, 1092)
+  group 0 [4, 131), tags [0, 0, 0], rows 4, slots 37, expanded 152, frame offsets [4, 39, 82]
+  group 1 [131, 485), tags ['dict', 8, 8, 8, 8, 8, 8, 8, 8, 8], rows 8, slots 27, expanded 63, frame offsets [131, 161, 196, 231, 269, 306, 340, 377, 416, 447]
+  group 2 [485, 860), tags ['dict', 8, 8, 8, 8, 8, 0, 0, 0], rows 8, slots 66, expanded 234, frame offsets [485, 535, 570, 605, 643, 680, 719, 758, 807]
+  native-plain-v2.arrows SHA-256 a9f4fc94d66636726113ad671aa4d191c7680afeaccfdae2ad666afbffd288ee, exact EOS [600, 608)
+  native-dictionary-and-fallback-v2.arrows SHA-256 ebac42c9e1635d536016d498213c14b60ba1723ea847d328dd97bdd0c21e157d, exact EOS [1096, 1104)
+  assembled-three-profiles-v2.arrows SHA-256 f30956609b3e1c8cf0ecded3fd051cb7a2dbaf0bbc35e1d8acca9a74edeff1fd, exact EOS [1488, 1496)
+mutated-plain-crc.parquet SHA-256 69305f4437f56cf0f30901e254755f87957a8a70a4d7e202dbbb373df0d37f72
+plain-crc: group 0 page 2 @82; retained batch lengths [] and no IPC bytes
+mutated-dictionary-crc.parquet SHA-256 32f4324fbf84d641f94a749ebe02412c3710d0b1af261241477f7bb7cd14df97
+dictionary-crc: group 1 page 3 @231; retained batch lengths [4] and no IPC bytes
+mutated-fallback-plain-crc.parquet SHA-256 24732f81700a17929a207aadcdb4b09a5b873733edfc6b189084676c4a73f0e3
+fallback-plain-crc: group 2 page 8 @807; retained batch lengths [4, 8] and no IPC bytes
+mutated-reentry.parquet SHA-256 dd6cc80f4b0960750683769ac6715fcbe99e21a71a18c483b6e398fc2c8b5758
+reentry: group 2 page 8 @807; retained batch lengths [4, 8] and no IPC bytes
+mutated-early-index-crc-before-reentry.parquet SHA-256 6f9e99506bb316130c761aa2f0930e65550a44e96f4b42f9a945574f72583986
+early-index-crc-before-reentry: group 2 page 3 @605; retained batch lengths [4, 8] and no IPC bytes
