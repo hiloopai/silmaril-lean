@@ -48,6 +48,11 @@ theorem check_metadata {limits : Limits} {bytes : Bytes} {checked : Checked}
     checked.metadata = metadata :=
   Proofs.Formats.Parquet.Snapshot.check_metadata opened footer
 
+/-- The strict snapshot retains the exact immutable input bytes. -/
+theorem check_bytes {limits : Limits} {input : Bytes} {snapshot : Checked}
+    (opened : check (Failure := Failure) limits input = .ok snapshot) : snapshot.bytes = input :=
+  Proofs.Formats.Parquet.Snapshot.check_bytes opened
+
 /-- The strict snapshot retains all original footer groups at their original indices. -/
 theorem check_groups {limits : Limits} {input : Bytes} {snapshot : Checked}
     (opened : check (Failure := Failure) limits input = .ok snapshot) :

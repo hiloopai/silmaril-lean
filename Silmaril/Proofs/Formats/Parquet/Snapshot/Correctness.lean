@@ -26,6 +26,20 @@ theorem check_metadata {limits : Limits} {bytes : Bytes} {checked : Checked}
     cases opened
     rfl
 
+theorem check_bytes {limits : Limits} {input : Bytes} {snapshot : Checked}
+    (opened : check (Failure := Failure) limits input = .ok snapshot) : snapshot.bytes = input := by
+  cases footer : Footer.readFooter limits.footer input with
+  | error cause => simp [check, footer, Except.mapError, Bind.bind, Except.bind] at opened
+  | ok result =>
+    obtain ⟨span, metadata⟩ := result
+    cases validation : Footer.validate span.start limits.maxSchemaDepth metadata with
+    | error cause => simp [check, footer, validation, Except.mapError, Bind.bind, Except.bind] at opened
+    | ok accepted =>
+      cases accepted
+      simp [check, footer, validation, Except.mapError, Bind.bind, Except.bind, pure, Except.pure] at opened
+      cases opened
+      rfl
+
 theorem check_groups {limits : Limits} {input : Bytes} {snapshot : Checked}
     (opened : check (Failure := Failure) limits input = .ok snapshot) :
     snapshot.groupCount = snapshot.metadata.rowGroups.length ∧
