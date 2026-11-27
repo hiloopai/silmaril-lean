@@ -207,19 +207,21 @@ private theorem mapError_ite {α ε δ : Type} (lift : ε → δ) (test : Prop) 
     (if test then yes else no).mapError lift = if test then yes.mapError lift else no.mapError lift :=
   apply_ite (Except.mapError lift) test yes no
 
-theorem checkGroupWithCodec_agrees {ε δ : Type} {limits : Limits} {bound : Bound} {index : Nat}
+theorem checkGroupWithDictionary_agrees {ε δ γ : Type} {limits : Limits} {bound : Bound} {index : Nat}
     {codec : Payload.Codec} {selection : Date.Leaf.Chunk} {dictionary : Page.Frame} {frames : List Page.Frame}
-    {readDictionary : Bytes → Page.Frame → Except PageError (List Int32)}
+    {readDictionary : Bytes → Page.Frame → Except γ (List Int32)}
+    {dictError : Page.Frame → γ → ε} {otherDictError : Page.Frame → γ → δ}
     {wrap : GroupError → ε} {otherWrap : GroupError → δ} {lift : ε → δ}
     {plan : List Page.Frame → Except ε (List DataPage)}
     {otherPlan : List Page.Frame → Except δ (List DataPage)}
     (selected : selectChunk bound index = .ok selection)
     (framed : Page.readChunk limits.page bound.snapshot.bytes selection.span = .ok (dictionary :: frames))
     (wrap_eq : ∀ cause, lift (wrap cause) = otherWrap cause)
+    (dict_eq : ∀ frame cause, lift (dictError frame cause) = otherDictError frame cause)
     (plan_eq : otherPlan frames = (plan frames).mapError lift) :
-    checkGroupWithCodec codec otherWrap readDictionary otherPlan limits bound index =
-      (checkGroupWithCodec codec wrap readDictionary plan limits bound index).mapError lift := by
-  unfold checkGroupWithCodec checkGroupWithDictionary
+    checkGroupWithDictionary codec otherWrap otherDictError readDictionary otherPlan limits bound index =
+      (checkGroupWithDictionary codec wrap dictError readDictionary plan limits bound index).mapError lift := by
+  unfold checkGroupWithDictionary
   cases frames with
   | nil =>
     simp only [selected, framed, mapError_value, Bind.bind, Except.bind,
@@ -232,8 +234,22 @@ theorem checkGroupWithCodec_agrees {ε δ : Type} {limits : Limits} {bound : Bou
     | error => simp only [mapError_cause]
     | ok =>
       cases readDictionary bound.snapshot.bytes dictionary <;>
-        simp only [mapError_value, mapError_cause, Function.comp_apply, mapError_ite, wrap_eq,
+        simp only [mapError_value, mapError_cause, mapError_ite, wrap_eq, dict_eq,
           Pure.pure, Except.pure]
+
+theorem checkGroupWithCodec_agrees {ε δ : Type} {limits : Limits} {bound : Bound} {index : Nat}
+    {codec : Payload.Codec} {selection : Date.Leaf.Chunk} {dictionary : Page.Frame} {frames : List Page.Frame}
+    {readDictionary : Bytes → Page.Frame → Except PageError (List Int32)}
+    {wrap : GroupError → ε} {otherWrap : GroupError → δ} {lift : ε → δ}
+    {plan : List Page.Frame → Except ε (List DataPage)}
+    {otherPlan : List Page.Frame → Except δ (List DataPage)}
+    (selected : selectChunk bound index = .ok selection)
+    (framed : Page.readChunk limits.page bound.snapshot.bytes selection.span = .ok (dictionary :: frames))
+    (wrap_eq : ∀ cause, lift (wrap cause) = otherWrap cause)
+    (plan_eq : otherPlan frames = (plan frames).mapError lift) :
+    checkGroupWithCodec codec otherWrap readDictionary otherPlan limits bound index =
+      (checkGroupWithCodec codec wrap readDictionary plan limits bound index).mapError lift :=
+  checkGroupWithDictionary_agrees selected framed wrap_eq (fun _ cause => wrap_eq (atFrame 0 _ cause)) plan_eq
 
 theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
     {plan : List Page.Frame → Except ε (List DataPage)} {admits : Int → Bool}

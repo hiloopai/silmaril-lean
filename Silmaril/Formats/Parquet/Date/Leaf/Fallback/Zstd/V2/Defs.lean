@@ -62,12 +62,15 @@ def decodePage (limits : Limits) (bound : Bound) (metadata : Footer.ColumnMetada
   else
     (Dictionary.Zstd.V2.decodePage limits bound.snapshot.bytes entries page ordinal).mapError .dictionary
 
-def readGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError Slots := do
-  let checked ← checkGroup limits bound index
+/-- Decode the checked original pages in order using their planned encodings. -/
+def decodeGroup (limits : Limits) (bound : Bound) (checked : CheckedGroup) : Except GroupError Slots := do
   let entries := checked.entries.toArray
   let pages ← (checked.data.zipIdx 1).mapM fun (page, ordinal) =>
     decodePage limits bound checked.selection.column.metadata entries page ordinal
   return pages.flatten
+
+def readGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError Slots :=
+  checkGroup limits bound index >>= decodeGroup limits bound
 
 def trace (limits : Limits) (bound : Bound) :
     Arrow.Events.Trace (Events.schema bound) Date.Events.Cell Error :=

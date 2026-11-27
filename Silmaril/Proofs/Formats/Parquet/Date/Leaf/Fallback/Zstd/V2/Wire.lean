@@ -157,6 +157,7 @@ theorem readGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {slots : 
       slots = pages.flatten ∧ slots.length = checked.selection.group.numRows.toNat := by
   unfold readGroup at read
   obtain ⟨checked, planned, read⟩ := bind_ok read
+  unfold decodeGroup at read
   obtain ⟨pages, decoded, read⟩ := bind_ok read
   obtain ⟨wire, phases⟩ := checkGroup_wire planned
   have paired : List.Forall₂ (PageWire limits bound.snapshot.bytes checked.entries.toArray) checked.data pages := by
@@ -198,7 +199,7 @@ theorem readGroup_firstPageError {limits : Limits} {bound : Bound} {index ordina
       decodePage limits bound checked.selection.column.metadata checked.entries.toArray item i) = .ok prefixSlots)
     (failed : decodePage limits bound checked.selection.column.metadata checked.entries.toArray page ordinal = .error cause) :
     readGroup limits bound index = .error cause := by
-  simp [readGroup, admitted, split, earlier, failed, Bind.bind, Except.bind]
+  simp [readGroup, decodeGroup, admitted, split, earlier, failed, Bind.bind, Except.bind]
 
 theorem decodePage_checksum_error {limits : Limits} {bound : Bound} {metadata : Footer.ColumnMetadata}
     {entries : Array Int32} {page : DataPage} {ordinal : Nat} {cause : Page.Checksum.Error}

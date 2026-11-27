@@ -23,15 +23,16 @@ ORDER = (("plain", 0), ("backed", 0), ("backed", 1), ("plain", 1), ("backed", 2)
 PROFILES = ("plain", "dictionary", "fallback", "plain", "dictionary")
 
 
-def assemble(parents, observations, footer, thrift, extent, relocate):
+def assemble(parents, observations, footer, thrift, extent, relocate, *, order=ORDER, profiles=PROFILES):
     """Copy the original chunk octets and rebuild absolute footer offsets."""
     types = thrift["TType"]
     footers = {label: footer(wire, thrift)[1] for label, wire in parents.items()}
     base = deepcopy(footers["plain"])
-    assert base[2] == footers["backed"][2]
+    assert all(base[2] == original[2] for original in footers.values())
+    assert len(order) == len(profiles)
     body = bytearray(b"PAR1")
     output_groups, selected = [], []
-    for index, (label, source_index) in enumerate(ORDER):
+    for index, (label, source_index) in enumerate(order):
         wire = parents[label]
         group = deepcopy(thrift["list_field"](footers[label], 4)[source_index])
         group_start = len(body)
@@ -59,7 +60,7 @@ def assemble(parents, observations, footer, thrift, extent, relocate):
                     frame["stored_start"] += delta
                 obs["span"] = [start + delta, stop + delta]
                 obs["source_group"] = [label, source_index]
-                obs["profile"] = PROFILES[index]
+                obs["profile"] = profiles[index]
                 selected.append(obs)
         if 5 in group:
             group[5] = types.I64, group_start
@@ -73,7 +74,7 @@ def assemble(parents, observations, footer, thrift, extent, relocate):
     return bytes(body) + encoded + struct.pack("<I", len(encoded)) + b"PAR1", selected
 
 
-def inspect_assembly(pa, pq, wire, parents, original, observed, expected, nullable, prior, support):
+def inspect_assembly(pa, pq, wire, parents, original, observed, expected, nullable, prior, support, *, compression="GZIP"):
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert parquet.schema_arrow[ORDINAL] == pa.field(NAME, pa.date32(), nullable=nullable)
     assert [prior["read_group"](pa, parquet, NAME, i) for i in range(parquet.num_row_groups)] == expected
@@ -84,7 +85,7 @@ def inspect_assembly(pa, pq, wire, parents, original, observed, expected, nullab
         original_start, original_stop = original[label][source_index]["span"]
         assert wire[start:stop] == parents[label][original_start:original_stop]
         column = parquet.metadata.row_group(index).column(ORDINAL)
-        assert column.compression == "GZIP" and column.total_compressed_size == stop - start
+        assert column.compression == compression and column.total_compressed_size == stop - start
         if label == "plain":
             assert column.dictionary_page_offset is None and column.data_page_offset == start
             frames = list(prior["frames"](wire, column, support["THRIFT"]))

@@ -79,6 +79,24 @@ theorem checkGroupWithCodec_wire {ε : Type} {codec : Payload.Codec} {wrap : Gro
     GroupWireWith limits bound index checked codec readDictionary admitted ∧ valid checked.data :=
   Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.checkGroupWithCodec_wire keeps accepted
 
+/-- On the same original frames, equivalent plans and typed error wrappers agree. -/
+theorem checkGroupWithDictionary_agrees {ε δ γ : Type} {limits : Limits} {bound : Bound} {index : Nat}
+    {codec : Payload.Codec} {selection : Date.Leaf.Chunk} {dictionary : Page.Frame} {frames : List Page.Frame}
+    {readDictionary : Bytes → Page.Frame → Except γ (List Int32)}
+    {dictError : Page.Frame → γ → ε} {otherDictError : Page.Frame → γ → δ}
+    {wrap : GroupError → ε} {otherWrap : GroupError → δ} {lift : ε → δ}
+    {plan : List Page.Frame → Except ε (List DataPage)}
+    {otherPlan : List Page.Frame → Except δ (List DataPage)}
+    (selected : selectChunk bound index = .ok selection)
+    (framed : Page.readChunk limits.page bound.snapshot.bytes selection.span = .ok (dictionary :: frames))
+    (wrap_eq : ∀ cause, lift (wrap cause) = otherWrap cause)
+    (dict_eq : ∀ frame cause, lift (dictError frame cause) = otherDictError frame cause)
+    (plan_eq : otherPlan frames = (plan frames).mapError lift) :
+    checkGroupWithDictionary codec otherWrap otherDictError readDictionary otherPlan limits bound index =
+      (checkGroupWithDictionary codec wrap dictError readDictionary plan limits bound index).mapError lift :=
+  Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.checkGroupWithDictionary_agrees
+    selected framed wrap_eq dict_eq plan_eq
+
 /-- The same original framed chunk preserves the result of the chosen plan
 and its typed errors under the supplied wrapper. -/
 theorem checkGroupWithCodec_agrees {ε δ : Type} {limits : Limits} {bound : Bound} {index : Nat}
