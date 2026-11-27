@@ -1,0 +1,7 @@
+{
+  "assembled_framed_zero.parquet": "a6f3ae3bb06df5f941f1ca3e0003ae7efcc2892fbf2fdb1ee5dcec566e36ec52",
+  "native_mixed.arrow": "94d57c777de35ec980b8120aac7ac585df7fae823a57728df9ff5fde4857a233",
+  "native_zero_width.arrow": "9b6a9e2496f9a5e3b85e7f6f2843a742940b35e046e4b3f2352d2528d9fd7faa",
+  "native_named_timezone.arrow": "ecf7471130d3ab5df665676f5934694f0599d7823bf25febffedb6b6297a76f2",
+  "mutated_ipc_trailing.arrow": "6a0590118152eeff68d04f9e8f6d8818b3d99bb14104caf44ba8155411069316"
+}
