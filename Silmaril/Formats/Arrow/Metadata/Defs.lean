@@ -132,6 +132,22 @@ structure Field where
 
 end ListInt32
 
+namespace StructInt32
+
+structure Child where
+  name : String
+  nullable : Bool
+  deriving DecidableEq, Repr
+
+/-- A nullable Struct with two signed Int32 children in declared order. -/
+structure Field where
+  name : String
+  left : Child
+  right : Child
+  deriving DecidableEq, Repr
+
+end StructInt32
+
 structure FieldNode where
   length : Nat
   nullCount : Nat
@@ -659,6 +675,38 @@ public def ListInt32.readSchemaFor (parentNullable : Bool) (limits : Limits) (by
   return selected
 
 @[expose] public def ListInt32.readSchema := ListInt32.readSchemaFor true
+
+private def structInt32Field (bytes : KBytes) (pos : Nat) : Except Error StructInt32.Field := do
+  let value ← table bytes pos
+  tableShape value 7
+  let name ← string bytes value 0
+  let nullable ← bool bytes value 1
+  let tag ← scalar bytes value 2 1
+  if tag ≠ 13 then throw (.unsupported (.fieldType tag))
+  if !nullable then throw (.unsupported .nested)
+  let payload ← table bytes (← require (← reference bytes value 3))
+  tableShape payload 0
+  noTable bytes value 4 .dictionary
+  let (start, count) ← vector bytes value 5 4 4
+  if count ≠ 2 then throw (.unsupported .nested)
+  let left ← field bytes (← target bytes start)
+  let right ← field bytes (← target bytes (start + 4))
+  if left.type != .int32 || right.type != .int32 then throw (.unsupported .nested)
+  emptyVector bytes value 6 4 4 .customMetadata
+  return ⟨name, ⟨left.name, left.nullable⟩, ⟨right.name, right.nullable⟩⟩
+
+/-- Admit one bodyless little-endian V5 Schema with a nullable Struct
+(type tag 13) and exactly two signed Int32 leaves. -/
+public def StructInt32.readSchema (limits : Limits) (bytes : KBytes) : Except Error StructInt32.Field := do
+  let (tag, payload, bodyLength) ← messageParts limits bytes
+  if tag ≠ 1 then throw (.unsupported (.messageKind tag))
+  if bodyLength ≠ 0 then throw (.malformed .bodyLength)
+  if limits.fields < 3 then throw (.limit .fields)
+  let (_, fields) ← schemaWith { limits with fields := 1 } bytes payload
+    (fun endian => if endian = 0 then .ok () else .error (.unsupported (.endianness endian)))
+    (structInt32Field bytes)
+  let [selected] := fields | throw (.unsupported .nested)
+  return selected
 
 private def mixedFieldKind (bytes : KBytes) (tag : Nat) (payload : Table) :
     Except Error MixedFlat.Kind := do

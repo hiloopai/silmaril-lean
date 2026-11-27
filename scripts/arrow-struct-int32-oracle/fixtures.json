@@ -1,0 +1,17 @@
+{
+  "compressed": "982803ed00bdd9329820508f58ec5504c2e64a9972bbbea9b59bc09f927d2ea3",
+  "edited_body_extent": "5825909a97d87b739db4953887922f0c670fefbfb7fc9b8740c249d43fc3b8b7",
+  "edited_child_null_count": "8e1cdc393a1be8d457a933d0fc47dae69af240724461f6042e90a92f5503b2c6",
+  "edited_late_child_length": "c3ea07f3efc387b5fc7c5865e47561340836587d9468bea1d3a73cc2c5140165",
+  "edited_missing_eos": "55764a74a5a1392b7244becef9771d105dc65fbe81cfa433b55e6994dbd03a9f",
+  "edited_parent_bitmap": "8765dd58e17e8aa1f8341e473f763ef4e18ad5c4dccde52d1ae4ee6c6c126fbb",
+  "edited_trailing": "b39beb769526f364d9e7089a5776a8e8ae8a323f0a27ba4e02cbacc0a208c1fa",
+  "flat": "89fae8c367ccf6ff90e0572af46f782c3d4f4adb7399713be26cab5db9b377aa",
+  "mixed": "f1381e694fd2a9c9091f2ccffbd864beadd8e20846b0519f4b59c877f26d067c",
+  "one_child": "76468495c8372f8c5c9501f73e37dddbcb16d5bbf49bc89f6c0c21d8abab0a92",
+  "repeated": "5f52ccbab8b7a8d09b6b616813ea00ed53468a91dc2a1c8db915aa0f60e9ed5f",
+  "required_parent": "96a07853b2846a7a6c5139e08c9aa718973d0d724c763fdab72e70c168530657",
+  "required_visible": "8834bac0adc706d812833182f1ae95d7f5b8017cfd93dfe291899b442d7bbab0",
+  "schema_only": "42dc5b0e7bffae303c816465935dc513ab5640baca9ddf6bacc7b876fed9c28b",
+  "wrong_integer": "2aec5f2cfff09c87cfd0a7b2282e950cd296fefb85bd7e11b03f08f2e21f0570"
+}
