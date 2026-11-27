@@ -1,0 +1,68 @@
+PyArrow 26.0.1
+native-crc-v2.parquet SHA-256 c1da13d03d6ad796c3a22ebae477046c3c2278a138d685d7f9091ae8ba4b99a6, footer [439, 993)
+  group 0 dictionary @4 payload [24, 38), signed [-7, 2147483647, -2147483648]
+  group 0 page 1 @38, rep [68, 70), def [70, 72), indices [72, 73) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 0 page 2 @73, rep [103, 105), def [105, 107), indices [107, 108) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 0 page 3 @108, rep [138, 140), def [140, 143), indices [143, 146) -> 3 bytes, flag False, slots 4, rows 1, nulls 1, width 1, indices [0, 0, 1]
+  group 0 page 4 @146, rep [176, 176), def [176, 176), indices [176, 177) -> 1 bytes, flag False, slots 0, rows 0, nulls 0, width 1, indices []
+  group 0 page 5 @177, rep [207, 209), def [209, 211), indices [211, 215) -> 4 bytes, flag False, slots 3, rows 1, nulls 0, width 2, indices [2, 1, 2]
+  group 1 dictionary @215 payload [235, 245), signed [8, -11]
+  group 1 page 1 @245, rep [275, 277), def [277, 279), indices [279, 280) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 1 page 2 @280, rep [310, 312), def [312, 314), indices [314, 315) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 1 page 3 @315, rep [345, 347), def [347, 350), indices [350, 353) -> 3 bytes, flag False, slots 3, rows 1, nulls 1, width 1, indices [0, 0]
+  group 1 page 4 @353, rep [383, 383), def [383, 383), indices [383, 384) -> 1 bytes, flag False, slots 0, rows 0, nulls 0, width 1, indices []
+  group 1 page 5 @384, rep [416, 421), def [421, 427), indices [427, 439) -> 68 bytes, flag True, slots 514, rows 1, nulls 1, width 1, indices [1, 0, 1, 0, 1, 0, 1, 0]…
+native-no-crc-empty-dictionary-v2.parquet SHA-256 343fe86f6b82af69fc3fff9cdb8447b28ce4ca5c098b612aef995e9774045ef4, footer [523, 1168)
+  group 0 dictionary @4 payload [18, 32), signed [-7, 2147483647, -2147483648]
+  group 0 page 1 @32, rep [56, 58), def [58, 60), indices [60, 61) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 0 page 2 @61, rep [85, 87), def [87, 89), indices [89, 90) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 0 page 3 @90, rep [114, 116), def [116, 119), indices [119, 122) -> 3 bytes, flag False, slots 4, rows 1, nulls 1, width 1, indices [0, 0, 1]
+  group 0 page 4 @122, rep [146, 146), def [146, 146), indices [146, 147) -> 1 bytes, flag False, slots 0, rows 0, nulls 0, width 1, indices []
+  group 0 page 5 @147, rep [171, 173), def [173, 175), indices [175, 179) -> 4 bytes, flag False, slots 3, rows 1, nulls 0, width 2, indices [2, 1, 2]
+  group 1 dictionary @179 payload [193, 203), signed [8, -11]
+  group 1 page 1 @203, rep [227, 229), def [229, 231), indices [231, 232) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 1 page 2 @232, rep [256, 258), def [258, 260), indices [260, 261) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 1 page 3 @261, rep [285, 287), def [287, 290), indices [290, 293) -> 3 bytes, flag False, slots 3, rows 1, nulls 1, width 1, indices [0, 0]
+  group 1 page 4 @293, rep [317, 317), def [317, 317), indices [317, 318) -> 1 bytes, flag False, slots 0, rows 0, nulls 0, width 1, indices []
+  group 1 page 5 @318, rep [344, 349), def [349, 355), indices [355, 367) -> 68 bytes, flag True, slots 514, rows 1, nulls 1, width 1, indices [1, 0, 1, 0, 1, 0, 1, 0]…
+  group 2 dictionary @367 payload [381, 382), signed []
+  group 2 page 1 @382, rep [406, 408), def [408, 410), indices [410, 411) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 2 page 2 @411, rep [435, 437), def [437, 439), indices [439, 440) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 2 page 3 @440, rep [464, 466), def [466, 468), indices [468, 469) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 2 page 4 @469, rep [493, 493), def [493, 493), indices [493, 494) -> 1 bytes, flag False, slots 0, rows 0, nulls 0, width 0, indices []
+  group 2 page 5 @494, rep [518, 520), def [520, 522), indices [522, 523) -> 1 bytes, flag False, slots 2, rows 1, nulls 2, width 0, indices []
+assembled-default-v2.parquet SHA-256 a7b23446ef48aee07a9d1b182efd1e9729a0668699fb9882edca3f5ff370d2b6, footer [436, 614)
+  group 0 dictionary @4 payload [24, 38), signed [-7, 2147483647, -2147483648]
+  group 0 page 1 @38, rep [68, 70), def [70, 72), indices [72, 73) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 0 page 2 @73, rep [103, 105), def [105, 107), indices [107, 108) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 0 page 3 @108, rep [138, 140), def [140, 143), indices [143, 146) -> 3 bytes, flag False, slots 4, rows 1, nulls 1, width 1, indices [0, 0, 1]
+  group 0 page 4 @146, rep [176, 176), def [176, 176), indices [176, 177) -> 1 bytes, flag False, slots 0, rows 0, nulls 0, width 1, indices []
+  group 0 page 5 @177, rep [207, 209), def [209, 211), indices [211, 215) -> 4 bytes, flag False, slots 3, rows 1, nulls 0, width 2, indices [2, 1, 2]
+  group 1 dictionary @215 payload [235, 245), signed [8, -11]
+  group 1 page 1 @245, rep [275, 277), def [277, 279), indices [279, 280) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 1 page 2 @280, rep [310, 312), def [312, 314), indices [314, 315) -> 1 bytes, flag False, slots 1, rows 1, nulls 1, width 0, indices []
+  group 1 page 3 @315, rep [345, 347), def [347, 350), indices [350, 353) -> 3 bytes, flag False, slots 3, rows 1, nulls 1, width 1, indices [0, 0]
+  group 1 page 4 @353, rep [383, 383), def [383, 383), indices [383, 384) -> 1 bytes, flag False, slots 0, rows 0, nulls 0, width 1, indices []
+  group 1 page 5 @384, rep [413, 418), def [418, 424), indices [424, 436) -> 68 bytes, flag default true, slots 514, rows 1, nulls 1, width 1, indices [1, 0, 1, 0, 1, 0, 1, 0]…
+native-crc-v2.arrows SHA-256 5325acaf9596153198076400480284ef7c83ce35b3bebc451cf24de383dc7aa0, EOS [2872, 2880)
+native-no-crc-empty-dictionary-v2.arrows SHA-256 d96b1697a9bad8030bd97cdbb7b8cd014cd4f2bc93e007090912f52b2b747db4, EOS [3136, 3144)
+assembled-default-v2.arrows SHA-256 5325acaf9596153198076400480284ef7c83ce35b3bebc451cf24de383dc7aa0, EOS [2872, 2880)
+mutated-dictionary-crc.parquet SHA-256 fcee18b7aff8d1e0f2e51023951f5564781f28ed840bf43b900691d8b249d410
+dictionary-crc: group 1 page 0 @215; one retained batch and no IPC bytes
+mutated-levels-crc.parquet SHA-256 b18d36e95e58e0c31ac938a7a095c7215eaad28f186eddd7fca6c6ca55a5dd5a
+levels-crc: group 1 page 5 @384; one retained batch and no IPC bytes
+mutated-indices-crc.parquet SHA-256 8ad3a195c4a512300675a80af444868a3d8459c36503e234244f25fe93419f8a
+indices-crc: group 1 page 5 @384; one retained batch and no IPC bytes
+assembled-geometry.parquet SHA-256 7d45861f9fff1908b9abfad067ae5bfa7f2c9929b2e7c9cfab68639c3dc3335c
+geometry: group 1 group framing; one retained batch and no IPC bytes
+assembled-continued.parquet SHA-256 5c351af49874369d1a9d2171af36f0caaaf51db9de5ef6c150376f40122ee34d
+continued: group 1 page 5 @384; one retained batch and no IPC bytes
+assembled-page-rows.parquet SHA-256 02cf2a7b7b177632c19c5c081c3ea45ca15d903905c72d88d57d5692c3252e17
+page-rows: group 1 page 5 @384; one retained batch and no IPC bytes
+assembled-page-nulls.parquet SHA-256 ccb9dbf514f6d48531b3b1d2c1f8a7d834adf4a8ae874ceb732058d064b55b90
+page-nulls: group 1 page 5 @384; one retained batch and no IPC bytes
+assembled-index.parquet SHA-256 c3321378d7cc6065015af38777f006c406aba680c1001acbd7154ea87cc8f023
+index: group 1 page 5 @384; one retained batch and no IPC bytes
+assembled-plain-tag.parquet SHA-256 3b94d60a4c9ac22c7d6b181438c052eff742abf1a7cb2db6f2a728f4ff5d5ab4
+plain-tag: group 1 page 5 @384; one retained batch and no IPC bytes
+budget: group 1 page 5 @384; one retained batch and no IPC bytes

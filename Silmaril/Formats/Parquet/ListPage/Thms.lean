@@ -62,6 +62,14 @@ theorem feed_next {state : State} (item : Option Int32) (rest : List Event) :
       | some (head, tail) => ({ state with active := some (head, item :: tail) } : State).feed rest :=
   Proofs.Formats.Parquet.ListPage.feed_next item rest
 
+/-- A selected value reader receives the exact suffix and its decoded present count. -/
+theorem decodeSectionsUsing_wire {ε : Type} {wrap : Error → ε}
+    {readValues : Nat → Bytes → Except ε (List Int32)} {limits : Limits} {slots : Nat}
+    {repetition definition scalars : Bytes} {events : List Event}
+    (h : decodeSectionsUsing wrap readValues limits slots repetition definition scalars = .ok events) :
+    SectionsWireUsing readValues slots repetition definition scalars events :=
+  Proofs.Formats.Parquet.ListPage.decodeSectionsUsing_wire h
+
 /-- A selected V1 value reader receives the exact original suffix and present count. -/
 theorem decodeEventsUsing_wire {ε : Type} {wrap : Error → ε}
     {readValues : Nat → Bytes → Except ε (List Int32)} {limits : Limits} {slots : Nat}

@@ -170,11 +170,12 @@ public theorem readFrame_wire {limits : Limits} {checked : ListFile.Checked} {co
           exact Nat.le_of_not_gt slots
   · contradiction
 
-public theorem readFrames_wire {limits : Limits} {checked : ListFile.Checked} {column : Footer.ColumnChunk}
-    {entries : Array Int32} {ordinal : Nat} {budget left : Budget} {state next : State}
+public theorem readFramesUsing_wire {read : FrameReader} {witness : Page.Frame → List Event → Prop} {ordinal : Nat} {budget left : Budget} {state next : State}
     {frames : List Page.Frame}
-    (h : readFrames limits checked column entries ordinal budget state frames = .ok (left, next)) :
-    ∃ pages, List.Forall₂ (FrameWire limits checked column entries) frames pages ∧
+    (sound : ∀ {budget frame events}, read budget frame = .ok events →
+      witness frame events ∧ events.length ≤ budget.slots ∧ frame.value.uncompressedSize ≤ budget.expanded)
+    (h : readFramesUsing read ordinal budget state frames = .ok (left, next)) :
+    ∃ pages, List.Forall₂ witness frames pages ∧
       pages.flatten.length + left.slots = budget.slots ∧
       expandedSize frames + left.expanded = budget.expanded ∧
       state.feed pages.flatten = .ok next ∧
@@ -184,17 +185,17 @@ public theorem readFrames_wire {limits : Limits} {checked : ListFile.Checked} {c
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj h)
     exact ⟨[], .nil, by simp, by simp [expandedSize], ListPage.feed_nil state, by simp⟩
   | cons frame rest ih =>
-    rw [readFrames] at h
-    cases read : readFrame limits checked column entries budget frame with
-    | error e => simp [read, Except.mapError, Bind.bind, Except.bind] at h
+    rw [readFramesUsing] at h
+    cases decoded : read budget frame with
+    | error e => simp [decoded, Except.mapError, Bind.bind, Except.bind] at h
     | ok events =>
-      simp only [read, Except.mapError, Bind.bind, Except.bind] at h
+      simp only [decoded, Except.mapError, Bind.bind, Except.bind] at h
       cases fed : state.feed events with
       | error e => simp [fed] at h
       | ok more =>
         simp only [fed] at h
         obtain ⟨pages, wire, slots, bytes, feed, _⟩ := ih h
-        obtain ⟨localWire, slotBound, byteBound⟩ := readFrame_wire read
+        obtain ⟨localWire, slotBound, byteBound⟩ := sound decoded
         have combined : state.feed (events ++ pages.flatten) = .ok next := by
           rw [ListPage.feed_append, fed]
           exact feed
@@ -203,6 +204,17 @@ public theorem readFrames_wire {limits : Limits} {checked : ListFile.Checked} {c
           omega
         · simp only [expandedSize, List.map_cons, List.sum_cons, Budget.use] at bytes ⊢
           omega
+
+public theorem readFrames_wire {limits : Limits} {checked : ListFile.Checked} {column : Footer.ColumnChunk}
+    {entries : Array Int32} {ordinal : Nat} {budget left : Budget} {state next : State}
+    {frames : List Page.Frame}
+    (h : readFrames limits checked column entries ordinal budget state frames = .ok (left, next)) :
+    ∃ pages, List.Forall₂ (FrameWire limits checked column entries) frames pages ∧
+      pages.flatten.length + left.slots = budget.slots ∧
+      expandedSize frames + left.expanded = budget.expanded ∧
+      state.feed pages.flatten = .ok next ∧
+      next.finish.flatMap ListPage.rowEvents = state.finish.flatMap ListPage.rowEvents ++ pages.flatten :=
+  readFramesUsing_wire (read := readFrame limits checked column entries) (fun proof => readFrame_wire proof) h
 
 public theorem selectChunk_wire {checked : ListFile.Checked} {ordinal : Nat} {chunk : Chunk}
     (h : selectChunk checked ordinal = .ok chunk) : ChunkWire checked ordinal chunk := by
@@ -228,10 +240,15 @@ public theorem selectChunk_wire {checked : ListFile.Checked} {ordinal : Nat} {ch
         obtain rfl := Except.ok.inj h
         exact ⟨(ListFile.frameGroupWith_wire selected).1, frames, not_not.mp dictOffset, not_not.mp dataOffset⟩
 
-public theorem readGroup_wire {limits : Limits} {checked : ListFile.Checked} {ordinal expanded left : Nat}
-    {rows : List Row} (h : readGroup limits checked ordinal expanded = .ok (rows, left)) :
-    GroupWire limits checked ordinal rows (expanded - left) ∧ left ≤ expanded := by
-  unfold readGroup at h
+public theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witness : DataWitness}
+    {checked : ListFile.Checked} {ordinal expanded left : Nat}
+    {rows : List Row}
+    (sound : ∀ {checked column entries budget frame events}, read checked column entries budget frame = .ok events →
+      witness checked column entries frame events ∧ events.length ≤ budget.slots ∧
+        frame.value.uncompressedSize ≤ budget.expanded)
+    (h : readGroupUsing limits read checked ordinal expanded = .ok (rows, left)) :
+    GroupWireUsing limits witness checked ordinal rows (expanded - left) ∧ left ≤ expanded := by
+  unfold readGroupUsing at h
   cases chosen : selectChunk checked ordinal with
   | error e => simp [chosen, Bind.bind, Except.bind] at h
   | ok chunk =>
@@ -246,7 +263,7 @@ public theorem readGroup_wire {limits : Limits} {checked : ListFile.Checked} {or
     | error e => simp [entriesRead, Except.mapError] at h
     | ok entries =>
       simp only [entriesRead, Except.mapError] at h
-      cases decoded : readFrames limits checked chunk.framed.chunk entries.toArray 1
+      cases decoded : readFramesUsing (read checked chunk.framed.chunk entries.toArray) 1
           ⟨chunk.framed.chunk.metadata.numValues.toNat, expanded - chunk.dictionary.value.uncompressedSize⟩
           State.empty (chunk.firstData :: chunk.rest) with
       | error e => simp [decoded] at h
@@ -264,7 +281,9 @@ public theorem readGroup_wire {limits : Limits} {checked : ListFile.Checked} {or
         obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj h)
         have origin := selectChunk_wire chosen
         obtain ⟨dictionary, dictBound⟩ := readEntries_wire entriesRead
-        obtain ⟨pages, wires, slots, bytes, fed, order⟩ := readFrames_wire decoded
+        obtain ⟨pages, wires, slots, bytes, fed, order⟩  :=
+          readFramesUsing_wire (read := read checked chunk.framed.chunk entries.toArray)
+            (witness := witness checked chunk.framed.chunk entries.toArray) (fun proof => sound proof) decoded
         change _ + budget.slots = _ at slots
         change expandedSize (chunk.firstData :: chunk.rest) + budget.expanded =
           expanded - chunk.dictionary.value.uncompressedSize at bytes
@@ -277,6 +296,13 @@ public theorem readGroup_wire {limits : Limits} {checked : ListFile.Checked} {or
           ListPage.reconstruct_of_feed fed, by simpa [ListPage.finish_empty] using order,
           Nat.le_of_not_gt slotCap, Nat.le_of_not_gt rowCap, by omega⟩, by omega⟩
 
+public theorem readGroup_wire {limits : Limits} {checked : ListFile.Checked} {ordinal expanded left : Nat}
+    {rows : List Row} (h : readGroup limits checked ordinal expanded = .ok (rows, left)) :
+    GroupWire limits checked ordinal rows (expanded - left) ∧ left ≤ expanded := by
+  obtain ⟨original, bound⟩ := readGroupUsing_wire (read := readFrame limits) (witness := FrameWire limits)
+    (fun proof => readFrame_wire proof) h
+  exact ⟨⟨original.data⟩, bound⟩
+
 public theorem readGroup_dictionary_error {limits : Limits} {checked : ListFile.Checked} {ordinal expanded : Nat}
     {chunk : Chunk} {cause : FrameError}
     (selected : selectChunk checked ordinal = .ok chunk)
@@ -284,38 +310,63 @@ public theorem readGroup_dictionary_error {limits : Limits} {checked : ListFile.
     (rows : chunk.framed.group.numRows.toNat ≤ checked.limits.page.maxRows)
     (failed : readEntries limits checked expanded chunk.dictionary = .error cause) :
     readGroup limits checked ordinal expanded = .error (.frame 0 chunk.dictionary.header.start cause) := by
-  simp [readGroup, selected, Nat.not_lt.mpr slots, Nat.not_lt.mpr rows, failed, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readGroupUsing, selected, Nat.not_lt.mpr slots, Nat.not_lt.mpr rows, failed, Except.mapError, Bind.bind, Except.bind]
 
-public theorem readFrames_append {limits : Limits} {checked : ListFile.Checked} {column : Footer.ColumnChunk}
-    {entries : Array Int32} {earlier suffix : List Page.Frame} {ordinal : Nat}
+public theorem readFramesUsing_append {read : FrameReader}
+    {earlier suffix : List Page.Frame} {ordinal : Nat}
     {budget left : Budget} {state next : State}
-    (h : readFrames limits checked column entries ordinal budget state earlier = .ok (left, next)) :
-    readFrames limits checked column entries ordinal budget state (earlier ++ suffix) =
-      readFrames limits checked column entries (ordinal + earlier.length) left next suffix := by
+    (h : readFramesUsing read ordinal budget state earlier = .ok (left, next)) :
+    readFramesUsing read ordinal budget state (earlier ++ suffix) =
+      readFramesUsing read (ordinal + earlier.length) left next suffix := by
   induction earlier generalizing ordinal budget state with
   | nil =>
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj h)
     simp
   | cons frame rest ih =>
-    rw [readFrames] at h
-    rw [List.cons_append, readFrames]
-    cases read : readFrame limits checked column entries budget frame with
-    | error e => simp [read, Except.mapError, Bind.bind, Except.bind] at h
+    rw [readFramesUsing] at h
+    rw [List.cons_append, readFramesUsing]
+    cases decoded : read budget frame with
+    | error e => simp [decoded, Except.mapError, Bind.bind, Except.bind] at h
     | ok events =>
-      simp only [read, Except.mapError, Bind.bind, Except.bind] at h ⊢
+      simp only [decoded, Except.mapError, Bind.bind, Except.bind] at h ⊢
       cases fed : state.feed events with
       | error e => simp [fed] at h
       | ok more =>
         simp only [fed] at h ⊢
         simpa [Nat.add_assoc, Nat.add_comm 1 rest.length] using ih h
 
+public theorem readFramesUsing_read_error {read : FrameReader}
+    {frame : Page.Frame} {rest : List Page.Frame} {ordinal : Nat}
+    {budget : Budget} {state : State} {cause : FrameError}
+    (h : read budget frame = .error cause) :
+    readFramesUsing read ordinal budget state (frame :: rest) =
+      .error (.frame ordinal frame.header.start cause) := by
+  simp [readFramesUsing, h, Except.mapError, Bind.bind, Except.bind]
+
+public theorem readFramesUsing_feed_error {read : FrameReader}
+    {frame : Page.Frame} {rest : List Page.Frame} {ordinal : Nat}
+    {budget : Budget} {state : State} {events : List Event} {cause : ListPage.Error}
+    (decoded : read budget frame = .ok events)
+    (failed : state.feed events = .error cause) :
+    readFramesUsing read ordinal budget state (frame :: rest) =
+      .error (.frame ordinal frame.header.start (.page cause)) := by
+  simp [readFramesUsing, decoded, failed, Except.mapError, Bind.bind, Except.bind]
+
+public theorem readFrames_append {limits : Limits} {checked : ListFile.Checked} {column : Footer.ColumnChunk}
+    {entries : Array Int32} {earlier suffix : List Page.Frame} {ordinal : Nat}
+    {budget left : Budget} {state next : State}
+    (h : readFrames limits checked column entries ordinal budget state earlier = .ok (left, next)) :
+    readFrames limits checked column entries ordinal budget state (earlier ++ suffix) =
+      readFrames limits checked column entries (ordinal + earlier.length) left next suffix :=
+  readFramesUsing_append (read := readFrame limits checked column entries) h
+
 public theorem readFrames_read_error {limits : Limits} {checked : ListFile.Checked} {column : Footer.ColumnChunk}
     {entries : Array Int32} {frame : Page.Frame} {rest : List Page.Frame} {ordinal : Nat}
     {budget : Budget} {state : State} {cause : FrameError}
     (h : readFrame limits checked column entries budget frame = .error cause) :
     readFrames limits checked column entries ordinal budget state (frame :: rest) =
-      .error (.frame ordinal frame.header.start cause) := by
-  simp [readFrames, h, Except.mapError, Bind.bind, Except.bind]
+      .error (.frame ordinal frame.header.start cause) :=
+  readFramesUsing_read_error (read := readFrame limits checked column entries) h
 
 public theorem readFrames_feed_error {limits : Limits} {checked : ListFile.Checked} {column : Footer.ColumnChunk}
     {entries : Array Int32} {frame : Page.Frame} {rest : List Page.Frame} {ordinal : Nat}
@@ -323,8 +374,8 @@ public theorem readFrames_feed_error {limits : Limits} {checked : ListFile.Check
     (read : readFrame limits checked column entries budget frame = .ok events)
     (failed : state.feed events = .error cause) :
     readFrames limits checked column entries ordinal budget state (frame :: rest) =
-      .error (.frame ordinal frame.header.start (.page cause)) := by
-  simp [readFrames, read, failed, Except.mapError, Bind.bind, Except.bind]
+      .error (.frame ordinal frame.header.start (.page cause)) :=
+  readFramesUsing_feed_error (read := readFrame limits checked column entries) read failed
 
 public theorem convert_first_error {limits : Limits} {source : Bytes} {checked : ListFile.Checked}
     {before after : List Nat} {ordinal left : Nat} {groups : List (List Row)} {cause : GroupError}

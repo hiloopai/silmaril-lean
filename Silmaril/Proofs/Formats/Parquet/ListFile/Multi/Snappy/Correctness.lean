@@ -150,11 +150,13 @@ private theorem optionCounts {α : Type} (entries : List (Option α)) :
   | cons entry rest ih =>
     cases entry <;> simp <;> omega
 
-private theorem scalarBytes {slots : Nat} {rep defn scalars : Bytes} {events : List Event}
-    (wire : ListPage.SectionsWire slots rep defn scalars events) :
-    scalars.length = 4 * (slots - pageNulls events) := by
-  obtain ⟨_, reps, defs, values, entries, _, _, repLen, defLen, entryLen,
-    plain, mask, _, eventsEq⟩ := wire
+public theorem sectionCounts {slots : Nat} {events : List Event} {reps defs : List Nat}
+    {entries : List (Option Int32)}
+    (repLen : reps.length = slots) (defLen : defs.length = slots) (entryLen : entries.length = slots)
+    (mask : entries.map Option.isSome = ListPage.valueMask defs)
+    (eventsEq : events.map Event.wire = reps.zip (defs.zip entries)) :
+    (ListPage.valueMask defs).count true = slots - pageNulls events ∧
+      events.filterMap (fun event => event.wire.2.2) = entries.filterMap id := by
   have outer : (defs.zip entries).length ≤ reps.length := by simp [defLen, entryLen, repLen]
   have inner : entries.length ≤ defs.length := by simp [entryLen, defLen]
   have slotsEq : events.map (fun event => event.wire.2.2) = entries := by
@@ -168,6 +170,15 @@ private theorem scalarBytes {slots : Nat} {rep defn scalars : Bytes} {events : L
     rw [← mask, List.count_eq_countP, List.countP_map]
     simp [Function.comp_def]
   have partition := optionCounts entries
+  refine ⟨by omega, ?_⟩
+  simpa [List.filterMap_map, Function.comp_def] using congrArg (List.filterMap id) slotsEq
+
+private theorem scalarBytes {slots : Nat} {rep defn scalars : Bytes} {events : List Event}
+    (wire : ListPage.SectionsWire slots rep defn scalars events) :
+    scalars.length = 4 * (slots - pageNulls events) := by
+  obtain ⟨_, reps, defs, values, entries, _, _, repLen, defLen, entryLen,
+    plain, mask, _, eventsEq⟩ := wire
+  have count := (sectionCounts repLen defLen entryLen mask eventsEq).1
   change Plain.decodeFixedWidth 4 _ _ scalars = .ok values at plain
   unfold Plain.decodeFixedWidth at plain
   simp only [Nat.reduceEqDiff, ite_false] at plain
@@ -177,7 +188,7 @@ private theorem scalarBytes {slots : Nat} {rep defn scalars : Bytes} {events : L
   · contradiction
   omega
 
-private theorem checkV2Counts_wire {info : Page.DataV2} {events : List Event}
+public theorem checkV2Counts_wire {info : Page.DataV2} {events : List Event}
     (h : checkV2Counts info events = .ok ()) :
     ListFile.Multi.startsWithinRow events = false ∧ pageRows events = info.numRows ∧ pageNulls events = info.numNulls := by
   unfold checkV2Counts at h
@@ -345,7 +356,7 @@ public theorem readGroupFor_wire {version : PageVersion} {limits : Limits} {chec
   exact ⟨⟨framed, pages, origin, wire, by simpa [noSurplus] using count, rowCount,
     ListPage.reconstruct_of_feed fed, by simpa [ListPage.finish_empty] using order, slotCap, rowCap, by omega⟩, by omega⟩
 
-private theorem pageRows_of_rows (rows : List Row) :
+public theorem pageRows_of_rows (rows : List Row) :
     pageRows (rows.flatMap ListPage.rowEvents) = rows.length := by
   have one (row : Row) : pageRows (ListPage.rowEvents row) = 1 := by
     cases row with

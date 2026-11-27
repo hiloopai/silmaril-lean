@@ -241,4 +241,25 @@ theorem convertWith_readback {ε σ ρ : Type} {errors : ConversionErrors ε σ 
     (h : (convertWith errors limits read source).wire = .ok wire) : ReadbackWith errors limits read witness source wire :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertWith_readback sound h
 
+/-- The checked definitions identify the exact number and order of physical values. -/
+theorem sectionCounts {slots : Nat} {events : List Event} {reps defs : List Nat}
+    {entries : List (Option Int32)}
+    (repLen : reps.length = slots) (defLen : defs.length = slots) (entryLen : entries.length = slots)
+    (mask : entries.map Option.isSome = ListPage.valueMask defs)
+    (eventsEq : events.map Event.wire = reps.zip (defs.zip entries)) :
+    (ListPage.valueMask defs).count true = slots - pageNulls events ∧
+      events.filterMap (fun event => event.wire.2.2) = entries.filterMap id :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.sectionCounts repLen defLen entryLen mask eventsEq
+
+/-- An admitted V2 page begins at a row boundary and matches both count fields. -/
+theorem checkV2Counts_wire {info : Page.DataV2} {events : List Event}
+    (h : checkV2Counts info events = .ok ()) :
+    ListFile.Multi.startsWithinRow events = false ∧ pageRows events = info.numRows ∧ pageNulls events = info.numNulls :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.checkV2Counts_wire h
+
+/-- Canonical LIST events contribute one repetition-zero marker per row. -/
+theorem pageRows_of_rows (rows : List Row) :
+    pageRows (rows.flatMap ListPage.rowEvents) = rows.length :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.pageRows_of_rows rows
+
 end Silmaril.Formats.Parquet.ListFile.Multi.Snappy

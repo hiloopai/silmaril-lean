@@ -122,4 +122,43 @@ theorem convert_readback {limits : Limits} {source : Bytes} {wire : KBytes}
     (h : (convert limits source).wire = .ok wire) : Readback limits source wire :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.convert_readback h
 
+/-- The dictionary group walk retains the original dictionary and the selected data-page witnesses. -/
+theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witness : DataWitness}
+    {checked : ListFile.Checked} {ordinal expanded left : Nat}
+    {rows : List Row}
+    (sound : ∀ {checked column entries budget frame events}, read checked column entries budget frame = .ok events →
+      witness checked column entries frame events ∧ events.length ≤ budget.slots ∧
+        frame.value.uncompressedSize ≤ budget.expanded)
+    (h : readGroupUsing limits read checked ordinal expanded = .ok (rows, left)) :
+    GroupWireUsing limits witness checked ordinal rows (expanded - left) ∧ left ≤ expanded :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readGroupUsing_wire sound h
+
+/-- An accepted frame prefix passes the live LIST state and remaining budgets to the suffix. -/
+theorem readFramesUsing_append {read : FrameReader}
+    {earlier suffix : List Page.Frame} {ordinal : Nat}
+    {budget left : Budget} {state next : State}
+    (h : readFramesUsing read ordinal budget state earlier = .ok (left, next)) :
+    readFramesUsing read ordinal budget state (earlier ++ suffix) =
+      readFramesUsing read (ordinal + earlier.length) left next suffix :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readFramesUsing_append h
+
+/-- The selected data callback retains the first failing page coordinates. -/
+theorem readFramesUsing_read_error {read : FrameReader}
+    {frame : Page.Frame} {rest : List Page.Frame} {ordinal : Nat}
+    {budget : Budget} {state : State} {cause : FrameError}
+    (h : read budget frame = .error cause) :
+    readFramesUsing read ordinal budget state (frame :: rest) =
+      .error (.frame ordinal frame.header.start cause) :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readFramesUsing_read_error h
+
+/-- Nested transition errors retain the original page coordinates. -/
+theorem readFramesUsing_feed_error {read : FrameReader}
+    {frame : Page.Frame} {rest : List Page.Frame} {ordinal : Nat}
+    {budget : Budget} {state : State} {events : List Event} {cause : ListPage.Error}
+    (decoded : read budget frame = .ok events)
+    (failed : state.feed events = .error cause) :
+    readFramesUsing read ordinal budget state (frame :: rest) =
+      .error (.frame ordinal frame.header.start (.page cause)) :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readFramesUsing_feed_error decoded failed
+
 end Silmaril.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1
