@@ -18,6 +18,19 @@ theorem decodePage_wire {limits : Limits} {metadata : Footer.ColumnMetadata} {so
     ∃ entries, dictionary = some entries ∧ PageWire limits source entries frame slots :=
   Proofs.Formats.Parquet.ByteArrayFallback.Gzip.Fallback.V2.decodePage_wire read
 
+/-- The PLAIN callback keeps the original V2 header and opaque slot relation. -/
+theorem decodePlainPage_wire {limits : Limits} {metadata : Footer.ColumnMetadata} {source : Bytes}
+    {frame : Page.Frame} {slots : List (Option Bytes)}
+    (read : decodePlainPage limits metadata source frame = .ok slots) : PlainPageWire limits source frame slots :=
+  Proofs.Formats.Parquet.ByteArrayFallback.Gzip.Fallback.V2.decodePlainPage_wire read
+
+/-- The PLAIN callback retains the stored CRC and exact raw or GZIP suffix. -/
+theorem plain_data_suffix {limits : Limits} {source : Bytes}
+    {frame : Page.Frame} {slots : List (Option Bytes)} (wire : PlainPageWire limits source frame slots) :
+    Utf8.Dictionary.Snappy.StoredWire limits.file.column.maxPageBytes source frame ∧
+      PlainSuffixWire limits source frame slots :=
+  Proofs.Formats.Parquet.ByteArrayFallback.Gzip.Fallback.V2.plain_data_suffix wire
+
 /-- Both encodings retain the original checksum, raw levels and flag-selected index or PLAIN suffix. -/
 theorem data_suffix {limits : Limits} {source : Bytes} {entries : Array Bytes}
     {frame : Page.Frame} {slots : List (Option Bytes)} (wire : PageWire limits source entries frame slots) :

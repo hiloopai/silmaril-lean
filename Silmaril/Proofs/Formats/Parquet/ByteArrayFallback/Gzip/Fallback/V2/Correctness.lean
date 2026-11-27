@@ -33,7 +33,7 @@ private theorem mapError_ok {α ε η : Type} {input : Except ε α} {wrap : ε 
   cases input <;> cases h
   rfl
 
-private theorem decodePlainPage_wire {limits : Gzip.Fallback.V2.Limits} {metadata : Footer.ColumnMetadata}
+theorem decodePlainPage_wire {limits : Gzip.Fallback.V2.Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {slots : List (Option Bytes)}
     (read : decodePlainPage limits metadata source frame = .ok slots) :
     PlainPageWire limits source frame slots := by
@@ -58,16 +58,17 @@ theorem decodePage_wire {limits : Gzip.Fallback.V2.Limits} {metadata : Footer.Co
       cases same
       exact ⟨entries, rfl, .inl wire⟩
 
-private theorem plain_data_suffix {limits : Gzip.Fallback.V2.Limits} {source : Bytes}
+theorem plain_data_suffix {limits : Gzip.Fallback.V2.Limits} {source : Bytes}
     {frame : Page.Frame} {slots : List (Option Bytes)} (wire : PlainPageWire limits source frame slots) :
-    PlainSuffixWire limits source frame slots := by
-  obtain ⟨⟨header, kind, tag⟩, params, layout, page, original, _, _, _, prepared, mask, bytes, _⟩ := wire
+    Utf8.Dictionary.Snappy.StoredWire limits.file.column.maxPageBytes source frame ∧
+      PlainSuffixWire limits source frame slots := by
+  obtain ⟨⟨header, kind, tag⟩, params, layout, page, original, stored, _, _, prepared, mask, bytes, _⟩ := wire
   simp only [FlatColumn.pageParameters, kind, Option.some.injEq] at original
   subst params
   obtain ⟨_, _, repetition, storedFits, expandedFits, _, definitions, encoded, width, split, levels, presentCount, payload⟩ :=
     prepared
   obtain ⟨storedSize, expandedSize, suffix⟩ := ScalarPage.exactPayload_gzip_v2 payload
-  refine ⟨header, layout, definitions, encoded, kind, tag, repetition, storedFits, expandedFits, width, split,
+  refine ⟨stored, header, layout, definitions, encoded, kind, tag, repetition, storedFits, expandedFits, width, split,
     ?_, ?_, storedSize, ?_, ?_⟩
   · rw [mask]
     exact levels
@@ -84,8 +85,7 @@ theorem data_suffix {limits : Gzip.Fallback.V2.Limits} {source : Bytes} {entries
   · have suffix := Gzip.Dictionary.V2.data_suffix dictionary
     obtain ⟨_, _, _, _, _, _, _, stored, _⟩ := dictionary
     exact ⟨stored, .inl suffix⟩
-  · have suffix := plain_data_suffix plain
-    obtain ⟨_, _, _, _, _, stored, _⟩ := plain
+  · obtain ⟨stored, suffix⟩ := plain_data_suffix plain
     exact ⟨stored, .inr suffix⟩
 
 private theorem pages_count {limits : Gzip.Fallback.V2.Limits} {source : Bytes}

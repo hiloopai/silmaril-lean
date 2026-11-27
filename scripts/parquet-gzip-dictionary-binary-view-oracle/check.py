@@ -59,7 +59,7 @@ def read_footer(wire):
 
 
 def frames(wire, chunk, has_crc):
-    start = chunk.dictionary_page_offset
+    start = chunk.dictionary_page_offset if chunk.has_dictionary_page else chunk.data_page_offset
     stop = start + chunk.total_compressed_size
     transport = TMemoryBuffer(wire[start:stop])
     protocol = TCompactProtocol(transport)
@@ -74,7 +74,8 @@ def frames(wire, chunk, has_crc):
             assert header[4][1] % 2**32 == crc32(payload)
         result.append(Frame(offset, body, body + len(payload), header))
     assert result[-1].stop == stop
-    assert result[0].stop == chunk.data_page_offset
+    data = result[1] if chunk.has_dictionary_page else result[0]
+    assert data.header == chunk.data_page_offset
     assert sum(frame.body - frame.header + frame.fields[2][1] for frame in result) == chunk.total_uncompressed_size
     return result
 

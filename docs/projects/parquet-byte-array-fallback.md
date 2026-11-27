@@ -495,3 +495,41 @@ CRC-valid frames, and simultaneous CRC failures in different profiles.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Dispatch.V2.Checks
 python3 scripts/parquet-gzip-v2-dispatch-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in GZIP V2 PLAIN-only BinaryView
+
+`ByteArrayFallback.Gzip.Plain.V2.convert` selects one flat optional
+unannotated BYTE_ARRAY leaf. Shared framing checks the original codec-2
+chunk, footer offsets and row counts. The first framed data page must
+start at the original data-page offset. A leading dictionary returns an
+indexed refusal. Every admitted frame is PLAIN V2 and the footer
+dictionary-page offset is absent.
+
+The PLAIN callback checks the CRC of the original stored body, including
+the raw definition levels. The original `is_compressed` flag selects one
+complete GZIP member or the exact raw PLAIN suffix. The suffix and
+definition witnesses recover the exact ordered nullable bytes under the
+existing stored and expanded limits. Native BinaryView retains footer
+group order through EOS. The first indexed source error precedes IPC
+admission.
+
+PyArrow 26.0.1 produces dictionary-free files with and without page CRC.
+Thrift 0.25.0 sees groups of 65 and 33 rows, with flag sequences
+`[true, true, false]` and `[true, false]`. Independent RLE and zlib checks
+recover the original raw levels and exact PLAIN bytes. PyArrow compares
+actual Lean IPC against its own selected source rows, including invalid
+UTF-8, NUL, and empty and null values.
+
+Assembled controls cover a raw-level CRC failure, a malformed raw PLAIN
+length, and a second member after a compressed PLAIN suffix. Genuine
+V1 and dictionary inputs exercise the strict gates, and the existing
+two-way dispatcher continues to refuse the dictionary-free source.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Plain/V2/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Plain/V2/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-gzip-v2-plain-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Plain.V2.Checks
+python3 scripts/parquet-gzip-v2-plain-binary-view-oracle/check.py "$(mktemp -d)"
+```
