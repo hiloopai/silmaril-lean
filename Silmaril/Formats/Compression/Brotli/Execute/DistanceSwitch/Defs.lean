@@ -43,12 +43,12 @@ def resolve (header : CompressedHeader.Header) (command : Command.Value) (bounds
     (remainingBits bitLimit before atCode) atCode).mapError (Error.distance atCode.totalRead)
   return (distance, next, after)
 
-end Internal
+/-- Resolved copy targets share framing and original error offsets. -/
+abbrev FinishCopy :=
+  Block → Limits → Execute.State → Command.Value → List UInt8 → Distance.Result → Except Execute.Error Execute.Result
 
-/-- Execute one command from its I run selection through its emitted bytes.
-    A final insertion reaches MLEN without selecting a distance. -/
-def read (header : CompressedHeader.Header) (block : Block) (limits : Limits) (initial : InsertCopy.State)
-    (before : LSBReader) : Except Error (InsertCopy.Result × LSBReader) := do
+def readWith (finishCopy : FinishCopy) (header : CompressedHeader.Header) (block : Block) (limits : Limits)
+    (initial : InsertCopy.State) (before : LSBReader) : Except Error (InsertCopy.Result × LSBReader) := do
   let (pref, atLiterals) ← (LiteralSwitch.readPrefixCore header block limits initial before).mapError Error.commandPrefix
   let (literals, state, atDistance) ←
     (Literal.Switch.read header pref.command.insertLength (remainingBits limits.bits before atLiterals)
@@ -58,11 +58,19 @@ def read (header : CompressedHeader.Header) (block : Block) (limits : Limits) (i
     let output := initial.execution.output ++ literals.toArray
     return (⟨⟨⟨output, initial.execution.ring⟩, pref.command, none⟩, state.runs⟩, atDistance)
   else
-    let (resolved, runs, after) ← Internal.resolve header pref.command ⟨block.windowBits, produced⟩
+    let (resolved, runs, after) ← resolve header pref.command ⟨block.windowBits, produced⟩
       initial.execution.ring (remainingBits limits.bits before atDistance) state.runs atDistance
-    let executed ← (Execute.Internal.applyCopy block limits initial.execution pref.command literals resolved).mapError
+    let executed ← (finishCopy block limits initial.execution pref.command literals resolved).mapError
       (Error.copy after.totalRead)
     return (⟨executed, runs⟩, after)
+
+end Internal
+
+/-- Execute one command from its I run selection through its emitted bytes.
+    A final insertion reaches MLEN without selecting a distance. -/
+def read (header : CompressedHeader.Header) (block : Block) (limits : Limits) (initial : InsertCopy.State)
+    (before : LSBReader) : Except Error (InsertCopy.Result × LSBReader) :=
+  Internal.readWith Execute.Internal.applyCopy header block limits initial before
 
 inductive SelectionWire (control : BlockTypes.Control) (command : Command.Value) (initial : BlockTypes.Switch.State) :
     List Bool → BlockTypes.Switch.State → Prop where
@@ -100,6 +108,35 @@ structure Wire (header : CompressedHeader.Header) (block : Block) (initial : Ins
     TailWire header block pref.command initial.execution.ring (initial.execution.output.toList ++ literals)
       literalState.runs tailBits matched result.execution.distance result.execution.state.ring result.runs ∧
     result.execution.state.output.toList = initial.execution.output.toList ++ literals ++ matched
+
+/-- Common evidence for the command, insertion and resolved target. The
+    pending branch records the exact result of the chosen copy executor. -/
+inductive FinishWire (finishCopy : Internal.FinishCopy) (header : CompressedHeader.Header) (block : Block)
+    (limits : Limits) (initial : InsertCopy.State) (pref : LiteralSwitch.Prefix) (literals : List UInt8)
+    (runs : BlockTypes.Switch.State) : List Bool → InsertCopy.Result → Prop where
+  | terminal : initial.execution.output.size + literals.length = block.endOutput →
+      FinishWire finishCopy header block limits initial pref literals runs []
+        ⟨⟨⟨initial.execution.output ++ literals.toArray, initial.execution.ring⟩, pref.command, none⟩, runs⟩
+  | copy {switchBits valueBits : List Bool} {next : BlockTypes.Switch.State} {resolved : Distance.Result}
+      {result : Execute.Result} :
+      initial.execution.output.size + literals.length < block.endOutput →
+      2 ≤ pref.command.copyLength →
+      SelectionWire header.initial.controls.distance pref.command runs switchBits next →
+      Distance.WireAt header pref.command ⟨block.windowBits, initial.execution.output.size + literals.length⟩
+        initial.execution.ring next.distance.current valueBits resolved →
+      finishCopy block limits initial.execution pref.command literals resolved = .ok result →
+      FinishWire finishCopy header block limits initial pref literals runs (switchBits ++ valueBits) ⟨result, next⟩
+
+def ReadWire (finishCopy : Internal.FinishCopy) (header : CompressedHeader.Header) (block : Block) (limits : Limits)
+    (initial : InsertCopy.State) (bits : List Bool) (result : InsertCopy.Result) : Prop :=
+  ∃ prefixBits literalBits tailBits pref literalState literals,
+    bits = (prefixBits ++ literalBits) ++ tailBits ∧
+    LiteralSwitch.PrefixWire header initial prefixBits pref ∧
+    Literal.Switch.Wire header (pref.literalState initial) literalBits literals literalState ∧
+    literals.length = pref.command.insertLength ∧ initial.execution.output.size < block.endOutput ∧
+    initial.execution.output.size + literals.length ≤ block.endOutput ∧
+    initial.execution.output.size + literals.length ≤ limits.output ∧
+    FinishWire finishCopy header block limits initial pref literals literalState.runs tailBits result
 
 /-- A failing distance switch precedes the value reader. A failure in
     value resolution is anchored at the distance code after selection. -/

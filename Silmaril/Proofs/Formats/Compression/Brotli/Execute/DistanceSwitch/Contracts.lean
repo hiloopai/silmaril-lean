@@ -76,15 +76,14 @@ private theorem resolve_sound {header : CompressedHeader.Header} {command : Comm
   exact ⟨copyLength, control, bits, suffix, selection, wire, first.trans second,
     by simp only [List.length_append]; omega⟩
 
-theorem read_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
-    {initial : Execute.InsertCopy.State} {before after : LSBReader} {input : List Bool}
-    {result : Execute.InsertCopy.Result} (rep : before.Rep input) (count : before.count < 8)
-    (parsed : Execute.DistanceSwitch.read header block limits initial before = .ok (result, after)) :
-    initial.execution.output.size < result.execution.state.output.size ∧
-    result.execution.state.output.size ≤ block.endOutput ∧ result.execution.state.output.size ≤ limits.output ∧
-    ∃ used suffix, Wire header block initial used result ∧
+theorem readWith_sound {finishCopy : Internal.FinishCopy} {header : CompressedHeader.Header}
+    {block : Block} {limits : Execute.Limits} {initial : Execute.InsertCopy.State}
+    {before after : LSBReader} {input : List Bool} {result : Execute.InsertCopy.Result}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : readWith finishCopy header block limits initial before = .ok (result, after)) :
+    ∃ used suffix, ReadWire finishCopy header block limits initial used result ∧
       Source before after input used suffix ∧ used.length ≤ limits.bits := by
-  unfold Execute.DistanceSwitch.read at parsed
+  unfold readWith at parsed
   obtain ⟨⟨pref, atLiterals⟩, prefixRead, parsed⟩ := bind_mapped_ok parsed
   obtain ⟨⟨literals, state, atDistance⟩, literalRead, parsed⟩ := bind_mapped_ok parsed
   obtain ⟨_, _, _, room, blockFit, outFit, prefixBits, tail, prefixWire, first, prefixFit⟩ :=
@@ -103,38 +102,58 @@ theorem read_sound {header : CompressedHeader.Header} {block : Block} {limits : 
   split at parsed
   · rename_i terminal
     cases parsed
-    refine ⟨?_, ?_, ?_, prefixBits ++ literalBits, suffix, ⟨prefixBits, literalBits, [], pref, state, literals, [],
-      by simp, prefixWire, literalWire, length, rfl, .terminal (by simpa using terminal), by simp⟩,
-      insertion, insertBitsFit⟩
-    · simp only [Array.size_append, List.size_toArray]; omega
-    · simpa only [Array.size_append, List.size_toArray] using blockFit
-    · simpa only [Array.size_append, List.size_toArray] using outFit
+    exact ⟨prefixBits ++ literalBits, suffix,
+      ⟨prefixBits, literalBits, [], pref, state, literals, by simp, prefixWire, literalWire, length,
+        room, blockFit, outFit, .terminal terminal⟩, insertion, insertBitsFit⟩
   · rename_i pending
     obtain ⟨⟨resolved, runs, stop⟩, distanceRead, parsed⟩ := bind_ok parsed
     obtain ⟨executed, copied, parsed⟩ := bind_mapped_ok parsed
     cases parsed
     obtain ⟨copyLength, switchBits, distanceBits, rest, selection, distanceWire, source, distanceFit⟩ :=
       resolve_sound second.rep second.count distanceRead
-    obtain ⟨same, ring, extent, cap, distance, bytes, target, observed, copied, size, output⟩ :=
-      Execute.applyCopy_sound copied
-    have outputSize := congrArg List.length output
-    simp only [Array.length_toList, List.length_append, size] at outputSize
-    have sourceLength : (initial.execution.output.toList ++ literals).length =
-        initial.execution.output.size + literals.length := by simp
-    have tailWire : TailWire header block pref.command initial.execution.ring
-        (initial.execution.output.toList ++ literals) state.runs (switchBits ++ distanceBits) bytes
-        executed.distance executed.state.ring runs := by
-      rw [observed, ring]
-      refine .copy (by rw [sourceLength]; omega) selection ?_ target copied size
-      simpa only [sourceLength] using distanceWire
-    have grows : initial.execution.output.size < executed.state.output.size := by omega
-    refine ⟨grows, extent, cap, (prefixBits ++ literalBits) ++ (switchBits ++ distanceBits), rest,
-      ⟨prefixBits, literalBits, switchBits ++ distanceBits, pref, state, literals, bytes, rfl, prefixWire,
-        literalWire, length, same, tailWire, output⟩, insertion.trans source, ?_⟩
+    refine ⟨(prefixBits ++ literalBits) ++ (switchBits ++ distanceBits), rest,
+      ⟨prefixBits, literalBits, switchBits ++ distanceBits, pref, state, literals, rfl, prefixWire,
+        literalWire, length, room, blockFit, outFit, .copy (by omega) copyLength selection distanceWire copied⟩,
+      insertion.trans source, ?_⟩
     change (switchBits ++ distanceBits).length ≤
       limits.bits - (atDistance.totalRead - before.totalRead) at distanceFit
     simp only [List.length_append] at afterInsert insertBitsFit distanceFit ⊢
     omega
+
+theorem read_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+    {initial : Execute.InsertCopy.State} {before after : LSBReader} {input : List Bool}
+    {result : Execute.InsertCopy.Result} (rep : before.Rep input) (count : before.count < 8)
+    (parsed : Execute.DistanceSwitch.read header block limits initial before = .ok (result, after)) :
+    initial.execution.output.size < result.execution.state.output.size ∧
+    result.execution.state.output.size ≤ block.endOutput ∧ result.execution.state.output.size ≤ limits.output ∧
+    ∃ used suffix, Wire header block initial used result ∧
+      Source before after input used suffix ∧ used.length ≤ limits.bits := by
+  obtain ⟨used, suffix, wire, source, fits⟩ := readWith_sound rep count parsed
+  obtain ⟨prefixBits, literalBits, tailBits, pref, state, literals, rfl, prefixWire, literalWire, length,
+    room, blockFit, outFit, finish⟩ := wire
+  cases finish with
+  | terminal terminal =>
+    refine ⟨?_, ?_, ?_, _, suffix, ⟨prefixBits, literalBits, [], pref, state, literals, [],
+      rfl, prefixWire, literalWire, length, rfl, .terminal (by simpa using terminal), by simp⟩,
+      source, fits⟩
+    · simp only [Array.size_append, List.size_toArray]; omega
+    · simpa only [Array.size_append, List.size_toArray] using blockFit
+    · simpa only [Array.size_append, List.size_toArray] using outFit
+  | copy pending copyLength selection value copied =>
+    obtain ⟨same, ring, extent, cap, distance, bytes, target, observed, copied, size, output⟩ :=
+      Execute.applyCopy_sound copied
+    have outputSize := congrArg List.length output
+    rw [List.length_append, size, Array.length_toList] at outputSize
+    have sourceLength : (initial.execution.output.toList ++ literals).length =
+        initial.execution.output.size + literals.length := by simp
+    rw [sourceLength] at outputSize
+    refine ⟨by dsimp; omega, extent, cap, _, suffix,
+      ⟨prefixBits, literalBits, _, pref, state, literals, bytes, rfl, prefixWire, literalWire, length,
+        same, ?_, output⟩, source, fits⟩
+    dsimp
+    rw [observed, ring]
+    refine .copy (by simpa only [sourceLength] using pending) selection ?_ target copied size
+    simpa only [sourceLength] using value
 
 private theorem TailWire.copy_length {header : CompressedHeader.Header} {block : Block}
     {command : Command.Value} {ring after : Distance.Ring} {beforeCopy matched : List UInt8}
@@ -234,7 +253,7 @@ theorem read_error {header : CompressedHeader.Header} {block : Block} {limits : 
     (rep : before.Rep input) (count : before.count < 8)
     (parsed : Execute.DistanceSwitch.read header block limits initial before = .error error) :
     Failure header block limits initial before input error := by
-  unfold Execute.DistanceSwitch.read at parsed
+  unfold Execute.DistanceSwitch.read Internal.readWith at parsed
   cases prefixRead : Execute.LiteralSwitch.readPrefixCore header block limits initial before with
   | error reason =>
     simp only [prefixRead, Except.mapError, bind, Except.bind] at parsed

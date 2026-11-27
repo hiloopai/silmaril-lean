@@ -7,6 +7,17 @@ public section
 
 namespace Silmaril.Formats.Compression.Brotli.Execute.DistanceSwitch
 
+/-- The shared parser commits exactly the original command, literal,
+    distance switch and distance-code bits with a single command cap. -/
+theorem readWith_sound {finishCopy : Internal.FinishCopy} {header : CompressedHeader.Header}
+    {block : Block} {limits : Limits} {initial : InsertCopy.State}
+    {before after : LSBReader} {input : List Bool} {result : InsertCopy.Result}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : Internal.readWith finishCopy header block limits initial before = .ok (result, after)) :
+    ∃ used suffix, ReadWire finishCopy header block limits initial used result ∧
+      Literal.Switch.Source before after input used suffix ∧ used.length ≤ limits.bits :=
+  Proofs.Formats.Compression.Brotli.Execute.DistanceSwitch.readWith_sound rep count parsed
+
 /-- On a pending explicit copy the source contains the distance switch
     before the selected context row's code and extra bits. -/
 theorem read_sound {header : CompressedHeader.Header} {block : Block} {limits : Limits}

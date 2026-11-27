@@ -1,0 +1,205 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "fixtures": {
+    "reader-q7": {
+      "quality": 7,
+      "window": 18,
+      "wire_sha256": "6a552bdbff1a5d0e76e4b71ab59c9121d7182142b96e0173f6be16823c2f4a11",
+      "output_sha256": "e717dac5202c6371a047a53770406e4a43b20d754a0f37e4694a5a3e7f5187fb",
+      "output_bytes": 6279,
+      "commands": 128,
+      "payload_bit": 392,
+      "end_bit": 2179,
+      "trace_sha256": "b8c4f17133b8a5b4bc3101b4ff61fa4c7dc3de91ce6cde1c170cd49202a3d3b3",
+      "dictionary": [
+        {
+          "command": 0,
+          "wordId": 28174,
+          "ordinal": 27,
+          "baseLength": 8,
+          "actualLength": 6,
+          "sizeBeforeCopy": 8,
+          "begin": 448,
+          "end": 465,
+          "bytes": "20636865636b"
+        },
+        {
+          "command": 1,
+          "wordId": 81,
+          "ordinal": 0,
+          "baseLength": 5,
+          "actualLength": 5,
+          "sizeBeforeCopy": 19,
+          "begin": 507,
+          "end": 515,
+          "bytes": "7072657373"
+        },
+        {
+          "command": 2,
+          "wordId": 73,
+          "ordinal": 0,
+          "baseLength": 4,
+          "actualLength": 4,
+          "sizeBeforeCopy": 34,
+          "begin": 584,
+          "end": 592,
+          "bytes": "77697468"
+        },
+        {
+          "command": 3,
+          "wordId": 26019,
+          "ordinal": 12,
+          "baseLength": 7,
+          "actualLength": 6,
+          "sizeBeforeCopy": 40,
+          "begin": 609,
+          "end": 626,
+          "bytes": "206669786564"
+        },
+        {
+          "command": 4,
+          "wordId": 196,
+          "ordinal": 0,
+          "baseLength": 6,
+          "actualLength": 6,
+          "sizeBeforeCopy": 47,
+          "begin": 637,
+          "end": 647,
+          "bytes": "6f7574707574"
+        },
+        {
+          "command": 5,
+          "wordId": 218,
+          "ordinal": 0,
+          "baseLength": 6,
+          "actualLength": 6,
+          "sizeBeforeCopy": 54,
+          "begin": 658,
+          "end": 669,
+          "bytes": "627564676574"
+        }
+      ]
+    },
+    "weather-q11": {
+      "quality": 11,
+      "window": 18,
+      "wire_sha256": "ee37ebc5fa3e6d882fb57eee74bc328d37680785852af7c35a2bf4a7f4385383",
+      "output_sha256": "e63314f0a14f52da0bd1cc472ab14ceda56135f527c267a22edafa001a9daa3b",
+      "output_bytes": 624,
+      "commands": 10,
+      "payload_bit": 374,
+      "end_bit": 608,
+      "trace_sha256": "a82b7bafc8347092e819444a714551845720efad6577193619ddaeea6f93e2bd",
+      "dictionary": [
+        {
+          "command": 0,
+          "wordId": 107,
+          "ordinal": 0,
+          "baseLength": 5,
+          "actualLength": 5,
+          "sizeBeforeCopy": 4,
+          "begin": 389,
+          "end": 396,
+          "bytes": "717569636b"
+        },
+        {
+          "command": 1,
+          "wordId": 2313,
+          "ordinal": 2,
+          "baseLength": 5,
+          "actualLength": 7,
+          "sizeBeforeCopy": 9,
+          "begin": 399,
+          "end": 412,
+          "bytes": "2062726f776e20"
+        },
+        {
+          "command": 2,
+          "wordId": 175,
+          "ordinal": 0,
+          "baseLength": 4,
+          "actualLength": 4,
+          "sizeBeforeCopy": 20,
+          "begin": 427,
+          "end": 436,
+          "bytes": "6a756d70"
+        },
+        {
+          "command": 3,
+          "wordId": 71,
+          "ordinal": 0,
+          "baseLength": 9,
+          "actualLength": 9,
+          "sizeBeforeCopy": 26,
+          "begin": 446,
+          "end": 453,
+          "bytes": "6f7665722074686520"
+        },
+        {
+          "command": 5,
+          "wordId": 10258,
+          "ordinal": 10,
+          "baseLength": 11,
+          "actualLength": 16,
+          "sizeBeforeCopy": 49,
+          "begin": 504,
+          "end": 520,
+          "bytes": "74656d706572617475726520616e6420"
+        },
+        {
+          "command": 6,
+          "wordId": 1554,
+          "ordinal": 1,
+          "baseLength": 8,
+          "actualLength": 9,
+          "sizeBeforeCopy": 65,
+          "begin": 523,
+          "end": 535,
+          "bytes": "666f72656361737420"
+        },
+        {
+          "command": 7,
+          "wordId": 5520,
+          "ordinal": 5,
+          "baseLength": 12,
+          "actualLength": 17,
+          "sizeBeforeCopy": 78,
+          "begin": 554,
+          "end": 569,
+          "bytes": "617661696c61626c65206f6e2074686520"
+        },
+        {
+          "command": 8,
+          "wordId": 36,
+          "ordinal": 0,
+          "baseLength": 7,
+          "actualLength": 7,
+          "sizeBeforeCopy": 95,
+          "begin": 572,
+          "end": 581,
+          "bytes": "77656273697465"
+        }
+      ]
+    }
+  },
+  "failures": {
+    "caller-cap": {
+      "command": 1,
+      "bit": 412,
+      "stage": "copy",
+      "reason": "outputLimit"
+    },
+    "mlen-before-caller-cap": {
+      "command": 1,
+      "bit": 412,
+      "stage": "copy",
+      "reason": "metaBlockExtent"
+    },
+    "one-bit-short": {
+      "command": 1,
+      "bit": 399,
+      "stage": "distance",
+      "reason": "extraBitLimit"
+    }
+  }
+}
