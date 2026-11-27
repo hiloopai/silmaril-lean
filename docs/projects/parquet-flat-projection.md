@@ -105,6 +105,24 @@ five-field repeated selection from a four-field wide stream. A direct
 four-field IPC cap refuses that selection after successful Parquet
 exhaustion. Truncated EOS and trailing bytes refuse a complete observation.
 
+### Positional laws for complete events
+
+`projectEvents_id` selects every position once and recovers the full
+observation. `projectEvents_comp` equates staged selection with
+`composePositions` followed by a single selection. Both sides refuse
+out-of-range positions. The intermediate width is checked even when a
+later selection would discard that position. A successful projection
+retains the original batch row counts and aligns each batch with the
+selected schema.
+
+`Ipc.Equivalent` compares two exact-EOS reads under independent limits.
+It retains ordered descriptors, nullable slots and every batch boundary.
+`Equivalent.project` gives the same result, including refusals, for any
+position list. The [algebra oracle][algebra-oracle] reads byte-distinct
+Lean and PyArrow streams of the same Parquet groups. Moving the empty
+batch changes the complete observation while preserving the schema and
+the ordered nonempty batches. [Algebra laws][algebra-laws]
+
 ```sh
 lake build --wfail +Silmaril.Formats.Parquet.FlatProjection.Checks
 python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-flat-projection
@@ -117,3 +135,5 @@ python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-fl
 [success-oracle]: ../../scripts/parquet-flat-projection-success-oracle/check.py
 [ipc-event-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Ipc/Thms.lean
 [ipc-event-oracle]: ../../scripts/parquet-flat-projection-ipc-events-oracle/check.py
+[algebra-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Ipc/Algebra/Thms.lean
+[algebra-oracle]: ../../scripts/parquet-flat-ipc-observation-algebra-oracle/check.py
