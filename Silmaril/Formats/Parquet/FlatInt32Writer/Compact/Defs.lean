@@ -142,20 +142,29 @@ def groupFor (physical : Int) (rows : Nat) (columns : List ColumnIndex) : Write 
 
 def group (rows : Nat) (columns : List ColumnIndex) : Write Unit := groupFor 1 rows columns
 
-def Internal.footerGroupsFor (physical : Int) (writeLeaf : ColumnIndex → Write Unit) (columns : List ColumnIndex)
+def Internal.footerGroupsWriting (physical : Int) (leaves : List (Write Unit))
     (groups : List (Nat × List ColumnIndex)) : Write Unit := do
   field 1 5
   integer .i32 1
   field 1 9
-  listHeader 12 (columns.length + 1)
-  root columns.length
-  for column in columns do writeLeaf column
+  listHeader 12 (leaves.length + 1)
+  root leaves.length
+  for writeLeaf in leaves do writeLeaf
   field 1 6
   integer .i64 (groups.map Prod.fst).sum
   field 1 9
   listHeader 12 groups.length
   for (rows, chunks) in groups do groupFor physical rows chunks
   octet 0
+
+def Internal.footerGroupsFor (physical : Int) (writeLeaf : ColumnIndex → Write Unit) (columns : List ColumnIndex)
+    (groups : List (Nat × List ColumnIndex)) : Write Unit :=
+  Internal.footerGroupsWriting physical (columns.map writeLeaf) groups
+
+/-- Encode individual ordered leaf annotations with a common physical chunk type. -/
+def encodeGroupsWriting (physical : Int) (limit : Nat) (leaves : List (Write Unit))
+    (groups : List (Nat × List ColumnIndex)) : Except Error Bytes :=
+  ((Internal.footerGroupsWriting physical leaves groups).run ⟨limit, .empty⟩).map (·.2.bytes)
 
 def Internal.footerGroups (annotation : LeafAnnotation) (columns : List ColumnIndex)
     (groups : List (Nat × List ColumnIndex)) : Write Unit :=
@@ -165,7 +174,7 @@ def Internal.footerGroups (annotation : LeafAnnotation) (columns : List ColumnIn
 physical type code for every PLAIN chunk. -/
 def encodeGroupsFor (physical : Int) (writeLeaf : ColumnIndex → Write Unit) (limit : Nat)
     (columns : List ColumnIndex) (groups : List (Nat × List ColumnIndex)) : Except Error Bytes :=
-  ((Internal.footerGroupsFor physical writeLeaf columns groups).run ⟨limit, .empty⟩).map (·.2.bytes)
+  encodeGroupsWriting physical limit (columns.map writeLeaf) groups
 
 /-- Encode one shared schema and the ordered list of row counts and chunk indices. -/
 def encodeGroups (annotation : LeafAnnotation) (limit : Nat) (columns : List ColumnIndex)
