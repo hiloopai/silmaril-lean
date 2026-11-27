@@ -54,6 +54,18 @@ theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
         page.params = { base with codec := Payload.Codec.snappy.id } :=
   Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.planData_wire planned
 
+/-- A codec-specific plan shares the selected chunk and original frames. -/
+theorem checkGroupWithCodec_wire {ε : Type} {codec : Payload.Codec} {wrap : GroupError → ε}
+    {readDictionary : Bytes → Page.Frame → Except PageError (List Int32)}
+    {plan : List Page.Frame → Except ε (List DataPage)} {admitted : DataPage → Prop}
+    {valid : List DataPage → Prop} {limits : Limits} {bound : Bound} {index : Nat}
+    {checked : CheckedGroup}
+    (keeps : ∀ {frames data}, plan frames = .ok data →
+      data.map (·.frame) = frames ∧ (∀ page ∈ data, admitted page) ∧ valid data)
+    (accepted : checkGroupWithCodec codec wrap readDictionary plan limits bound index = .ok checked) :
+    GroupWireWith limits bound index checked codec readDictionary admitted ∧ valid checked.data :=
+  Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.checkGroupWithCodec_wire keeps accepted
+
 /-- A profile plan that retains frames uses the same original chunk, bounds and dictionary. -/
 theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
     {plan : List Page.Frame → Except ε (List DataPage)} {admits : Int → Bool}

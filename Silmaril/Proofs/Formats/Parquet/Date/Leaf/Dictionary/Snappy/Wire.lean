@@ -124,15 +124,16 @@ private theorem planPages_wire {bound : Bound} {frames : List Page.Frame} {data 
     · rwa [same]
     · exact ih.2 page rest
 
-theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
-    {plan : List Page.Frame → Except ε (List DataPage)} {admits : Int → Bool}
+theorem checkGroupWithCodec_wire {ε : Type} {codec : Payload.Codec} {wrap : GroupError → ε}
+    {readDictionary : Bytes → Page.Frame → Except PageError (List Int32)}
+    {plan : List Page.Frame → Except ε (List DataPage)} {admitted : DataPage → Prop}
     {valid : List DataPage → Prop} {limits : Limits} {bound : Bound} {index : Nat}
     {checked : CheckedGroup}
     (keeps : ∀ {frames data}, plan frames = .ok data →
-      data.map (·.frame) = frames ∧ (∀ page ∈ data, planDataWith admits bound page.frame = .ok page) ∧ valid data)
-    (accepted : checkGroupWith wrap plan limits bound index = .ok checked) :
-    GroupWire limits bound index checked admits ∧ valid checked.data := by
-  unfold checkGroupWith at accepted
+      data.map (·.frame) = frames ∧ (∀ page ∈ data, admitted page) ∧ valid data)
+    (accepted : checkGroupWithCodec codec wrap readDictionary plan limits bound index = .ok checked) :
+    GroupWireWith limits bound index checked codec readDictionary admitted ∧ valid checked.data := by
+  unfold checkGroupWithCodec at accepted
   obtain ⟨chunk, selected, accepted⟩ := bind_ok accepted
   simp only at accepted
   split at accepted
@@ -179,6 +180,18 @@ theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
       · simpa [CheckedGroup.frames, order] using originalFrames
       · simpa [CheckedGroup.frames, order] using (Page.readChunk_chain originalFrames).2.2
       · simpa [Option.map_map, Function.comp_def, ← not_not.mp dataOffset] using offset
+
+theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
+    {plan : List Page.Frame → Except ε (List DataPage)} {admits : Int → Bool}
+    {valid : List DataPage → Prop} {limits : Limits} {bound : Bound} {index : Nat}
+    {checked : CheckedGroup}
+    (keeps : ∀ {frames data}, plan frames = .ok data →
+      data.map (·.frame) = frames ∧ (∀ page ∈ data, planDataWith admits bound page.frame = .ok page) ∧ valid data)
+    (accepted : checkGroupWith wrap plan limits bound index = .ok checked) :
+    GroupWire limits bound index checked admits ∧ valid checked.data := by
+  obtain ⟨wire, validData⟩ := checkGroupWithCodec_wire keeps accepted
+  exact ⟨⟨wire.selected, wire.codec, wire.storedCap, wire.expandedCap, wire.frames, wire.chain,
+    wire.dictionaryOffset, wire.dataOffset, wire.dictionary, wire.data, wire.rows⟩, validData⟩
 
 theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat}
     {checked : CheckedGroup} (accepted : checkGroup limits bound index = .ok checked) :

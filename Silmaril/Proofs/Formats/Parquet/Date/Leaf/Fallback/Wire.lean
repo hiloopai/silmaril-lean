@@ -135,4 +135,106 @@ theorem readGroup_firstPageError {limits : Limits} {bound : Bound} {index ordina
     Fallback.readGroup limits bound index = .error cause := by
   simp [Fallback.readGroup, admitted, split, earlier, failed, Bind.bind, Except.bind]
 
+private theorem prefix_wire {ε δ : Type} {plan : Page.Frame → Except ε DataPage}
+    {atFrame : Nat → Page.Frame → ε → δ}
+    (keeps : ∀ {frame page}, plan frame = .ok page → page.frame = frame) {indexed : List (Page.Frame × Nat)} {pages : List DataPage}
+    (accepted : planPrefixWith plan atFrame indexed = (pages, none)) :
+    pages.map (·.frame) = indexed.map Prod.fst ∧
+      ∀ page ∈ pages, plan page.frame = .ok page := by
+  induction indexed generalizing pages with
+  | nil =>
+    simp [planPrefixWith] at accepted
+    subst pages
+    simp
+  | cons item rest ih =>
+    obtain ⟨frame, ordinal⟩ := item
+    cases planned : plan frame with
+    | error cause => simp [planPrefixWith, planned] at accepted
+    | ok page =>
+      cases tailEq : planPrefixWith plan atFrame rest with
+      | mk tail failure =>
+        simp [planPrefixWith, planned, tailEq] at accepted
+        obtain ⟨rfl, rfl⟩ := accepted
+        obtain ⟨order, reads⟩ := ih tailEq
+        have original := keeps planned
+        refine ⟨by simp [original, order], ?_⟩
+        intro candidate member
+        rcases List.mem_cons.mp member with rfl | later
+        · rwa [original]
+        · exact reads candidate later
+
+theorem planPrefixWith_firstError {ε δ : Type} {plan : Page.Frame → Except ε DataPage}
+    {atFrame : Nat → Page.Frame → ε → δ} {before after : List (Page.Frame × Nat)}
+    {frame : Page.Frame} {ordinal : Nat} {pages : List DataPage}
+    {cause : ε}
+    (earlier : before.mapM
+      (fun entry => plan entry.1) = .ok pages)
+    (failed : plan frame = .error cause) :
+    planPrefixWith plan atFrame (before ++ (frame, ordinal) :: after) =
+      (pages, some (atFrame ordinal frame cause)) := by
+  induction before generalizing pages with
+  | nil =>
+    simp [Pure.pure, Except.pure] at earlier
+    subst pages
+    simp [planPrefixWith, failed]
+  | cons item rest ih =>
+    obtain ⟨page, position⟩ := item
+    cases planned : plan page with
+    | error error => simp [List.mapM_cons, planned, Bind.bind, Except.bind] at earlier
+    | ok first =>
+      cases tail : rest.mapM
+          (fun entry => plan entry.1) with
+      | error error => simp [List.mapM_cons, planned, tail, Bind.bind, Except.bind] at earlier
+      | ok following =>
+        have same : first :: following = pages := by
+          simpa [List.mapM_cons, planned, tail, Bind.bind, Except.bind, Pure.pure, Except.pure] using earlier
+        subst pages
+        simp [planPrefixWith, planned, ih tail]
+
+theorem planPagesWith_earlierPhaseError {ε δ εPage : Type}
+    {plan : Page.Frame → Except εPage DataPage} {atFrame : Nat → Page.Frame → εPage → δ}
+    {headerError : δ → ε} {phaseError : GroupError → ε} {frames : List Page.Frame} {pages : List DataPage}
+    {failure : Option δ} {ordinal offset : Nat} {tag : Int}
+    (scanned : planPrefixWith plan atFrame (frames.zipIdx 1) = (pages, failure)) :
+    (checkSequence pages = .error (.prefixEncoding ordinal offset tag) →
+      planPagesWith plan atFrame headerError phaseError frames = .error (phaseError (.prefixEncoding ordinal offset tag))) ∧
+    (checkSequence pages = .error (.suffixEncoding ordinal offset tag) →
+      planPagesWith plan atFrame headerError phaseError frames = .error (phaseError (.suffixEncoding ordinal offset tag))) := by
+  constructor <;> intro phase <;> simp [planPagesWith, scanned, phase]
+
+theorem planPagesWith_headerError {ε δ εPage : Type}
+    {plan : Page.Frame → Except εPage DataPage} {atFrame : Nat → Page.Frame → εPage → δ}
+    {headerError : δ → ε} {phaseError : GroupError → ε} {frames : List Page.Frame} {pages : List DataPage}
+    {cause : δ}
+    (scanned : planPrefixWith plan atFrame (frames.zipIdx 1) = (pages, some cause))
+    (phase : checkSequence pages = .ok () ∨
+      checkSequence pages = .error .missingReferences ∨
+      checkSequence pages = .error .missingPlain) :
+    planPagesWith plan atFrame headerError phaseError frames = .error (headerError cause) := by
+  rcases phase with h | h | h <;> simp [planPagesWith, scanned, h]
+
+theorem planPagesWith_wire {ε δ εPage : Type}
+    {plan : Page.Frame → Except εPage DataPage} {atFrame : Nat → Page.Frame → εPage → δ}
+    {headerError : δ → ε} {phaseError : GroupError → ε}
+    (keeps : ∀ {frame page}, plan frame = .ok page → page.frame = frame) {frames : List Page.Frame} {pages : List DataPage}
+    (planned : planPagesWith plan atFrame headerError phaseError frames = .ok pages) :
+    pages.map (·.frame) = frames ∧
+      (∀ page ∈ pages, plan page.frame = .ok page) ∧
+      Ordered pages := by
+  cases original : planPrefixWith plan atFrame (frames.zipIdx 1) with
+  | mk preceding failure =>
+    cases sequence : checkSequence preceding with
+    | error cause =>
+      cases cause <;> cases failure <;>
+        simp [planPagesWith, original, sequence, Except.map, Except.mapError] at planned
+    | ok value =>
+      cases failure with
+      | some cause => simp [planPagesWith, original, sequence] at planned
+      | none =>
+        have same : preceding = pages := by
+          simpa [planPagesWith, original, sequence, Except.map, Except.mapError] using planned
+        subst pages
+        obtain ⟨order, headers⟩ := prefix_wire keeps original
+        exact ⟨by simpa using order, headers, checkSequence_wire sequence⟩
+
 end Silmaril.Proofs.Formats.Parquet.Date.Leaf.Fallback

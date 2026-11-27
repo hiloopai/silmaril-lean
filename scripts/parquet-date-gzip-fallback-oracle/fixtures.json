@@ -1,0 +1,677 @@
+{
+  "cpython": "3.13.5",
+  "pyarrow": "26.0.1",
+  "pyarrow_wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+  "thrift": "0.25.0",
+  "thrift_wheel_sha256": "aa0cfa1db4d2129114d9548c4fc7e85680013aa442692377606b6305d236a1c0",
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "producer": {
+    "seed": 2429,
+    "dictionary_pagesize_limit": 8,
+    "data_page_size": 24,
+    "zlib_runtime": "1.3.1"
+  },
+  "cases": {
+    "nullable_crc": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "fcb86e8132c7610779e8f6df877828a51a900888dac8e71b0c41fcb0140987ae"
+      },
+      "field": "日付",
+      "selected_ordinal": 1,
+      "nullable": true,
+      "page_checksum": true,
+      "write_batch_size": 128,
+      "stored_chunk_cap": 1189,
+      "expanded_chunk_cap": 1378,
+      "groups": [
+        {
+          "span": [
+            260,
+            1009
+          ],
+          "dictionary": {
+            "frame": 260,
+            "stored_start": 280,
+            "parquet_crc": 768253598,
+            "member_crc": 631134653,
+            "stored": {
+              "bytes": 28,
+              "sha256": "362b1826f2924fa4a1b21365aa1e133f3da2bfa11835909656209bf4d68c207b"
+            },
+            "expanded": {
+              "bytes": 12,
+              "sha256": "61041abfd99aaf231954fe666a5152245aca1e4fa22760448f3c8edf53734a5d"
+            },
+            "signed_entries": [
+              -2147483648,
+              -11,
+              2147483647
+            ]
+          },
+          "expanded_total": 1326,
+          "data": [
+            {
+              "frame": 308,
+              "stored_start": 334,
+              "parquet_crc": 2384483752,
+              "member_crc": 3447999324,
+              "stored": {
+                "bytes": 34,
+                "sha256": "92a1b064688a0513ba8d4e359804805b2adcc20809e2452d4fc233b379f91b4a"
+              },
+              "expanded": {
+                "bytes": 47,
+                "sha256": "3eaf15ad745ca980e1fbf623cd372ef8ff65d32db8cb4d0d0524fd053db9dc13"
+              },
+              "tag": 8,
+              "rows": 128,
+              "nulls": 32,
+              "scalar_bytes": {
+                "bytes": 26,
+                "sha256": "c39a0621f83e6ae39a8c27d1bb26735b541b1c6ac17e9809bf3e378d50765d10"
+              }
+            },
+            {
+              "frame": 368,
+              "stored_start": 395,
+              "parquet_crc": 2274673546,
+              "member_crc": 2501311812,
+              "stored": {
+                "bytes": 44,
+                "sha256": "c87dd504fa8d50def453ea74371209695218f7f704818467f6170f861b61b929"
+              },
+              "expanded": {
+                "bytes": 405,
+                "sha256": "5fabe84a4e69736eac0441b944cd05ddd065f663fb42d9f4b7c006e5f667a234"
+              },
+              "tag": 0,
+              "rows": 128,
+              "nulls": 32,
+              "scalar_bytes": {
+                "bytes": 384,
+                "sha256": "b5872183596fb4e01ec0f4365986dc8dbfc5ea4d11c58202e492c1aa7bdb395b"
+              }
+            },
+            {
+              "frame": 439,
+              "stored_start": 467,
+              "parquet_crc": 2590674150,
+              "member_crc": 3832472395,
+              "stored": {
+                "bytes": 480,
+                "sha256": "14bcec7d1f55dbab606fe349503e8c4c64d6fc3e36187da5985327fc4e9f8b48"
+              },
+              "expanded": {
+                "bytes": 457,
+                "sha256": "9ceb176b2151d5d2948b4961b3c5faa2b0fbcf06180c2236c6705e3ac3ff71cc"
+              },
+              "tag": 0,
+              "rows": 128,
+              "nulls": 19,
+              "scalar_bytes": {
+                "bytes": 436,
+                "sha256": "4bd39b935763f0cce59adc71a78ebdd1b897f6fd707954cb427c1357d35e252b"
+              }
+            },
+            {
+              "frame": 947,
+              "stored_start": 974,
+              "parquet_crc": 2442744430,
+              "member_crc": 946418144,
+              "stored": {
+                "bytes": 35,
+                "sha256": "a4f766d7c59d9ef3f7c865080bc2e8dedd85b0e8f27a327e3887c021da7548b0"
+              },
+              "expanded": {
+                "bytes": 405,
+                "sha256": "4782650ab2d89e0c2b174a174c70f0e22966b28e9191c27def55962114c8907f"
+              },
+              "tag": 0,
+              "rows": 128,
+              "nulls": 32,
+              "scalar_bytes": {
+                "bytes": 384,
+                "sha256": "989fc25a5c180f7373d60461ae33ebfd356010bfbe160160621586716a57154c"
+              }
+            }
+          ]
+        },
+        {
+          "span": [
+            1265,
+            2454
+          ],
+          "dictionary": {
+            "frame": 1265,
+            "stored_start": 1285,
+            "parquet_crc": 1698035239,
+            "member_crc": 895746343,
+            "stored": {
+              "bytes": 28,
+              "sha256": "f25c18aea71c7b3376332b9287d36ced1c17d1bd5ec0a8a521934c5ddd30896e"
+            },
+            "expanded": {
+              "bytes": 12,
+              "sha256": "0fc148eea99ca0048de97a8319dc012292d8d58f6392a6a1fdd12adb7b13f3b6"
+            },
+            "signed_entries": [
+              -17,
+              2147483647,
+              -2147483648
+            ]
+          },
+          "expanded_total": 1378,
+          "data": [
+            {
+              "frame": 1313,
+              "stored_start": 1339,
+              "parquet_crc": 3901598070,
+              "member_crc": 74357597,
+              "stored": {
+                "bytes": 34,
+                "sha256": "04fba24dc34d75f0f54e022343c508eb4fc78f5ab709939df6726d60df27fbd5"
+              },
+              "expanded": {
+                "bytes": 47,
+                "sha256": "76d159701d51be14486bddf9bb99cd66d2da338851c84b9b769d9764c7d83905"
+              },
+              "tag": 8,
+              "rows": 128,
+              "nulls": 32,
+              "scalar_bytes": {
+                "bytes": 26,
+                "sha256": "b6376bf4f2d75bc879edd6074a976ba4c5791b6baf054785dc35a78234411a5e"
+              }
+            },
+            {
+              "frame": 1373,
+              "stored_start": 1401,
+              "parquet_crc": 2590674150,
+              "member_crc": 3591357047,
+              "stored": {
+                "bytes": 480,
+                "sha256": "04cb9f9e9b3905e650ecc0ff5418020dc1257e52c21f8e2911e3ca8c32b1dece"
+              },
+              "expanded": {
+                "bytes": 457,
+                "sha256": "dd41cfe8aac2abe0f1744397e6831ebc5fc42b4810b5cdd496c9924af44906f7"
+              },
+              "tag": 0,
+              "rows": 128,
+              "nulls": 19,
+              "scalar_bytes": {
+                "bytes": 436,
+                "sha256": "6119a3f072e144d87236a8e8869c547233e68f9fa1dc1a6e8f0dfcd30a72d783"
+              }
+            },
+            {
+              "frame": 1881,
+              "stored_start": 1907,
+              "parquet_crc": 50903134,
+              "member_crc": 1348812832,
+              "stored": {
+                "bytes": 39,
+                "sha256": "b715c9d51065835a17e2bc81a1979f849e5efe0994bab6a162620ca96848e300"
+              },
+              "expanded": {
+                "bytes": 405,
+                "sha256": "863f6fbd75ce1835af51e60446d8396117f054ef882f23106aee48ec407dad24"
+              },
+              "tag": 0,
+              "rows": 128,
+              "nulls": 32,
+              "scalar_bytes": {
+                "bytes": 384,
+                "sha256": "52ce5c5c18e9aa1de44982ff4eed5759ccd0b58db7f057cfedc497b830ea3d10"
+              }
+            },
+            {
+              "frame": 1946,
+              "stored_start": 1974,
+              "parquet_crc": 2590674150,
+              "member_crc": 1827398214,
+              "stored": {
+                "bytes": 480,
+                "sha256": "e55edb385677d01894a590182e1c606e54ecaa3e29ea8c19e9d472126eec6a51"
+              },
+              "expanded": {
+                "bytes": 457,
+                "sha256": "8c606cebf663b19ca45ab03ab721807583e0ebaaf3f48947cdaead615fad5663"
+              },
+              "tag": 0,
+              "rows": 128,
+              "nulls": 19,
+              "scalar_bytes": {
+                "bytes": 436,
+                "sha256": "233a7a59ab338a501747470459ff550965fd0d2b9799c404581bd87dc81a1d1b"
+              }
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 4696,
+        "sha256": "a5a3285b625cc62a807f9a70161c29a22ae0bdfcab24234989765bc64a18a498"
+      }
+    },
+    "required_no_crc": {
+      "parquet": {
+        "bytes": 1634,
+        "sha256": "b8bcd8da0bf71c822327eebb5b73bfc71943e4fd99aa95922e5e60633b2b2653"
+      },
+      "field": "日付",
+      "selected_ordinal": 1,
+      "nullable": false,
+      "page_checksum": false,
+      "write_batch_size": 32,
+      "stored_chunk_cap": 476,
+      "expanded_chunk_cap": 410,
+      "groups": [
+        {
+          "span": [
+            220,
+            586
+          ],
+          "dictionary": {
+            "frame": 220,
+            "stored_start": 234,
+            "parquet_crc": null,
+            "member_crc": 1959784927,
+            "stored": {
+              "bytes": 31,
+              "sha256": "9dec46036e166892b59d1192c501c6841bd2573b25d6596fb8620a493e49722a"
+            },
+            "expanded": {
+              "bytes": 16,
+              "sha256": "c3aedaed209354327abe03b738444d84bc5826326ac95df853ac921993ff00db"
+            },
+            "signed_entries": [
+              -2147483648,
+              0,
+              -11,
+              2147483647
+            ]
+          },
+          "expanded_total": 410,
+          "data": [
+            {
+              "frame": 265,
+              "stored_start": 284,
+              "parquet_crc": null,
+              "member_crc": 3008967721,
+              "stored": {
+                "bytes": 25,
+                "sha256": "55b6ef30b9f1f757379a9d057fbc5a7ffbcd2223a9bd4e12b97aeb2d00f78e53"
+              },
+              "expanded": {
+                "bytes": 10,
+                "sha256": "da8403d58171cb831e20e5482c70963c604777b4ef0139ed7c442be89c85e2e6"
+              },
+              "tag": 8,
+              "rows": 32,
+              "nulls": 0,
+              "scalar_bytes": {
+                "bytes": 10,
+                "sha256": "da8403d58171cb831e20e5482c70963c604777b4ef0139ed7c442be89c85e2e6"
+              }
+            },
+            {
+              "frame": 309,
+              "stored_start": 329,
+              "parquet_crc": null,
+              "member_crc": 1127750337,
+              "stored": {
+                "bytes": 39,
+                "sha256": "747a10b981d8246a66966ee193612476fb4115f84f3946c5fb337b8f4187ba1a"
+              },
+              "expanded": {
+                "bytes": 128,
+                "sha256": "e707cf9c88346c0f2f4c0c8f2a2314905c7f174a65c20a13ecff82f0f910cfbd"
+              },
+              "tag": 0,
+              "rows": 32,
+              "nulls": 0,
+              "scalar_bytes": {
+                "bytes": 128,
+                "sha256": "e707cf9c88346c0f2f4c0c8f2a2314905c7f174a65c20a13ecff82f0f910cfbd"
+              }
+            },
+            {
+              "frame": 368,
+              "stored_start": 389,
+              "parquet_crc": null,
+              "member_crc": 4284543130,
+              "stored": {
+                "bytes": 147,
+                "sha256": "68d8ae7e3891f923ab1a7d1cc0b9b58c13d6b4e82f2f1bdd4ddf39f0343330a4"
+              },
+              "expanded": {
+                "bytes": 128,
+                "sha256": "f1575259d34fec2c17a56829bccf3e21d4eb97773faf57647ba40810115518eb"
+              },
+              "tag": 0,
+              "rows": 32,
+              "nulls": 0,
+              "scalar_bytes": {
+                "bytes": 128,
+                "sha256": "f1575259d34fec2c17a56829bccf3e21d4eb97773faf57647ba40810115518eb"
+              }
+            },
+            {
+              "frame": 536,
+              "stored_start": 556,
+              "parquet_crc": null,
+              "member_crc": 3335891615,
+              "stored": {
+                "bytes": 30,
+                "sha256": "f0db02fc661175ab3785ef91ef40f741356f1b6213b1a8908ed98ed8dfa6f747"
+              },
+              "expanded": {
+                "bytes": 128,
+                "sha256": "7046871e30c57e17077cfa7fd293393453845369b7bf21c9a90f0006f4fce9a2"
+              },
+              "tag": 0,
+              "rows": 32,
+              "nulls": 0,
+              "scalar_bytes": {
+                "bytes": 128,
+                "sha256": "7046871e30c57e17077cfa7fd293393453845369b7bf21c9a90f0006f4fce9a2"
+              }
+            }
+          ]
+        },
+        {
+          "span": [
+            802,
+            1278
+          ],
+          "dictionary": {
+            "frame": 802,
+            "stored_start": 816,
+            "parquet_crc": null,
+            "member_crc": 371162014,
+            "stored": {
+              "bytes": 28,
+              "sha256": "d2b2f14236b3429567d3c046c05cf6f04801022f388a3e178b3d12d5d92fc501"
+            },
+            "expanded": {
+              "bytes": 16,
+              "sha256": "d5bc16b119e864f43c908662735173d0ad192b537cfbacc7d599d178e5248200"
+            },
+            "signed_entries": [
+              -17,
+              2147483647,
+              0,
+              -2147483648
+            ]
+          },
+          "expanded_total": 410,
+          "data": [
+            {
+              "frame": 844,
+              "stored_start": 863,
+              "parquet_crc": null,
+              "member_crc": 1450323578,
+              "stored": {
+                "bytes": 25,
+                "sha256": "d7d5570d4c6da9bba255b81f55d8e7103e45d88262e813175885b8c30509e6d4"
+              },
+              "expanded": {
+                "bytes": 10,
+                "sha256": "ce44e966f7ae5f6587bab79e26df02d4c133bc115ebeff5321dc36fb7c1c9324"
+              },
+              "tag": 8,
+              "rows": 32,
+              "nulls": 0,
+              "scalar_bytes": {
+                "bytes": 10,
+                "sha256": "ce44e966f7ae5f6587bab79e26df02d4c133bc115ebeff5321dc36fb7c1c9324"
+              }
+            },
+            {
+              "frame": 888,
+              "stored_start": 909,
+              "parquet_crc": null,
+              "member_crc": 1104272193,
+              "stored": {
+                "bytes": 146,
+                "sha256": "3598d8c3d6112aba259b670d6c8ff5b975e971e2a532bdfeb039d8e8d0bfdec6"
+              },
+              "expanded": {
+                "bytes": 128,
+                "sha256": "951e877cde573cca70b5ae47e4193e718c191a29424438718e8a22035b3d77e8"
+              },
+              "tag": 0,
+              "rows": 32,
+              "nulls": 0,
+              "scalar_bytes": {
+                "bytes": 128,
+                "sha256": "951e877cde573cca70b5ae47e4193e718c191a29424438718e8a22035b3d77e8"
+              }
+            },
+            {
+              "frame": 1055,
+              "stored_start": 1075,
+              "parquet_crc": null,
+              "member_crc": 4271407907,
+              "stored": {
+                "bytes": 37,
+                "sha256": "bfc106b45f62b1f3478e6aa9f3a2cbab437e8d569eeef02a0a92e838e7a7055d"
+              },
+              "expanded": {
+                "bytes": 128,
+                "sha256": "43ffebd0a258c3fc6fef12ac8c57b82bd0dcbda2e395d515dfdf8c430a073dc8"
+              },
+              "tag": 0,
+              "rows": 32,
+              "nulls": 0,
+              "scalar_bytes": {
+                "bytes": 128,
+                "sha256": "43ffebd0a258c3fc6fef12ac8c57b82bd0dcbda2e395d515dfdf8c430a073dc8"
+              }
+            },
+            {
+              "frame": 1112,
+              "stored_start": 1133,
+              "parquet_crc": null,
+              "member_crc": 340458218,
+              "stored": {
+                "bytes": 145,
+                "sha256": "1aa80af1c0f76ecc92bc44d0da6325781ffe821551a37c9aa81afc1e07a27bb7"
+              },
+              "expanded": {
+                "bytes": 128,
+                "sha256": "8cc3532a24836604608c0c8981c0845d577bfb7a0a093f23370c14a8ad306554"
+              },
+              "tag": 0,
+              "rows": 32,
+              "nulls": 0,
+              "scalar_bytes": {
+                "bytes": 128,
+                "sha256": "8cc3532a24836604608c0c8981c0845d577bfb7a0a093f23370c14a8ad306554"
+              }
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 1528,
+        "sha256": "3cb4233e376bdbc8db2b8f47d47328191b56b3b5f76a6222faceb8a541f7c487"
+      }
+    }
+  },
+  "controls": {
+    "malformed_dictionary_outer_crc": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "b60bae3f4bfb9a06e6506859160f321c91f221f66c7bd265b0e127222f7cca61"
+      },
+      "error": "(.source (.groupFailure 1 (.chunk (.page 0 1265 (.checksum (.mismatch 1698035239 1686113082))))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_references_outer_crc": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "f306b9df50da9b410f0011ff1f73c9ddfe923ab0fd723958838aab20667bbed8"
+      },
+      "error": "(.source (.groupFailure 1 (.chunk (.page 1 1313 (.checksum (.mismatch 3901598070 3423598656))))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_plain_outer_crc": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "0c73b603b5b19598ccc23aa8f38bee28cd0f7d4739881c82b213faba9a2af61e"
+      },
+      "error": "(.source (.groupFailure 1 (.chunk (.page 4 1946 (.checksum (.mismatch 2590674150 1488341121))))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_dictionary_inner_crc_valid_outer": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "16e4765e0c68ce41317a649848524f8c72a39dc71d05505587c7b51789cbb459"
+      },
+      "error": "(.source (.groupFailure 1 (.chunk (.page 0 1265 (.payload (.malformed .gzip))))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_references_inner_crc_valid_outer": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "e39514deec8ab2e94b87410cdc1b0b47eacb428f86d93d9c25a0376001b57829"
+      },
+      "error": "(.source (.groupFailure 1 (.chunk (.page 1 1313 (.references (.page (.payload (.malformed .gzip))))))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_plain_inner_crc_valid_outer": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "6ccae253610553a4b7b6b629757c3bb4cf0c2b72e81e04b1e43bd2fda1891ab4"
+      },
+      "error": "(.source (.groupFailure 1 (.plain 4 1946 (.payload (.malformed .gzip)))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "assembled_second_member": {
+      "parquet": {
+        "bytes": 2850,
+        "sha256": "3ee303f476f36035dac80163e68c1ed3d2ddcb5fd26f096b7c4b1017a2b9d30e"
+      },
+      "error": "(.source (.groupFailure 1 (.plain 4 1946 (.payload (.trailingInput .gzip)))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "genuine_v2_fallback": {
+      "parquet": {
+        "bytes": 2898,
+        "sha256": "06a122ff81fab0d0eb78070fc2cddb17f1064279518f59c558fc2c24464315d1"
+      },
+      "error": "(.source (.groupFailure 0 (.header 1 332 .expectedV1)))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "genuine_dictionary_only": {
+      "parquet": {
+        "bytes": 3164,
+        "sha256": "986b544d89bd368c5b731a1865ce7238236f176fde41f9b407b2cef105402747"
+      },
+      "error": "(.source (.groupFailure 0 (.sequence .missingPlain)))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "malformed_plain_first": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "a7adae9dae7681e778147f2353a0120cf1770d13d76e0f6e37886a9d615d70cb"
+      },
+      "error": "(.source (.groupFailure 0 (.sequence (.prefixEncoding 1 308 0))))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "malformed_reentry_before_bad_header": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "5313da69f92719d6b6e2fb5d5f208a4a8c6e8680d18033cac10f9ff5b5b015f9"
+      },
+      "error": "(.source (.groupFailure 0 (.sequence (.suffixEncoding 3 439 8))))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "malformed_bad_header_before_reentry": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "a622060e74c2303f2031680307206c09e3eeb57ff7b744cac075a899ce01c368"
+      },
+      "error": "(.source (.groupFailure 0 (.header 2 368 (.encoding 5))))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "low_stored_chunk_cap": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "fcb86e8132c7610779e8f6df877828a51a900888dac8e71b0c41fcb0140987ae"
+      },
+      "error": "(.source (.groupFailure 0 (.chunk .chunkLimit)))",
+      "source_limits": "{ maxChunkBytes := 748 }",
+      "output_limits": "{}"
+    },
+    "low_expanded_chunk_cap": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "fcb86e8132c7610779e8f6df877828a51a900888dac8e71b0c41fcb0140987ae"
+      },
+      "error": "(.source (.groupFailure 0 (.chunk .expandedChunkLimit)))",
+      "source_limits": "{ maxExpandedChunkBytes := 1325 }",
+      "output_limits": "{}"
+    },
+    "low_index_byte_cap": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "fcb86e8132c7610779e8f6df877828a51a900888dac8e71b0c41fcb0140987ae"
+      },
+      "error": "(.source (.groupFailure 0 (.chunk (.page 1 308 (.references .indexByteLimit)))))",
+      "source_limits": "{ indices := ⟨1048576, 0⟩ }",
+      "output_limits": "{}"
+    },
+    "low_dictionary_stored_cap": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "fcb86e8132c7610779e8f6df877828a51a900888dac8e71b0c41fcb0140987ae"
+      },
+      "error": "(.source (.groupFailure 0 (.chunk (.page 0 260 (.checksum .byteLimit)))))",
+      "source_limits": "{ scalar := ⟨27, 16777216, ⟨1048576, 16777216⟩, 1048576⟩ }",
+      "output_limits": "{}"
+    },
+    "low_plain_expanded_cap": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "fcb86e8132c7610779e8f6df877828a51a900888dac8e71b0c41fcb0140987ae"
+      },
+      "error": "(.source (.groupFailure 0 (.plain 2 368 (.payload .outputLimit))))",
+      "source_limits": "{ scalar := ⟨16777216, 47, ⟨1048576, 16777216⟩, 1048576⟩ }",
+      "output_limits": "{}"
+    },
+    "zero_gzip_calls": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "fcb86e8132c7610779e8f6df877828a51a900888dac8e71b0c41fcb0140987ae"
+      },
+      "error": "(.source (.groupFailure 0 (.chunk (.page 0 260 (.payload .gzipIncomplete)))))",
+      "source_limits": "{ scalar := ⟨16777216, 16777216, ⟨1048576, 16777216⟩, 0⟩ }",
+      "output_limits": "{}"
+    },
+    "malformed_plain_expanded_extent_valid_crc": {
+      "parquet": {
+        "bytes": 2830,
+        "sha256": "e1a353f740e1a4ccaca858a72e76230b55abac95468e3784e4873c86ee3afbf4"
+      },
+      "error": "(.source (.groupFailure 1 (.plain 4 1946 (.payload .outputSizeMismatch))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    }
+  }
+}

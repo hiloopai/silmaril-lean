@@ -32,29 +32,14 @@ inductive IpcError where
 
 def admits (tag : Int) : Bool := tag == 8 || tag == 0
 
-/-- Retain the header prefix preceding the first unsupported frame so an
-earlier phase error keeps priority. No page body is read here. -/
+/-- Keep the original coordinates of the valid prefix and first bad header. -/
 def planPrefix (bound : Bound) :
-    List (Page.Frame × Nat) → List DataPage × Option Dictionary.Snappy.GroupError
-  | [] => ([], none)
-  | (frame, ordinal) :: rest =>
-    match Dictionary.Snappy.planDataWith admits bound frame with
-    | .error cause => ([], some (Dictionary.Snappy.atFrame ordinal frame cause))
-    | .ok page =>
-      let (pages, failure) := planPrefix bound rest
-      (page :: pages, failure)
+    List (Page.Frame × Nat) → List DataPage × Option Dictionary.Snappy.GroupError :=
+  Fallback.planPrefixWith (Dictionary.Snappy.planDataWith admits bound) Dictionary.Snappy.atFrame
 
-/-- Reuse the uncompressed phase rule on the original admitted prefix.
-Only errors at an actual earlier frame take precedence over a header failure. -/
 def planPages (bound : Bound) (frames : List Page.Frame) : Except GroupError (List DataPage) :=
-  let (pages, failure) := planPrefix bound (frames.zipIdx 1)
-  match Fallback.checkSequence pages with
-  | .error (.prefixEncoding i offset tag) => .error (.sequence (.prefixEncoding i offset tag))
-  | .error (.suffixEncoding i offset tag) => .error (.sequence (.suffixEncoding i offset tag))
-  | sequence =>
-    match failure with
-    | some cause => .error (.snappy cause)
-    | none => (sequence.mapError .sequence).map fun _ => pages
+  Fallback.planPagesWith (Dictionary.Snappy.planDataWith admits bound) Dictionary.Snappy.atFrame
+    .snappy .sequence frames
 
 def checkGroup (limits : Limits) (bound : Bound) (index : Nat) :
     Except GroupError Dictionary.Snappy.CheckedGroup :=

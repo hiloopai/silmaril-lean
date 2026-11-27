@@ -28,32 +28,6 @@ private theorem bind_ok {α β ε : Type} {input : Except ε α} {next : α → 
   | error => contradiction
   | ok value => exact ⟨value, rfl, read⟩
 
-private theorem prefix_wire {bound : Bound} {indexed : List (Page.Frame × Nat)} {pages : List DataPage}
-    (accepted : planPrefix bound indexed = (pages, none)) :
-    pages.map (·.frame) = indexed.map Prod.fst ∧
-      ∀ page ∈ pages, Date.Leaf.Dictionary.Snappy.planDataWith admits bound page.frame = .ok page := by
-  induction indexed generalizing pages with
-  | nil =>
-    simp [planPrefix] at accepted
-    subst pages
-    simp
-  | cons item rest ih =>
-    obtain ⟨frame, ordinal⟩ := item
-    cases planned : Date.Leaf.Dictionary.Snappy.planDataWith admits bound frame with
-    | error cause => simp [planPrefix, planned] at accepted
-    | ok page =>
-      cases tailEq : planPrefix bound rest with
-      | mk tail failure =>
-        simp [planPrefix, planned, tailEq] at accepted
-        obtain ⟨rfl, rfl⟩ := accepted
-        obtain ⟨order, reads⟩ := ih tailEq
-        have original := (Date.Leaf.Dictionary.Snappy.planDataWith_wire planned).1
-        refine ⟨by simp [original, order], ?_⟩
-        intro candidate member
-        rcases List.mem_cons.mp member with rfl | later
-        · rwa [original]
-        · exact reads candidate later
-
 theorem planPrefix_firstError {bound : Bound} {before after : List (Page.Frame × Nat)}
     {frame : Page.Frame} {ordinal : Nat} {pages : List DataPage}
     {cause : Date.Leaf.Dictionary.Snappy.PageError}
@@ -61,25 +35,8 @@ theorem planPrefix_firstError {bound : Bound} {before after : List (Page.Frame �
       (fun entry => Date.Leaf.Dictionary.Snappy.planDataWith admits bound entry.1) = .ok pages)
     (failed : Date.Leaf.Dictionary.Snappy.planDataWith admits bound frame = .error cause) :
     planPrefix bound (before ++ (frame, ordinal) :: after) =
-      (pages, some (Date.Leaf.Dictionary.Snappy.atFrame ordinal frame cause)) := by
-  induction before generalizing pages with
-  | nil =>
-    simp [Pure.pure, Except.pure] at earlier
-    subst pages
-    simp [planPrefix, failed]
-  | cons item rest ih =>
-    obtain ⟨page, position⟩ := item
-    cases planned : Date.Leaf.Dictionary.Snappy.planDataWith admits bound page with
-    | error error => simp [List.mapM_cons, planned, Bind.bind, Except.bind] at earlier
-    | ok first =>
-      cases tail : rest.mapM
-          (fun entry => Date.Leaf.Dictionary.Snappy.planDataWith admits bound entry.1) with
-      | error error => simp [List.mapM_cons, planned, tail, Bind.bind, Except.bind] at earlier
-      | ok following =>
-        have same : first :: following = pages := by
-          simpa [List.mapM_cons, planned, tail, Bind.bind, Except.bind, Pure.pure, Except.pure] using earlier
-        subst pages
-        simp [planPrefix, planned, ih tail]
+      (pages, some (Date.Leaf.Dictionary.Snappy.atFrame ordinal frame cause)) :=
+  Date.Leaf.Fallback.planPrefixWith_firstError earlier failed
 
 theorem planPages_earlierPhaseError {bound : Bound} {frames : List Page.Frame} {pages : List DataPage}
     {failure : Option Date.Leaf.Dictionary.Snappy.GroupError} {ordinal offset : Nat} {tag : Int}
@@ -87,8 +44,8 @@ theorem planPages_earlierPhaseError {bound : Bound} {frames : List Page.Frame} {
     (Date.Leaf.Fallback.checkSequence pages = .error (.prefixEncoding ordinal offset tag) →
       planPages bound frames = .error (.sequence (.prefixEncoding ordinal offset tag))) ∧
     (Date.Leaf.Fallback.checkSequence pages = .error (.suffixEncoding ordinal offset tag) →
-      planPages bound frames = .error (.sequence (.suffixEncoding ordinal offset tag))) := by
-  constructor <;> intro phase <;> simp [planPages, scanned, phase]
+      planPages bound frames = .error (.sequence (.suffixEncoding ordinal offset tag))) :=
+  Date.Leaf.Fallback.planPagesWith_earlierPhaseError scanned
 
 theorem planPages_headerError {bound : Bound} {frames : List Page.Frame} {pages : List DataPage}
     {cause : Date.Leaf.Dictionary.Snappy.GroupError}
@@ -96,29 +53,15 @@ theorem planPages_headerError {bound : Bound} {frames : List Page.Frame} {pages 
     (phase : Date.Leaf.Fallback.checkSequence pages = .ok () ∨
       Date.Leaf.Fallback.checkSequence pages = .error .missingReferences ∨
       Date.Leaf.Fallback.checkSequence pages = .error .missingPlain) :
-    planPages bound frames = .error (.snappy cause) := by
-  rcases phase with h | h | h <;> simp [planPages, scanned, h]
+    planPages bound frames = .error (.snappy cause) :=
+  Date.Leaf.Fallback.planPagesWith_headerError scanned phase
 
 theorem planPages_wire {bound : Bound} {frames : List Page.Frame} {pages : List DataPage}
     (planned : planPages bound frames = .ok pages) :
     pages.map (·.frame) = frames ∧
       (∀ page ∈ pages, Date.Leaf.Dictionary.Snappy.planDataWith admits bound page.frame = .ok page) ∧
-      Date.Leaf.Fallback.Ordered pages := by
-  cases original : planPrefix bound (frames.zipIdx 1) with
-  | mk preceding failure =>
-    cases sequence : Date.Leaf.Fallback.checkSequence preceding with
-    | error cause =>
-      cases cause <;> cases failure <;>
-        simp [planPages, original, sequence, Except.map, Except.mapError] at planned
-    | ok value =>
-      cases failure with
-      | some cause => simp [planPages, original, sequence] at planned
-      | none =>
-        have same : preceding = pages := by
-          simpa [planPages, original, sequence, Except.map, Except.mapError] using planned
-        subst pages
-        obtain ⟨order, headers⟩ := prefix_wire original
-        exact ⟨by simpa using order, headers, Date.Leaf.Fallback.checkSequence_wire sequence⟩
+      Date.Leaf.Fallback.Ordered pages :=
+  Date.Leaf.Fallback.planPagesWith_wire (fun h => (Date.Leaf.Dictionary.Snappy.planDataWith_wire h).1) planned
 
 theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat}
     {checked : Date.Leaf.Dictionary.Snappy.CheckedGroup}

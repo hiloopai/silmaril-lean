@@ -53,6 +53,31 @@ def checkSequence (data : List DataPage) : Except GroupError Unit := do
   | none => return ()
   | some (page, ordinal) => throw (.suffixEncoding ordinal page.frame.header.start page.params.encoding)
 
+/-- Keep the prefix of admissible headers and the first failure's original coordinate. -/
+def planPrefixWith {ε δ : Type} (plan : Page.Frame → Except ε DataPage)
+    (atFrame : Nat → Page.Frame → ε → δ) :
+    List (Page.Frame × Nat) → List DataPage × Option δ
+  | [] => ([], none)
+  | (frame, ordinal) :: rest =>
+    match plan frame with
+    | .error cause => ([], some (atFrame ordinal frame cause))
+    | .ok page =>
+      let (pages, failure) := planPrefixWith plan atFrame rest
+      (page :: pages, failure)
+
+/-- A phase error at an earlier original frame precedes a later header failure. -/
+def planPagesWith {ε δ εPage : Type} (plan : Page.Frame → Except εPage DataPage)
+    (atFrame : Nat → Page.Frame → εPage → δ) (headerError : δ → ε)
+    (phaseError : GroupError → ε) (frames : List Page.Frame) : Except ε (List DataPage) :=
+  let (pages, failure) := planPrefixWith plan atFrame (frames.zipIdx 1)
+  match checkSequence pages with
+  | .error (.prefixEncoding i offset tag) => .error (phaseError (.prefixEncoding i offset tag))
+  | .error (.suffixEncoding i offset tag) => .error (phaseError (.suffixEncoding i offset tag))
+  | sequence =>
+    match failure with
+    | some cause => .error (headerError cause)
+    | none => (sequence.mapError phaseError).map fun _ => pages
+
 def checkGroup (limits : Limits) (bound : Bound) (index : Nat) :
     Except GroupError Dictionary.CheckedGroup := do
   let checked ← (Dictionary.checkGroup limits bound index).mapError .dictionary

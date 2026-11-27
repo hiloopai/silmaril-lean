@@ -102,4 +102,47 @@ theorem toIpc_readback {input : Snapshot.Limits} {limits : Limits} {output : Arr
         Arrow.DateStream.BatchesWire output.ipc wire result.field output.ipc.batches start result.batches :=
   Proofs.Formats.Parquet.Date.Leaf.Fallback.toIpc_readback written
 
+theorem planPrefixWith_firstError {ε δ : Type} {plan : Page.Frame → Except ε DataPage}
+    {atFrame : Nat → Page.Frame → ε → δ} {before after : List (Page.Frame × Nat)}
+    {frame : Page.Frame} {ordinal : Nat} {pages : List DataPage}
+    {cause : ε}
+    (earlier : before.mapM
+      (fun entry => plan entry.1) = .ok pages)
+    (failed : plan frame = .error cause) :
+    planPrefixWith plan atFrame (before ++ (frame, ordinal) :: after) =
+      (pages, some (atFrame ordinal frame cause)) :=
+  Proofs.Formats.Parquet.Date.Leaf.Fallback.planPrefixWith_firstError earlier failed
+
+theorem planPagesWith_earlierPhaseError {ε δ εPage : Type}
+    {plan : Page.Frame → Except εPage DataPage} {atFrame : Nat → Page.Frame → εPage → δ}
+    {headerError : δ → ε} {phaseError : GroupError → ε} {frames : List Page.Frame} {pages : List DataPage}
+    {failure : Option δ} {ordinal offset : Nat} {tag : Int}
+    (scanned : planPrefixWith plan atFrame (frames.zipIdx 1) = (pages, failure)) :
+    (checkSequence pages = .error (.prefixEncoding ordinal offset tag) →
+      planPagesWith plan atFrame headerError phaseError frames = .error (phaseError (.prefixEncoding ordinal offset tag))) ∧
+    (checkSequence pages = .error (.suffixEncoding ordinal offset tag) →
+      planPagesWith plan atFrame headerError phaseError frames = .error (phaseError (.suffixEncoding ordinal offset tag))) :=
+  Proofs.Formats.Parquet.Date.Leaf.Fallback.planPagesWith_earlierPhaseError scanned
+
+theorem planPagesWith_headerError {ε δ εPage : Type}
+    {plan : Page.Frame → Except εPage DataPage} {atFrame : Nat → Page.Frame → εPage → δ}
+    {headerError : δ → ε} {phaseError : GroupError → ε} {frames : List Page.Frame} {pages : List DataPage}
+    {cause : δ}
+    (scanned : planPrefixWith plan atFrame (frames.zipIdx 1) = (pages, some cause))
+    (phase : checkSequence pages = .ok () ∨
+      checkSequence pages = .error .missingReferences ∨
+      checkSequence pages = .error .missingPlain) :
+    planPagesWith plan atFrame headerError phaseError frames = .error (headerError cause) :=
+  Proofs.Formats.Parquet.Date.Leaf.Fallback.planPagesWith_headerError scanned phase
+
+theorem planPagesWith_wire {ε δ εPage : Type}
+    {plan : Page.Frame → Except εPage DataPage} {atFrame : Nat → Page.Frame → εPage → δ}
+    {headerError : δ → ε} {phaseError : GroupError → ε}
+    (keeps : ∀ {frame page}, plan frame = .ok page → page.frame = frame) {frames : List Page.Frame} {pages : List DataPage}
+    (planned : planPagesWith plan atFrame headerError phaseError frames = .ok pages) :
+    pages.map (·.frame) = frames ∧
+      (∀ page ∈ pages, plan page.frame = .ok page) ∧
+      Ordered pages :=
+  Proofs.Formats.Parquet.Date.Leaf.Fallback.planPagesWith_wire keeps planned
+
 end Silmaril.Formats.Parquet.Date.Leaf.Fallback
