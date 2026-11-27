@@ -51,6 +51,13 @@ theorem Wire.no_distance_symbol {header : CompressedHeader.Header} {block : Bloc
     result.runs.distance = initial.runs.distance ∧ result.execution.state.ring = initial.execution.ring :=
   Proofs.Formats.Compression.Brotli.Execute.DistanceSwitch.Wire.no_distance_symbol wire absent
 
+theorem readWith_error {finishCopy : Internal.FinishCopy} {header : CompressedHeader.Header} {block : Block} {limits : Limits}
+    {initial : InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Error}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : Internal.readWith finishCopy header block limits initial before = .error error) :
+    Failure header block limits initial before input error finishCopy :=
+  Proofs.Formats.Compression.Brotli.Execute.DistanceSwitch.readWith_error rep count parsed
+
 theorem read_error {header : CompressedHeader.Header} {block : Block} {limits : Limits}
     {initial : InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Error}
     (rep : before.Rep input) (count : before.count < 8)
@@ -58,10 +65,10 @@ theorem read_error {header : CompressedHeader.Header} {block : Block} {limits : 
     Failure header block limits initial before input error :=
   Proofs.Formats.Compression.Brotli.Execute.DistanceSwitch.read_error rep count parsed
 
-theorem Failure.offset {header : CompressedHeader.Header} {block : Block} {limits : Limits}
+theorem Failure.offset {finishCopy : Internal.FinishCopy} {header : CompressedHeader.Header} {block : Block} {limits : Limits}
     {initial : InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Error}
     (rep : before.Rep input) (count : before.count < 8)
-    (failed : Failure header block limits initial before input error) :
+    (failed : Failure header block limits initial before input error finishCopy) :
     ∃ used suffix, input = used ++ suffix ∧ error.bit = before.totalRead + used.length :=
   Proofs.Formats.Compression.Brotli.Execute.DistanceSwitch.Failure.offset rep count failed
 

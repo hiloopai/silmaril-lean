@@ -174,31 +174,32 @@ structure LiteralPath (header : CompressedHeader.Header) (block : Block) (limits
 /-- Ordered failure path. Successful prefixes justify the original
     cursor of the first failing operation. -/
 inductive Failure (header : CompressedHeader.Header) (block : Block) (limits : Limits)
-    (initial : InsertCopy.State) (before : LSBReader) (input : List Bool) : Error → Prop where
-  | commandPrefix {reason : LiteralSwitch.Error} :
+    (initial : InsertCopy.State) (before : LSBReader) (input : List Bool) :
+    (error : Error) → (finishCopy : Internal.FinishCopy := Execute.Internal.applyCopy) → Prop where
+  | commandPrefix {reason : LiteralSwitch.Error} {finishCopy : Internal.FinishCopy} :
       LiteralSwitch.readPrefixCore header block limits initial before = .error reason →
-      Failure header block limits initial before input (.commandPrefix reason)
+      Failure header block limits initial before input (.commandPrefix reason) finishCopy
   | literal {pref : LiteralSwitch.Prefix} {atLiterals : LSBReader} {suffix : List Bool}
-      {reason : Literal.Switch.Error} :
+      {reason : Literal.Switch.Error} {finishCopy : Internal.FinishCopy} :
       PrefixPath header block limits initial before atLiterals input suffix pref →
       Literal.Switch.Failure header pref.command.insertLength 0 (remainingBits limits.bits before atLiterals)
         (pref.literalState initial) atLiterals suffix reason →
-      Failure header block limits initial before input (.literal reason)
+      Failure header block limits initial before input (.literal reason) finishCopy
   | resolve {pref : LiteralSwitch.Prefix} {literals : List UInt8} {state : Literal.Switch.State}
-      {atDistance : LSBReader} {tail : List Bool} {reason : Error} :
+      {atDistance : LSBReader} {tail : List Bool} {reason : Error} {finishCopy : Internal.FinishCopy} :
       LiteralPath header block limits initial before atDistance input tail pref literals state →
       ResolveFailure header pref.command ⟨block.windowBits, initial.execution.output.size + literals.length⟩
         initial.execution.ring (remainingBits limits.bits before atDistance) state.runs atDistance tail reason →
-      Failure header block limits initial before input reason
+      Failure header block limits initial before input reason finishCopy
   | copy {pref : LiteralSwitch.Prefix} {literals : List UInt8} {state : Literal.Switch.State}
       {atDistance after : LSBReader} {used tail suffix : List Bool} {resolved : Distance.Result}
-      {runs : BlockTypes.Switch.State} {reason : Execute.Error} :
+      {runs : BlockTypes.Switch.State} {reason : Execute.Error} {finishCopy : Internal.FinishCopy} :
       LiteralPath header block limits initial before atDistance input tail pref literals state →
       Internal.resolve header pref.command ⟨block.windowBits, initial.execution.output.size + literals.length⟩
         initial.execution.ring (remainingBits limits.bits before atDistance) state.runs atDistance =
           .ok (resolved, runs, after) →
       Source atDistance after tail used suffix →
-      Execute.Internal.applyCopy block limits initial.execution pref.command literals resolved = .error reason →
-      Failure header block limits initial before input (.copy after.totalRead reason)
+      finishCopy block limits initial.execution pref.command literals resolved = .error reason →
+      Failure header block limits initial before input (.copy after.totalRead reason) finishCopy
 
 end Silmaril.Formats.Compression.Brotli.Execute.DistanceSwitch

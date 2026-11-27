@@ -248,12 +248,12 @@ private theorem resolve_error {header : CompressedHeader.Header} {command : Comm
       simp only [readValue] at parsed
       cases parsed
 
-theorem read_error {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+theorem readWith_error {finishCopy : Internal.FinishCopy} {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
     {initial : Execute.InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Execute.DistanceSwitch.Error}
     (rep : before.Rep input) (count : before.count < 8)
-    (parsed : Execute.DistanceSwitch.read header block limits initial before = .error error) :
-    Failure header block limits initial before input error := by
-  unfold Execute.DistanceSwitch.read Internal.readWith at parsed
+    (parsed : Internal.readWith finishCopy header block limits initial before = .error error) :
+    Failure header block limits initial before input error finishCopy := by
+  unfold Internal.readWith at parsed
   cases prefixRead : Execute.LiteralSwitch.readPrefixCore header block limits initial before with
   | error reason =>
     simp only [prefixRead, Except.mapError, bind, Except.bind] at parsed
@@ -290,7 +290,7 @@ theorem read_error {header : CompressedHeader.Header} {block : Block} {limits : 
         | ok triple =>
           obtain ⟨resolved, runs, after⟩ := triple
           simp only [distanceRead] at parsed
-          cases copied : Execute.Internal.applyCopy block limits initial.execution pref.command literals resolved with
+          cases copied : finishCopy block limits initial.execution pref.command literals resolved with
           | error reason =>
             simp only [copied] at parsed
             cases parsed
@@ -300,6 +300,13 @@ theorem read_error {header : CompressedHeader.Header} {block : Block} {limits : 
           | ok result =>
             simp only [copied] at parsed
             cases parsed
+
+theorem read_error {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+    {initial : Execute.InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Execute.DistanceSwitch.Error}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : Execute.DistanceSwitch.read header block limits initial before = .error error) :
+    Failure header block limits initial before input error :=
+  readWith_error rep count parsed
 
 private def Offset (before : LSBReader) (input : List Bool) (bit : Nat) : Prop :=
   ∃ used suffix, input = used ++ suffix ∧ bit = before.totalRead + used.length
@@ -320,10 +327,10 @@ private theorem ResolveFailure.offset {header : CompressedHeader.Header} {comman
   | switch _ reason => exact reason.offset
   | value _ _ source _ => exact ⟨_, _, source.split, source.position⟩
 
-theorem Failure.offset {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+theorem Failure.offset {finishCopy : Internal.FinishCopy} {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
     {initial : Execute.InsertCopy.State} {before : LSBReader} {input : List Bool}
     {error : Execute.DistanceSwitch.Error} (rep : before.Rep input) (count : before.count < 8)
-    (failed : Failure header block limits initial before input error) :
+    (failed : Failure header block limits initial before input error finishCopy) :
     ∃ used suffix, input = used ++ suffix ∧ error.bit = before.totalRead + used.length := by
   cases failed with
   | commandPrefix parsed => exact Execute.LiteralSwitch.readPrefixCore_error_offset rep count parsed
