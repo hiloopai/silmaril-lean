@@ -2,7 +2,7 @@
 
 `Parquet.RecursiveSchema.Repeated.Rows.readGroup` assembles an original
 footer group using its checked recursive signed schema and original
-unindexed UNCOMPRESSED PLAIN V1 chunks. The reader checks the exact
+unindexed UNCOMPRESSED PLAIN V1 and V2 chunks. The reader checks the exact
 physical width and bounds the sum of the original level-entry counts
 before decoding or allocating slot arrays. The row limit and each
 chunk's existing limits apply as well. Every original column is
@@ -14,7 +14,7 @@ The reader attaches each slot's physical column path and ordinal,
 page ordinal, header byte offset and absolute slot ordinal within
 that chunk. It then partitions each column at repetition-zero starts
 and checks the original row count. Page boundaries do not determine
-row boundaries. A split across two pages is assembled as one row.
+row boundaries. A V1 row split across two pages is assembled as one row.
 
 Assembly aligns the descendant columns of each logical list by
 element ordinal. They must agree on null, empty, or live list state,

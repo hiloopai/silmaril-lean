@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Page
+import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.V2
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Chain
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -50,6 +51,38 @@ theorem decodePage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame 
     (read : decodePage limits leaf source frame start remaining rowCeiling = .ok decoded) :
     PageWire limits leaf source frame start remaining rowCeiling decoded :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodePage_wire read
+
+theorem readV2Levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {bytes : Bytes}
+    {levels : List Nat} (read : readV2Levels limits maximum count bytes = .ok levels) :
+    V2LevelWire limits maximum count bytes levels ∧ levels.length = count :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2_levels_wire read
+
+/-- The V2 header, checksum, three original spans and decoded slots bind
+the exact row start, null count and signed-value observations. -/
+theorem decodeV2Page_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeV2Page limits leaf source frame start remaining rowCeiling = .ok decoded) :
+    V2PageWire limits leaf source frame start remaining rowCeiling decoded :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeV2Page_wire read
+
+/-- The exact original suffix contains one full signed word per
+non-null slot. The output cursor is closed at the V2 row boundary. -/
+theorem V2PageWire.accounting {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : V2PageWire limits leaf source frame start remaining rowCeiling decoded) :
+    ∃ info spans, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
+      decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
+      decoded.levels.countP LevelSlot.startsRow = info.numRows ∧ absentSlots decoded = info.numNulls ∧
+      spans.values.stop - spans.values.start =
+        (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind ∧
+      decoded.after.live = false :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2_accounting wire
+
+theorem decodeDataPage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeDataPage limits leaf source frame start remaining rowCeiling = .ok decoded) :
+    DataPageWire limits leaf source frame start remaining rowCeiling decoded :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDataPage_wire read
 
 /-- The strict lower-level walk covers the supplied carrier span and
 attains its exact counts, including when writing before footer construction. -/

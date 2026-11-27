@@ -1,0 +1,194 @@
+module
+
+public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
+import Silmaril.Formats.Parquet.Page.Thms
+import Silmaril.Formats.Parquet.Page.Checksum.Thms
+import Silmaril.Formats.Parquet.Hybrid.Thms
+import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Page
+
+namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk
+
+open Silmaril.Formats (Bytes)
+open Silmaril.Formats.Parquet
+open Silmaril.Formats.Parquet.RecursiveSchema.Repeated (Leaf)
+open Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
+
+private theorem bind_ok {α β ε : Type} {first : Except ε α} {next : α → Except ε β} {value : β}
+    (read : (first >>= next) = .ok value) : ∃ found, first = .ok found ∧ next found = .ok value := by
+  cases first with
+  | error => contradiction
+  | ok result => exact ⟨result, rfl, read⟩
+
+private theorem from_mapError {α ε δ : Type} {first : Except ε α} {wrap : ε → δ} {value : α}
+    (read : first.mapError wrap = .ok value) : first = .ok value := by
+  cases first <;> simp_all [Except.mapError]
+
+public theorem v2_levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {bytes : Bytes}
+    {levels : List Nat} (read : readV2Levels limits maximum count bytes = .ok levels) :
+    V2LevelWire limits maximum count bytes levels ∧ levels.length = count := by
+  unfold readV2Levels at read
+  split at read
+  · rename_i omitted
+    split at read
+    · contradiction
+    · rename_i empty
+      split at read
+      · contradiction
+      · rename_i cap
+        cases Except.ok.inj read
+        exact ⟨.omitted omitted (Classical.not_not.mp empty) (by omega) (by omega),
+          List.length_replicate⟩
+  · rename_i positive
+    have decoded := from_mapError read
+    obtain ⟨width, cap, countCap, bytesCap, wire⟩ := Hybrid.decode_ok_iff.mp decoded
+    exact ⟨.encoded positive width cap countCap bytesCap wire, Hybrid.decode_length decoded⟩
+
+private theorem admitted {frame : Page.Frame} {remaining : Nat} {info : Page.DataV2}
+    (read : admitV2Page frame remaining = .ok info) :
+    frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
+      frame.value.uncompressedSize = frame.value.compressedSize := by
+  unfold admitV2Page at read
+  split at read
+  · rename_i original kind
+    split at read
+    · contradiction
+    · rename_i encoding
+      split at read
+      · contradiction
+      · rename_i sizes
+        split at read
+        · contradiction
+        · rename_i count
+          cases Except.ok.inj read
+          exact ⟨kind, Classical.not_not.mp encoding, Nat.le_of_not_gt count, Classical.not_not.mp sizes⟩
+  · contradiction
+
+private theorem bytesAt_exact {source : Bytes} {span : Footer.Span}
+    (ordered : span.start ≤ span.stop) (inside : span.stop ≤ source.length) :
+    source.slice? span.start (some span.stop) = some (bytesAt source span) := by
+  apply Bytes.slice?_eq_some_iff.mpr
+  refine ⟨ordered, inside, Bytes.ext ?_⟩
+  rw [Bytes.toList_ofList]
+  simp [bytesAt, Footer.fileBytes, Bytes.toList, ByteArray.data_extract]
+
+private theorem v2_slices {limits : Limits} {source : Bytes} {frame : Page.Frame} {spans : Page.V2Spans}
+    {checksum : Page.Checksum.Status}
+    (checked : Page.Checksum.verify limits.maxBodyBytes source frame = .ok checksum)
+    (split : frame.v2Spans = some spans) :
+    ∀ span ∈ [spans.repetition, spans.definition, spans.values],
+      source.slice? span.start (some span.stop) = some (bytesAt source span) := by
+  have extent : Page.Checksum.PayloadWithin source frame := by
+    cases checksum with
+    | absent => exact (Page.Checksum.verify_absent_iff.mp checked).2.1
+    | valid crc => exact (Page.Checksum.verify_valid_iff.mp checked).2.1
+  have inside := extent.2.2.2
+  obtain ⟨_, rep, repEnd, defn, defEnd, value, valueEnd⟩ := Page.v2Spans_bounds split
+  intro span member
+  simp only [List.mem_cons, List.not_mem_nil, or_false] at member
+  rcases member with rfl | rfl | rfl <;> exact bytesAt_exact (by omega) (by omega)
+
+private theorem certify_counts {leaf : Leaf} {start : State} {rowCeiling : Nat}
+    {info : Page.DataV2} {reps defs : List Nat} {suffix : Bytes} {decoded : DecodedPage}
+    (repLength : reps.length = info.numValues)
+    (read : decodeV2Slots leaf info reps defs suffix start rowCeiling = .ok decoded) :
+    reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absentSlots decoded = info.numNulls ∧
+      decoded.levels.length = info.numValues ∧
+      ∃ checked, DecodedWire leaf reps defs suffix start rowCeiling checked ∧ decoded = closeV2 checked := by
+  unfold decodeV2Slots at read
+  dsimp only at read
+  split at read
+  · contradiction
+  · rename_i first
+    split at read
+    · contradiction
+    · rename_i rows
+      obtain ⟨checked, readSlots, read⟩ := bind_ok read
+      split at read
+      · contradiction
+      · rename_i nulls
+        cases Except.ok.inj read
+        have wire := decodeSlots_wire readSlots
+        have count := congrArg List.length (original_levels wire.slots).1
+        simp only [List.length_map, repLength] at count
+        exact ⟨Classical.not_not.mp first, Classical.not_not.mp rows, Classical.not_not.mp nulls,
+          count, checked, wire, rfl⟩
+
+public theorem decodeV2Page_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeV2Page limits leaf source frame start remaining rowCeiling = .ok decoded) :
+    V2PageWire limits leaf source frame start remaining rowCeiling decoded := by
+  unfold decodeV2Page at read
+  obtain ⟨info, header, read⟩ := bind_ok read
+  obtain ⟨checksum, checked, read⟩ := bind_ok read
+  have verified := from_mapError checked
+  cases split : frame.v2Spans with
+  | none => simp [split] at read
+  | some spans =>
+    simp only [split] at read
+    obtain ⟨reps, repRead, read⟩ := bind_ok read
+    obtain ⟨defs, defRead, read⟩ := bind_ok read
+    obtain ⟨repWire, repLength⟩ := v2_levels_wire (from_mapError repRead)
+    obtain ⟨defWire, _⟩ := v2_levels_wire (from_mapError defRead)
+    obtain ⟨first, rows, nulls, count, observed, slots, closed⟩ := certify_counts repLength read
+    obtain ⟨kind, encoding, cap, sizes⟩ := admitted header
+    exact ⟨info, spans, reps, defs, checksum, observed, kind, encoding, cap, sizes,
+      verified, split, v2_slices verified split, repWire, defWire, first, rows, nulls, count, slots, closed⟩
+
+public theorem decodeDataPage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeDataPage limits leaf source frame start remaining rowCeiling = .ok decoded) :
+    DataPageWire limits leaf source frame start remaining rowCeiling decoded := by
+  unfold decodeDataPage at read
+  split at read
+  · exact .v2 (decodeV2Page_wire read)
+  · exact .v1 (decodePage_wire read)
+
+public theorem v2_accounting {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : V2PageWire limits leaf source frame start remaining rowCeiling decoded) :
+    ∃ info spans, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
+      decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
+      decoded.levels.countP LevelSlot.startsRow = info.numRows ∧ absentSlots decoded = info.numNulls ∧
+      spans.values.stop - spans.values.start =
+        (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind ∧
+      decoded.after.live = false := by
+  obtain ⟨info, spans, reps, _, _, checked, kind, _, _, _, _, split, slices, _, _, _,
+    rows, nulls, count, decodedWire, closed⟩ := wire.original
+  subst decoded
+  change absentSlots checked = info.numNulls at nulls
+  change checked.levels.length = info.numValues at count
+  obtain ⟨words, exactBytes, wordCount, widths, presence, _⟩ := decodedWire.words
+  have aligned : checked.words.length = info.numValues := by
+    simpa only [List.length_map, count] using congrArg List.length presence
+  have rowCount : checked.levels.countP LevelSlot.startsRow = info.numRows := by
+    rw [← rows, ← (original_levels decodedWire.slots).1]
+    simp only [List.count_eq_countP, List.countP_map]
+    rfl
+  have allSlots :
+      (checked.levels.map LevelSlot.present).count true + absentSlots checked = checked.levels.length := by
+    simpa [List.count_eq_countP, absentSlots, Function.comp_def] using
+      (List.length_eq_countP_add_countP LevelSlot.present (l := checked.levels)).symm
+  have signedCount : words.length = info.numValues - info.numNulls := by omega
+  have suffixSize : (bytesAt source spans.values).length =
+      (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind := by
+    rw [← Bytes.length_toList, exactBytes, List.length_flatten, List.map_eq_replicate_iff.mpr widths,
+      List.sum_replicate_nat, signedCount]
+  have extent := Bytes.length_of_slice? (slices spans.values (by simp))
+  exact ⟨info, spans, kind, split, count, aligned, rowCount, nulls,
+    by simpa only [Option.getD_some] using extent.symm.trans suffixSize, rfl⟩
+
+public theorem dataPage_counts {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : DataPageWire limits leaf source frame start remaining rowCeiling decoded) :
+    start.slot + decoded.levels.length = decoded.after.slot ∧
+      start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
+  cases wire with
+  | v1 v1 =>
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, slots, _⟩ := v1.original
+    exact slot_counts slots
+  | v2 v2 =>
+    obtain ⟨_, _, _, _, _, checked, _, _, _, _, _, _, _, _, _, _, _, _, _, slots, final⟩ := v2.original
+    subst decoded
+    simpa only [closeV2] using slot_counts slots.slots
+
+end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk

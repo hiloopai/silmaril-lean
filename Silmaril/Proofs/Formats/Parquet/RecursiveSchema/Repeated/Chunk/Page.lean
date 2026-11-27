@@ -115,6 +115,21 @@ private theorem checked_payload {maxBytes : Nat} {source : Bytes} {frame : Page.
   | absent => exact (Page.Checksum.verify_absent_iff.mp checked).2.1
   | valid crc => exact (Page.Checksum.verify_valid_iff.mp checked).2.1
 
+public theorem decodeSlots_wire {leaf : Leaf} {reps defs : List Nat} {suffix : Bytes}
+    {start : State} {rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeSlots leaf reps defs suffix start rowCeiling = .ok decoded) :
+    DecodedWire leaf reps defs suffix start rowCeiling decoded := by
+  unfold decodeSlots at read
+  obtain ⟨classified, levelRead, read⟩ := bind_ok read
+  obtain ⟨values, valueRead, read⟩ := bind_ok read
+  obtain ⟨aligned, alignment, packaged⟩ := bind_ok read
+  obtain ⟨_, words, exactWords, wordCount, width, ordered⟩ :=
+    Plain.decodeFixedWidth_ok_iff.mp (from_mapError valueRead)
+  obtain ⟨mask, positions⟩ := FlatPage.reconstruct_ok_iff.mp (from_mapError alignment)
+  cases Except.ok.inj packaged
+  exact ⟨classifySlots_wire levelRead, words, exactWords, wordCount, width, mask,
+    positions.trans ordered⟩
+
 public theorem decodePage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
     (read : decodePage limits leaf source frame start remaining rowCeiling = .ok decoded) :
@@ -124,24 +139,16 @@ public theorem decodePage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} 
   obtain ⟨checksum, checked, read⟩ := bind_ok read
   obtain ⟨reps, repRead, read⟩ := bind_ok read
   obtain ⟨defs, defRead, read⟩ := bind_ok read
-  obtain ⟨classified, levelRead, read⟩ := bind_ok read
-  obtain ⟨values, valueRead, read⟩ := bind_ok read
-  obtain ⟨aligned, alignment, packaged⟩ := bind_ok read
   have verified := from_mapError checked
   obtain ⟨payload, bodySize⟩ := checked_payload verified
   obtain ⟨repetition, repCount⟩ := levels_wire (from_mapError repRead)
   obtain ⟨definition, _⟩ := levels_wire (from_mapError defRead)
-  have consumed := Plain.decodeFixedWidth_ok_iff.mp (from_mapError valueRead)
-  obtain ⟨_, words, exactWords, wordCount, width, ordered⟩ := consumed
-  obtain ⟨mask, positions⟩ := FlatPage.reconstruct_ok_iff.mp (from_mapError alignment)
-  have classifiedWire := classifySlots_wire levelRead
-  have count : classified.levels.length = info.numValues := by
-    simpa only [List.length_map, repCount] using congrArg List.length (original_levels classifiedWire).1
-  cases Except.ok.inj packaged
+  obtain ⟨slots, words, exactWords, wordCount, width, mask, ordered⟩ := decodeSlots_wire read
+  have count : decoded.levels.length = info.numValues := by
+    simpa only [List.length_map, repCount] using congrArg List.length (original_levels slots).1
   exact ⟨info, Page.Checksum.payloadBytes source frame, reps, defs, words, checksum,
     RecursiveSchema.Chunk.admitPage_wire (from_mapError header), verified, payload, bodySize,
-    repetition, definition, classifiedWire, exactWords, wordCount, width, mask,
-    positions.trans ordered, count⟩
+    repetition, definition, slots, exactWords, wordCount, width, mask, ordered, count⟩
 
 public theorem rejects_closed_continuation {leaf : Leaf} {ceiling rep defn : Nat}
     {reps defs : List Nat} {start : State} {slot : Slot}

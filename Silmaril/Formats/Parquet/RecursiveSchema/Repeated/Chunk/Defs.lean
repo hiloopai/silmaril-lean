@@ -3,8 +3,8 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Defs
 
-/-! Checked unindexed UNCOMPRESSED PLAIN V1 chunks, with at most one
-repeated ancestor and an independent bound on slots and row starts. -/
+/-! Checked unindexed UNCOMPRESSED PLAIN V1/V2 chunks, with at most one
+repeated ancestor and independent bounds on slots and row starts. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
 
@@ -19,7 +19,8 @@ abbrev Word := RecursiveSchema.Chunk.Word
 structure Limits extends RecursiveSchema.Chunk.Limits where
   maxSlots : Nat := 1024 * 1024
 
-/-- The profile allows pages to begin mid-row only in the absence of page indexes. -/
+/-- This profile uses neither offset indexes nor column indexes. Only V1
+can continue a row across pages. -/
 def Unindexed (chunk : Footer.ColumnChunk) : Prop :=
   chunk.offsetIndexOffset = none ∧ chunk.offsetIndexLength = none ∧
     chunk.columnIndexOffset = none ∧ chunk.columnIndexLength = none
@@ -117,6 +118,7 @@ inductive LevelCause where
   | countLimit
   | section (original : FlatPage.Error)
   | hybrid (original : Hybrid.Error)
+  | unexpectedV2Levels (bytes : Nat)
   deriving DecidableEq, Repr
 
 inductive PageCause where
@@ -132,6 +134,11 @@ inductive PageCause where
   | levelCount (firstUnmatched : Nat)
   | plain (original : Plain.Error)
   | alignment (original : FlatPage.Error)
+  | v2Encoding (actual : Int)
+  | v2Extent
+  | v2RowBoundary (slot repetition : Nat)
+  | v2Rows (declared actual : Nat)
+  | v2Nulls (declared actual : Nat)
   deriving DecidableEq, Repr
 
 inductive ChunkCause where
@@ -247,8 +254,25 @@ structure DecodedPage where
   after : State
   deriving Repr
 
-/-- Verify the checked original body, decode both level sections, then fill
-exactly the value slots with the signed words from its untouched suffix. -/
+/-- Classify original slots and consume the exact signed suffix. -/
+def decodeSlots (leaf : Leaf) (repetitions definitions : List Nat) (suffix : Bytes)
+    (start : State) (rowCeiling : Nat) : Except PageCause DecodedPage := do
+  let classified ← classifySlots leaf rowCeiling repetitions definitions start
+  let mask := classified.levels.map LevelSlot.present
+  let words ← (RecursiveSchema.Chunk.readWords leaf.kind (mask.count true) suffix).mapError .plain
+  let aligned ← (FlatPage.reconstruct mask words).mapError .alignment
+  return ⟨classified.levels, aligned, classified.after⟩
+
+structure DecodedWire (leaf : Leaf) (repetitions definitions : List Nat) (suffix : Bytes)
+    (start : State) (rowCeiling : Nat) (decoded : DecodedPage) : Prop where
+  slots : SlotsWire leaf rowCeiling repetitions definitions start decoded.levels decoded.after
+  words : ∃ original : List (List UInt8),
+    suffix.toList = original.flatten ∧ original.length = (decoded.levels.map LevelSlot.present).count true ∧
+    (∀ word ∈ original, word.length = RecursiveSchema.Chunk.wordWidth leaf.kind) ∧
+    decoded.words.map Option.isSome = decoded.levels.map LevelSlot.present ∧
+    decoded.words.filterMap id = original.map (RecursiveSchema.Chunk.readWord leaf.kind)
+
+/-- The existing V1 entry point checks the original length-prefixed levels. -/
 def decodePage (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
   let info ← admitPage frame remaining
@@ -256,11 +280,7 @@ def decodePage (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Fr
   let body := Page.Checksum.payloadBytes source frame
   let reps ← (readLevels limits.levels leaf.maxRepetition info.numValues body).mapError .repetition
   let defs ← (readLevels limits.levels leaf.maxDefinition info.numValues reps.tail).mapError .definition
-  let classified ← classifySlots leaf rowCeiling reps.levels defs.levels start
-  let mask := classified.levels.map LevelSlot.present
-  let words ← (RecursiveSchema.Chunk.readWords leaf.kind (mask.count true) defs.tail).mapError .plain
-  let aligned ← (FlatPage.reconstruct mask words).mapError .alignment
-  return ⟨classified.levels, aligned, classified.after⟩
+  decodeSlots leaf reps.levels defs.levels defs.tail start rowCeiling
 
 structure PageWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
@@ -278,6 +298,100 @@ structure PageWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Pag
     decoded.words.map Option.isSome = decoded.levels.map LevelSlot.present ∧
     decoded.words.filterMap id = words.map (RecursiveSchema.Chunk.readWord leaf.kind) ∧
     decoded.levels.length = info.numValues
+
+/-- V2 level lengths come from the header. A zero maximum omits the section. -/
+def readV2Levels (limits : Hybrid.Limits) (maximum count : Nat) (bytes : Bytes) :
+    Except LevelCause (List Nat) :=
+  if maximum = 0 then
+    if bytes.length ≠ 0 then .error (.unexpectedV2Levels bytes.length)
+    else if Hybrid.runLimit ≤ count ∨ limits.values < count then .error .countLimit
+    else .ok (List.replicate count 0)
+  else (Hybrid.decode (bitWidth maximum) count limits bytes).mapError .hybrid
+
+inductive V2LevelWire (limits : Hybrid.Limits) (maximum count : Nat) (bytes : Bytes) :
+    List Nat → Prop where
+  | omitted : maximum = 0 → bytes.length = 0 → count < Hybrid.runLimit → count ≤ limits.values →
+      V2LevelWire limits maximum count bytes (List.replicate count 0)
+  | encoded {levels : List Nat} :
+      maximum ≠ 0 → bitWidth maximum ≤ 32 → count < Hybrid.runLimit → count ≤ limits.values →
+      bytes.length ≤ limits.bytes → Hybrid.Wire (bitWidth maximum) count bytes.toList levels →
+      V2LevelWire limits maximum count bytes levels
+
+def bytesAt (source : Bytes) (span : Footer.Span) : Bytes :=
+  Footer.fileBytes source span.start span.stop
+
+def absentSlots (decoded : DecodedPage) : Nat :=
+  decoded.levels.countP (fun slot => !slot.present)
+
+/-- V2 occupies complete rows. Closing the boundary also prevents a
+following V1 page from continuing a row that ended on a V2 page. -/
+def closeV2 (decoded : DecodedPage) : DecodedPage :=
+  { decoded with after.live := false }
+
+def admitV2Page (frame : Page.Frame) (remaining : Nat) : Except PageCause Page.DataV2 :=
+  match frame.value.kind with
+  | .dataV2 info =>
+    if info.encoding ≠ 0 then .error (.v2Encoding info.encoding)
+    else if frame.value.uncompressedSize ≠ frame.value.compressedSize then
+      .error (.header (.pageSizes frame.value.uncompressedSize frame.value.compressedSize))
+    else if info.numValues > remaining then .error (.slotOverrun remaining info.numValues)
+    else .ok info
+  | kind => .error (.header (.pageKind kind))
+
+/-- Check the V2 row boundary and counts around the shared signed decoder. -/
+def decodeV2Slots (leaf : Leaf) (info : Page.DataV2) (reps defs : List Nat) (suffix : Bytes)
+    (start : State) (rowCeiling : Nat) : Except PageCause DecodedPage :=
+  let first := reps.head?.getD 0
+  let rows := reps.count 0
+  if first ≠ 0 then .error (.v2RowBoundary start.slot first)
+  else if rows ≠ info.numRows then .error (.v2Rows info.numRows rows)
+  else do
+    let checked ← decodeSlots leaf reps defs suffix start rowCeiling
+    let nulls := absentSlots checked
+    if nulls ≠ info.numNulls then .error (.v2Nulls info.numNulls nulls)
+    else .ok (closeV2 checked)
+
+/-- Decode a V2 frame from an UNCOMPRESSED chunk. A resolved compression
+flag uses the chunk codec, so either flag leaves this codec-zero suffix raw. -/
+def decodeV2Page (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
+  let info ← admitV2Page frame remaining
+  let _ ← (Page.Checksum.verify limits.maxBodyBytes source frame).mapError .checksum
+  let some spans := frame.v2Spans | throw .v2Extent
+  let reps ← (readV2Levels limits.levels leaf.maxRepetition info.numValues
+    (bytesAt source spans.repetition)).mapError .repetition
+  let defs ← (readV2Levels limits.levels leaf.maxDefinition info.numValues
+    (bytesAt source spans.definition)).mapError .definition
+  decodeV2Slots leaf info reps defs (bytesAt source spans.values) start rowCeiling
+
+structure V2PageWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
+  original : ∃ (info : Page.DataV2) (spans : Page.V2Spans) (reps defs : List Nat)
+      (checksum : Page.Checksum.Status) (checked : DecodedPage),
+    frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
+    frame.value.uncompressedSize = frame.value.compressedSize ∧
+    Page.Checksum.verify limits.maxBodyBytes source frame = .ok checksum ∧ frame.v2Spans = some spans ∧
+    (∀ span ∈ [spans.repetition, spans.definition, spans.values],
+      source.slice? span.start (some span.stop) = some (bytesAt source span)) ∧
+    V2LevelWire limits.levels leaf.maxRepetition info.numValues (bytesAt source spans.repetition) reps ∧
+    V2LevelWire limits.levels leaf.maxDefinition info.numValues (bytesAt source spans.definition) defs ∧
+    reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absentSlots decoded = info.numNulls ∧
+    decoded.levels.length = info.numValues ∧
+    DecodedWire leaf reps defs (bytesAt source spans.values) start rowCeiling checked ∧
+    decoded = closeV2 checked
+
+def decodeDataPage (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage :=
+  match frame.value.kind with
+  | .dataV2 _ => decodeV2Page limits leaf source frame start remaining rowCeiling
+  | _ => decodePage limits leaf source frame start remaining rowCeiling
+
+inductive DataPageWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
+  | v1 : PageWire limits leaf source frame start remaining rowCeiling decoded →
+      DataPageWire limits leaf source frame start remaining rowCeiling decoded
+  | v2 : V2PageWire limits leaf source frame start remaining rowCeiling decoded →
+      DataPageWire limits leaf source frame start remaining rowCeiling decoded
 
 structure ObservedPage where
   start : Cursor
@@ -313,7 +427,7 @@ def walk (limits : Limits) (carrier : Carrier) (budget : Nat) (cursor : Cursor)
     | fuel + 1 => do
       let frame ← (Page.readPage limits.framing carrier.bytes carrier.span cursor.byte).mapError
         (failed ∘ .framing)
-      let decoded ← (decodePage limits carrier.leaf carrier.bytes frame cursor.state
+      let decoded ← (decodeDataPage limits carrier.leaf carrier.bytes frame cursor.state
         (carrier.slots - cursor.state.slot) carrier.rows).mapError failed
       let page : ObservedPage := ⟨cursor, frame, decoded⟩
       walk limits carrier fuel (cursor.advance page) (page :: reversed)
@@ -351,7 +465,7 @@ inductive ChainWire (limits : Limits) (carrier : Carrier) : Cursor → Cursor �
   | more {start stop first rest} :
       Page.readPage limits.framing carrier.bytes carrier.span start.byte = .ok first.frame →
       first.start = start →
-      PageWire limits carrier.leaf carrier.bytes first.frame start.state
+      DataPageWire limits carrier.leaf carrier.bytes first.frame start.state
         (carrier.slots - start.state.slot) carrier.rows first.decoded →
       ChainWire limits carrier (start.advance first) stop rest →
       ChainWire limits carrier start stop (first :: rest)

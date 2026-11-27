@@ -9,7 +9,10 @@ and RLE entries, and have no dictionary or legacy index page offsets.
 Both ordinary and repeated leaves in the compiled schema are admitted.
 [Recursive LIST compiler](parquet-recursive-list-schema.md)
 
-The reader handles unindexed V1 chunks. It refuses an advertised
+The shared chunk walk also admits the checked V2 profile.
+[Recursive V2 reader](parquet-recursive-v2.md)
+
+The reader refuses an advertised
 OffsetIndex or ColumnIndex at binding. V1 pages may begin within a
 row when there is no OffsetIndex. The indexed rule requires a row
 boundary. The reader retains a live element-bearing List state across
@@ -19,7 +22,7 @@ List and an absent ancestor leave no live List. Each chunk starts with
 the state closed.
 [Pinned V1 and V2 page rules](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/src/main/thrift/parquet.thrift#L697-L762)
 
-Each original page must be PLAIN Data Page V1 with RLE level headers
+Each original V1 page must use PLAIN values with RLE level headers
 and equal compressed and uncompressed sizes. The reader checks the
 stored CRC when present. Each nonzero level maximum requires its own
 four-byte length and bounded hybrid section, repetition first and

@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Formats.Parquet.Page.Thms
-import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Page
+import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.V2
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk
 
@@ -45,7 +45,7 @@ private theorem walk_wire {limits : Limits} {carrier : Carrier} {budget : Nat}
       cases parsed : Page.readPage limits.framing carrier.bytes carrier.span cursor.byte with
       | error reason => simp [parsed, Except.mapError, bind, Except.bind] at read
       | ok frame =>
-        cases decoded : decodePage limits carrier.leaf carrier.bytes frame cursor.state
+        cases decoded : decodeDataPage limits carrier.leaf carrier.bytes frame cursor.state
             (carrier.slots - cursor.state.slot) carrier.rows with
         | error reason => simp [parsed, decoded, Except.mapError, bind, Except.bind] at read
         | ok output =>
@@ -54,7 +54,7 @@ private theorem walk_wire {limits : Limits} {carrier : Carrier} {budget : Nat}
           obtain ⟨stop, tail, pages, cap, byte, slots, rows, chain⟩ :=
             ih (reversed := page :: reversed) read
           refine ⟨stop, page :: tail, ?_, by simpa using Nat.succ_le_succ cap,
-            byte, slots, rows, .more parsed rfl (decodePage_wire decoded) chain⟩
+            byte, slots, rows, .more parsed rfl (decodeDataPage_wire decoded) chain⟩
           simpa [List.reverse_cons, List.append_assoc] using pages
 
 public theorem walk_empty_prefix_wire {limits : Limits} {carrier : Carrier}
@@ -83,8 +83,7 @@ public theorem chain_counts {limits : Limits} {carrier : Carrier} {start stop : 
   induction wire with
   | nil => simp [Observation.levels]
   | @more start stop first rest _ _ bound _ ih =>
-    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, classified, _, _, _, _, _, _⟩ := bound.original
-    obtain ⟨slots, rows⟩ := slot_counts classified
+    obtain ⟨slots, rows⟩ := dataPage_counts bound
     obtain ⟨pageIndex, slotIndex, rowIndex⟩ := ih
     simp only [Cursor.advance, Observation.levels] at pageIndex slotIndex rowIndex
     simp only [Observation.levels, List.length_cons, List.flatMap_cons, List.length_append, List.countP_append]

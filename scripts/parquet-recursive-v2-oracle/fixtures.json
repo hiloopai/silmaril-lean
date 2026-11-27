@@ -1,0 +1,131 @@
+{
+  "description": "Genuine PyArrow recursive V2, labeled page controls and native Lean IPC",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "nested": {
+      "bytes": 2208,
+      "sha256": "ff874bbfbeac835695e3af30ced54f9e6a66839aabd89ef4a60882f95e4e125f"
+    },
+    "required_lists": {
+      "bytes": 1017,
+      "sha256": "bd705d0cab7a50b29f8fdcfba97ad59613ef221c9aecc7117b308bc7e03ec61f"
+    },
+    "unequal_siblings": {
+      "bytes": 3432,
+      "sha256": "6a1f47ce467e642381e259a8fed50f14e9c832cc688881a137537628df26e3a6"
+    },
+    "pageless_zero": {
+      "bytes": 2400,
+      "sha256": "80d48feedc42ad791f13560cb8a6251be56ee72867d53298f8a7921c0cd8792c"
+    },
+    "snappy": {
+      "bytes": 1729,
+      "sha256": "ab5c81a5287450038394a7b1b25bb626f8a6663c41bcedecd48a0a9d01c752ff"
+    },
+    "indexed": {
+      "bytes": 1798,
+      "sha256": "27813398c52ffc25641c81597080fef70c6752761a015a11d82caecfc92d0f6c"
+    }
+  },
+  "labeled_edits": {
+    "framed_zero": {
+      "bytes": 2518,
+      "sha256": "0909986c925ecd6de3f7a016d338d97b2fcd9c0f43c7a7a82268e0208df5dca2"
+    },
+    "mixed_boundary": {
+      "bytes": 591,
+      "sha256": "9f1bf18c183894a11d559fd92a25b09fb4d20db7f65e9bdc91fd7d058af733e9"
+    },
+    "identity_default_flag": {
+      "bytes": 2214,
+      "sha256": "7a01ec54a5f2d16d9ff11e138805e2e618198ae637a46cee490fdac45dc975e1"
+    },
+    "late_nulls": {
+      "bytes": 2215,
+      "sha256": "8095ad998bec2b082aebf7269b273863a3661f182a44eb8fcf97cbde6663261b"
+    },
+    "row_count": {
+      "bytes": 2215,
+      "sha256": "837c2fd46d541ecf2d4af476eb6a040834cec172b6aa350a50d268d9e4aa47ac"
+    },
+    "bad_header_count": {
+      "bytes": 2215,
+      "sha256": "1ae8aff70aa8079fd54d15eda269b14724562a7184987dfef7bb943d87406d15"
+    },
+    "bad_level_extent": {
+      "bytes": 2216,
+      "sha256": "4598c0a0655e368db516f3c0196509295295141ae165faf8335c1d6c3844326e"
+    },
+    "slot_overrun": {
+      "bytes": 2215,
+      "sha256": "b798b025cbb6974bad20e7f85dcaacdd9b9eded13f8eaf9350d7c3d6daa251be"
+    },
+    "encoding": {
+      "bytes": 2215,
+      "sha256": "1f9ab9eacd8b6e7869facd01f16cde185ef9342582ff65d642aa48f184bd7dad"
+    },
+    "header_sizes": {
+      "bytes": 2215,
+      "sha256": "0bb425fb33a465841736149269506d7cac87e57b708f7a792f6820771742fe8c"
+    },
+    "extra_rep": {
+      "bytes": 2216,
+      "sha256": "52a978f8f7cd3a102add5d5f9377ebb740ed63f3ff7f2d74359a76d6df083384"
+    },
+    "short_word": {
+      "bytes": 2214,
+      "sha256": "977fe2df0b96414a02e0b11a7bb22efc7ea45401fdf6d2a8861b9facd2b7b39d"
+    },
+    "extra_word": {
+      "bytes": 2219,
+      "sha256": "f0ad5cc539071616f3f8fb1eb4ca2dd5beca97c4b69f98ba68a9ae5450a6f112"
+    },
+    "crc": {
+      "bytes": 2215,
+      "sha256": "d99c5c245ada21c159955c628531acecf045424908c351cbc7e74bcf7af063b6"
+    },
+    "zero_width": {
+      "bytes": 2217,
+      "sha256": "90a576b821446f630771b53509ca407c4f4e0019501b3ee03fa773e3361b69a4"
+    },
+    "v2_starts_mid_row": {
+      "bytes": 591,
+      "sha256": "f830df5bd492a843fe0fa8198ee5ee62198bdb2ab3df2ca46ea6ac226d891a7c"
+    },
+    "v1_continues_v2": {
+      "bytes": 591,
+      "sha256": "cb1203c9c0c28e10e0dcfaae11421b512b30bd0a0137439bea271a5b634d1ff6"
+    }
+  },
+  "lean_ipc": {
+    "nested": {
+      "bytes": 1944,
+      "sha256": "496b742a95ca93f202091f34a0f8746affabd1a9e232b53e933202d2c3d4a1d2"
+    },
+    "required_lists": {
+      "bytes": 1200,
+      "sha256": "507941866e2910a86cebd21ca20cbbb170c6f0a2663b0ba38855341a5506af2d"
+    },
+    "unequal_siblings": {
+      "bytes": 3680,
+      "sha256": "964d5b7793bde25cdebc3027817838ec9eea64a29a2aa93aef1eb025f678774b"
+    },
+    "framed_zero": {
+      "bytes": 2400,
+      "sha256": "67232bb993632244d59217a313ab0827b3e8806f3545a0ccb695a64c31b8b9d5"
+    },
+    "mixed_boundary": {
+      "bytes": 528,
+      "sha256": "4979d8ffb55220079f7712c4d73e85153a14de5ae2a5f076fb93a23a503e94ca"
+    },
+    "identity_default_flag": {
+      "bytes": 1944,
+      "sha256": "496b742a95ca93f202091f34a0f8746affabd1a9e232b53e933202d2c3d4a1d2"
+    }
+  }
+}
