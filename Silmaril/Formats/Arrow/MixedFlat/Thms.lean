@@ -46,6 +46,13 @@ theorem Plan.readGroups_fields {fields : List Field} {metadata : Metadata} {body
     columns.map Prod.fst = fields :=
   (Proofs.Formats.Arrow.MixedFlat.readGroups_fields read).trans plan.assignment.fieldsExact
 
+/-- Once layout binding succeeds, a column rejection retains its field index. -/
+theorem readGroups_error_field {limits : BinaryView.Column.Limits} {body : KBytes}
+    {rows index : Nat} {groups : List (Group rows)} {cause : Error}
+    (failed : readGroups limits body index groups = .error cause) :
+    ∃ field error, cause = .field field error :=
+  Proofs.Formats.Arrow.MixedFlat.readGroups_error_field failed
+
 /-- A successful mixed read preserves the exact checked Schema field order
 and the declared RecordBatch row count. -/
 theorem readBatch_shape {limits : Limits} {schema bytes body : KBytes} {result : Observed}

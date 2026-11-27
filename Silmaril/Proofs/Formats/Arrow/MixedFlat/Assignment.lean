@@ -58,6 +58,26 @@ theorem readGroups_fields {limits : BinaryView.Column.Limits} {body : KBytes} {r
         subst columns
         simp [ih tail]
 
+theorem readGroups_error_field {limits : BinaryView.Column.Limits} {body : KBytes}
+    {rows index : Nat} {groups : List (Group rows)} {cause : MixedFlat.Error}
+    (failed : readGroups limits body index groups = .error cause) :
+    ∃ field error, cause = .field field error := by
+  induction groups generalizing index cause with
+  | nil => simp [readGroups] at failed
+  | cons group rest ih =>
+    cases column : readGroup limits body group with
+    | error fault =>
+      simp [readGroups, column, bind, Except.bind, Except.mapError] at failed
+      exact ⟨index, fault, failed.symm⟩
+    | ok values =>
+      cases next : readGroups limits body (index + 1) rest with
+      | error fault =>
+        simp [readGroups, column, next, bind, Except.bind, Except.mapError] at failed
+        subst cause
+        exact ih next
+      | ok columns =>
+        simp [readGroups, column, next, bind, Except.bind, Except.mapError, pure, Except.pure] at failed
+
 theorem readBatch_shape {limits : MixedFlat.Limits} {schema bytes body : KBytes} {result : Observed}
     (read : readBatch limits schema bytes body = .ok result) :
     ∃ fields metadata,

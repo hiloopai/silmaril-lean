@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Defs
+import Silmaril.Formats.Arrow.MixedFlat.Thms
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Thms
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Thms
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Portable.Thms
@@ -16,26 +17,6 @@ open MixedFlat.Stream.Incremental.Portable (reference reference_congr completed_
 open MixedFlat.Stream (BatchRange)
 open Arrow.Framing.Incremental (Frame Window metadataBytes)
 
-private theorem groups_error_field {limits : BinaryView.Column.Limits} {body : KBytes}
-    {rows index : Nat} {groups : List (MixedFlat.Group rows)} {cause : MixedFlat.Error}
-    (failed : MixedFlat.readGroups limits body index groups = .error cause) :
-    ∃ field error, cause = .field field error := by
-  induction groups generalizing index cause with
-  | nil => simp [MixedFlat.readGroups] at failed
-  | cons group rest ih =>
-    cases column : MixedFlat.readGroup limits body group with
-    | error fault =>
-      simp [MixedFlat.readGroups, column, bind, Except.bind, Except.mapError] at failed
-      exact ⟨index, fault, failed.symm⟩
-    | ok values =>
-      cases next : MixedFlat.readGroups limits body (index + 1) rest with
-      | error fault =>
-        simp [MixedFlat.readGroups, column, next, bind, Except.bind, Except.mapError] at failed
-        subst cause
-        exact ih next
-      | ok columns =>
-        simp [MixedFlat.readGroups, column, next, bind, Except.bind, Except.mapError, pure, Except.pure] at failed
-
 private theorem binder_error {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
     {metadata : MixedFlat.Metadata} {body : KBytes} {cause : Cause}
     (failed : MixedFlat.readParsed limits fields metadata body = .error cause.decodeError) :
@@ -45,7 +26,7 @@ private theorem binder_error {limits : MixedFlat.Limits} {fields : List MixedFla
   | ok plan =>
     cases read : MixedFlat.readGroups limits.view body 0 plan.assignment.groups with
     | error fault =>
-      obtain ⟨field, column, rfl⟩ := groups_error_field read
+      obtain ⟨field, column, rfl⟩ := MixedFlat.readGroups_error_field read
       cases cause <;> simp [MixedFlat.readParsed, Cause.decodeError, bound, read, bind, Except.bind] at failed
     | ok columns =>
       simp [MixedFlat.readParsed, bound, read, bind, Except.bind, pure, Except.pure] at failed

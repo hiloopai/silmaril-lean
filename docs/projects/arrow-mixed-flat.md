@@ -875,3 +875,46 @@ preemption, and the divergent incremental aggregate rejection.
 make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Axioms'
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Admitted RecordBatch rejections
+
+`Incremental.Failure.Admitted.Cause` gives one public sum for shared
+metadata, layout and indexed column rejections. Each case retains its
+existing wire witness. The common laws recover the exact preceding
+records and absolute ranges, the original rejected frame, and the
+immutable pull and eager causes. The zero-based rejection ordinal is
+the number of complete published batches, including empty batches.
+Admitted schedules that reach a covered rejection on the same bytes
+under the same limits have equal traces, prefix ranges and terminal
+causes. No schedule on those bytes under those limits can finish
+successfully.
+
+The parser coverage theorem starts with the body source, extent,
+alignment and byte cap checked, fields and per-record rows within the
+metadata caps, and the running row/cell check passed. The running bound
+also implies the binder's current-batch row/cell bound. The remaining
+binder errors are assignment and malformed descriptor layout.
+After binding, the grouped reader returns only indexed column errors.
+The metadata case retains any rejection returned by the shared parser,
+including its per-record limit errors.
+
+The sum excludes earlier envelope, body framing and EOS errors, schema
+opening failures, batch-slot refusal, shared running-row/cell refusal,
+and the incremental aggregate data-buffer refusal. These remain
+observable in their original APIs with their own precedence. In
+particular, the incremental aggregate allowance is checked before the
+shared running row/cell limits, and the immutable reader has no matching
+aggregate check.
+
+A double-fault synthetic edit of the pinned PyArrow carrier includes an
+invalid node and an out-of-body descriptor. The assignment error wins
+before the global descriptor check in both immutable readers and in
+one-byte and uneven incremental schedules.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/Admitted/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/Admitted/Thms.lean) ·
+[Lean guards](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/BodyLayout/Examples.lean)
+
+```sh
+make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Admitted.Axioms +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Examples'
+python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
+```

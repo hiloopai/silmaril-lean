@@ -1,9 +1,11 @@
 module
 
+import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Admitted.Defs
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Defs
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Fixtures
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Fixture
 import Silmaril.Prelude.Bytes.Write.Defs
+meta import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Admitted.Defs
 meta import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Defs
 meta import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Fixtures
 meta import Silmaril.Formats.Arrow.MixedFlat.Stream.Fixture
@@ -16,12 +18,12 @@ namespace Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout
 
 open Failure.Fixtures
 
-private def damageNode (range : Stream.BatchRange) : Option KBytes := do
-  let metadata := range.metadataSlice multi
+private def damageNode (range : Stream.BatchRange) (wire : KBytes := multi) : Option KBytes := do
+  let metadata := range.metadataSlice wire
   let vector ← recordVectorAt metadata 1
   let length := vector + 4
   if metadata.readLE length 8 != some 2 then none
-  else return multi.write (range.offset + 8 + length) 8 1
+  else return wire.write (range.offset + 8 + length) 8 1
 
 private def damageDescriptor (range : Stream.BatchRange) : Option KBytes := do
   let metadata := range.metadataSlice multi
@@ -83,5 +85,15 @@ private def damageDescriptor (range : Stream.BatchRange) : Option KBytes := do
   return decide (eager = .batch 2 cells) &&
     stopsAs limits clean 2 error (singleBytes damaged) &&
     stopsAs limits clean 2 error (uneven damaged last.range)
+
+-- Both layout defects are present in the same fully framed record.
+-- The indexed assignment error wins before the global descriptor check.
+#guard Id.run do
+  let .ok clean := Stream.read {} multi | return false
+  let some last := clean.batches[2]? | return false
+  let some descriptor := damageDescriptor last.range | return false
+  let some both := damageNode last.range descriptor | return false
+  let expected : Admitted.Cause := .layout (.assignment (.field 0 .invalidNode))
+  return rejectsRecord {} multi both 2 expected.batchError
 
 end Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout
