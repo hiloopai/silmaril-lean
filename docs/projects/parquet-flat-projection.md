@@ -79,6 +79,32 @@ checks one-under file, row and field refusals, an expanded repeated
 selection and a zero-width selection through an empty middle group.
 The success theorem is confined to source observations.
 
+### Complete IPC events
+
+`Composition.Ipc.readEvents` uses the mixed V5 pull reader and returns
+an observation only after exact EOS. Each observed batch contains its
+explicit row count and its ordered nullable columns. BinaryView values
+are compared as opaque octets. `projectEvents` selects positional
+fields and columns, allowing repeats and width zero.
+`projectEvents_rowCounts` preserves the entire row-count list, including
+any zero-row batch at its original ordinal.
+
+`convert_compose_events` derives direct Parquet exhaustion from the
+original successful read, valid positions, the common column policy,
+and the direct source caps. With independent successful checked writer
+witnesses for the wide and direct IPC profiles, it identifies each
+actual converter output and proves agreement of the native complete
+pull observations. Each witness uses its own writer and readback caps.
+[IPC event laws][ipc-event-laws]
+
+The [IPC event oracle][ipc-event-oracle] checks both carriers independently
+against PyArrow and compares their positional observations through V5 EOS.
+It retains the five-leaf producer's independent page cuts and checks
+schema-only, an empty middle batch, a zero-width projection, and a
+five-field repeated selection from a four-field wide stream. A direct
+four-field IPC cap refuses that selection after successful Parquet
+exhaustion. Truncated EOS and trailing bytes refuse a complete observation.
+
 ```sh
 lake build --wfail +Silmaril.Formats.Parquet.FlatProjection.Checks
 python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-flat-projection
@@ -89,3 +115,5 @@ python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-fl
 [composition-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Thms.lean
 [composition-oracle]: ../../scripts/parquet-flat-projection-composition-oracle/check.py
 [success-oracle]: ../../scripts/parquet-flat-projection-success-oracle/check.py
+[ipc-event-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Ipc/Thms.lean
+[ipc-event-oracle]: ../../scripts/parquet-flat-projection-ipc-events-oracle/check.py
