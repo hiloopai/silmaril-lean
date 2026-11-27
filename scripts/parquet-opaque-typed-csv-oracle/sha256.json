@@ -1,0 +1,18 @@
+{
+  "empty-batch.arrows": "4ab98ff8d0e2fd0bbb82a046a5d9fb29beea225e16b9dfaa6c4edf9a201e68b9",
+  "empty-batch.csv": "f44ac103a55b7c9196944e2ddbc9e287a24f6fd354dee57e8ef88db93e172872",
+  "optional-v2.arrows": "01d5d4550d48023a4019b4b6d11ed196188b7be879f8d63736e19f0e1d461123",
+  "optional-v2.csv": "731e6c53bd9185fe3324081a9740e9bc67256b980d659be0b9ee2a04881674bf",
+  "required-v1.arrows": "56d0cad8efc350471a5584e17d1dc546a858e1b4d7efb02abf14091da5b1a060",
+  "required-v1.csv": "f2ddc8d0c34503ba18ebb274015e032890be691439f90f830d2ff78a40de4ec7",
+  "schema-only.arrows": "4ab98ff8d0e2fd0bbb82a046a5d9fb29beea225e16b9dfaa6c4edf9a201e68b9",
+  "schema-only.csv": "f44ac103a55b7c9196944e2ddbc9e287a24f6fd354dee57e8ef88db93e172872",
+  "source/empty-batch.arrows": "4ab98ff8d0e2fd0bbb82a046a5d9fb29beea225e16b9dfaa6c4edf9a201e68b9",
+  "source/empty-batch.csv": "0cbe9669108f3c46180676ccb5b49c869d2b40c65331b13fbb82f43fc4af4b9f",
+  "source/optional-v2.arrows": "cf5c51eea10807990e6ddc97e4a27bdac9fb1659186cc594c4eaf8dc8f5c6bf5",
+  "source/optional-v2.csv": "f2961130581b182d3c922aafb22d90a47230555cf8ec3ee242e315830ab2d9f3",
+  "source/required-v1.arrows": "140bd016c61b34fcfb76c0370d13315c45d4d9d7b13386977a8c1ac5aaf5eb0f",
+  "source/required-v1.csv": "3947b56be9f1d7c04c524c24bb04f0a02fe508e2a355251b6ca06296b4c22d45",
+  "source/schema-only.arrows": "8370b07d9ed8a8cab381d7e3957533b8e41f32a515f4b0113ccb803c11ab7e78",
+  "source/schema-only.csv": "0cbe9669108f3c46180676ccb5b49c869d2b40c65331b13fbb82f43fc4af4b9f"
+}

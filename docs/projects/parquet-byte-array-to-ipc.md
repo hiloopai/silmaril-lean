@@ -56,3 +56,39 @@ python3.13 -B scripts/parquet-byte-array-to-ipc-oracle/check.py --out /tmp/parqu
 
 [Parquet Format 2.14.0 encodings](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md) ·
 [Arrow 26.0.1 BinaryView and IPC](https://github.com/apache/arrow/blob/9e5d6978e9acf372cc989aaaf94e863fe8582c90/docs/source/format/Columnar.rst)
+
+## Typed hex CSV interchange
+
+`Parquet.Plain.ByteArray.ToCsv.exportCsv` reads the actual BinaryView IPC
+produced by the checked selected-column converter through exact EOS.
+The caller supplies the selected leaf name and its required or optional
+Parquet layout. The CSV result carries the exact name and nullability
+with the BinaryView descriptor out of band. Its opaque cells use `N`
+for null and `T` followed by uppercase hex for present bytes. A lone
+`T` represents a present empty value.
+
+`ToCsv.convert` also imports that checked CSV and returns the CSV and
+final BinaryView IPC together. The intermediate stream keeps one batch
+per footer group. CSV flattens the groups in footer order, and the final
+stream emits one batch through exact EOS. Both a schema-only file and
+an admitted zero-row group therefore yield a single zero-row final
+batch. The final writer's per-batch row cap applies to the total rows;
+the intermediate writer's cap applies to each group.
+
+The success laws tie CSV decoding and native readback to the selected
+slots from the original checked footer groups. Parquet admission and
+indexed read errors precede intermediate writer errors. Intermediate
+errors precede the CSV export, CSV import and final writer stages.
+The late-source law retains the original error and the preceding groups
+in the separate source trace. [Theorem header](../../Silmaril/Formats/Parquet/Plain/ByteArray/ToCsv/Thms.lean)
+
+PyArrow independently reads the selected column from the four fixtures
+above and compares it with both actual BinaryView stages. CPython checks
+the CSV tokens and generates separate CSV inputs that Lean imports.
+[Comparator](../../scripts/parquet-opaque-typed-csv-oracle/check.py) ·
+[Artifact pins](../../scripts/parquet-opaque-typed-csv-oracle/sha256.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.ToCsv.Checks
+python3.13 -B scripts/parquet-opaque-typed-csv-oracle/check.py --out /tmp/parquet-opaque-typed-csv
+```
