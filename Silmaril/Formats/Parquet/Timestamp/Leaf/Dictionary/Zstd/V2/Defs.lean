@@ -34,32 +34,44 @@ def readEntries (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (fr
     (Leaf.Internal.body bound frame).toList).mapError (.decode 0 frame.header.start)
   (Plain.decodeInt64 header.numValues (Bytes.ofList words)).mapError (atDictionary ∘ .entries)
 
-/-- Only the original RLE_DICTIONARY V2 header supplies reference parameters. -/
-def planData (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
+/-- Retain the original V2 reference or value parameters under the chosen data tag policy. -/
+def planDataWith (admits : Int → Bool) (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
   if let .dictionary _ := frame.value.kind then throw .misplacedDictionary
   let .dataV2 header := frame.value.kind | throw (.parameters .unsupportedPage)
-  if header.encoding ≠ 8 then throw (.encoding header.encoding)
+  if !admits header.encoding then throw (.encoding header.encoding)
   let params ← (Timestamp.Page.parameters bound.binding.leaf bound.levels Payload.Codec.zstd.id
     frame.value).mapError .parameters
   return ⟨frame, params⟩
 
-def planPages (bound : Bound) (frames : List Parquet.Page.Frame) : Except GroupError (List DataPage) :=
-  (frames.zipIdx 1).mapM fun (frame, ordinal) =>
-    (planData bound frame).mapError (.selection ∘ atFrame ordinal frame)
+def planData := planDataWith (· == 8)
 
-/-- Bound the declared expansion of the original dictionary and data pages,
-and check the complete reference header plan and row total before decoding. -/
-def checkGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+def planPagesWith (admits : Int → Bool) (bound : Bound) (frames : List Parquet.Page.Frame) :
+    Except GroupError (List DataPage) :=
+  (frames.zipIdx 1).mapM fun (frame, ordinal) =>
+    (planDataWith admits bound frame).mapError (.selection ∘ atFrame ordinal frame)
+
+def planPages := planPagesWith (· == 8)
+
+/-- Check the whole original frame chain and declared expansion before the data
+phase and slot checks. Only then expand the leading dictionary. -/
+def checkGroupWith (admits : Int → Bool) (validate : List DataPage → Except Leaf.Error Unit)
+    (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
     Except GroupError CheckedChunk := do
   let framed ← (frameGroupUsing .zstdDictionaryV2 limits.dictionary leafLimits bound index).mapError .selection
   if limits.maxExpandedChunkBytes < (framed.frames.map (·.value.uncompressedSize)).sum then
     throw .expandedChunkLimit
-  let data ← planPages bound framed.data
+  let data ← planPagesWith admits bound framed.data
+  (validate data).mapError .selection
   let actual := (data.map (·.params.numValues)).sum
   let expected := framed.chunk.group.numRows.toNat
   if actual ≠ expected then throw (.selection (.rowCount expected actual))
   let entries ← readEntries limits leafLimits bound framed.dictionary
   return ⟨framed.chunk, framed.dictionary, entries, data⟩
+
+/-- The strict dictionary-only profile requires tag 8 on every data frame. -/
+def checkGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except GroupError CheckedChunk :=
+  checkGroupWith (· == 8) (fun _ => .ok ()) limits leafLimits bound index
 
 def decodeReferences (limits : Hybrid.Limits) (entries : Array Int64) (prepared : ScalarPage.Prepared) :
     Except DictionaryIndex.Error (List (Option Int64)) := do

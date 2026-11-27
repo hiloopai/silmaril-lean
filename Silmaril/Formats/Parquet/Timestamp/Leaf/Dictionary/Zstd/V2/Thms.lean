@@ -117,4 +117,40 @@ theorem convert_readback {limits : Limits} {inputLimits : Leaf.Events.ToIpc.Limi
           groups.map (List.map (Option.map Ticks.ticks)) :=
   Leaf.Zstd.V2.convertWith_readback (read := readGroup limits inputLimits.leaf) written
 
+/-- The chosen data tag predicate retains the exact original V2 header. -/
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (read : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧ ∃ header, frame.value.kind = .dataV2 header ∧ admits header.encoding = true ∧
+      page.params = ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, bound.levels,
+        header.numValues, Payload.Codec.zstd.id, header.encoding,
+        .v2 header.numNulls header.numRows header.repetitionBytes header.definitionBytes (some header.isCompressed)⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Zstd.V2.planDataWith_wire read
+
+/-- The admitted phase policy and budgets apply to the original selected frame chain. -/
+theorem checkGroupWith_wire {admits : Int → Bool} {validate : List DataPage → Except Leaf.Error Unit}
+    {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound} {index : Nat}
+    {checked : CheckedChunk} (accepted : checkGroupWith admits validate limits leafLimits bound index = .ok checked) :
+    selectChunkWith .zstdDictionaryV2 leafLimits bound index = .ok checked.chunk ∧
+      checked.chunk.column.metadata.codec = Payload.Codec.zstd.id ∧
+      checked.chunk.span.stop - checked.chunk.span.start ≤ limits.dictionary.maxChunkBytes ∧
+      Parquet.Page.readChunk leafLimits.framing bound.snapshot.bytes checked.chunk.span = .ok checked.frames ∧
+      Parquet.Page.Chain checked.chunk.span checked.chunk.span.start checked.chunk.span.stop checked.frames ∧
+      (checked.frames.map (·.value.uncompressedSize)).sum ≤ limits.maxExpandedChunkBytes ∧
+      checked.chunk.column.metadata.dictionaryPageOffset = some (checked.dictionary.header.start : Int) ∧
+      checked.data.head?.map (fun page => (page.frame.header.start : Int)) =
+        some checked.chunk.column.metadata.dataPageOffset ∧
+      readEntries limits leafLimits bound checked.dictionary = .ok checked.entries ∧
+      (∀ page ∈ checked.data, planDataWith admits bound page.frame = .ok page) ∧
+      validate checked.data = .ok () ∧
+      (checked.data.map (·.params.numValues)).sum = checked.chunk.group.numRows.toNat :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Zstd.V2.checkGroupWith_wire accepted
+
+/-- A tag-8 page retains the original reference wire evidence under an admitted V2 plan. -/
+theorem decodePage_wireWith {admits : Int → Bool} {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound} {entries : Array Int64}
+    {page : DataPage} {ordinal : Nat} {slots : List (Option Int64)}
+    (planned : planDataWith admits bound page.frame = .ok page) (reference : page.params.encoding = 8)
+    (read : decodePage limits leafLimits bound entries page ordinal = .ok slots) :
+    PageWire limits leafLimits bound entries page slots :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Zstd.V2.decodePage_wireWith planned reference read
+
 end Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Zstd.V2
