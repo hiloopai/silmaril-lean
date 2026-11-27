@@ -208,3 +208,43 @@ lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.Checks
 lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/Checks.lean /tmp/hive-native-int32
 python -I scripts/hive-native-int32-oracle/Oracle.py /tmp/hive-native-int32
 ```
+
+### Partition-only restore
+
+[`restorePruned`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/Prune/Defs.lean)
+checks the schema once, then visits each literal manifest occurrence in order.
+For each reached occurrence it checks the relative path and fixed leaf,
+parses the partition directory with the supplied marker options, and binds
+its nullable cells before evaluating the predicate. Only `some true` selects
+an occurrence. `some false` and `none` skip its entire Parquet payload,
+including any footer, page, schema, or advertised row-count checks.
+
+The first reached failure aborts with no partial table. A file error records
+its original zero-based manifest index, literal path, and typed cause. This
+index counts duplicates and skipped occurrences. A malformed path or typed
+binding still fails if its payload would have been skipped. A selected file
+uses the same native Parquet reader and row-count checks as `restore`.
+
+[`restorePruned_eq_filter`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/Prune/Thms.lean)
+proves exact agreement with applying the partition predicate to each row
+following a successful full restore. This preserves manifest order and
+physical row order within each occurrence. Both readers share the same typed
+path binder, so the law covers explicit nulls, the default marker, and
+caller-selected markers. [`restorePruned_emit`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/Prune/Thms.lean)
+composes with emission under the same path options and successful-cell codec
+left inverse. The reference routes the original rows by first-seen directory,
+keeps their order within each directory, and then applies the stable filter.
+
+The pinned PyArrow oracle also checks the selected fragments and rows on
+eight actual Lean-emitted Parquet files across default and escaped custom
+markers. The manifest is passed in explicit order, with one thread for
+readback. The Lean guards additionally check duplicate occurrences, empty
+selection, typed path errors before the predicate, and an unreadable
+payload that succeeds only when skipped. Use the same pinned Python
+setup as above.
+
+```sh
+lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.Checks
+lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/Checks.lean pruning /tmp/hive-pruned
+python3 scripts/hive-native-int32-oracle/Oracle.py /tmp/hive-pruned --pruning
+```

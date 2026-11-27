@@ -83,7 +83,7 @@ private theorem emitBucket_readback (limits : FlatInt32Writer.Limits) (leaf : St
       | ok output =>
         simp [emitBucket, split, encoded, Except.mapError, bind, Except.bind, pure, Except.pure] at written
         rcases written with rfl
-        simp [readBucket, split, readAll_emit limits leaf bucket.rows output encoded, Events.Trace.rows,
+        simp [readBucket, checkFilePath, readPayload, split, readAll_emit limits leaf bucket.rows output encoded, Events.Trace.rows,
           Except.mapError, bind, Except.bind, pure, Except.pure]
         simp [physical]
         cases bucket

@@ -91,18 +91,27 @@ def readLimits (limits : FlatInt32Writer.Limits) (rows : Nat) : Snapshot.FlatInt
     ⟨limits.footer, limits.pageReader, rows, 1, rows, limits.page.scalar.compressedBytes⟩,
     limits.page.scalar⟩
 
-def readBucket {Failure : Type*} (limits : FlatInt32Writer.Limits) (leaf : String) (file : File) :
-    Except (ReadError Failure) (Bucket (physical leaf) Cell) := do
-  let (directory, name) ← (Manifest.splitFile file.path).mapError (ReadError.path file.path)
-  if name ≠ filename then throw (.filename file.path)
+def checkFilePath {Failure : Type*} (path : String) : Except (ReadError Failure) String := do
+  let (directory, name) ← (Manifest.splitFile path).mapError (ReadError.path path)
+  if name ≠ filename then throw (.filename path)
+  return directory
+
+def readPayload {Failure : Type*} (limits : FlatInt32Writer.Limits) (leaf : String) (file : File) :
+    Except (ReadError Failure) (Scan.Table (physical leaf) Cell) := do
   let ⟨opened, trace⟩ ← (Snapshot.FlatInt32.readAll (readLimits limits file.rowCount)
     (physical leaf) file.bytes).mapError (ReadError.parquet file.path)
   if trace.termination ≠ .eos then throw (.stopped file.path trace.termination)
   let rows := trace.rows
   if trace.batches.length ≠ 1 ∨ rows.length ≠ file.rowCount then throw (.shape file.path)
   if width : opened.width = 1 then
-    return ⟨directory, rows.map fun row i => row (i.cast width.symm)⟩
+    return rows.map fun row i => row (i.cast width.symm)
   else throw (.shape file.path)
+
+def readBucket {Failure : Type*} (limits : FlatInt32Writer.Limits) (leaf : String) (file : File) :
+    Except (ReadError Failure) (Bucket (physical leaf) Cell) := do
+  let directory ← checkFilePath file.path
+  let rows ← readPayload limits leaf file
+  return ⟨directory, rows⟩
 
 /-- Check each literal file in manifest order, then restore directory cells
 using the shared typed Hive binder. -/
