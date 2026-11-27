@@ -7,6 +7,12 @@ public section
 
 namespace Silmaril.Formats.Arrow.MixedFlat.Events
 
+/-- Every decoded column has one nullable slot per declared row. -/
+theorem readGroup_length {limits : BinaryView.Column.Limits} {body : KBytes} {rows : Nat}
+    {group : Group rows} {column : MixedFlat.Column}
+    (read : readGroup limits body group = .ok column) : (cells column).length = rows :=
+  Proofs.Formats.Arrow.MixedFlat.Events.readGroup_length read
+
 /-- The decoder's successful output is in schema order with exactly one
 nullable slot per row at every field. -/
 theorem readParsed_shape {limits : MixedFlat.Limits} {body : KBytes}

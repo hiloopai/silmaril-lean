@@ -71,6 +71,12 @@ private theorem groupSlots {limits : BinaryView.Column.Limits} {body : KBytes} {
         subst column
         exact (BinaryView.Column.readUtf8_counts decoded).1.trans group.rowsExact
 
+theorem readGroup_length {limits : BinaryView.Column.Limits} {body : KBytes} {rows : Nat}
+    {group : Group rows} {column : MixedFlat.Column}
+    (read : readGroup limits body group = .ok column) : (cells column).length = rows := by
+  have length := groupSlots read
+  cases column <;> simpa [cells, slotCount] using length
+
 private theorem groupListSlots {limits : BinaryView.Column.Limits} {body : KBytes} {rows : Nat}
     {groups : List (Group rows)} {index : Nat} {columns : List (MixedFlat.Field × MixedFlat.Column)}
     (read : readGroups limits body index groups = .ok columns) :

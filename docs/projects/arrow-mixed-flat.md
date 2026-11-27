@@ -1020,3 +1020,30 @@ empty batch before the typed failure.
 lake build --wfail Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Stream.Examples Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Stream.Axioms
 python scripts/arrow-mixed-flat/large_utf8_fixtures.py
 ```
+
+### Events and positional projection
+
+`MixedFlat.LargeUtf8.Stream.Events.reader` exposes the standard
+`Arrow.Events.BatchReader`. It keeps the original immutable carrier and
+decodes the next record at its original frame offset. The event schema
+uses the exact ordered field descriptors and kinds. LargeUtf8 cells
+carry nullable strings, and existing types keep their native cell
+observations. A zero-row record still yields an event, while a
+zero-column record retains its explicit row count.
+
+`readAll_exact` compares each completed event with the corresponding
+direct read batch. It carries the first original error, including its
+record ordinal and absolute offset, and keeps every preceding batch.
+Exact direct EOS maps to the standard EOS event.
+
+`readProjected` projects the decoded batches by checked positions,
+retaining order, repeated selections and row counts at width zero.
+`readProjected_exact` relates every selected declaration and value to
+the corresponding direct batch and retains the terminal outcome.
+Projection uses the full checked read of each record.
+
+```sh
+lake build --wfail Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Stream.Events.Examples Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Stream.Events.Axioms
+python scripts/arrow-mixed-flat/large_utf8_fixtures.py
+python scripts/arrow-mixed-flat/stream_fixtures.py
+```
