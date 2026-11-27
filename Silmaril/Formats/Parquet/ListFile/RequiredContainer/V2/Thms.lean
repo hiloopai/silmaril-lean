@@ -30,6 +30,19 @@ theorem readFrame_wire {checked : Checked} {framed : ListFile.FramedGroup} {fram
     {rows : List Row} (h : readFrame checked framed frame = .ok rows) : FrameWire checked framed frame rows :=
   Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.readFrame_wire h
 
+/-- The two raw streams determine the three distinct V2 header counts. -/
+theorem sections_counts {info : Page.DataV2} {repetition definition scalars : Bytes}
+    {rows : List Row}
+    (sectionWire : SectionsWire info.numValues repetition definition scalars (rows.flatMap ListPage.rowEvents))
+    (rowCount : rows.length = info.numRows)
+    (nullCount : missingSlots (rows.flatMap ListPage.rowEvents) = info.numNulls) :
+    ∃ reps defs,
+      Hybrid.Wire 1 info.numValues repetition.toList reps ∧
+      Hybrid.Wire 2 info.numValues definition.toList defs ∧
+      reps.length = info.numValues ∧ defs.length = info.numValues ∧
+      reps.count 0 = info.numRows ∧ defs.countP (· != 2) = info.numNulls :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.sections_counts sectionWire rowCount nullCount
+
 /-- Raw levels distinguish header slots, repetition-zero rows and zero-value slots. -/
 theorem frame_counts {checked : Checked} {framed : ListFile.FramedGroup} {frame : Page.Frame}
     {rows : List Row} (wire : FrameWire checked framed frame rows) :
@@ -52,7 +65,7 @@ theorem readGroup_frame_error {checked : Checked} {ordinal : Nat}
     (selected : checked.frameGroup ordinal = .ok framed) (single : framed.frames = [frame])
     (failed : readFrame checked framed frame = .error cause) :
     readGroup checked ordinal = .error (.frame 0 frame.header.start cause) := by
-  simp [readGroup, RequiredContainer.readGroupUsing, selected, single, failed, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, RequiredContainer.readGroupUsing, RequiredContainer.readGroupWith, selected, single, failed, Except.mapError, Bind.bind, Except.bind]
 
 /-- The first original group error preserves its earlier batches ahead of the writer. -/
 theorem convert_first_error {limits : Limits} {source : Bytes} {checked : Checked}

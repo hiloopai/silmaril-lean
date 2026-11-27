@@ -220,15 +220,16 @@ private theorem rowMarkers (rows : List Row) :
     simp only [List.flatMap_cons, List.countP_append, one, ih, List.length_cons]
     omega
 
-public theorem frame_counts {checked : Checked} {framed : ListFile.FramedGroup} {frame : Page.Frame}
-    {rows : List Row} (wire : FrameWire checked framed frame rows) :
-    ∃ info sections reps defs,
-      frame.value.kind = .dataV2 info ∧ RawWire checked.limits.page checked.snapshot.bytes frame info sections ∧
-      Hybrid.Wire 1 info.numValues sections.repetition.toList reps ∧
-      Hybrid.Wire 2 info.numValues sections.definition.toList defs ∧
+public theorem sections_counts {info : Page.DataV2} {repetition definition scalars : Bytes}
+    {rows : List Row}
+    (sectionWire : SectionsWire info.numValues repetition definition scalars (rows.flatMap ListPage.rowEvents))
+    (rowCount : rows.length = info.numRows)
+    (nullCount : missingSlots (rows.flatMap ListPage.rowEvents) = info.numNulls) :
+    ∃ reps defs,
+      Hybrid.Wire 1 info.numValues repetition.toList reps ∧
+      Hybrid.Wire 2 info.numValues definition.toList defs ∧
       reps.length = info.numValues ∧ defs.length = info.numValues ∧
       reps.count 0 = info.numRows ∧ defs.countP (· != 2) = info.numNulls := by
-  obtain ⟨info, sections, kind, _, _, _, raw, sectionWire, _, rowCount, _, _, nullCount, _, _⟩ := wire.data
   obtain ⟨reps, defs, _, entries, repWire, defWire, repLength, defLength, entryLength, _, mask, _, ordered⟩ :=
     sectionWire.data
   have repetitions := slot_repetitions (by simp [repLength, defLength, entryLength]) ordered
@@ -238,16 +239,28 @@ public theorem frame_counts {checked : Checked} {framed : ListFile.FramedGroup} 
     cases item <;> rfl
   have missing := congrArg (List.countP (!·)) mask
   simp only [valueMask, List.countP_map, Function.comp_def, noneEq] at missing
-  refine ⟨info, sections, reps, defs, kind, raw, repWire, defWire, repLength, defLength, ?_, ?_⟩
+  refine ⟨reps, defs, repWire, defWire, repLength, defLength, ?_, ?_⟩
   · rw [← repetitions, List.count, List.countP_map]
     exact (rowMarkers rows).trans rowCount
   · change defs.countP (fun d => !(d == 2)) = info.numNulls
     rw [← missing, ← values, List.countP_map]
     exact nullCount
 
+public theorem frame_counts {checked : Checked} {framed : ListFile.FramedGroup} {frame : Page.Frame}
+    {rows : List Row} (wire : FrameWire checked framed frame rows) :
+    ∃ info sections reps defs,
+      frame.value.kind = .dataV2 info ∧ RawWire checked.limits.page checked.snapshot.bytes frame info sections ∧
+      Hybrid.Wire 1 info.numValues sections.repetition.toList reps ∧
+      Hybrid.Wire 2 info.numValues sections.definition.toList defs ∧
+      reps.length = info.numValues ∧ defs.length = info.numValues ∧
+      reps.count 0 = info.numRows ∧ defs.countP (· != 2) = info.numNulls := by
+  obtain ⟨info, sections, kind, _, _, _, raw, sectionWire, _, rowCount, _, _, nullCount, _, _⟩ := wire.data
+  obtain ⟨reps, defs, facts⟩ := sections_counts sectionWire rowCount nullCount
+  exact ⟨info, sections, reps, defs, kind, raw, facts⟩
+
 public theorem readGroup_wire {checked : Checked} {ordinal : Nat} {rows : List Row}
     (h : readGroup checked ordinal = .ok rows) : GroupWire checked ordinal rows := by
-  unfold readGroup ListFile.RequiredContainer.readGroupUsing at h
+  unfold readGroup ListFile.RequiredContainer.readGroupUsing ListFile.RequiredContainer.readGroupWith at h
   cases selected : checked.frameGroup ordinal with
   | error error => simp [selected, Except.mapError, Bind.bind, Except.bind] at h
   | ok framed =>

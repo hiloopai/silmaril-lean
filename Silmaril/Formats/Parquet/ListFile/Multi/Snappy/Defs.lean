@@ -105,7 +105,7 @@ def v2LevelBytes (info : Page.DataV2) : Nat :=
 def v2Codec (info : Page.DataV2) : Int :=
   if info.isCompressed then 1 else 0
 
-def v2Bounds (limits : Limits) (checked : ListFile.Checked)
+def v2Bounds {container : ListFile.Container} (limits : Limits) (checked : ListFile.Checked container)
     (frame : Page.Frame) (info : Page.DataV2) : Payload.Bounds :=
   let levels := v2LevelBytes info
   ⟨frame.value.compressedSize - levels, limits.maxStoredPageBytes,
@@ -113,7 +113,7 @@ def v2Bounds (limits : Limits) (checked : ListFile.Checked)
 
 /-- The two level slices are stored raw. Only the scalar suffix uses the
 resolved compression flag. The complete body contributes to the caps. -/
-def prepareV2 (limits : Limits) (checked : ListFile.Checked)
+def prepareV2 {container : ListFile.Container} (limits : Limits) (checked : ListFile.Checked container)
     (frame : Page.Frame) (info : Page.DataV2) (stored : Bytes) : Except FrameError V2Sections := do
   let levels := v2LevelBytes info
   if stored.length ≠ frame.value.compressedSize ∨ frame.value.compressedSize < levels ∨
@@ -157,7 +157,7 @@ def readV2Frame (limits : Limits) (checked : ListFile.Checked)
   checkV2Counts info events
   pure events
 
-structure V2BodyWire (checked : ListFile.Checked) (frame : Page.Frame) (info : Page.DataV2)
+structure V2BodyWire {container : ListFile.Container} (checked : ListFile.Checked container) (frame : Page.Frame) (info : Page.DataV2)
     (stored : Bytes) (sections : V2Sections) : Prop where
   repetitionSize : sections.repetition.length = info.repetitionBytes
   definitionSize : sections.definition.length = info.definitionBytes

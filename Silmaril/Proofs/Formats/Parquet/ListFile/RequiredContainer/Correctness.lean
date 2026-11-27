@@ -160,7 +160,7 @@ public theorem readFrame_wire {checked : Checked} {framed : ListFile.FramedGroup
 
 public theorem readGroup_wire {checked : Checked} {ordinal : Nat} {rows : List Row}
     (h : readGroup checked ordinal = .ok rows) : GroupWire checked ordinal rows := by
-  unfold readGroup readGroupUsing at h
+  unfold readGroup readGroupUsing readGroupWith at h
   cases selected : checked.frameGroup ordinal with
   | error err => simp [selected, Except.mapError, Bind.bind, Except.bind] at h
   | ok framed =>

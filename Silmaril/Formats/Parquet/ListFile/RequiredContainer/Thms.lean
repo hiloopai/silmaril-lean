@@ -38,7 +38,7 @@ theorem readGroup_frame_error {checked : Checked} {ordinal : Nat}
     (selected : checked.frameGroup ordinal = .ok framed) (single : framed.frames = [frame])
     (failed : readFrame checked framed frame = .error cause) :
     readGroup checked ordinal = .error (.frame 0 frame.header.start cause) := by
-  simp [readGroup, readGroupUsing, selected, single, failed, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readGroupUsing, readGroupWith, selected, single, failed, Except.mapError, Bind.bind, Except.bind]
 
 /-- Every decoded event has its exact required-container raw slot triple. -/
 theorem readEvent_wire {entry : Triple} {event : Event}

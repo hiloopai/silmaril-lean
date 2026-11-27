@@ -89,7 +89,8 @@ public theorem readFrame_checksum_error {limits : Limits} {checked : ListFile.Ch
   simp [readFrame, kind, encoding, Nat.not_lt.mpr slots, Nat.not_lt.mpr expanded, failed,
     Except.mapError, Bind.bind, Except.bind]
 
-public theorem prepareV2_wire {limits : Limits} {checked : ListFile.Checked}
+public theorem prepareV2_wire {container : ListFile.Container} {limits : Limits}
+    {checked : ListFile.Checked container}
     {frame : Page.Frame} {info : Page.DataV2} {stored : Bytes} {sections : V2Sections}
     (h : prepareV2 limits checked frame info stored = .ok sections) :
     V2BodyWire checked frame info stored sections := by

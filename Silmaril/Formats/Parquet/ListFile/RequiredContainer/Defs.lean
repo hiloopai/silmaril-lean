@@ -97,12 +97,15 @@ inductive GroupError where
 abbrev GroupReader (error : Type) := Checked → Nat → Except error (List Row)
 
 /-- Delegate the original singleton frame after checked local chunk admission. -/
-def readGroupUsing {error : Type} (framingError : ListFile.ReadError → error)
+def readGroupWith {error : Type} (select : Checked → Nat → Except ListFile.ReadError FramedGroup)
+    (framingError : ListFile.ReadError → error)
     (read : Checked → FramedGroup → Page.Frame → Except error (List Row)) : GroupReader error :=
   fun checked ordinal => do
-    let framed ← (checked.frameGroup ordinal).mapError framingError
+    let framed ← (select checked ordinal).mapError framingError
     let [frame] := framed.frames | throw (framingError .pageCount)
     read checked framed frame
+
+def readGroupUsing {error : Type} := @readGroupWith error ListFile.Checked.frameGroup
 
 def readGroup : GroupReader GroupError :=
   readGroupUsing .framing fun checked framed frame =>

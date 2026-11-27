@@ -99,7 +99,8 @@ theorem convert_readback {limits : Limits} {source : Bytes} {wire : KBytes}
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertFor_readback (version := .v1) h
 
 /-- The original stored payload splits into two exact raw level slices and the flag-selected value suffix. -/
-theorem prepareV2_wire {limits : Limits} {checked : ListFile.Checked}
+theorem prepareV2_wire {container : ListFile.Container} {limits : Limits}
+    {checked : ListFile.Checked container}
     {frame : Page.Frame} {info : Page.DataV2} {stored : Bytes} {sections : V2Sections}
     (h : prepareV2 limits checked frame info stored = .ok sections) :
     V2BodyWire checked frame info stored sections :=

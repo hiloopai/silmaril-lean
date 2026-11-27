@@ -1,0 +1,29 @@
+PyArrow 26.0.1
+native-required-v2-snappy-crc.parquet SHA-256 5d4abf7faa52494e073bade087b5cf682b93aa4d12d24856b778a1599c91bcd6, footer [143, 688)
+  group 0 page 0 @4, crc -196951075, slots/rows/nulls 7/4/3, flag False, rep [34, 36), def [36, 39), suffix [39, 55) -> 16 raw bytes
+  group 1 page 0 @55, crc -1503356008, slots/rows/nulls 109/4/4, flag True, rep [87, 94), def [94, 105), suffix [105, 143) -> 420 raw bytes
+native-required-v2-snappy-no-crc.parquet SHA-256 ef8fa622702f5f1e3efe57b905669ba8ec54ea133ab4817055c907ae6e296516, footer [131, 676)
+  group 0 page 0 @4, crc absent, slots/rows/nulls 7/4/3, flag False, rep [28, 30), def [30, 33), suffix [33, 49) -> 16 raw bytes
+  group 1 page 0 @49, crc absent, slots/rows/nulls 109/4/4, flag True, rep [75, 82), def [82, 93), suffix [93, 131) -> 420 raw bytes
+assembled-default-flag-v2-snappy.parquet SHA-256 6252fa35ce6e256e35b7c7e700ca92969d42977a9597f5abb5195a73325db1c1, footer [140, 307)
+  group 0 page 0 @4, crc -196951075, slots/rows/nulls 7/4/3, flag False, rep [34, 36), def [36, 39), suffix [39, 55) -> 16 raw bytes
+  group 1 page 0 @55, crc -1503356008, slots/rows/nulls 109/4/4, flag default true, rep [84, 91), def [91, 102), suffix [102, 140) -> 420 raw bytes
+native-required-v2-snappy-crc.arrows SHA-256 f34a66ea88f43985d16f154bdd519e70f1aefdbe948cb9c1070a8cad7a5593f0, exact EOS [1168, 1176)
+native-required-v2-snappy-no-crc.arrows SHA-256 f34a66ea88f43985d16f154bdd519e70f1aefdbe948cb9c1070a8cad7a5593f0, exact EOS [1168, 1176)
+assembled-default-flag-v2-snappy.arrows SHA-256 f34a66ea88f43985d16f154bdd519e70f1aefdbe948cb9c1070a8cad7a5593f0, exact EOS [1168, 1176)
+mutated-raw-crc.parquet SHA-256 d6388248e87f7f5f478bf7ec38863b423aa4d878f8df615150ec537776b873d2
+raw-crc: group 0 page 0 @4; retained 0 original batches and no IPC bytes
+mutated-level-crc.parquet SHA-256 5a1419b9209fd1c054a9c383406a5e2993b3e2fc6be965597cb85dfdc658dbd2
+level-crc: group 1 page 0 @55; retained 1 original batch and no IPC bytes
+mutated-snappy-crc.parquet SHA-256 32640c629517abdee92721de4ecae329db1a9531b809eaf991287788600adfbd
+snappy-crc: group 1 page 0 @55; retained 1 original batch and no IPC bytes
+assembled-header-rows.parquet SHA-256 18499551323af2d3ff38f4bb6316d8be3f7b0c6dd2a87666c17864abffb9509a
+header-rows: group 1 page 0 @55; retained 1 original batch and no IPC bytes
+assembled-header-nulls.parquet SHA-256 ac02ee61d1a80807dffdc2e3fcb8be8e5bc68a0b5934bdaea19992caa16ea1cc
+header-nulls: group 1 page 0 @55; retained 1 original batch and no IPC bytes
+assembled-header-slots.parquet SHA-256 3cad1cb2b20d72930ea7bdd0d6ff4e6c2ff4930209f2a882785931dfe1eff0d0
+header-slots: group 1 page 0 @55; retained 1 original batch and no IPC bytes
+assembled-raw-flag.parquet SHA-256 cd412e8d9e9c5427a1326ebc2bff7104a3e26d75db7f8d38eaf90844cff7788c
+raw-flag: group 1 framing; retained 1 original batch and no IPC bytes
+assembled-bad-snappy.parquet SHA-256 394381747395207be298f372ada23317c0e8ace6d46b774f6ec40627a482ea4d
+bad-snappy: group 1 page 0 @55; retained 1 original batch and no IPC bytes
