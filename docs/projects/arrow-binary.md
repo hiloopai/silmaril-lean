@@ -39,3 +39,45 @@ with a zero-length data descriptor. The fixture SHA-256 is
 python scripts/arrow-binary/batch_fixture.py
 lake build --wfail Silmaril.Formats.Arrow.Binary.Examples Silmaril.Formats.Arrow.Binary.Axioms
 ```
+
+## Opt-in IPC streams
+
+Import `Silmaril.Formats.Arrow.Binary.Stream.Defs` for a complete V5 stream
+over the same one-field profile. Choose `.modern` for the continuation word
+and signed length, or `.legacy` for a single signed length word. The choice
+applies to the entire carrier:
+
+- Modern framing uses the eight-byte continuation prefix for messages and EOS.
+- Legacy framing uses a four-byte prefix, padded metadata ending at an
+  eight-byte body boundary, and a four-byte zero EOS.
+- The first frame is a bodyless Schema. Every subsequent nonterminal frame is a
+  RecordBatch under that same field declaration. Explicit EOS must exhaust the
+  carrier. A cut-off marker is a framing error, and any byte after the marker
+  is a trailing-bytes error.
+
+`Stream.openInput` validates the schema and returns a cursor over the original
+immutable carrier. `Cursor.next` returns one checked batch and its successor,
+or a terminal reply. Failures after open retain their typed cause, zero-based
+record ordinal and absolute prefix offset. `Stream.readAll` retains preceding
+successful batches on failure. `Stream.read` returns a complete observation
+after exact EOS. Both count empty RecordBatch messages against the stream batch
+limit. Metadata, row and body caps are per message and the cursor retains the
+whole input.
+
+`Stream.read_sound` links the exact field and ordered batches to their original
+frame ranges and the final EOS. `Stream.readAll_failed_prefix` links a failure
+to the corresponding pull, with an ordinal equal to the number of preceding
+batches. `Stream.next_suffix_error` gives the specific refusal at an EOS marker
+followed by extra bytes.
+
+The fixture script now independently writes and reopens both PyArrow 26.0.1
+profiles, including schema-only companions. The legacy stream SHA-256 is
+`aa065a17a00f75fed596fce07cbbd0018b623e7ceb02c955604a0d9aa539f125`.
+The Lean tests check exact octets, descriptor and original ranges in both
+profiles. Synthetic controls cover a late negative offset, short body, repeated
+Schema, short EOS, and trailing data.
+
+```sh
+python scripts/arrow-binary/batch_fixture.py
+lake build --wfail Silmaril.Formats.Arrow.Binary.Stream.Examples Silmaril.Formats.Arrow.Binary.Stream.Axioms
+```

@@ -10,10 +10,10 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "Silmaril/Formats/Arrow/Binary/Fixture.lean"
-EOS = b"\xff\xff\xff\xff\x00\x00\x00\x00"
+LEGACY_FIXTURE = ROOT / "Silmaril/Formats/Arrow/Binary/Stream/Fixture.lean"
 
 
-def produce():
+def produce(legacy=False):
     import pyarrow as pa
 
     if sys.byteorder != "little" or pa.__version__ != "26.0.1":
@@ -27,13 +27,16 @@ def produce():
     assert struct.unpack_from("<i", sliced.buffers()[1], 4)[0] == len(b"prefix")
     arrays = [sliced, *[pa.array(values, type=pa.binary()) for values in expected[1:]]]
     options = pa.ipc.IpcWriteOptions(metadata_version=pa.ipc.MetadataVersion.V5,
-                                     use_legacy_format=False, compression=None)
-    sink = pa.BufferOutputStream()
-    with pa.ipc.new_stream(sink, schema, options=options) as writer:
-        for array in arrays:
-            writer.write_batch(pa.record_batch([array], schema=schema))
-    wire = sink.getvalue().to_pybytes()
+                                     use_legacy_format=legacy, compression=None)
 
+    def emit(columns):
+        sink = pa.BufferOutputStream()
+        with pa.ipc.new_stream(sink, schema, options=options) as writer:
+            for array in columns:
+                writer.write_batch(pa.record_batch([array], schema=schema))
+        return sink.getvalue().to_pybytes()
+
+    wire = emit(arrays)
     reader = pa.ipc.open_stream(wire)
     assert reader.schema.equals(schema)
     assert [batch.column(0).to_pylist() for batch in reader] == expected
@@ -41,18 +44,27 @@ def produce():
     messages = list(pa.ipc.MessageReader.open_stream(wire))
     assert [message.type for message in messages] == ["schema"] + ["record batch"] * len(expected)
     schema_size = messages[0].metadata.size
-    assert struct.unpack_from("<II", wire) == (0xFFFFFFFF, schema_size)
-    offset = 8 + schema_size
+    marker = b"" if legacy else b"\xff" * 4
+    prefix_size = len(marker) + 4
+    assert wire[:prefix_size] == marker + struct.pack("<i", schema_size)
+    offset = prefix_size + schema_size
+    eos = marker + bytes(4)
+    assert emit([]) == wire[:offset] + eos
+    empty_reader = pa.ipc.open_stream(emit([]))
+    assert empty_reader.schema.equals(schema) and list(empty_reader) == []
     ranges = []
     for message in messages[1:]:
         metadata_size = message.metadata.size
         body_size = message.body.size
-        assert struct.unpack_from("<II", wire, offset) == (0xFFFFFFFF, metadata_size)
-        ranges.append((offset + 8, metadata_size, body_size))
-        offset += 8 + metadata_size + body_size
-    assert wire[offset:] == EOS
+        assert wire[offset:offset + prefix_size] == marker + struct.pack("<i", metadata_size)
+        assert (offset + prefix_size + metadata_size) % 8 == 0
+        ranges.append((offset + prefix_size, metadata_size, body_size))
+        offset += prefix_size + metadata_size + body_size
+    assert wire[offset:] == eos
 
-    print(f"PyArrow {pa.__version__} stream SHA-256 {hashlib.sha256(wire).hexdigest()}")
+    profile = "legacy prefix" if legacy else "continuation prefix"
+    topic = "Binary.Stream.Fixture" if legacy else "Binary.Fixture"
+    print(f"PyArrow {pa.__version__} {profile} SHA-256 {hashlib.sha256(wire).hexdigest()}")
     print(f"Metadata start, metadata size, body size: {ranges}")
     lean_ranges = ", ".join(f"({start}, {metadata}, {body})" for start, metadata, body in ranges)
     return f"""module
@@ -63,7 +75,7 @@ public import Silmaril.Prelude.Bytes.Defs
 
 @[expose] public section
 
-namespace Silmaril.Formats.Arrow.Binary.Fixture
+namespace Silmaril.Formats.Arrow.{topic}
 
 def stream : KBytes :=
   .leaf {len(wire)} 0x{int.from_bytes(wire, 'little'):x}
@@ -73,7 +85,7 @@ def schemaSize : Nat := {schema_size}
 def batches : List (Nat × Nat × Nat) :=
   [{lean_ranges}]
 
-end Silmaril.Formats.Arrow.Binary.Fixture
+end Silmaril.Formats.Arrow.{topic}
 """
 
 
@@ -81,11 +93,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true", help="regenerate the checked-in Lean fixture")
     args = parser.parse_args()
-    rendered = produce()
-    if args.write:
-        FIXTURE.write_text(rendered)
-    elif FIXTURE.read_text() != rendered:
-        raise SystemExit(f"fixture drift: {FIXTURE}")
+    for legacy, fixture in [(False, FIXTURE), (True, LEGACY_FIXTURE)]:
+        rendered = produce(legacy)
+        if args.write:
+            fixture.write_text(rendered)
+        elif fixture.read_text() != rendered:
+            raise SystemExit(f"fixture drift: {fixture}")
 
 
 if __name__ == "__main__":
