@@ -3,6 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Formats.Parquet.Page.Thms
 import Silmaril.Formats.Parquet.Page.Checksum.Thms
+import Silmaril.Formats.Parquet.Payload.Thms
 import Silmaril.Formats.Parquet.Hybrid.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Page
 
@@ -43,10 +44,10 @@ public theorem v2_levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {by
     obtain ⟨width, cap, countCap, bytesCap, wire⟩ := Hybrid.decode_ok_iff.mp decoded
     exact ⟨.encoded positive width cap countCap bytesCap wire, Hybrid.decode_length decoded⟩
 
-private theorem admitted {frame : Page.Frame} {remaining : Nat} {info : Page.DataV2}
-    (read : admitV2Page frame remaining = .ok info) :
+private theorem admitted {codec : ColumnCodec} {frame : Page.Frame} {remaining : Nat} {info : Page.DataV2}
+    (read : admitV2Page codec frame remaining = .ok info) :
     frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
-      frame.value.uncompressedSize = frame.value.compressedSize := by
+      (codec.v2 info = 0 → frame.value.uncompressedSize = frame.value.compressedSize) := by
   unfold admitV2Page at read
   split at read
   · rename_i original kind
@@ -60,7 +61,8 @@ private theorem admitted {frame : Page.Frame} {remaining : Nat} {info : Page.Dat
         · contradiction
         · rename_i count
           cases Except.ok.inj read
-          exact ⟨kind, Classical.not_not.mp encoding, Nat.le_of_not_gt count, Classical.not_not.mp sizes⟩
+          exact ⟨kind, Classical.not_not.mp encoding, Nat.le_of_not_gt count,
+            fun raw => Classical.byContradiction fun mismatch => sizes ⟨raw, mismatch⟩⟩
   · contradiction
 
 private theorem bytesAt_exact {source : Bytes} {span : Footer.Span}
@@ -113,10 +115,49 @@ private theorem certify_counts {leaf : Leaf} {start : State} {rowCeiling : Nat}
         exact ⟨Classical.not_not.mp first, Classical.not_not.mp rows, Classical.not_not.mp nulls,
           count, checked, wire, rfl⟩
 
-public theorem decodeV2Page_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+public theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf}
+    {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes}
+    (read : readV2Suffix limits codec leaf frame info stored = .ok raw) :
+    v2LevelBytes info ≤ frame.value.compressedSize ∧ v2LevelBytes info ≤ frame.value.uncompressedSize ∧
+      V2SuffixWire limits codec frame info stored raw := by
+  unfold readV2Suffix at read
+  dsimp only at read
+  split at read
+  · contradiction
+  · rename_i extent
+    have storedLevels : v2LevelBytes info ≤ frame.value.compressedSize := by omega
+    have rawLevels : v2LevelBytes info ≤ frame.value.uncompressedSize := by omega
+    refine ⟨storedLevels, rawLevels, ?_⟩
+    split at read
+    · rename_i uncompressed
+      split at read
+      · rename_i same
+        cases Except.ok.inj read
+        exact .raw uncompressed same
+      · contradiction
+    · rename_i notRaw
+      have snappy : codec.v2 info = 1 := by
+        cases codec <;> cases flag : info.isCompressed <;>
+          simp [ColumnCodec.v2, ColumnCodec.id, ScalarPage.v2Codec, Payload.Codec.id, flag] at *
+      split at read
+      · contradiction
+      · rename_i bounded
+        split at read
+        · contradiction
+        · obtain ⟨out, decoded, finished⟩ := bind_ok read
+          cases Except.ok.inj finished
+          obtain ⟨selected, id, model, before, _, after, _⟩ :=
+            Payload.decode_sound (from_mapError decoded)
+          have chosen : selected = .snappy := by
+            simpa [snappy, Payload.Codec.ofId] using id.symm
+          subst selected
+          exact .snappy snappy (by simpa using model) (by simpa using before)
+            (by simpa using after) (by omega)
+
+public theorem decodeV2Page_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeV2Page limits leaf source frame start remaining rowCeiling = .ok decoded) :
-    V2PageWire limits leaf source frame start remaining rowCeiling decoded := by
+    (read : decodeV2Page limits codec leaf source frame start remaining rowCeiling = .ok decoded) :
+    V2PageWire limits codec leaf source frame start remaining rowCeiling decoded := by
   unfold decodeV2Page at read
   obtain ⟨info, header, read⟩ := bind_ok read
   obtain ⟨checksum, checked, read⟩ := bind_ok read
@@ -129,31 +170,39 @@ public theorem decodeV2Page_wire {limits : Limits} {leaf : Leaf} {source : Bytes
     obtain ⟨defs, defRead, read⟩ := bind_ok read
     obtain ⟨repWire, repLength⟩ := v2_levels_wire (from_mapError repRead)
     obtain ⟨defWire, _⟩ := v2_levels_wire (from_mapError defRead)
+    obtain ⟨suffix, suffixRead, read⟩ := bind_ok read
+    obtain ⟨storedExtent, rawExtent, suffixWire⟩ := readV2Suffix_wire suffixRead
     obtain ⟨first, rows, nulls, count, observed, slots, closed⟩ := certify_counts repLength read
     obtain ⟨kind, encoding, cap, sizes⟩ := admitted header
-    exact ⟨info, spans, reps, defs, checksum, observed, kind, encoding, cap, sizes,
-      verified, split, v2_slices verified split, repWire, defWire, first, rows, nulls, count, slots, closed⟩
+    exact ⟨info, spans, reps, defs, checksum, observed, suffix, kind, encoding, cap, sizes,
+      storedExtent, rawExtent, verified, split, v2_slices verified split, repWire, defWire,
+      suffixWire, first, rows, nulls, count, slots, closed⟩
 
-public theorem decodeDataPage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+public theorem decodeDataPage_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeDataPage limits leaf source frame start remaining rowCeiling = .ok decoded) :
-    DataPageWire limits leaf source frame start remaining rowCeiling decoded := by
+    (read : decodeDataPage limits codec leaf source frame start remaining rowCeiling = .ok decoded) :
+    DataPageWire limits codec leaf source frame start remaining rowCeiling decoded := by
   unfold decodeDataPage at read
   split at read
   · exact .v2 (decodeV2Page_wire read)
-  · exact .v1 (decodePage_wire read)
+  · split at read
+    · rename_i plain
+      exact .v1 plain (decodePage_wire read)
+    · contradiction
+  · contradiction
 
-public theorem v2_accounting {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+public theorem v2_accounting {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (wire : V2PageWire limits leaf source frame start remaining rowCeiling decoded) :
-    ∃ info spans, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
+    (wire : V2PageWire limits codec leaf source frame start remaining rowCeiling decoded) :
+    ∃ info spans suffix, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
+      V2SuffixWire limits codec frame info (bytesAt source spans.values) suffix ∧
       decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
       decoded.levels.countP LevelSlot.startsRow = info.numRows ∧ absentSlots decoded = info.numNulls ∧
-      spans.values.stop - spans.values.start =
+      suffix.length =
         (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind ∧
       decoded.after.live = false := by
-  obtain ⟨info, spans, reps, _, _, checked, kind, _, _, _, _, split, slices, _, _, _,
-    rows, nulls, count, decodedWire, closed⟩ := wire.original
+  obtain ⟨info, spans, reps, _, _, checked, suffix, kind, _, _, _, _, _, _, split, _, _, _, suffixWire,
+    _, rows, nulls, count, decodedWire, closed⟩ := wire.original
   subst decoded
   change absentSlots checked = info.numNulls at nulls
   change checked.levels.length = info.numValues at count
@@ -169,25 +218,24 @@ public theorem v2_accounting {limits : Limits} {leaf : Leaf} {source : Bytes} {f
     simpa [List.count_eq_countP, absentSlots, Function.comp_def] using
       (List.length_eq_countP_add_countP LevelSlot.present (l := checked.levels)).symm
   have signedCount : words.length = info.numValues - info.numNulls := by omega
-  have suffixSize : (bytesAt source spans.values).length =
+  have suffixSize : suffix.length =
       (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind := by
     rw [← Bytes.length_toList, exactBytes, List.length_flatten, List.map_eq_replicate_iff.mpr widths,
       List.sum_replicate_nat, signedCount]
-  have extent := Bytes.length_of_slice? (slices spans.values (by simp))
-  exact ⟨info, spans, kind, split, count, aligned, rowCount, nulls,
-    by simpa only [Option.getD_some] using extent.symm.trans suffixSize, rfl⟩
+  exact ⟨info, spans, suffix, kind, split, suffixWire, count, aligned, rowCount, nulls, suffixSize, rfl⟩
 
-public theorem dataPage_counts {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
+public theorem dataPage_counts {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (wire : DataPageWire limits leaf source frame start remaining rowCeiling decoded) :
+    (wire : DataPageWire limits codec leaf source frame start remaining rowCeiling decoded) :
     start.slot + decoded.levels.length = decoded.after.slot ∧
       start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
   cases wire with
-  | v1 v1 =>
+  | v1 _ v1 =>
     obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, slots, _⟩ := v1.original
     exact slot_counts slots
   | v2 v2 =>
-    obtain ⟨_, _, _, _, _, checked, _, _, _, _, _, _, _, _, _, _, _, _, _, slots, final⟩ := v2.original
+    obtain ⟨_, _, _, _, _, checked, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, slots, final⟩ :=
+      v2.original
     subst decoded
     simpa only [closeV2] using slot_counts slots.slots
 

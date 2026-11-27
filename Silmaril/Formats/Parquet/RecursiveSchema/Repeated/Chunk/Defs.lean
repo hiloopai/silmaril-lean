@@ -2,8 +2,9 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Defs
+public import Silmaril.Formats.Parquet.ScalarPage.Defs
 
-/-! Checked unindexed UNCOMPRESSED PLAIN V1/V2 chunks, with at most one
+/-! Checked unindexed PLAIN V1/V2 chunks with Snappy suffixes in V2, at most one
 repeated ancestor and independent bounds on slots and row starts. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -28,6 +29,24 @@ def Unindexed (chunk : Footer.ColumnChunk) : Prop :=
 instance (chunk : Footer.ColumnChunk) : Decidable (Unindexed chunk) := by
   unfold Unindexed
   infer_instance
+
+/-- V1 is available only under the identity column codec. -/
+inductive ColumnCodec where
+  | uncompressed
+  | snappy
+  deriving DecidableEq, Repr
+
+def ColumnCodec.id : ColumnCodec → Int
+  | .uncompressed => Payload.Codec.uncompressed.id
+  | .snappy => Payload.Codec.snappy.id
+
+def ColumnCodec.ofId : Int → Option ColumnCodec
+  | 0 => some .uncompressed
+  | 1 => some .snappy
+  | _ => none
+
+def ColumnCodec.v2 (codec : ColumnCodec) (info : Page.DataV2) : Int :=
+  ScalarPage.v2Codec codec.id (some info.isCompressed)
 
 inductive BindCause where
   | missing
@@ -65,7 +84,8 @@ structure Binding {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   chunkAt : rowGroup.columns[column]? = some chunk
   path : chunk.metadata.pathInSchema = leaf.site.location.path
   physical : chunk.metadata.physicalType = leaf.kind.physical
-  codec : chunk.metadata.codec = 0
+  codec : ColumnCodec
+  originalCodec : ColumnCodec.ofId chunk.metadata.codec = some codec
   pageOffsets : chunk.metadata.dictionaryPageOffset = none ∧ chunk.metadata.indexPageOffset = none
   unindexed : Unindexed chunk
   counts : 0 ≤ chunk.metadata.numValues ∧ 0 ≤ rowGroup.numRows
@@ -102,7 +122,7 @@ public def bindChunk {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
   let ⟨⟨path, physical⟩⟩ ← check
     (metadata.pathInSchema = leaf.site.location.path ∧ metadata.physicalType = leaf.kind.physical)
     (fail .association)
-  let ⟨codec⟩ ← check (metadata.codec = 0) (fail (.codec metadata.codec))
+  let ⟨codec, originalCodec⟩ ← lookup (ColumnCodec.ofId metadata.codec) (fail (.codec metadata.codec))
   let encodings ← if admitted : snapshot.admitsPageLessRecursive rowGroup = true then
       pure (Sum.inl (PLift.up admitted))
     else do
@@ -118,7 +138,7 @@ public def bindChunk {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
     | .inr supported => do
       let ⟨span, original⟩ ← lookup (Page.columnSpan snapshot.footer.start metadata) (fail .span)
       pure (.framed span supported.down original)
-  return ⟨leaf, rowGroup, chunk, storage, leafAt, groupAt, chunkAt, path, physical, codec,
+  return ⟨leaf, rowGroup, chunk, storage, leafAt, groupAt, chunkAt, path, physical, codec, originalCodec,
     pageOffsets, unindexed, counts⟩
 
 @[expose] public section
@@ -157,6 +177,9 @@ inductive PageCause where
   | alignment (original : FlatPage.Error)
   | v2Encoding (actual : Int)
   | v2Extent
+  | v2SignedExtent (declared expected : Nat)
+  | payload (original : Payload.Error)
+  | v1Codec (original : Int)
   | v2RowBoundary (slot repetition : Nat)
   | v2Rows (declared actual : Nat)
   | v2Nulls (declared actual : Nat)
@@ -349,11 +372,11 @@ following V1 page from continuing a row that ended on a V2 page. -/
 def closeV2 (decoded : DecodedPage) : DecodedPage :=
   { decoded with after.live := false }
 
-def admitV2Page (frame : Page.Frame) (remaining : Nat) : Except PageCause Page.DataV2 :=
+def admitV2Page (codec : ColumnCodec) (frame : Page.Frame) (remaining : Nat) : Except PageCause Page.DataV2 :=
   match frame.value.kind with
   | .dataV2 info =>
     if info.encoding ≠ 0 then .error (.v2Encoding info.encoding)
-    else if frame.value.uncompressedSize ≠ frame.value.compressedSize then
+    else if codec.v2 info = 0 ∧ frame.value.uncompressedSize ≠ frame.value.compressedSize then
       .error (.header (.pageSizes frame.value.uncompressedSize frame.value.compressedSize))
     else if info.numValues > remaining then .error (.slotOverrun remaining info.numValues)
     else .ok info
@@ -372,47 +395,91 @@ def decodeV2Slots (leaf : Leaf) (info : Page.DataV2) (reps defs : List Nat) (suf
     if nulls ≠ info.numNulls then .error (.v2Nulls info.numNulls nulls)
     else .ok (closeV2 checked)
 
-/-- Decode a V2 frame from an UNCOMPRESSED chunk. A resolved compression
-flag uses the chunk codec, so either flag leaves this codec-zero suffix raw. -/
-def decodeV2Page (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
-  let info ← admitV2Page frame remaining
+def v2LevelBytes (info : Page.DataV2) : Nat :=
+  info.repetitionBytes + info.definitionBytes
+
+def v2ValueBounds (limits : Limits) (frame : Page.Frame) (info : Page.DataV2) : Payload.Bounds :=
+  let levels := v2LevelBytes info
+  ⟨frame.value.compressedSize - levels, limits.maxBodyBytes,
+    frame.value.uncompressedSize - levels, limits.maxBodyBytes - levels, 0⟩
+
+/-- Check both extents before subtracting the original raw level prefix.
+Only the independently bounded stored value suffix enters Snappy. -/
+def readV2Suffix (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
+    (frame : Page.Frame) (info : Page.DataV2) (stored : Bytes) : Except PageCause Bytes := do
+  let levels := v2LevelBytes info
+  let bounds := v2ValueBounds limits frame info
+  if levels > frame.value.compressedSize ∨ levels > frame.value.uncompressedSize then
+    throw .v2Extent
+  if codec.v2 info = 0 then
+    if stored.length = bounds.expectedSize then return stored
+    else throw .v2Extent
+  else
+    if frame.value.uncompressedSize > limits.maxBodyBytes then throw (.payload .outputLimit)
+    let expected := (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind
+    if bounds.expectedSize ≠ expected then throw (.v2SignedExtent bounds.expectedSize expected)
+    let decoded ← (Payload.decode bounds (codec.v2 info) stored.toList).mapError .payload
+    return Bytes.ofList decoded
+
+inductive V2SuffixWire (limits : Limits) (codec : ColumnCodec) (frame : Page.Frame)
+    (info : Page.DataV2) (stored : Bytes) : Bytes → Prop where
+  | raw : codec.v2 info = 0 → stored.length = (v2ValueBounds limits frame info).expectedSize →
+      V2SuffixWire limits codec frame info stored stored
+  | snappy {raw : Bytes} :
+      codec.v2 info = 1 →
+      Payload.Decodes (v2ValueBounds limits frame info).expectedSize .snappy stored.toList raw.toList →
+      stored.length = (v2ValueBounds limits frame info).compressedSize →
+      raw.length = (v2ValueBounds limits frame info).expectedSize →
+      frame.value.uncompressedSize ≤ limits.maxBodyBytes →
+      V2SuffixWire limits codec frame info stored raw
+
+/-- Verify CRC on the original body, decode the original level spans, and
+use the header's resolved flag and original column codec for the suffix. -/
+def decodeV2Page (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
+    (source : Bytes) (frame : Page.Frame) (start : State)
+    (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
+  let info ← admitV2Page codec frame remaining
   let _ ← (Page.Checksum.verify limits.maxBodyBytes source frame).mapError .checksum
   let some spans := frame.v2Spans | throw .v2Extent
   let reps ← (readV2Levels limits.levels leaf.maxRepetition info.numValues
     (bytesAt source spans.repetition)).mapError .repetition
   let defs ← (readV2Levels limits.levels leaf.maxDefinition info.numValues
     (bytesAt source spans.definition)).mapError .definition
-  decodeV2Slots leaf info reps defs (bytesAt source spans.values) start rowCeiling
+  let suffix ← readV2Suffix limits codec leaf frame info (bytesAt source spans.values)
+  decodeV2Slots leaf info reps defs suffix start rowCeiling
 
-structure V2PageWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
+structure V2PageWire (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (source : Bytes)
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
   original : ∃ (info : Page.DataV2) (spans : Page.V2Spans) (reps defs : List Nat)
-      (checksum : Page.Checksum.Status) (checked : DecodedPage),
+      (checksum : Page.Checksum.Status) (checked : DecodedPage) (suffix : Bytes),
     frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
-    frame.value.uncompressedSize = frame.value.compressedSize ∧
+    (codec.v2 info = 0 → frame.value.uncompressedSize = frame.value.compressedSize) ∧
+    v2LevelBytes info ≤ frame.value.compressedSize ∧ v2LevelBytes info ≤ frame.value.uncompressedSize ∧
     Page.Checksum.verify limits.maxBodyBytes source frame = .ok checksum ∧ frame.v2Spans = some spans ∧
     (∀ span ∈ [spans.repetition, spans.definition, spans.values],
       source.slice? span.start (some span.stop) = some (bytesAt source span)) ∧
     V2LevelWire limits.levels leaf.maxRepetition info.numValues (bytesAt source spans.repetition) reps ∧
     V2LevelWire limits.levels leaf.maxDefinition info.numValues (bytesAt source spans.definition) defs ∧
+    V2SuffixWire limits codec frame info (bytesAt source spans.values) suffix ∧
     reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absentSlots decoded = info.numNulls ∧
     decoded.levels.length = info.numValues ∧
-    DecodedWire leaf reps defs (bytesAt source spans.values) start rowCeiling checked ∧
-    decoded = closeV2 checked
+    DecodedWire leaf reps defs suffix start rowCeiling checked ∧ decoded = closeV2 checked
 
-def decodeDataPage (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage :=
+def decodeDataPage (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (source : Bytes)
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage :=
   match frame.value.kind with
-  | .dataV2 _ => decodeV2Page limits leaf source frame start remaining rowCeiling
-  | _ => decodePage limits leaf source frame start remaining rowCeiling
+  | .dataV2 _ => decodeV2Page limits codec leaf source frame start remaining rowCeiling
+  | .dataV1 _ =>
+    if codec = .uncompressed then decodePage limits leaf source frame start remaining rowCeiling
+    else .error (.v1Codec codec.id)
+  | kind => .error (.header (.pageKind kind))
 
-inductive DataPageWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
-  | v1 : PageWire limits leaf source frame start remaining rowCeiling decoded →
-      DataPageWire limits leaf source frame start remaining rowCeiling decoded
-  | v2 : V2PageWire limits leaf source frame start remaining rowCeiling decoded →
-      DataPageWire limits leaf source frame start remaining rowCeiling decoded
+inductive DataPageWire (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (source : Bytes)
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
+  | v1 : codec = .uncompressed → PageWire limits leaf source frame start remaining rowCeiling decoded →
+      DataPageWire limits codec leaf source frame start remaining rowCeiling decoded
+  | v2 : V2PageWire limits codec leaf source frame start remaining rowCeiling decoded →
+      DataPageWire limits codec leaf source frame start remaining rowCeiling decoded
 
 structure ObservedPage where
   start : Cursor
@@ -430,6 +497,7 @@ structure Carrier where
   address : Address
   slots : Nat
   rows : Nat
+  codec : ColumnCodec
 
 def initial (carrier : Carrier) : Cursor := ⟨0, carrier.span.start, {}⟩
 
@@ -448,7 +516,7 @@ def walk (limits : Limits) (carrier : Carrier) (budget : Nat) (cursor : Cursor)
     | fuel + 1 => do
       let frame ← (Page.readPage limits.framing carrier.bytes carrier.span cursor.byte).mapError
         (failed ∘ .framing)
-      let decoded ← (decodeDataPage limits carrier.leaf carrier.bytes frame cursor.state
+      let decoded ← (decodeDataPage limits carrier.codec carrier.leaf carrier.bytes frame cursor.state
         (carrier.slots - cursor.state.slot) carrier.rows).mapError failed
       let page : ObservedPage := ⟨cursor, frame, decoded⟩
       walk limits carrier fuel (cursor.advance page) (page :: reversed)
@@ -464,7 +532,14 @@ def carrierOf {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
     (binding : Binding schema group column) (span : Footer.Span) : Carrier :=
   ⟨snapshot.bytes, span, binding.leaf, ⟨group, column, binding.leaf.site.location.path⟩,
-    binding.chunk.metadata.numValues.toNat, binding.rowGroup.numRows.toNat⟩
+    binding.chunk.metadata.numValues.toNat, binding.rowGroup.numRows.toNat, binding.codec⟩
+
+/-- Parquet column sizes include each original header. The identity codec
+already checks that the footer size agrees with the stored span. -/
+def rawChunkBytes (carrier : Carrier) (pages : List ObservedPage) : Nat :=
+  if carrier.codec = .uncompressed then carrier.span.stop - carrier.span.start
+  else (pages.map fun page =>
+    page.frame.header.stop - page.frame.header.start + page.frame.value.uncompressedSize).sum
 
 def readFramed {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
@@ -477,9 +552,14 @@ def readFramed {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   else if bytes > limits.maxChunkBytes then .error (failed .chunkLimit)
   else if carrier.slots > limits.maxSlots then .error (failed (.slotLimit carrier.slots))
   else if carrier.rows > limits.maxRows then .error (failed (.rowLimit carrier.rows))
-  else if binding.chunk.metadata.totalUncompressedSize ≠ Int.ofNat bytes then
+  else if carrier.codec = .uncompressed ∧ binding.chunk.metadata.totalUncompressedSize ≠ Int.ofNat bytes then
     .error (failed (.uncompressedSize binding.chunk.metadata.totalUncompressedSize bytes))
-  else (walk limits carrier limits.framing.maxPages (initial carrier) []).map Observation.mk
+  else do
+    let pages ← walk limits carrier limits.framing.maxPages (initial carrier) []
+    let rawBytes := rawChunkBytes carrier pages
+    if binding.chunk.metadata.totalUncompressedSize ≠ Int.ofNat rawBytes then
+      throw (failed (.uncompressedSize binding.chunk.metadata.totalUncompressedSize rawBytes))
+    return ⟨pages⟩
 
 def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
@@ -493,7 +573,7 @@ inductive ChainWire (limits : Limits) (carrier : Carrier) : Cursor → Cursor �
   | more {start stop first rest} :
       Page.readPage limits.framing carrier.bytes carrier.span start.byte = .ok first.frame →
       first.start = start →
-      DataPageWire limits carrier.leaf carrier.bytes first.frame start.state
+      DataPageWire limits carrier.codec carrier.leaf carrier.bytes first.frame start.state
         (carrier.slots - start.state.slot) carrier.rows first.decoded →
       ChainWire limits carrier (start.advance first) stop rest →
       ChainWire limits carrier start stop (first :: rest)
@@ -507,7 +587,7 @@ structure FramedWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
   slotCap : binding.chunk.metadata.numValues.toNat ≤ limits.maxSlots
   rowCap : binding.rowGroup.numRows.toNat ≤ limits.maxRows
   pageCap : output.pages.length ≤ limits.framing.maxPages
-  uncompressed : binding.chunk.metadata.totalUncompressedSize = Int.ofNat (span.stop - span.start)
+  uncompressed : binding.chunk.metadata.totalUncompressedSize = Int.ofNat (rawChunkBytes (carrierOf binding span) output.pages)
   chain : ∃ stop : Cursor, stop.byte = span.stop ∧
     stop.state.slot = binding.chunk.metadata.numValues.toNat ∧
     stop.state.rows = binding.rowGroup.numRows.toNat ∧

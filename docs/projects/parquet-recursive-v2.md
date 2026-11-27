@@ -1,11 +1,12 @@
 # Checked recursive signed Parquet V2
 
-The original recursive chunk walk admits UNCOMPRESSED PLAIN Data Page
+The recursive chunk walk admits UNCOMPRESSED PLAIN Data Page
 V2 with signed INT32/INT64, required and optional Structs and the
 canonical three-level LIST schema. Each physical leaf has at most one
 repeated ancestor. The existing chunk binding requires codec
 UNCOMPRESSED and PLAIN/RLE encodings. It refuses dictionary pages,
-offset indexes and column indexes.
+offset indexes and column indexes. The same reader also admits
+[Snappy V2 value suffixes](parquet-recursive-v2-snappy.md).
 
 The header stores the raw repetition and definition section lengths.
 The reader uses the original absolute V2 spans in the order repetition,
@@ -51,7 +52,7 @@ three groups, including the zero-row group.
 Independent Thrift and level inspection matched 40 chunks and 98
 pages, including a labeled V1/V2 transition and a V2 header with an
 omitted compression flag. Six actual Lean IPC streams preserve the
-ordered native rows and exact EOS. Seventeen typed controls include
+ordered native rows and exact EOS. Sixteen typed controls include
 late count and CRC failures, malformed framing and lengths, excess
 level and value data, a V2 page starting mid-row and a V1 continuation
 after a V2 page. Direct Events retains the complete group prefix and

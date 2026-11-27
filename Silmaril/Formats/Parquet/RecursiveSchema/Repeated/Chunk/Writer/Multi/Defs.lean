@@ -82,7 +82,7 @@ def serialize (limits : Limits) (input : Input) : Except Error Packed :=
 
 def carrier (input : Input) (wire : Bytes) : Carrier :=
   ⟨wire, ⟨0, wire.length⟩, input.leaf, ⟨input.group, input.column, input.leaf.site.location.path⟩,
-    input.slots, input.rows⟩
+    input.slots, input.rows, .uncompressed⟩
 
 def frameAt (offset : Nat) (piece : Writer.Output) : Page.Frame :=
   let payload := offset + piece.page.headerBytes.length

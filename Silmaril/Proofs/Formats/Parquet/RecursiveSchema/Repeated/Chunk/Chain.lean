@@ -47,7 +47,7 @@ private theorem walk_wire {limits : Limits} {carrier : Carrier} {budget : Nat}
       cases parsed : Page.readPage limits.framing carrier.bytes carrier.span cursor.byte with
       | error reason => simp [parsed, Except.mapError, bind, Except.bind] at read
       | ok frame =>
-        cases decoded : decodeDataPage limits carrier.leaf carrier.bytes frame cursor.state
+        cases decoded : decodeDataPage limits carrier.codec carrier.leaf carrier.bytes frame cursor.state
             (carrier.slots - cursor.state.slot) carrier.rows with
         | error reason => simp [parsed, decoded, Except.mapError, bind, Except.bind] at read
         | ok output =>
@@ -112,13 +112,15 @@ private theorem readFramed_wire {schemaLimits : Snapshot.Limits} {snapshot : Sna
         · rename_i rows
           split at accepted
           · contradiction
-          · rename_i uncompressed
-            cases walked : walk limits (carrierOf binding span) limits.framing.maxPages
+          · cases walked : walk limits (carrierOf binding span) limits.framing.maxPages
                 (initial (carrierOf binding span)) [] with
-            | error reason => simp [walked, Except.map] at accepted
+            | error reason => simp [walked, Bind.bind, Except.bind] at accepted
             | ok pages =>
-              simp only [walked, Except.map, Except.ok.injEq] at accepted
-              subst output
+              simp only [walked, Bind.bind, Except.bind] at accepted
+              split at accepted
+              · contradiction
+              rename_i uncompressed
+              cases Except.ok.inj accepted
               obtain ⟨stop, cap, byteEnd, slotEnd, rowEnd, chain⟩ := walk_empty_prefix_wire walked
               obtain ⟨_, slotsExact, rowsExact⟩ := chain_counts chain
               have frames := chain_frames chain

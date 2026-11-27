@@ -57,31 +57,40 @@ theorem readV2Levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {bytes 
     V2LevelWire limits maximum count bytes levels ∧ levels.length = count :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2_levels_wire read
 
-/-- The V2 header, checksum, three original spans and decoded slots bind
-the exact row start, null count and signed-value observations. -/
-theorem decodeV2Page_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeV2Page limits leaf source frame start remaining rowCeiling = .ok decoded) :
-    V2PageWire limits leaf source frame start remaining rowCeiling decoded :=
+/-- The original value suffix is used raw or expands by the checked Snappy
+payload relation, after both header subtractions are shown in bounds. -/
+theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf}
+    {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes}
+    (read : readV2Suffix limits codec leaf frame info stored = .ok raw) :
+    v2LevelBytes info ≤ frame.value.compressedSize ∧ v2LevelBytes info ≤ frame.value.uncompressedSize ∧
+      V2SuffixWire limits codec frame info stored raw :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readV2Suffix_wire read
+
+/-- The V2 header, stored-body checksum, original spans and codec witness
+bind the exact classified slots to the decoded signed suffix. -/
+theorem decodeV2Page_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeV2Page limits codec leaf source frame start remaining rowCeiling = .ok decoded) :
+    V2PageWire limits codec leaf source frame start remaining rowCeiling decoded :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeV2Page_wire read
 
-/-- The exact original suffix contains one full signed word per
-non-null slot. The output cursor is closed at the V2 row boundary. -/
-theorem V2PageWire.accounting {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (wire : V2PageWire limits leaf source frame start remaining rowCeiling decoded) :
-    ∃ info spans, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
+/-- The decoded suffix contains one full signed word per non-null slot.
+The output cursor is closed at the V2 row boundary. -/
+theorem V2PageWire.accounting {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : V2PageWire limits codec leaf source frame start remaining rowCeiling decoded) :
+    ∃ info spans suffix, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
+      V2SuffixWire limits codec frame info (bytesAt source spans.values) suffix ∧
       decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
       decoded.levels.countP LevelSlot.startsRow = info.numRows ∧ absentSlots decoded = info.numNulls ∧
-      spans.values.stop - spans.values.start =
-        (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind ∧
+      suffix.length = (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind ∧
       decoded.after.live = false :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2_accounting wire
 
-theorem decodeDataPage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeDataPage limits leaf source frame start remaining rowCeiling = .ok decoded) :
-    DataPageWire limits leaf source frame start remaining rowCeiling decoded :=
+theorem decodeDataPage_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeDataPage limits codec leaf source frame start remaining rowCeiling = .ok decoded) :
+    DataPageWire limits codec leaf source frame start remaining rowCeiling decoded :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDataPage_wire read
 
 /-- The strict lower-level walk covers the supplied carrier span and
