@@ -11,7 +11,7 @@ public section
 
 namespace Silmaril.Formats.Parquet.MixedV1Writer.FromIpc.RoundTrip
 
-open Silmaril.Formats.Parquet
+open Silmaril.Formats Silmaril.Formats.Parquet
 open Silmaril.Formats.Parquet.Int32ByteArrayGroup
 open Silmaril.Formats.Relational.NamedTable
 
@@ -30,6 +30,29 @@ theorem read_roundTrip {source returned : MixedIpc.Limits} {sink : MixedV1Writer
     (carrier : output.len ≤ returned.inputBytes) :
     MixedIpc.read returned output = .ok observed :=
   Proofs.Formats.Parquet.MixedV1Writer.FromIpc.RoundTrip.read_roundTrip original forward groupLimits backward carrier
+
+/-- Ordered IPC readback follows an exact checked footer and the supplied
+logical rows at each original group ordinal. -/
+theorem read_of_indexed {returned : MixedIpc.Limits} {reverse : File.Limits}
+    {bytes : Bytes} {output : KBytes} {descriptor : MixedIpc.Descriptor}
+    {batches : List (List MixedIpc.Pair)} {span : Footer.Span} {metadata : Footer.Metadata}
+    {projection : Checked (field descriptor.integer) (field descriptor.binary)}
+    (opened : Int32ByteArrayGroup.openFile reverse.group bytes
+      (field descriptor.integer) (field descriptor.binary) = .ok projection)
+    (count : projection.snapshot.groupCount = batches.length)
+    (indexed : ∀ i : Fin batches.length,
+      projection.readGroup reverse.group i.val = .ok ((batches.get i).map toRow))
+    (footer : Footer.readFooter reverse.group.snapshot.footer bytes = .ok (span, metadata))
+    (schema : metadata.schema = FlatInt32Writer.Compact.schemaRoot 2 ::
+      (physicalOrder descriptor).columns
+        (MixedV1Writer.columnIndex (field descriptor.integer) ⟨0, 0⟩).schema
+        (MixedV1Writer.byteSchema (MixedV1Writer.columnIndex (field descriptor.binary) ⟨0, 0⟩)))
+    (backward : ToIpc.convertOrdered reverse returned.mixed bytes
+      (field descriptor.integer) (field descriptor.binary) = .ok output)
+    (carrier : output.len ≤ returned.inputBytes) :
+    MixedIpc.read returned output = .ok ⟨descriptor, batches⟩ :=
+  Proofs.Formats.Parquet.MixedV1Writer.FromIpc.RoundTrip.read_of_indexed
+    opened count indexed footer schema backward carrier
 
 /-- Both native conversions retain the exact descriptor and every batch through EOS.
 The original descriptor also fixes the actual Parquet leaf and chunk vectors.

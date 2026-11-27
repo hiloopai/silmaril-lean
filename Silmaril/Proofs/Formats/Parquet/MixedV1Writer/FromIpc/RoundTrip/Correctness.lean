@@ -124,6 +124,52 @@ private theorem group_exact (d : MixedIpc.Descriptor) (rows : List Row) :
     Arrow.MixedFlat.Writer.Order.pair, MixedIpc.Export.observePairs, MixedIpc.Descriptor.intField,
     MixedIpc.Descriptor.viewField, MixedIpc.FromParquet.groupPairs]
 
+theorem read_of_indexed {returned : MixedIpc.Limits} {reverse : File.Limits}
+    {bytes : Bytes} {output : KBytes} {descriptor : MixedIpc.Descriptor}
+    {batches : List (List MixedIpc.Pair)} {span : Footer.Span} {metadata : Footer.Metadata}
+    {projection : Checked (field descriptor.integer) (field descriptor.binary)}
+    (opened : Int32ByteArrayGroup.openFile reverse.group bytes
+      (field descriptor.integer) (field descriptor.binary) = .ok projection)
+    (count : projection.snapshot.groupCount = batches.length)
+    (indexed : ∀ i : Fin batches.length,
+      projection.readGroup reverse.group i.val = .ok ((batches.get i).map toRow))
+    (footer : Footer.readFooter reverse.group.snapshot.footer bytes = .ok (span, metadata))
+    (schema : metadata.schema = FlatInt32Writer.Compact.schemaRoot 2 ::
+      (physicalOrder descriptor).columns
+        (MixedV1Writer.columnIndex (field descriptor.integer) ⟨0, 0⟩).schema
+        (MixedV1Writer.byteSchema (MixedV1Writer.columnIndex (field descriptor.binary) ⟨0, 0⟩)))
+    (backward : ToIpc.convertOrdered reverse returned.mixed bytes
+      (field descriptor.integer) (field descriptor.binary) = .ok output)
+    (carrier : output.len ≤ returned.inputBytes) :
+    MixedIpc.read returned output = .ok ⟨descriptor, batches⟩ := by
+  obtain ⟨checked, groups, decoded, reverseOpen, reads, returnedOk, fields, observations, _⟩ :=
+    ToIpc.convertOrdered_readback backward
+  have sameProjection := File.openFile_projection reverseOpen
+  rw [opened] at sameProjection
+  have project := (Except.ok.inj sameProjection).symm
+  have ordered := mapM_range_exact (batches.map (List.map toRow))
+    (projection.readGroup reverse.group) (fun i => by
+      let index : Fin batches.length := ⟨i.val, by simpa using i.isLt⟩
+      simpa [index] using indexed index)
+  have readsExact : groups = batches.map (List.map toRow) := by
+    rw [project, count] at reads
+    simp only [List.length_map] at ordered
+    exact Except.ok.inj (reads.symm.trans ordered)
+  have snapshot := (File.openFile_snapshot reverseOpen).1
+  have checkedFooter := Snapshot.check_metadata snapshot footer
+  have order := selectedOrder_exact checked.projection ((congrArg Footer.Metadata.schema checkedFooter).trans schema)
+  rw [order, fields_exact] at fields
+  rw [order, readsExact] at observations
+  have exactBatches : decoded.batches.map Arrow.MixedFlat.StreamWriter.observeBatch =
+        batches.map (MixedIpc.Export.observePairs descriptor) := by
+    rw [observations]
+    calc
+      _ = (batches.map (List.map toRow)).map
+          (MixedIpc.Export.observePairs descriptor ∘ MixedIpc.FromParquet.groupPairs) :=
+        congrArg (fun f => (batches.map (List.map toRow)).map f) (funext (group_exact _))
+      _ = _ := by rw [← List.map_map, batches_exact]
+  exact MixedIpc.Export.read_of_observed carrier returnedOk fields exactBatches
+
 theorem read_roundTripOrdered {source returned : MixedIpc.Limits} {sink : MixedV1Writer.Multi.Limits}
     {reverse : File.Limits} {input output : KBytes} {parquet : MixedV1Writer.Multi.Encoded}
     {observed : MixedIpc.Prepared}
@@ -160,35 +206,9 @@ theorem read_roundTripOrdered {source returned : MixedIpc.Limits} {sink : MixedV
       MixedV1Writer.Multi.Input.byteIndex, intLabel, byteLabel]
   refine ⟨?_, metadata, footer, schema, ?_⟩
   · obtain ⟨projection, opened, count, indexed⟩ := emit_indexed_of_plan planned emitted
-    obtain ⟨checked, groups, decoded, reverseOpen, reads, returnedOk, fields, batches, _⟩ :=
-      ToIpc.convertOrdered_readback backward
-    have sameProjection := File.openFile_projection reverseOpen
-    rw [groupLimits, opened] at sameProjection
-    have project := (Except.ok.inj sameProjection).symm
-    have ordered := mapM_range_exact (observed.batches.map (List.map toRow))
-      (projection.readGroup sink.writer.readback) (fun i => by
-        let index : Fin observed.batches.length := ⟨i.val, by simpa using i.isLt⟩
-        simpa [index] using (indexed index).1)
-    have readsExact : groups = observed.batches.map (List.map toRow) := by
-      rw [project, count, groupLimits] at reads
-      simp only [List.length_map] at ordered
-      exact Except.ok.inj (reads.symm.trans ordered)
-    have snapshot := (File.openFile_snapshot reverseOpen).1
-    have checkedFooter := Snapshot.check_metadata snapshot (by rw [footerLimits]; exact footer)
-    have order := selectedOrder_exact checked.projection ((congrArg Footer.Metadata.schema checkedFooter).trans schema)
-    rw [order, fields_exact] at fields
-    rw [order, readsExact] at batches
-    have groupsExact := batches_exact observed.batches
-    have exactBatches :
-        decoded.batches.map Arrow.MixedFlat.StreamWriter.observeBatch =
-          observed.batches.map (MixedIpc.Export.observePairs observed.descriptor) := by
-      rw [batches]
-      calc
-        _ = (observed.batches.map (List.map toRow)).map
-            (MixedIpc.Export.observePairs observed.descriptor ∘ MixedIpc.FromParquet.groupPairs) :=
-          congrArg (fun f => (observed.batches.map (List.map toRow)).map f) (funext (group_exact _))
-        _ = _ := by rw [← List.map_map, groupsExact]
-    exact MixedIpc.Export.read_of_observed carrier returnedOk fields exactBatches
+    exact read_of_indexed (by rw [groupLimits]; exact opened) count
+      (fun i => by rw [groupLimits]; exact (indexed i).1)
+      (by rw [footerLimits]; exact footer) schema backward carrier
   · simp [metadata, MixedV1Writer.Multi.metadataOrdered, List.map_map, Function.comp_def]
 
 theorem read_roundTripSchemaOnly {source returned : MixedIpc.Limits} {sink : MixedV1Writer.Multi.Limits}
@@ -207,18 +227,7 @@ theorem read_roundTripSchemaOnly {source returned : MixedIpc.Limits} {sink : Mix
   rw [original] at read
   cases read
   obtain ⟨_, start, footer, projection, opened, zero⟩ := SchemaOnly.emit_checked emitted
-  obtain ⟨checked, groups, decoded, reverseOpen, reads, returnedOk, fields, batches, _⟩ :=
-    ToIpc.convertOrdered_readback backward
-  have sameProjection := File.openFile_projection reverseOpen
-  rw [groupLimits, opened] at sameProjection
-  have project := (Except.ok.inj sameProjection).symm
-  rw [project, zero] at reads
-  have groupsEmpty : groups = [] := Except.ok.inj reads.symm
-  have snapshot := (File.openFile_snapshot reverseOpen).1
-  have checkedFooter := Snapshot.check_metadata snapshot (by rw [footerLimits]; exact footer)
-  have order := selectedOrder_exact checked.projection (congrArg Footer.Metadata.schema checkedFooter)
-  rw [order, fields_exact] at fields
-  rw [groupsEmpty] at batches
-  exact ⟨MixedIpc.Export.read_of_observed carrier returnedOk fields batches, start, footer⟩
+  exact ⟨read_of_indexed (batches := []) (by rw [groupLimits]; exact opened) zero
+    (fun i => Fin.elim0 i) (by rw [footerLimits]; exact footer) rfl backward carrier, start, footer⟩
 
 end Silmaril.Proofs.Formats.Parquet.MixedV1Writer.FromIpc.RoundTrip

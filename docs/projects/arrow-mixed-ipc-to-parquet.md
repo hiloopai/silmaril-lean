@@ -43,6 +43,25 @@ The [unified oracle][combined-oracle] pins both shapes in either order,
 including zero batches, one empty batch and `[0, 2, 0, 1, 0]`. It checks
 late body truncation and missing EOS before sink admission.
 
+## Explicit page cuts
+
+`MixedV1Writer.FromIpc.Complete.PageCuts.convert source limits policy input`
+opts into the [multi-page Parquet writer][page-writer]. Its policy has one
+entry per batch in source order. Each entry supplies an INT32 slot-count
+list and a BYTE_ARRAY slot-count list, independent of physical field
+order. Positive counts must sum to the batch length in each column. An
+explicit zero-row batch takes `[0]` for each column. A schema-only stream
+takes an empty policy and uses the same footer-only writer.
+
+The converter admits the source through exact EOS before policy checks.
+Aggregate and per-column page limits bound the plan, and the native
+writer checks group, row, page and wire budgets before returning a
+carrier. The [cut and readback laws][cut-laws] prove exact reconstruction
+of both slot lists and of the ordered IPC observation through EOS, under
+the declared writer and reverse reader policies. The [oracle][cut-oracle]
+checks both field orders, uneven cuts, empty groups, wire caps and late
+source refusals with pinned PyArrow and Thrift.
+
 ## Original INT32-first adapter
 
 Source and sink limits are separate. The source applies the carrier,
@@ -77,3 +96,6 @@ python3.13 scripts/arrow-mixed-ipc-to-parquet-oracle/check.py --out /tmp/arrow-m
 [oracle]: ../../scripts/arrow-mixed-ipc-to-parquet-oracle/check.py
 [combined]: ../../Silmaril/Formats/Parquet/MixedV1Writer/FromIpc/Complete/Thms.lean
 [combined-oracle]: ../../scripts/arrow-mixed-parquet-schema-only-oracle/check.py
+[page-writer]: parquet-mixed-v1-multipage-writer.md
+[cut-laws]: ../../Silmaril/Formats/Parquet/MixedV1Writer/FromIpc/Complete/PageCuts/Thms.lean
+[cut-oracle]: ../../scripts/parquet-mixed-ipc-page-cuts-oracle/check.py
