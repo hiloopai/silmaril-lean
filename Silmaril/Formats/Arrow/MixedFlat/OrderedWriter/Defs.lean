@@ -216,26 +216,36 @@ def emitSchema (ipc : Arrow.Limits) (fields : List Field)
 
 /-- Frame checked records in the given order, including explicit zero-row
 records, then append the modern EOS. -/
-def serialize (limits : MixedFlat.Limits) (fields : List Field) (batches : List BatchInput)
-    (shape : List Field → Bool := fun _ => true) : Except Error KBytes := do
+def serializeWith (limits : MixedFlat.Limits) (fields : List Field) (batches : List BatchInput)
+    (admit : List Field → Bool) : Except Error KBytes := do
   let ipc := limits.observation.ipc
   if batches.length > ipc.batches then throw (.ipc (.limit .batches))
   (Body.checkBudget limits.observation fields.length (batches.map (·.rowCount)).sum).mapError .ipc
-  let header ← emitSchema ipc fields shape
+  let header ← emitSchemaWith ipc fields admit
   let records ← batches.zipIdx.mapM fun (batch, index) => do
     if batch.fields ≠ fields then throw (.record index .schemaMismatch)
-    let record ← (emitRecord limits batch shape).mapError (.record index)
+    let record ← (emitRecordWith limits batch admit).mapError (.record index)
     let frame := record.output
     return Arrow.StreamWriter.envelopeBytes frame.metadataBytes.len ++ (frame.metadataBytes ++ frame.body)
   return header ++ records.foldr (· ++ ·) Arrow.StreamWriter.eos
 
-/-- Certify the ordered fields and slots through the existing exact-EOS reader. -/
-def emit (limits : MixedFlat.Limits) (fields : List Field) (batches : List BatchInput)
-    (shape : List Field → Bool := fun _ => true) : Except Error KBytes := do
-  let wire ← serialize limits fields batches shape
+def serialize (limits : MixedFlat.Limits) (fields : List Field) (batches : List BatchInput)
+    (shape : List Field → Bool := fun _ => true) : Except Error KBytes :=
+  serializeWith limits fields batches (fun signature => shape signature && supported signature)
+
+/-- Opt in to an explicit flat profile for both Schema and RecordBatch
+emission. The existing exact-EOS reader certifies fields and ordered slots. -/
+def emitWith (limits : MixedFlat.Limits) (fields : List Field) (batches : List BatchInput)
+    (admit : List Field → Bool) : Except Error KBytes := do
+  let wire ← serializeWith limits fields batches admit
   let decoded ← (Stream.read limits wire).mapError .readback
   if decoded.fields = fields ∧ decoded.batches.map StreamWriter.observeBatch = batches.map BatchInput.observe then
     return wire
   else throw .readbackMismatch
+
+/-- Emit under the default ordered stream profile, with optional further restrictions. -/
+def emit (limits : MixedFlat.Limits) (fields : List Field) (batches : List BatchInput)
+    (shape : List Field → Bool := fun _ => true) : Except Error KBytes :=
+  emitWith limits fields batches (fun signature => shape signature && supported signature)
 
 end Silmaril.Formats.Arrow.MixedFlat.OrderedWriter

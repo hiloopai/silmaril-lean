@@ -1,6 +1,8 @@
 module
 
 public import Silmaril.Formats.Arrow.MixedFlat.OrderedWriter.Defs
+public import Silmaril.Formats.Arrow.MixedFlat.Stream.Events.Defs
+public import Mathlib.Data.List.Forall2
 import Silmaril.Proofs.Formats.Arrow.MixedFlat.OrderedWriter.Correctness
 import Silmaril.Formats.Arrow.BinaryView.Column.Writer.Thms
 
@@ -70,6 +72,42 @@ theorem record_wire {limits : MixedFlat.Limits} {input : BatchInput} (record : R
     Arrow.Writer.PackedWire record.output.body.toList 0 (record.columns.flatMap PhysicalColumn.parts)
       record.output.metadata.batch.buffers :=
   Proofs.Formats.Arrow.MixedFlat.OrderedWriter.record_wire record
+
+/-- An explicitly admitted stream recovers its ordered fields and exact nullable slots. -/
+theorem emitWith_readback {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
+    {batches : List BatchInput} {admit : List MixedFlat.Field → Bool} {wire : KBytes}
+    (written : emitWith limits fields batches admit = .ok wire) :
+    ∃ decoded, Stream.read limits wire = .ok decoded ∧ decoded.fields = fields ∧
+      decoded.batches.map StreamWriter.observeBatch = batches.map BatchInput.observe ∧
+      wire.wf = true ∧ ∃ start,
+        Stream.readSchemaFrame limits.observation.ipc wire = .ok (decoded.fields, start) ∧
+        Stream.BatchesWire limits wire decoded.fields limits.observation.ipc.batches 0 start decoded.batches :=
+  Proofs.Formats.Arrow.MixedFlat.OrderedWriter.emitWith_readback written
+
+/-- Decode the original Schema fields and locate EOS at the exact end of the emitted stream. -/
+theorem emitWith_schema_eos {limits : MixedFlat.Limits} {fields : List Field}
+    {batches : List BatchInput} {admit : List Field → Bool} {wire : KBytes}
+    (written : emitWith limits fields batches admit = .ok wire) :
+    ∃ (decoded : Stream.Observed) (size : Nat),
+      Stream.read limits wire = .ok decoded ∧
+      readEnvelope limits.observation.ipc wire 0 = .ok (.metadata size) ∧
+      MixedFlat.readSchema limits.observation.ipc (wire.slice 8 size) = .ok fields ∧
+      let eos := decoded.batches.foldl (fun _ batch => batch.range.next) (8 + size)
+      readEnvelope limits.observation.ipc wire eos = .ok .eos ∧ eos + 8 = wire.len :=
+  Proofs.Formats.Arrow.MixedFlat.OrderedWriter.emitWith_schema_eos written
+
+/-- The native pull reader returns aligned events in emitted batch order and reaches EOS. -/
+theorem emitWith_pull_exact {limits : MixedFlat.Limits} {fields : List Field}
+    {batches : List BatchInput} {admit : List Field → Bool} {wire : KBytes}
+    (written : emitWith limits fields batches admit = .ok wire) :
+    ∃ (decoded : Stream.Observed) (trace : Stream.Events.Trace (MixedFlat.Events.schema fields)),
+      Stream.read limits wire = .ok decoded ∧ decoded.fields = fields ∧
+      decoded.batches.map StreamWriter.observeBatch = batches.map BatchInput.observe ∧
+      Stream.Events.readAll limits wire = .ok ⟨MixedFlat.Events.schema fields, trace⟩ ∧
+      trace.termination = .eos ∧
+      List.Forall₂ (fun record => MixedFlat.Events.Agrees (MixedFlat.Events.schema fields) record.observed)
+        decoded.batches trace.batches :=
+  Proofs.Formats.Arrow.MixedFlat.OrderedWriter.emitWith_pull_exact written
 
 /-- The existing mixed reader recovers the ordered descriptors, nullable
 slots and explicit counts for every record through exact EOS. -/

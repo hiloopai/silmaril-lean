@@ -1,9 +1,12 @@
 module
 
 public import Silmaril.Formats.Arrow.MixedFlat.OrderedWriter.Defs
+public import Silmaril.Formats.Arrow.MixedFlat.Stream.Events.Defs
+public import Mathlib.Data.List.Forall2
 import Batteries.Data.List.Lemmas
 import Silmaril.Formats.Arrow.BinaryView.Column.Writer.Thms
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Thms
+import Silmaril.Formats.Arrow.MixedFlat.Stream.Events.Thms
 import Silmaril.Formats.Arrow.MixedFlat.Thms
 import Silmaril.Formats.Arrow.Writer.Thms
 
@@ -153,16 +156,16 @@ theorem record_wire {limits : MixedFlat.Limits} {input : BatchInput} (record : R
     rw [record.packed]
     exact Arrow.Writer.packBuffers_exact _ wf
 
-theorem emit_readback {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
-    {batches : List BatchInput} {shape : List MixedFlat.Field → Bool} {wire : KBytes}
-    (written : emit limits fields batches shape = .ok wire) :
+theorem emitWith_readback {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
+    {batches : List BatchInput} {admit : List MixedFlat.Field → Bool} {wire : KBytes}
+    (written : emitWith limits fields batches admit = .ok wire) :
     ∃ decoded, Stream.read limits wire = .ok decoded ∧ decoded.fields = fields ∧
       decoded.batches.map StreamWriter.observeBatch = batches.map BatchInput.observe ∧
       wire.wf = true ∧ ∃ start,
         Stream.readSchemaFrame limits.observation.ipc wire = .ok (decoded.fields, start) ∧
         Stream.BatchesWire limits wire decoded.fields limits.observation.ipc.batches 0 start decoded.batches := by
-  unfold emit at written
-  cases serialized : serialize limits fields batches shape with
+  unfold emitWith at written
+  cases serialized : serializeWith limits fields batches admit with
   | error => simp [serialized, Bind.bind, Except.bind] at written
   | ok bytes =>
     cases read : Stream.read limits bytes with
@@ -174,5 +177,57 @@ theorem emit_readback {limits : MixedFlat.Limits} {fields : List MixedFlat.Field
         cases written
         exact ⟨decoded, read, agrees.1, agrees.2, (Stream.read_iff limits _ decoded).mp read⟩
       · contradiction
+
+theorem emit_readback {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
+    {batches : List BatchInput} {shape : List MixedFlat.Field → Bool} {wire : KBytes}
+    (written : emit limits fields batches shape = .ok wire) :
+    ∃ decoded, Stream.read limits wire = .ok decoded ∧ decoded.fields = fields ∧
+      decoded.batches.map StreamWriter.observeBatch = batches.map BatchInput.observe ∧
+      wire.wf = true ∧ ∃ start,
+        Stream.readSchemaFrame limits.observation.ipc wire = .ok (decoded.fields, start) ∧
+        Stream.BatchesWire limits wire decoded.fields limits.observation.ipc.batches 0 start decoded.batches :=
+  emitWith_readback written
+
+private theorem batches_eos {limits : MixedFlat.Limits} {input : KBytes} {fields : List MixedFlat.Field}
+    {remaining rows start : Nat} {records : List Stream.Batch}
+    (checked : Stream.BatchesWire limits input fields remaining rows start records) :
+    let eos := records.foldl (fun _ batch => batch.range.next) start
+    readEnvelope limits.observation.ipc input eos = .ok .eos ∧ eos + 8 = input.len := by
+  induction checked with
+  | eos envelope atEnd => exact ⟨envelope, atEnd⟩
+  | next _ _ _ ih => exact ih
+
+theorem emitWith_schema_eos {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
+    {batches : List BatchInput} {admit : List MixedFlat.Field → Bool} {wire : KBytes}
+    (written : emitWith limits fields batches admit = .ok wire) :
+    ∃ (decoded : Stream.Observed) (size : Nat),
+      Stream.read limits wire = .ok decoded ∧
+      readEnvelope limits.observation.ipc wire 0 = .ok (.metadata size) ∧
+      MixedFlat.readSchema limits.observation.ipc (wire.slice 8 size) = .ok fields ∧
+      let eos := decoded.batches.foldl (fun _ batch => batch.range.next) (8 + size)
+      readEnvelope limits.observation.ipc wire eos = .ok .eos ∧ eos + 8 = wire.len := by
+  obtain ⟨decoded, read, fieldsEq, _, _, start, schemaRead, framed⟩ := emitWith_readback written
+  obtain ⟨size, prefixRead, schema, rfl⟩ :=
+    (Stream.readSchemaFrame_iff limits.observation.ipc wire decoded.fields start).mp schemaRead
+  exact ⟨decoded, size, read, prefixRead, fieldsEq ▸ schema, batches_eos framed⟩
+
+theorem emitWith_pull_exact {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
+    {batches : List BatchInput} {admit : List MixedFlat.Field → Bool} {wire : KBytes}
+    (written : emitWith limits fields batches admit = .ok wire) :
+    ∃ (decoded : Stream.Observed) (trace : Stream.Events.Trace (MixedFlat.Events.schema fields)),
+      Stream.read limits wire = .ok decoded ∧ decoded.fields = fields ∧
+      decoded.batches.map StreamWriter.observeBatch = batches.map BatchInput.observe ∧
+      Stream.Events.readAll limits wire = .ok ⟨MixedFlat.Events.schema fields, trace⟩ ∧
+      trace.termination = .eos ∧
+      List.Forall₂ (fun record => MixedFlat.Events.Agrees (MixedFlat.Events.schema fields) record.observed)
+        decoded.batches trace.batches := by
+  obtain ⟨decoded, read, fieldsEq, values, valid, start, schemaRead, _⟩ := emitWith_readback written
+  have admitted : Stream.Events.admit limits wire = .ok (fields, start) := by
+    simp [Stream.Events.admit, valid, schemaRead, fieldsEq, Except.mapError]
+  have exactPull := Stream.Events.readAll_exact limits wire
+  rw [admitted] at exactPull
+  simp only [read] at exactPull
+  obtain ⟨trace, pulled, _, eos, aligned⟩ := exactPull
+  exact ⟨decoded, trace, read, fieldsEq, values, pulled, eos, aligned⟩
 
 end Silmaril.Proofs.Formats.Arrow.MixedFlat.OrderedWriter

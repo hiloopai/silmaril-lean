@@ -244,6 +244,23 @@ count. The default ordered stream entry points retain their existing
 profile. The plain Utf8 guards interleave two plain columns with Int32
 and Utf8View, and verify the exact field order, descriptors and values.
 
+For a complete stream, pass that profile explicitly to
+`MixedFlat.OrderedWriter.emitWith`. For example, a caller with a
+declared `fields` list can pass `fun signature => signature == fields`
+to admit just that list. The writer checks the same profile at the
+Schema and RecordBatch boundaries. Plain Utf8 keeps its primitive
+descriptor, while Utf8View retains its view descriptor and count word.
+`emitWith_schema_eos` recovers the exact original Schema and end offset,
+and `emitWith_pull_exact` aligns the native pull trace, including empty
+batches, to the ordered input observations through EOS. The default
+`emit` and `serialize` still apply their original admission predicate.
+
+The pinned PyArrow stream oracle checks both producer directions for
+repeated plain Utf8 fields interleaved with both view kinds and Int32.
+It covers null, empty and multibyte strings, batch row counts of
+3, 0 and 2, a schema-only stream, and one explicit empty batch.
+[Plain Utf8 stream oracle](../../scripts/arrow-mixed-flat/plain_utf8_stream_oracle.py)
+
 [Definitions](../../Silmaril/Formats/Arrow/MixedFlat/OrderedWriter/Defs.lean) ·
 [Laws](../../Silmaril/Formats/Arrow/MixedFlat/OrderedWriter/Thms.lean) ·
 [Mixed-view oracle and hashes](../../scripts/arrow-ordered-view-writer/check.py) ·
