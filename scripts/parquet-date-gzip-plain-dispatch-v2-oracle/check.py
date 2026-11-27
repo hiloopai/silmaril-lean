@@ -78,6 +78,7 @@ def inspect_assembly(pa, pq, wire, parents, original, observed, expected, nullab
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert parquet.schema_arrow[ORDINAL] == pa.field(NAME, pa.date32(), nullable=nullable)
     assert [prior["read_group"](pa, parquet, NAME, i) for i in range(parquet.num_row_groups)] == expected
+    codecs = dict.fromkeys(parents, compression) if isinstance(compression, str) else compression
     result = []
     for index, group in enumerate(observed):
         label, source_index = group["source_group"]
@@ -85,8 +86,8 @@ def inspect_assembly(pa, pq, wire, parents, original, observed, expected, nullab
         original_start, original_stop = original[label][source_index]["span"]
         assert wire[start:stop] == parents[label][original_start:original_stop]
         column = parquet.metadata.row_group(index).column(ORDINAL)
-        assert column.compression == compression and column.total_compressed_size == stop - start
-        if label == "plain":
+        assert column.compression == codecs[label] and column.total_compressed_size == stop - start
+        if "dictionary" not in group:
             assert column.dictionary_page_offset is None and column.data_page_offset == start
             frames = list(prior["frames"](wire, column, support["THRIFT"]))
         else:
