@@ -575,3 +575,44 @@ existing two-way entry point's strict refusal.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Dispatch.V2.WithPlain.Checks
 python3 scripts/parquet-gzip-v2-three-way-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in Zstandard V2 PLAIN-only BinaryView
+
+`ByteArrayFallback.Zstd.Plain.V2.convert` selects one flat optional
+unannotated BYTE_ARRAY leaf. The shared traversal checks the original
+codec-6 chunk, offsets, aggregate extents, and row counts. A leading
+dictionary returns its original indexed refusal. Every admitted data
+frame is PLAIN V2 and the dictionary-page offset is absent.
+
+The callback verifies the stored Parquet CRC before preparing values,
+including the original raw definition-level prefix in that checksum.
+The definition extent fits both declared sizes. The original
+`is_compressed` flag selects either the exact literal suffix or one
+complete frame in the existing checked, dictionary-free Zstandard
+profile. Stored, expanded, window and command limits use the same
+Zstandard preparation as the DATE reader. The PLAIN value witness
+preserves exact opaque bytes and the original definition mask. The
+first source failure precedes native IPC admission, and successful
+footer-ordered BinaryView batches consume EOS.
+
+PyArrow 26.0.1 produces genuine dictionary-free files with and without
+page CRC. Thrift 0.25.0 observes flag sequences `[true, true, false]`
+and `[true, false]` on 65 and 33 rows. Independent RLE, zlib and libzstd
+1.5.7 check the raw levels, stored CRC, and exact frame boundary. PyArrow
+compares Lean IPC with its own source rows, including non-UTF-8, NUL,
+and empty and null values.
+
+Labeled controls corrupt original raw levels, alter a literal PLAIN
+length, append a second complete Zstandard frame, and mark an intact
+literal suffix as compressed. A zero window budget admits the original
+literal page and refuses the compressed page. Genuine V1 and dictionary
+sources exercise the strict gates.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Zstd/Plain/V2/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Zstd/Plain/V2/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-zstd-v2-plain-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Zstd.Plain.V2.Checks
+python3 scripts/parquet-zstd-v2-plain-binary-view-oracle/check.py "$(mktemp -d)"
+```

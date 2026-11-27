@@ -120,12 +120,9 @@ def inspect(wire, version, crc):
     return geometry
 
 
-def add_member(wire, frame):
+def append_payload(wire, frame, suffix):
     footer_start, footer = read_footer(wire)
     assert frame.stop == footer_start
-    # An independent RFC 1952 empty member, after the original complete member.
-    suffix = bytes.fromhex("1f8b080000000000000303000000000000000000")
-    assert expand(suffix) == b""
     fields = {**frame.fields, 3: (TType.I32, frame.fields[3][1] + len(suffix))}
     header = THRIFT["encode"](fields)
     header_delta = len(header) - (frame.body - frame.header)
@@ -138,6 +135,13 @@ def add_member(wire, frame):
     new_footer = THRIFT["encode"](footer)
     return (wire[:frame.header] + header + wire[frame.body:frame.stop] + suffix
             + new_footer + pack("<I", len(new_footer)) + b"PAR1")
+
+
+def add_member(wire, frame):
+    # An independent RFC 1952 empty member, after the original complete member.
+    suffix = bytes.fromhex("1f8b080000000000000303000000000000000000")
+    assert expand(suffix) == b""
+    return append_payload(wire, frame, suffix)
 
 
 def produce_fallback():
