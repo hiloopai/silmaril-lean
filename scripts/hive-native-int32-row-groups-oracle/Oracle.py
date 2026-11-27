@@ -16,7 +16,23 @@ EXPECTED = [
 ]
 
 
-def check(root, marker, encoded_marker, events):
+def check_ipc(path, names, groups):
+    data = path.read_bytes()
+    assert data.endswith(b"\xff\xff\xff\xff\x00\x00\x00\x00")
+    source = pa.BufferReader(data)
+    expected_schema = pa.schema([pa.field(name, pa.int32(), nullable=True) for name in names])
+    with pa.ipc.open_stream(source) as reader:
+        assert reader.schema.equals(expected_schema, check_metadata=True)
+        for batch, (_, _, _, count, key, slots) in zip(reader, groups, strict=True):
+            assert batch.schema.equals(expected_schema, check_metadata=True)
+            assert batch.num_rows == count
+            assert batch.column(0).to_pylist() == slots
+            if len(names) == 2:
+                assert batch.column(1).to_pylist() == [key] * count
+        assert source.tell() == len(data)
+
+
+def check(root, marker, encoded_marker, events, ipc):
     expected_paths = [f"key={encoded_marker if key is None else key}/part-0.parquet"
                       for key, _ in EXPECTED]
     paths = []
@@ -62,12 +78,16 @@ def check(root, marker, encoded_marker, events):
             return "null" if value is None else str(value)
 
         selected_paths = set(fragments)
+        groups = [batch for batch in observed_batches if str(root / batch[1]) in selected_paths]
         lines = []
-        for occurrence, path, group_index, count, key, slots in observed_batches:
-            if str(root / path) in selected_paths:
-                pairs = ",".join(f"{cell(slot)}:{cell(key)}" for slot in slots)
-                lines.append(f"{occurrence}\t{path}\t{group_index}\t{count}\t{pairs}")
+        for occurrence, path, group_index, count, key, slots in groups:
+            pairs = ",".join(f"{cell(slot)}:{cell(key)}" for slot in slots)
+            lines.append(f"{occurrence}\t{path}\t{group_index}\t{count}\t{pairs}")
         assert (root / "events.tsv").read_text(encoding="utf-8").splitlines() == lines + ["eos"]
+        if ipc:
+            check_ipc(root / "payload.arrows", ["payload"], groups)
+            check_ipc(root / "partitioned.arrows", ["payload", "key"], groups)
+            check_ipc(root / "empty.arrows", ["payload", "key"], [])
 
 
 def main():
@@ -76,13 +96,16 @@ def main():
     assert np.__version__ == "2.5.5"
     root = Path(sys.argv[1]).resolve()
     default = "__HIVE_DEFAULT_PARTITION__"
-    assert sys.argv[2:] in ([], ["--events"])
-    events = sys.argv[2:] == ["--events"]
-    check(root / "default", default, default, events)
-    check(root / "custom", "null/=", "null%2F%3D", events)
+    assert sys.argv[2:] in ([], ["--events"], ["--ipc"])
+    events = bool(sys.argv[2:])
+    ipc = sys.argv[2:] == ["--ipc"]
+    check(root / "default", default, default, events, ipc)
+    check(root / "custom", "null/=", "null%2F%3D", events, ipc)
     print("PyArrow matched eight files, sixteen groups, twenty-four ordered rows, and both pruned traces.")
     if events:
         print("PyArrow matched eight ordered tagged batches, their exact rows, and both EOS boundaries.")
+    if ipc:
+        print("PyArrow matched six IPC streams, sixteen record batches, and the exact nullable INT32 fields.")
 
 
 if __name__ == "__main__":

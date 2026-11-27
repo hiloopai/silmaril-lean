@@ -2,8 +2,9 @@ module
 
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Thms
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Thms
+import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.ToIpc.Thms
 import Silmaril.Formats.Parquet.Snapshot.Footer.Thms
-meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Defs
+meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.ToIpc.Defs
 
 namespace Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups
 
@@ -219,6 +220,67 @@ private def batchShape {schema : Scan.Schema String Unit} (result : Events.Trace
     batchShape projected == batchShape result && projected.rows.map (fun row => List.ofFn row) ==
       selected.map (fun (payload, key) => [key, payload, key])
 
+open FlatProjection.Composition
+
+private def ipcLimits : Arrow.MixedFlat.Limits := {}
+private def keyPosition : Fin partitions.toScan.width := (0 : Fin 1)
+
+private def convertIpc (options : PartitionPath.Options) (keys : List (Fin partitions.toScan.width))
+    (ipc : Arrow.MixedFlat.Limits) := Events.ToIpc.convert leaf partitions options decode policy limits keep keys ipc
+
+#guard Id.run do
+  let .ok files := make {} | return false
+  let .ok source := trace {} files | return false
+  let .ok wire := convertIpc {} [] ipcLimits files | return false
+  let .ok ⟨signature, pulled⟩ := Arrow.MixedFlat.Stream.Events.readAll ipcLimits wire | return false
+  let .eos := pulled.termination | return false
+  return List.ofFn (fun i => (signature.kind i).1) == [Events.ToIpc.field "payload"] &&
+    pulled.batches.map (·.rowCount) == [2, 1, 2, 1] &&
+    Ipc.readEvents ipcLimits wire == some (Events.ToIpc.observeTrace leaf partitions [] source)
+
+#guard Id.run do
+  let .ok files := make customMarker | return false
+  let .ok source := trace customMarker files | return false
+  let .ok wire := convertIpc customMarker [keyPosition] ipcLimits files | return false
+  let some observed := Ipc.readEvents ipcLimits wire | return false
+  return observed.fields == [Events.ToIpc.field "payload", Events.ToIpc.field "key"] &&
+    observed == Events.ToIpc.observeTrace leaf partitions [keyPosition] source
+
+#guard Id.run do
+  let .ok files := make {} | return false
+  let .ok wire := Events.ToIpc.convert leaf partitions {} decode policy limits (fun _ => none)
+    [keyPosition] ipcLimits files | return false
+  let some observed := Ipc.readEvents ipcLimits wire | return false
+  return observed.fields == [Events.ToIpc.field "payload", Events.ToIpc.field "key"] && observed.batches.isEmpty
+
+#guard Id.run do
+  let .ok (first :: skipped :: target :: rest) := make {} | return false
+  let .ok clean := convertIpc {} [keyPosition] ipcLimits (first :: skipped :: target :: rest) | return false
+  let some damaged := damage skipped 1 | return false
+  let .ok output := convertIpc {} [keyPosition] ipcLimits (first :: damaged :: target :: rest) | return false
+  return output.toList == clean.toList
+
+#guard Id.run do
+  let .ok files := make {} | return false
+  let denied := {ipcLimits with observation.ipc.batches := 0}
+  match convertIpc {} [] denied files with
+  | .error (.writer (.ipc (.limit .batches))) => return true
+  | _ => return false
+
+#guard Id.run do
+  let .ok (first :: skipped :: target :: rest) := make {} | return false
+  let some damaged := damage target 1 | return false
+  let denied := {ipcLimits with observation.ipc.batches := 0}
+  match convertIpc {} [keyPosition] denied (first :: skipped :: damaged :: rest) with
+  | .error (.scan (.file 2 path (.payload (.parquet (.decode 1 (.profile (.page (.header (.missingField 1))))))))) =>
+    return path == target.path
+  | _ => return false
+
+#guard match Events.ToIpc.convert leaf partitions {} decode {policy with rowsPerGroup := 0} limits keep []
+    {ipcLimits with observation.ipc.fields := 0} [] with
+  | .error (.scan (.policy .zeroRowsPerGroup)) => true
+  | _ => false
+
 #print axioms planCuts_exact
 #print axioms splitSlots_exact
 #print axioms readPayload_footer
@@ -234,6 +296,10 @@ private def batchShape {schema : Scan.Schema String Unit} (result : Events.Trace
 #print axioms Events.scanPruned_first_error
 #print axioms Events.Trace.project_positions
 #print axioms Events.Trace.project_finish
+
+#print axioms Events.ToIpc.fields_exact
+#print axioms Events.ToIpc.convert_readback
+#print axioms Events.ToIpc.convert_scan_error
 
 private def showCell (cell : Option Int32) : String := cell.map (fun value => toString value.toInt) |>.getD "null"
 
@@ -263,16 +329,31 @@ private def writeEvents (root : System.FilePath) (name : String) (options : Part
       toString batch.columns.rowCount, String.intercalate "," cells]
   IO.FS.writeFile (root / name / "events.tsv") (String.intercalate "\n" (batches ++ ["eos"]) ++ "\n")
 
+private def writeIpc (root : System.FilePath) (name : String) (options : PartitionPath.Options) : IO Unit := do
+  let .ok files := make options | throw (IO.userError "multi-group native emit failed")
+  let .ok payload := convertIpc options [] ipcLimits files | throw (IO.userError "payload IPC emit failed")
+  let .ok partitioned := convertIpc options [keyPosition] ipcLimits files | throw (IO.userError "partition IPC emit failed")
+  let .ok empty := Events.ToIpc.convert leaf partitions options decode policy limits (fun _ => none)
+    [keyPosition] ipcLimits files | throw (IO.userError "schema-only IPC emit failed")
+  let directory := root / name
+  IO.FS.writeBinFile (directory / "payload.arrows") payload.toByteArray
+  IO.FS.writeBinFile (directory / "partitioned.arrows") partitioned.toByteArray
+  IO.FS.writeBinFile (directory / "empty.arrows") empty.toByteArray
+
 public def main (args : List String) : IO Unit := do
-  let (root, events) ← match args with
-    | [root] => pure (root, false)
-    | ["events", root] => pure (root, true)
-    | _ => throw (IO.userError "expected a fixture output directory, optionally preceded by events")
+  let (root, mode) ← match args with
+    | [root] => pure (root, "")
+    | ["events", root] => pure (root, "events")
+    | ["ipc", root] => pure (root, "ipc")
+    | _ => throw (IO.userError "expected a fixture output directory, optionally preceded by events or ipc")
   writeFixture root "default" {}
   writeFixture root "custom" customMarker
-  if events then
+  if mode == "events" || mode == "ipc" then
     writeEvents root "default" {}
     writeEvents root "custom" customMarker
+  if mode == "ipc" then
+    writeIpc root "default" {}
+    writeIpc root "custom" customMarker
 
 end Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups
 

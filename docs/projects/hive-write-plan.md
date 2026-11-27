@@ -325,3 +325,32 @@ lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
 lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean events /tmp/hive-row-group-events
 python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-row-group-events --events
 ```
+
+### Native Arrow IPC from selected groups
+
+[`RowGroups.Events.ToIpc.convert`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Events/ToIpc/Defs.lean)
+finishes the partition-pruned scan before admitting IPC output. The narrow
+projection always writes the physical payload first. Optional typed
+partition positions supply nullable INT32 columns in caller order.
+The writer receives one record per selected group in trace order, with
+its explicit row count. File paths and group positions remain on the source
+trace. An entirely pruned manifest writes its selected schema and EOS.
+
+[`convert_readback`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Events/ToIpc/Thms.lean)
+uses the existing ordered writer and native pull laws to recover the exact
+fields, row counts and nullable slots through EOS. `convert_scan_error`
+preserves an admission or reached scan error before any writer budget is
+applied. A failed conversion returns its typed cause. The manifest writer,
+relational restore and native reader keep their existing interfaces.
+
+The pinned PyArrow replay opens the emitted IPC streams and compares each
+record with an independent read of its selected Parquet group in the
+existing fixtures. It checks nullable field declarations, record counts,
+values and exact carrier consumption for the payload-only, partition
+projection and schema-only streams under both marker profiles.
+
+```sh
+lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
+lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean ipc /tmp/hive-row-group-ipc
+python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-row-group-ipc --ipc
+```
