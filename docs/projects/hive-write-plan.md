@@ -389,3 +389,34 @@ lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
 lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean repeat /tmp/hive-row-group-repeat
 python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-row-group-repeat --repeat
 ```
+
+### Ordered IPC projection after partition restriction
+
+[`ToIpc.convertProjected`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Events/ToIpc/Projection/Defs.lean)
+selects from the wide payload/key layout. The wide width is exactly one
+plus the length of the supplied typed key list, including repeated keys.
+Each selected position is checked at that width. The output width is the
+selection length, and its field and cell order follows the selection.
+A zero-width selection still emits one record per selected group with its
+explicit row count. The original `convert` entry point retains its field
+order and wire bytes.
+
+[`convertProjected_readback_restrict`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Events/ToIpc/Projection/Thms.lean)
+composes stable group restriction with the existing native projection
+observation. The reached rejected payload hypothesis is the same as for
+tagged restriction. Both the wide and projected writes must succeed, and
+each pull read uses the limits of its own write. Through EOS, selecting
+positions of the decoded wide stream gives the exact ordered fields,
+nullable cells and counts of the direct projected stream. Repeated
+positions can increase the projected width and exhaust its writer cap.
+
+The pinned PyArrow oracle independently decodes the wide, repeated and
+zero-width streams for both null-marker profiles over the repeated
+manifest. It compares the projected output to positional selection of the
+wide readback and checks every group count even at width zero.
+
+```sh
+lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
+lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean projection /tmp/hive-ipc-projection
+python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-ipc-projection --projection
+```

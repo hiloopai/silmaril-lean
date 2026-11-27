@@ -16,20 +16,36 @@ EXPECTED = [
 ]
 
 
-def check_ipc(path, names, groups):
+def read_ipc(path, names):
     data = path.read_bytes()
     assert data.endswith(b"\xff\xff\xff\xff\x00\x00\x00\x00")
     source = pa.BufferReader(data)
     expected_schema = pa.schema([pa.field(name, pa.int32(), nullable=True) for name in names])
+    groups = []
     with pa.ipc.open_stream(source) as reader:
         assert reader.schema.equals(expected_schema, check_metadata=True)
-        for batch, (_, _, _, count, key, slots) in zip(reader, groups, strict=True):
+        for batch in reader:
             assert batch.schema.equals(expected_schema, check_metadata=True)
-            assert batch.num_rows == count
-            assert batch.column(0).to_pylist() == slots
-            if len(names) == 2:
-                assert batch.column(1).to_pylist() == [key] * count
+            groups.append((batch.num_rows, [column.to_pylist() for column in batch.columns]))
         assert source.tell() == len(data)
+    return groups
+
+
+def check_ipc(path, names, groups):
+    expected = [(count, [slots] if len(names) == 1 else [slots, [key] * count])
+                for _, _, _, count, key, slots in groups]
+    assert read_ipc(path, names) == expected
+
+
+def check_projection(root, retained):
+    names = ["payload", "key", "key"]
+    wide = read_ipc(root / "project-wide.arrows", names)
+    assert wide == [(count, [slots, [key] * count, [key] * count]) for _, _, _, count, key, slots in retained]
+    selected = [2, 0, 1, 2]
+    projected = read_ipc(root / "project-repeat.arrows", [names[i] for i in selected])
+    assert projected == [(count, [columns[i] for i in selected]) for count, columns in wide]
+    empty = read_ipc(root / "project-zero.arrows", [])
+    assert empty == [(count, []) for count, _ in wide]
 
 
 def event_lines(groups):
@@ -43,7 +59,7 @@ def event_lines(groups):
     return lines + ["eos"]
 
 
-def check_repeats(root, profile, paths, observed_batches, predicate):
+def check_repeats(root, profile, paths, observed_batches, predicate, projection):
     literal = (root / "repeat-paths.txt").read_text(encoding="utf-8").splitlines()
     repeated_paths = [str(root / path) for path in literal]
     assert repeated_paths == [paths[i] for i in (2, 1, 0, 2, 3, 0)]
@@ -61,9 +77,11 @@ def check_repeats(root, profile, paths, observed_batches, predicate):
     assert (root / "repeat-unpruned.tsv").read_text(encoding="utf-8").splitlines() == event_lines(whole)
     assert (root / "repeat-pruned.tsv").read_text(encoding="utf-8").splitlines() == event_lines(retained)
     check_ipc(root / "repeat.arrows", ["payload", "key"], retained)
+    if projection:
+        check_projection(root, retained)
 
 
-def check(root, marker, encoded_marker, events, ipc, repeats):
+def check(root, marker, encoded_marker, events, ipc, repeats, projection):
     expected_paths = [f"key={encoded_marker if key is None else key}/part-0.parquet"
                       for key, _ in EXPECTED]
     paths = []
@@ -113,7 +131,7 @@ def check(root, marker, encoded_marker, events, ipc, repeats):
             check_ipc(root / "partitioned.arrows", ["payload", "key"], groups)
             check_ipc(root / "empty.arrows", ["payload", "key"], [])
     if repeats:
-        check_repeats(root, profile, paths, observed_batches, predicate)
+        check_repeats(root, profile, paths, observed_batches, predicate, projection)
 
 
 def main():
@@ -122,12 +140,13 @@ def main():
     assert np.__version__ == "2.5.5"
     root = Path(sys.argv[1]).resolve()
     default = "__HIVE_DEFAULT_PARTITION__"
-    assert sys.argv[2:] in ([], ["--events"], ["--ipc"], ["--repeat"])
+    assert sys.argv[2:] in ([], ["--events"], ["--ipc"], ["--repeat"], ["--projection"])
     events = bool(sys.argv[2:])
-    repeats = sys.argv[2:] == ["--repeat"]
+    projection = sys.argv[2:] == ["--projection"]
+    repeats = projection or sys.argv[2:] == ["--repeat"]
     ipc = repeats or sys.argv[2:] == ["--ipc"]
-    check(root / "default", default, default, events, ipc, repeats)
-    check(root / "custom", "null/=", "null%2F%3D", events, ipc, repeats)
+    check(root / "default", default, default, events, ipc, repeats, projection)
+    check(root / "custom", "null/=", "null%2F%3D", events, ipc, repeats, projection)
     print("PyArrow matched eight files, sixteen groups, twenty-four ordered rows, and both pruned traces.")
     if events:
         print("PyArrow matched eight ordered tagged batches, their exact rows, and both EOS boundaries.")
@@ -135,6 +154,8 @@ def main():
         print("PyArrow matched six IPC streams, sixteen record batches, and the exact nullable INT32 fields.")
     if repeats:
         print("PyArrow matched 24 unpruned groups and 16 restricted groups and IPC records across both repeat fixtures.")
+    if projection:
+        print("PyArrow matched six more IPC streams and 48 records across wide, repeated and zero-width projections.")
 
 
 if __name__ == "__main__":

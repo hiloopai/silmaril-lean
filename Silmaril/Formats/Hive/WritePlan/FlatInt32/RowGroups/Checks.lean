@@ -4,9 +4,11 @@ import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Thms
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Thms
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.ToIpc.Thms
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Pruning.Thms
+import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.ToIpc.Projection.Thms
 import Silmaril.Formats.Parquet.Snapshot.Footer.Thms
 meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.ToIpc.Defs
 meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Pruning.Defs
+meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.ToIpc.Projection.Defs
 
 namespace Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups
 
@@ -355,6 +357,46 @@ private def repeatFiles : List File → Option (List File)
   let .error expected := reference.result | return false
   return actual == expected && pruned.batches.isEmpty && reference.batches.isEmpty
 
+private def wideKeys : List (Fin partitions.toScan.width) := [keyPosition, keyPosition]
+private def repeatedSelection : List (Fin 3) := [2, 0, 1, 2]
+
+private def projectIpc (options : PartitionPath.Options) (selection : List (Fin 3))
+    (limitsIpc : Arrow.MixedFlat.Limits) :=
+  Events.ToIpc.convertProjected leaf partitions options decode policy limits keep wideKeys selection limitsIpc
+
+#guard Id.run do
+  let .ok original := make customMarker | return false
+  let some files := repeatFiles original | return false
+  let .ok wideWire := convertIpc customMarker wideKeys ipcLimits files | return false
+  let .ok projectedWire := projectIpc customMarker repeatedSelection ipcLimits files | return false
+  let some wide := Ipc.readEvents ipcLimits wideWire | return false
+  let some projected := Ipc.readEvents ipcLimits projectedWire | return false
+  return wide.fields.map (·.name) == ["payload", "key", "key"] &&
+    projected.fields.map (·.name) == ["key", "payload", "key", "key"] &&
+    projected.batches.map Prod.fst == [2, 1, 2, 1, 2, 1, 2, 1] &&
+    Ipc.projectEvents (repeatedSelection.map Fin.val) wide == some projected &&
+    (Ipc.projectEvents [3] wide).isNone
+
+#guard Id.run do
+  let .ok original := make {} | return false
+  let some files := repeatFiles original | return false
+  let zeroFields := {ipcLimits with observation.ipc.fields := 0}
+  let .ok wideWire := convertIpc {} wideKeys ipcLimits files | return false
+  let .ok projectedWire := projectIpc {} [] zeroFields files | return false
+  let some wide := Ipc.readEvents ipcLimits wideWire | return false
+  let some projected := Ipc.readEvents zeroFields projectedWire | return false
+  return projected.fields.isEmpty && projected.batches.all (fun batch => batch.2.isEmpty) &&
+    projected.batches.map Prod.fst == [2, 1, 2, 1, 2, 1, 2, 1] && Ipc.projectEvents [] wide == some projected
+
+-- Repeated output positions can exhaust a cap that admits the input layout.
+#guard Id.run do
+  let .ok files := make {} | return false
+  let threeFields := {ipcLimits with observation.ipc.fields := 3}
+  let .ok _ := convertIpc {} wideKeys threeFields files | return false
+  match projectIpc {} repeatedSelection threeFields files with
+  | .error (.writer (.ipc (.limit .fields))) => return true
+  | _ => return false
+
 #print axioms planCuts_exact
 #print axioms splitSlots_exact
 #print axioms readPayload_footer
@@ -376,6 +418,11 @@ private def repeatFiles : List File → Option (List File)
 #print axioms Events.ToIpc.convert_scan_error
 #print axioms Events.scanPruned_eq_restrict
 #print axioms Events.ToIpc.convert_readback_restrict
+#print axioms Events.ToIpc.convertAt_readback
+#print axioms Events.ToIpc.fields_width
+#print axioms Events.ToIpc.projected_fields_width
+#print axioms Events.ToIpc.project_observeTrace
+#print axioms Events.ToIpc.convertProjected_readback_restrict
 
 private def showCell (cell : Option Int32) : String := cell.map (fun value => toString value.toInt) |>.getD "null"
 
@@ -431,24 +478,40 @@ private def writeRepeat (root : System.FilePath) (name : String) (options : Part
   writeTrace (directory / "repeat-pruned.tsv") pruned
   IO.FS.writeBinFile (directory / "repeat.arrows") wire.toByteArray
 
+private def writeProjection (root : System.FilePath) (name : String) (options : PartitionPath.Options) : IO Unit := do
+  let .ok original := make options | throw (IO.userError "multi-group native emit failed")
+  let some files := repeatFiles original | throw (IO.userError "unexpected projection fixture file layout")
+  let .ok wide := convertIpc options wideKeys ipcLimits files | throw (IO.userError "wide IPC emit failed")
+  let .ok projected := projectIpc options repeatedSelection ipcLimits files | throw (IO.userError "projected IPC emit failed")
+  let .ok empty := projectIpc options [] {ipcLimits with observation.ipc.fields := 0} files |
+    throw (IO.userError "zero-width IPC emit failed")
+  let directory := root / name
+  IO.FS.writeBinFile (directory / "project-wide.arrows") wide.toByteArray
+  IO.FS.writeBinFile (directory / "project-repeat.arrows") projected.toByteArray
+  IO.FS.writeBinFile (directory / "project-zero.arrows") empty.toByteArray
+
 public def main (args : List String) : IO Unit := do
   let (root, mode) ← match args with
     | [root] => pure (root, "")
     | ["events", root] => pure (root, "events")
     | ["ipc", root] => pure (root, "ipc")
     | ["repeat", root] => pure (root, "repeat")
-    | _ => throw (IO.userError "expected a fixture output directory, optionally preceded by events, ipc or repeat")
+    | ["projection", root] => pure (root, "projection")
+    | _ => throw (IO.userError "expected a fixture output directory, optionally preceded by events, ipc, repeat or projection")
   writeFixture root "default" {}
   writeFixture root "custom" customMarker
-  if mode == "events" || mode == "ipc" || mode == "repeat" then
+  if mode == "events" || mode == "ipc" || mode == "repeat" || mode == "projection" then
     writeEvents root "default" {}
     writeEvents root "custom" customMarker
-  if mode == "ipc" || mode == "repeat" then
+  if mode == "ipc" || mode == "repeat" || mode == "projection" then
     writeIpc root "default" {}
     writeIpc root "custom" customMarker
-  if mode == "repeat" then
+  if mode == "repeat" || mode == "projection" then
     writeRepeat root "default" {}
     writeRepeat root "custom" customMarker
+  if mode == "projection" then
+    writeProjection root "default" {}
+    writeProjection root "custom" customMarker
 
 end Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups
 
