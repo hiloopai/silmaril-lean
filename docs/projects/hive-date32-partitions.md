@@ -112,3 +112,29 @@ docker run --rm --network host --platform linux/amd64 \
     python -m pip install --require-hashes -r /tmp/requirements.txt
     python -I /repo/scripts/hive-date32-render-oracle/Oracle.py /out'
 ```
+
+## Checked named-table manifest round trip
+
+[`Date32.emitManifest` and `Date32.restoreManifest`](../../Silmaril/Formats/Hive/Date32/Manifest/Defs.lean)
+fix the writer and reader to this DATE codec and the existing bounded
+row-group INT32 profile. The named source has the physical leaf first
+and the single nullable DATE partition column second. On successful
+emission, restoration with the same key, path options and row-group
+policy returns the exact original typed rows grouped by first-seen
+directory, with source-relative row order within each directory. The
+grouped order can differ from the original interleaving. The manifest
+law also certifies each literal path, cut vector and decoded slot list.
+
+The source name and schema are checked before routing. After a valid
+source and prefix, a present date equal to the marker reports the
+original row index and key before cut or file admission, yielding no
+manifest value. Restore visits supplied occurrences in order, including
+duplicate paths. A reached path or DATE binding error retains its
+original literal path, occurrence index and typed cause, before opening
+the payload for that occurrence. See the [public manifest laws](../../Silmaril/Formats/Hive/Date32/Manifest/Thms.lean).
+
+The outbound fixture driver above uses these manifest entry points to
+emit and restore the same nine native files. The additional controls
+check missing and mismatched sources, routing precedence over an invalid
+cut policy, duplicate occurrences, alternate URI spelling, an empty
+manifest, and late path and DATE failures with unreadable payloads.

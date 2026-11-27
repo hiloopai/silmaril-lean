@@ -1,8 +1,10 @@
 module
 
 import Silmaril.Formats.Hive.Date32.Render.Thms
+import Silmaril.Formats.Hive.Date32.Manifest.Thms
 import Silmaril.Formats.Hive.Date32.Thms
 meta import Silmaril.Formats.Hive.Date32.Render.Defs
+meta import Silmaril.Formats.Hive.Date32.Manifest.Defs
 
 namespace Silmaril.Formats.Hive.Date32
 
@@ -56,10 +58,10 @@ private def dbOf (key : String) (rows : List Row) : Database String := fun name 
   else none
 
 private def emit (key : String) (options : PartitionPath.Options) (rows : List Row) :=
-  WritePlan.FlatInt32.RowGroups.emit (dbOf key rows) "source" leaf (partition key) options encode policy limits
+  emitManifest (dbOf key rows) "source" leaf key options policy limits
 
 private def restore (key : String) (options : PartitionPath.Options) (files : List File) :=
-  (WritePlan.FlatInt32.RowGroups.restore leaf (partition key) options convert policy limits files).map fun rows =>
+  (restoreManifest leaf key options policy limits files).map fun rows =>
     rows.map fun row => (TypedPartitions.physicalCells (schema := partition key) row (0 : Fin 1),
       TypedPartitions.partitionCells (physical := physical leaf) row (0 : Fin 1))
 
@@ -96,12 +98,59 @@ private def markerRows : List Row := [(some 10, none), (some 11, some 11017)]
   | .error (.source (.routing (.row 2 (.render (.nullMarkerCollision "day"))))) => true
   | _ => false
 
+#guard match emitManifest (dbOf "day" standardRows) "missing" leaf "day" {} policy limits,
+    emitManifest (dbOf "day" standardRows) "source" "different" "day" {} policy limits with
+  | .error (.source .missingName), .error (.source .schemaMismatch) => true
+  | _, _ => false
+
+#guard match emitManifest (dbOf "day" (markerRows ++ [(none, some 11016)])) "source" leaf "day"
+    dateMarker {policy with rowsPerGroup := 0} limits with
+  | .error (.source (.routing (.row 2 (.render (.nullMarkerCollision "day"))))) => true
+  | _ => false
+
+#guard Id.run do
+  let .ok (first :: rest) := emit "day" {} standardRows | return false
+  return (restore "day" {} (first :: first :: rest)).toOption ==
+    some (standardGrouped.take 3 ++ standardGrouped)
+
+#guard Id.run do
+  let .ok (first :: rest) := emit "day" {} standardRows | return false
+  let escaped := {first with path := "%64ay=2024%2D02%2d29/part-0.parquet"}
+  return (restore "day" {} (escaped :: rest)).toOption == some standardGrouped
+
+#guard Id.run do
+  let .ok [] := emit "day" {} [] | return false
+  return (restore "day" {} []).toOption == some []
+
+-- The original occurrence, literal path and lexical cause survive an unreadable payload.
+#guard Id.run do
+  let .ok (first :: rest) := emit "day" {} standardRows | return false
+  let bad := {first with path := "../" ++ first.path, bytes := ⟨ByteArray.empty⟩}
+  match restoreManifest leaf "day" {} policy limits (first :: bad :: rest) with
+  | .error (.file 1 path (.path (.path reported .invalidSegment))) =>
+    return path == bad.path && reported == bad.path
+  | _ => return false
+
+#guard Id.run do
+  let .ok (first :: rest) := emit "day" {} standardRows | return false
+  let directory := "%64ay=2024%2D02%2d30"
+  let bad := {first with path := directory ++ "/part-0.parquet", bytes := ⟨ByteArray.empty⟩}
+  match restoreManifest leaf "day" {} policy limits (first :: bad :: rest) with
+  | .error (.file 1 path (.partition (.binding reported (.conversion "day" (.invalidDate "2024-02-30"))))) =>
+    return path == bad.path && reported == directory
+  | _ => return false
+
 #print axioms decodeDirectory_singleton
 #print axioms encodeText_ok_iff
 #print axioms encode_convert_leftInverse
 #print axioms encodeText_outside
 #print axioms decodeDirectory_renderDirectory
 #print axioms renderDirectory_markerCollision
+
+#print axioms restoreManifest_emitManifest
+#print axioms emitManifest_source_error
+#print axioms emitManifest_first_markerCollision
+#print axioms restoreManifest_first_binding_error
 
 private def writeFixture (root : System.FilePath) (name key : String) (options : PartitionPath.Options)
     (input grouped : List Row) : IO Unit := do
