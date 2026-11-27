@@ -1,0 +1,14 @@
+{
+  "native-plain.parquet": "53b861603088d2dd012bf65db6f997156a4c9f9f2aa03db73c7c1d067fa6f02e",
+  "native-dictionary.parquet": "870056c268e2a86415d98c22f08218b225b41c45b9ba4f339516a92ce8ec906f",
+  "native-fallback.parquet": "50bd0b31e1d3de4035b6010fb88cb9c6c6c8d0921c2018e07f72d20473d2dd5e",
+  "assembled-mixed.parquet": "87bcb0892959646045f2309204b6d6f4adfdd40a3aea1fbacf8b071e15063930",
+  "assembled-bad-plain-crc.parquet": "c4cc175112abd70a60fa49ad3b064715532a606b82ea2d2564badf87b4865c36",
+  "assembled-bad-dictionary-crc.parquet": "1bfe74b58f193c012d5a160f4ce198e6b913d0b122a431305e0332eb8d00a07b",
+  "assembled-double-crc.parquet": "1505dd14068f97101b808cb863fdfd8bb15873f4bceb1b067630f5df821b483a",
+  "assembled-reentry.parquet": "c7c4b3a324b67d30a97d45b8a0c6fb2fc71b79dea7732edb6feddf36e9594806",
+  "native-plain.arrows": "c2b5ae529c0e570d390c1e4065f6d06fbf3b9cf493ef590941cd419cfd7f2a58",
+  "native-dictionary.arrows": "832f6020ad809bbc63843753388224b274a7acc1c9fc92f0fd7b4aa986092705",
+  "native-fallback.arrows": "8e260d3341535358123378ca9e2b4e6d35b95b6ca970bf7a435cf86aaa47aa76",
+  "assembled-mixed.arrows": "14b117ffee6349d7ae62c9effd0cfc2046aef5aa4f5a91882b49b74916a0ca82"
+}

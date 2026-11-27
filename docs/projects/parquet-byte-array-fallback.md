@@ -533,3 +533,45 @@ two-way dispatcher continues to refuse the dictionary-free source.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Plain.V2.Checks
 python3 scripts/parquet-gzip-v2-plain-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in three-way GZIP V2 BinaryView dispatch
+
+`ByteArrayFallback.Gzip.Dispatch.V2.WithPlain.convert` selects one flat
+optional unannotated BYTE_ARRAY leaf. The shared traversal frames each
+original codec-2 chunk once. A leading dictionary selects the existing
+dictionary-backed tag test. A V2 PLAIN header within that list selects
+fallback, and the other dictionary-backed lists select dictionary-only.
+Without a leading dictionary, the strict PLAIN-only callback decides
+admission. The selected callback receives exactly the original frame
+list, metadata and source bytes.
+
+`readGroup_framed` connects the single framing result to the selected
+callback. The agreement laws retain the exact strict result, including
+failures before framing and the original indexed page cause after
+framing. The group witnesses preserve CRCs, raw levels, flag-selected
+suffixes and opaque nullable slots in footer order. Native BinaryView
+readback consumes EOS. The first source failure precedes IPC admission.
+
+PyArrow 26.0.1 produces three native inputs, one per strict profile.
+The labeled mixed fixture copies their original row-group spans in
+dictionary, PLAIN, fallback, dictionary order, with groups of 40, 65,
+64 and 40 rows. Assembly relocates the Thrift footer offsets and
+updates the group list, row count and producer label. The oracle compares every copied
+column chunk against its native parent byte-for-byte. Thrift 0.25.0,
+independent RLE and zlib check the schedules, flags, levels and CRCs.
+PyArrow compares the actual Lean IPC with all native and assembled
+selected rows.
+
+Assembled controls exercise the original PLAIN and dictionary CRC
+failures and a fallback reentry with intact CRC-valid frames. Two corrupt
+groups check first-error order. A native PLAIN file exercises the
+existing two-way entry point's strict refusal.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Dispatch/V2/WithPlain/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Dispatch/V2/WithPlain/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-gzip-v2-three-way-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Dispatch.V2.WithPlain.Checks
+python3 scripts/parquet-gzip-v2-three-way-binary-view-oracle/check.py "$(mktemp -d)"
+```
