@@ -1,0 +1,132 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "fixtures": {
+    "producer-v1-entropy-brotli": {
+      "provenance": "PyArrow",
+      "wire_sha256": "95b5dd767881a635df970a200fed394eca154a6154297931aa189ac7b67ab056",
+      "trace_sha256": "69f02f95ce88f13f15debd20f4c2aef8b93976bf40df48c12eaf32549fd55ca9",
+      "start": 24,
+      "payload": 729,
+      "copies": 3,
+      "implicit": 1,
+      "dictionary": 0,
+      "short": 0,
+      "direct": 0,
+      "regular": 2,
+      "postfix": 0,
+      "ndirect": 0,
+      "trees": [
+        0
+      ]
+    },
+    "producer-v2-entropy-brotli": {
+      "provenance": "PyArrow",
+      "wire_sha256": "9a9cbc2c64924d1efc0f7b111a776de9a4655cbb3f63a2acf0d0a803685bf64c",
+      "trace_sha256": "e55ebeb270250b03c270cf7e3a07e5a37e387c0a003c0be60d3dc5bfd5cb3a3b",
+      "start": 24,
+      "payload": 89,
+      "copies": 1,
+      "implicit": 0,
+      "dictionary": 0,
+      "short": 1,
+      "direct": 0,
+      "regular": 0,
+      "postfix": 0,
+      "ndirect": 0,
+      "trees": [
+        0
+      ]
+    },
+    "cli-signed-multiple": {
+      "provenance": "libbrotli CLI quality 11",
+      "wire_sha256": "c113c1681c0fdacdffddd7b048034fd0f0b2dadf870f2b1e87649387f0cc7e97",
+      "trace_sha256": "680b2b23e0c85f30fb8e903f65087b093dee9709d2efdc480a7c43b011ef0c07",
+      "start": 24,
+      "payload": 1194,
+      "copies": 1343,
+      "implicit": 217,
+      "dictionary": 0,
+      "short": 235,
+      "direct": 0,
+      "regular": 891,
+      "postfix": 0,
+      "ndirect": 0,
+      "trees": [
+        0,
+        1
+      ]
+    },
+    "configured-postfix-0": {
+      "provenance": "libbrotli encoder API quality 7",
+      "wire_sha256": "a7528475fc333e2a851117fca815181c0cc88617b48394d5ba2db44fa8d84a9e",
+      "trace_sha256": "32b44879bbc627919560740f2fd6c850d044eaf3421e19645231ac11738194fb",
+      "start": 24,
+      "payload": 398,
+      "copies": 128,
+      "implicit": 89,
+      "dictionary": 6,
+      "short": 28,
+      "direct": 0,
+      "regular": 11,
+      "postfix": 0,
+      "ndirect": 15,
+      "trees": [
+        0
+      ]
+    },
+    "configured-postfix-1": {
+      "provenance": "libbrotli encoder API quality 7",
+      "wire_sha256": "465471e51f8ddd4f32623f63f29b6e7ade2e5f486c3468aad545729bdafe30ab",
+      "trace_sha256": "ec6b36cc66b74600f6111ac9a5d7f36d5982d7194abf68c37d6c5a1669ce9f47",
+      "start": 24,
+      "payload": 419,
+      "copies": 128,
+      "implicit": 89,
+      "dictionary": 6,
+      "short": 28,
+      "direct": 0,
+      "regular": 11,
+      "postfix": 1,
+      "ndirect": 12,
+      "trees": [
+        0
+      ]
+    },
+    "configured-postfix-2": {
+      "provenance": "libbrotli encoder API quality 7",
+      "wire_sha256": "4664e6ca5c22ed64d24f034db59f9d2a8dd1cf15c5dcc5359eba26b6c084be26",
+      "trace_sha256": "475b7a887c7ebc1e0689952428f4537d985189c63f96736e9b54d84a1cad94e1",
+      "start": 24,
+      "payload": 431,
+      "copies": 128,
+      "implicit": 89,
+      "dictionary": 6,
+      "short": 28,
+      "direct": 0,
+      "regular": 11,
+      "postfix": 2,
+      "ndirect": 60,
+      "trees": [
+        0
+      ]
+    },
+    "configured-postfix-3": {
+      "provenance": "libbrotli encoder API quality 7",
+      "wire_sha256": "b07f58d2233a260504ee2a3d0c278de9f195621d596466c2ea95249a98613612",
+      "trace_sha256": "625c5631ebb13a131ddd106d76936e0a30efa7fe6813822464c016c2571c5825",
+      "start": 24,
+      "payload": 459,
+      "copies": 128,
+      "implicit": 89,
+      "dictionary": 6,
+      "short": 28,
+      "direct": 3,
+      "regular": 8,
+      "postfix": 3,
+      "ndirect": 120,
+      "trees": [
+        0
+      ]
+    }
+  }
+}
