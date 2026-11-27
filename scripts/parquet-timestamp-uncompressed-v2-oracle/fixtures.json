@@ -1,0 +1,15 @@
+{
+  "native_utc": "ddee615df1ff2d0dd7d46657dbd8a02fb9e2fd7c138361e12ac1e245be90f792",
+  "native_local": "50e02adb95da867f739b9e827286e5af691244b93c87314c664e4c0473ce0605",
+  "mutated_true_flag": "c7821252d8b4ac88758bbc292896ced8dae14438fd7bf1fe835b63bafbc845c3",
+  "mutated_absent_flag": "3bc40bbad080debde69f02066c217eff108aa6ea397f910dc943ac1e0388685c",
+  "mutated_level_crc": "834628f06eaf234b677b33996909a57187c7a904d5a3b3810a00abf3e43ae415",
+  "mutated_suffix_crc": "6e6bcf4bee7ae313b5c344a0f642aee2fa90deb8651916cb70a3685d20a41dc7",
+  "mutated_declared_size": "bdd275d0b89b5875ee2ba00ac358e058104fb02a4368f8c7f306c04d4818ddea",
+  "mutated_true_size": "511bc85432b39281ccb9c8dd46560b21d752af00bfe1a887356deaaf205394d5",
+  "mutated_page_encoding": "5dada2233689339f22867c990b58594300328b593af92dbe47f9eb2bac010442",
+  "mutated_row_count": "b0146efbc9f726ff7e5e5be5f2d75ca19cba75fab6dcdb4f28eeb574edcecd1b",
+  "assembled_late_v1": "97d960a58afe16be7e3bf8ad878f768f7da163424d1805023e50b2916020a019",
+  "dictionary": "4aef6edb281b3228b4276f795b57bb410558ccbffb83e9f63d111f98579fc01b",
+  "wrong_codec": "9a3fdb560852d08c2837102e13da2a731c5cab0b9da849b62fd5f65c0d5f6c41"
+}

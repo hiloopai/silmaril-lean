@@ -62,6 +62,11 @@ def ChunkEncoding.admitsMetadata (encoding : ChunkEncoding) (metadata : Footer.C
         metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 2 &&
           metadata.encodings.contains 0 && metadata.encodings.all (fun id => id == 0 || id == 2 || id == 3 || id == 4)
 
+theorem ChunkEncoding.plain_noDictionary {metadata : Footer.ColumnMetadata} {rows : Int}
+    (admitted : ChunkEncoding.plain.admitsMetadata metadata rows = true) :
+    metadata.dictionaryPageOffset = none := by
+  cases h : metadata.dictionaryPageOffset <;> simp_all [ChunkEncoding.admitsMetadata]
+
 theorem ChunkEncoding.gzipPlainV2_noDictionary {metadata : Footer.ColumnMetadata} {rows : Int}
     (admitted : ChunkEncoding.gzipPlainV2.admitsMetadata metadata rows = true) :
     metadata.dictionaryPageOffset = none := by
