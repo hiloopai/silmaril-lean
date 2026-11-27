@@ -29,6 +29,17 @@ theorem compile_binary_count {limits : MixedFlat.Limits} {rows position : Nat} {
   obtain ⟨view, emitted, rfl, _⟩ := compile_binary_wire written
   exact congrArg some (BinaryView.Column.Writer.emitBinary_layout emitted).variadicCount
 
+/-- Plain Utf8 has bounded signed offsets and exactly its primitive buffer
+parts, with no variadic count. -/
+theorem compile_plain_utf8 {limits : MixedFlat.Limits} {rows position : Nat} {name : String}
+    {nullable : Bool} {values : List (Option String)} {physical : PhysicalColumn}
+    (written : (OrderedWriter.Column.utf8 name nullable values).compile limits rows position = .ok physical) :
+    let native := Arrow.Writer.ColumnValues.utf8 values
+    values.length = rows ∧ (nullable = false → ¬values.any Option.isNone = true) ∧
+      native.OffsetFits ∧ Arrow.Writer.utf8ByteCount values ≤ limits.observation.ipc.bodyBytes ∧
+      physical = ⟨⟨native.length, native.nullCount⟩, none, native.emit⟩ :=
+  Proofs.Formats.Arrow.MixedFlat.OrderedWriter.compile_plain_utf8 written
+
 /-- Utf8View reads back the original nullable strings from its own buffers. -/
 theorem compile_utf8_wire {limits : MixedFlat.Limits} {rows position : Nat} {name : String}
     {nullable : Bool} {values : List (Option String)} {physical : PhysicalColumn}

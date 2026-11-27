@@ -237,6 +237,13 @@ view count vectors `[0, 1, 1, 0]`, `[0, 0, 0, 0]` and `[1, 0, 0, 1]`.
 The comparison includes nulls, empty values, composed and decomposed
 text, embedded NUL, and non-UTF8 BinaryView values.
 
+The opt-in `emitSchemaWith` and `emitRecordWith` helpers also support
+plain Utf8 for callers that admit it. `compile_plain_utf8` gives the
+three primitive parts and the signed offset bound, with no variadic
+count. The default ordered stream entry points retain their existing
+profile. The plain Utf8 guards interleave two plain columns with Int32
+and Utf8View, and verify the exact field order, descriptors and values.
+
 [Definitions](../../Silmaril/Formats/Arrow/MixedFlat/OrderedWriter/Defs.lean) ·
 [Laws](../../Silmaril/Formats/Arrow/MixedFlat/OrderedWriter/Thms.lean) ·
 [Mixed-view oracle and hashes](../../scripts/arrow-ordered-view-writer/check.py) ·

@@ -28,6 +28,27 @@ private theorem view_wf {limits : BinaryView.Column.Limits} {nullable : Bool}
     rw [← eq]
     simpa using (Array.all_eq_true.mp valid.2.2) index (by simpa using bound)
 
+theorem compile_plain_utf8 {limits : MixedFlat.Limits} {rows position : Nat} {name : String}
+    {nullable : Bool} {values : List (Option String)} {physical : PhysicalColumn}
+    (written : (OrderedWriter.Column.utf8 name nullable values).compile limits rows position = .ok physical) :
+    let native := Arrow.Writer.ColumnValues.utf8 values
+    values.length = rows ∧ (nullable = false → ¬values.any Option.isNone = true) ∧
+      native.OffsetFits ∧ Arrow.Writer.utf8ByteCount values ≤ limits.observation.ipc.bodyBytes ∧
+      physical = ⟨⟨native.length, native.nullCount⟩, none, native.emit⟩ := by
+  by_cases rowsExact : values.length = rows
+  · by_cases requiredNull : (!nullable && values.any Option.isNone) = true
+    · simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, rowsExact, requiredNull, Bind.bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at written
+    · by_cases offsets : Arrow.Writer.utf8ByteCount values ≥ 2^31
+      · simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, rowsExact, requiredNull, offsets, Bind.bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at written
+      · by_cases bytes : Arrow.Writer.utf8ByteCount values > limits.observation.ipc.bodyBytes
+        · simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, rowsExact, requiredNull, offsets, bytes, Functor.map, Except.map, throw, throwThe, MonadExceptOf.throw] at written
+        · have exactParts := written.symm
+          simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, rowsExact, requiredNull, offsets, bytes, Pure.pure, Except.pure] at exactParts
+          refine ⟨rowsExact, ?_, Nat.lt_of_not_ge offsets, Nat.le_of_not_gt bytes, exactParts⟩
+          intro required
+          simpa only [required, Bool.not_false, Bool.true_and] using requiredNull
+  · simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, rowsExact, Bind.bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at written
+
 private theorem column_wf {limits : MixedFlat.Limits} {rows position : Nat}
     {column : OrderedWriter.Column} {physical : PhysicalColumn}
     (written : column.compile limits rows position = .ok physical) :
@@ -53,6 +74,12 @@ private theorem column_wf {limits : MixedFlat.Limits} {rows position : Nat}
           Pure.pure, Except.pure] at written
         subst physical
         exact view_wf (BinaryView.Column.Writer.emitBinary_layout view).fits
+    | utf8 name nullable values =>
+      obtain ⟨_, _, _, _, rfl⟩ := compile_plain_utf8 written
+      intro part member
+      simp only [Arrow.Writer.ColumnValues.emit, Arrow.Writer.ColumnValues.encode, Arrow.Writer.bufferParts,
+        List.mem_cons, List.not_mem_nil, or_false] at member
+      rcases member with rfl | rfl | rfl <;> exact Arrow.Writer.emitWords_wf _ _
     | utf8View name nullable values =>
       cases view : BinaryView.Column.Writer.emitUtf8 limits.view nullable values with
       | error cause =>

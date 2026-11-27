@@ -11,22 +11,26 @@ namespace Silmaril.Formats.Arrow.MixedFlat.OrderedWriter
 inductive Column where
   | int32 (name : String) (nullable : Bool) (values : List (Option Int32))
   | binary (name : String) (nullable : Bool) (values : List (Option KBytes))
+  | utf8 (name : String) (nullable : Bool) (values : List (Option String))
   | utf8View (name : String) (nullable : Bool) (values : List (Option String))
 
 def Column.field : Column → Field
   | .int32 name nullable _ => ⟨name, nullable, .primitive .int32⟩
   | .binary name nullable _ => ⟨name, nullable, .view .binary⟩
+  | .utf8 name nullable _ => ⟨name, nullable, .primitive .utf8⟩
   | .utf8View name nullable _ => ⟨name, nullable, .view .utf8⟩
 
 def Column.observe : Column → Writer.ColumnObservation
   | .int32 _ _ values => .int32 (values.map (Option.map Arrow.Value.int32))
   | .binary _ _ values => .binaryView (values.map (Option.map KBytes.toList))
+  -- The existing scalar observation carries Arrow.Value; the field records its primitive kind.
+  | .utf8 _ _ values => .int32 ((Arrow.Writer.ColumnValues.utf8 values).observe)
   | .utf8View _ _ values => .utf8View values
 
 def Column.length : Column → Nat
   | .int32 _ _ values => values.length
   | .binary _ _ values => values.length
-  | .utf8View _ _ values => values.length
+  | .utf8 _ _ values | .utf8View _ _ values => values.length
 
 structure BatchInput where
   rowCount : Nat
@@ -78,6 +82,13 @@ def Column.compile (limits : MixedFlat.Limits) (rows : Nat) (column : Column) (p
     let view ← (BinaryView.Column.Writer.emitBinary limits.view nullable values).mapError
       (fun cause => .field position (.view position cause))
     return ⟨view.node, some view.buffers.payload.data.size, Writer.viewParts view.buffers⟩
+  | .utf8 _ nullable values =>
+    if !nullable && values.any Option.isNone then throw (.field position (.nullInRequired position))
+    let size := Arrow.Writer.utf8ByteCount values
+    if size ≥ 2^31 then throw (.field position (.ipc (.malformed .stringOffsets)))
+    if size > limits.observation.ipc.bodyBytes then throw (.ipc (.limit .bodyBytes))
+    let native := Arrow.Writer.ColumnValues.utf8 values
+    return ⟨⟨native.length, native.nullCount⟩, none, native.emit⟩
   | .utf8View _ nullable values =>
     let view ← (BinaryView.Column.Writer.emitUtf8 limits.view nullable values).mapError
       (fun cause => .field position (.view position cause))
@@ -120,14 +131,18 @@ structure Record (limits : MixedFlat.Limits) (input : BatchInput) where
   bound : MixedFlat.bindBatch limits input.fields output.metadata output.body = .ok plan
   assigned : bindings plan columns
 
-def checkRecord (limits : MixedFlat.Limits) (rows : Nat) (fields : List Field)
-    (shape : List Field → Bool := fun _ => true) : Except RecordError Unit := do
-  if !(shape fields && supported fields) then throw .unsupportedSchema
+def checkRecordWith (limits : MixedFlat.Limits) (rows : Nat) (fields : List Field)
+    (admit : List Field → Bool) : Except RecordError Unit := do
+  if !admit fields then throw .unsupportedSchema
   let ipc := limits.observation.ipc
   if fields.length > ipc.fields then throw (.ipc (.limit .fields))
   if rows > ipc.rows then throw (.ipc (.limit .rows))
   if rows ≥ 2^63 then throw (.ipc (.malformed .batchLayout))
   (Body.checkBudget limits.observation fields.length rows).mapError .ipc
+
+def checkRecord (limits : MixedFlat.Limits) (rows : Nat) (fields : List Field)
+    (shape : List Field → Bool := fun _ => true) : Except RecordError Unit :=
+  checkRecordWith limits rows fields (fun signature => shape signature && supported signature)
 
 def checkSizes (limits : MixedFlat.Limits) (columns : List PhysicalColumn) : Except RecordError Unit := do
   let counts := columns.filterMap PhysicalColumn.count
@@ -142,9 +157,9 @@ def checkSizes (limits : MixedFlat.Limits) (columns : List PhysicalColumn) : Exc
 
 /-- The metadata parser and descriptor binder certify the emitted record
 before it can be framed. -/
-def emitRecord (limits : MixedFlat.Limits) (input : BatchInput)
-    (shape : List Field → Bool := fun _ => true) : Except RecordError (Record limits input) := do
-  checkRecord limits input.rowCount input.fields shape
+def emitRecordWith (limits : MixedFlat.Limits) (input : BatchInput)
+    (admit : List Field → Bool) : Except RecordError (Record limits input) := do
+  checkRecordWith limits input.rowCount input.fields admit
   match compiled : compile limits input with
   | .error cause => throw cause
   | .ok columns =>
@@ -163,6 +178,10 @@ def emitRecord (limits : MixedFlat.Limits) (input : BatchInput)
           else throw .bindingMismatch
       else throw .metadataMismatch
 
+def emitRecord (limits : MixedFlat.Limits) (input : BatchInput)
+    (shape : List Field → Bool := fun _ => true) : Except RecordError (Record limits input) :=
+  emitRecordWith limits input (fun fields => shape fields && supported fields)
+
 namespace Wire
 
 def fieldBytes (field : Field) : KBytes :=
@@ -180,14 +199,20 @@ def schemaSize (fields : List Field) : Nat :=
 
 end Wire
 
-def emitSchema (ipc : Arrow.Limits) (fields : List Field)
-    (shape : List Field → Bool := fun _ => true) : Except Error KBytes := do
-  if !(shape fields && supported fields) then throw .unsupportedSchema
+/-- Use the caller's profile to admit ordered field fragments. The IPC
+field and metadata bounds apply independently of that profile. -/
+def emitSchemaWith (ipc : Arrow.Limits) (fields : List Field)
+    (admit : List Field → Bool) : Except Error KBytes := do
+  if !admit fields then throw .unsupportedSchema
   if fields.length > ipc.fields then throw (.ipc (.limit .fields))
   let size := Wire.schemaSize fields
   if size ≥ 2^31 then throw (.ipc (.malformed .metadataLength))
   if size > ipc.metadataBytes then throw (.ipc (.limit .metadataBytes))
   return Arrow.StreamWriter.envelopeBytes size ++ Wire.schema fields
+
+def emitSchema (ipc : Arrow.Limits) (fields : List Field)
+    (shape : List Field → Bool := fun _ => true) : Except Error KBytes :=
+  emitSchemaWith ipc fields (fun signature => shape signature && supported signature)
 
 /-- Frame checked records in the given order, including explicit zero-row
 records, then append the modern EOS. -/
