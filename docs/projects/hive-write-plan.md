@@ -248,3 +248,48 @@ lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.Checks
 lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/Checks.lean pruning /tmp/hive-pruned
 python3 scripts/hive-native-int32-oracle/Oracle.py /tmp/hive-pruned --pruning
 ```
+
+### Bounded native row groups
+
+[`WritePlan.FlatInt32.RowGroups`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Defs.lean)
+adds an opt-in policy to the native manifest. Set a positive `rowsPerGroup`
+and caps for `maxGroupsPerFile` and `maxRowsPerFile`. Each nonempty routed
+bucket becomes one file with contiguous full groups and a shorter final
+group when needed. An empty routed table produces an empty manifest. The
+single-group entry points retain their original output.
+
+The writer reuses the existing INT32 page measurement and writer and the
+shared Compact group footer. It measures pages and caps the complete file
+before materializing page bodies. Each file retains its literal path, total
+row count and ordered group counts. Emission certifies the actual bytes
+through the same bounded checked reader used for restore. The reader checks
+the deterministic cut vector, footer total and group counts,
+the unannotated physical schema, and each group's decoded slots at its original ordinal. Size caps are per
+file and per group. The input table and final manifest are in memory.
+
+[`restore_emit`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Thms.lean)
+relates each file to the independent write-plan reference and reconstructs
+first-seen partition order and stable row order within each bucket with the
+same marker options and codec left inverse. The cut, slot and footer laws
+pin the per-file count and ordered group sizes.
+
+`restorePruned` checks each path and its typed partition values before applying
+the predicate. Only `some true` checks the file payload and its dimensions.
+A reached failure returns the original zero-based manifest occurrence and
+literal path with its typed cause, including the original group ordinal on a
+decode failure. The operation returns no partial table. On a successful full
+restore the pruned result equals stable filtering over the typed partition
+values. The API is pure.
+
+The independent PyArrow oracle reads the actual emitted default- and
+custom-marker files one row group at a time and also checks the ordered Hive
+rows and pruned fragments. The Lean corruption control changes a later group
+header in a selected file, verifies its earlier group still decodes, and
+checks the enclosing file and group ordinals. A separate Lean control skips
+a damaged payload. Use the pinned Python setup above.
+
+```sh
+lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
+lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean /tmp/hive-row-groups
+python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-row-groups
+```
