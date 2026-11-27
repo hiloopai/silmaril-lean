@@ -10,6 +10,12 @@ namespace Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.Snappy
 
 open Arrow.MixedFlat
 
+/-- The original stored PLAIN frame gives exact nullable opaque bytes. -/
+theorem decodePlainBytes_wire {limits : Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {frame : Page.Frame} {slots : List (Option Bytes)}
+    (read : decodePlainBytes limits metadata source frame = .ok slots) : PlainBytesWire limits source frame slots :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.Snappy.decodePlainBytes_wire read
+
 /-- The CRC-checked original frame determines the exact PLAIN nullable octets. -/
 theorem decodePlain_wire {limits : Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {slots : List (Option String)}

@@ -44,10 +44,10 @@ theorem stored_wire {cap : Nat} {source : Bytes} {frame : Page.Frame} {status : 
   have ⟨origin, exactLength⟩ := Page.Checksum.payload_exact extent
   exact ⟨⟨status, verified⟩, origin, exactLength, bound⟩
 
-theorem readDictionary_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
-    {source : Bytes} {frame : Page.Frame} {entries : Array String}
-    (read : readDictionary limits metadata source frame = .ok entries) : DictionaryWire limits source frame entries := by
-  unfold readDictionary at read
+theorem readDictionaryBytes_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {frame : Page.Frame} {entries : List Bytes}
+    (read : readDictionaryBytes limits metadata source frame = .ok entries) : DictionaryBytesWire limits source frame entries := by
+  unfold readDictionaryBytes at read
   split at read <;> try contradiction
   rename_i header original
   split at read <;> try contradiction
@@ -59,26 +59,34 @@ theorem readDictionary_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata :
   split at read <;> try contradiction
   obtain ⟨status, verified, read⟩ := bind_ok read
   obtain ⟨expanded, physical, read⟩ := bind_ok read
-  obtain ⟨raw, parsed, read⟩ := bind_ok read
-  obtain ⟨text, strict, read⟩ := bind_ok read
   obtain ⟨codec, matched, expansion, _, _, length, cap⟩ := Payload.decode_sound (mapError_ok physical)
   have selected := Option.some.inj ((Payload.Codec.ofId_id .snappy).symm.trans matched)
   subst codec
-  obtain ⟨_, bytes, entriesCount, _⟩ := Plain.ByteArray.decode_ok_iff.mp (mapError_ok parsed)
+  obtain ⟨_, bytes, entriesCount, _⟩ := Plain.ByteArray.decode_ok_iff.mp (mapError_ok read)
+  exact ⟨header, expanded, original, Decidable.not_not.mp tag, Nat.le_of_not_gt count,
+    stored_wire (mapError_ok verified), expansion, length, cap, by simpa using bytes, entriesCount⟩
+
+theorem readDictionary_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {frame : Page.Frame} {entries : Array String}
+    (read : readDictionary limits metadata source frame = .ok entries) : DictionaryWire limits source frame entries := by
+  unfold readDictionary at read
+  obtain ⟨raw, parsed, read⟩ := bind_ok read
+  obtain ⟨text, strict, read⟩ := bind_ok read
+  obtain ⟨header, expanded, original, tag, count, stored, expansion, length, cap, bytes, entriesCount⟩ :=
+    readDictionaryBytes_wire parsed
   have octets := Utf8.Dictionary.decodeEntries_exact (mapError_ok strict)
   cases read
-  refine ⟨header, expanded, original, Decidable.not_not.mp tag, Nat.le_of_not_gt count,
-    stored_wire (mapError_ok verified), expansion, length, cap, ?_, ?_⟩
+  refine ⟨header, expanded, original, tag, count, stored, expansion, length, cap, ?_, ?_⟩
   · simpa [octets] using bytes
   · have sizes := congrArg List.length octets
     simp only [List.length_map] at sizes
     simpa using sizes.trans entriesCount
 
-theorem decodePage_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
-    {source : Bytes} {dictionary : Option (Array String)} {frame : Page.Frame} {text : List (Option String)}
-    (read : decodePage limits metadata source dictionary frame = .ok text) :
-    ∃ entries, dictionary = some entries ∧ PageWire limits source entries frame text := by
-  unfold decodePage at read
+theorem decodeIndexPage_wire {α : Type} {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {dictionary : Option (Array α)} {frame : Page.Frame} {text : List (Option α)}
+    (read : decodeIndexPage limits metadata source dictionary frame = .ok text) :
+    ∃ entries, dictionary = some entries ∧ IndexPageWire limits source entries frame text := by
+  unfold decodeIndexPage at read
   split at read <;> try contradiction
   rename_i params original
   dsimp only at read
@@ -97,16 +105,25 @@ theorem decodePage_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Foo
     have decoded := mapError_ok read
     obtain ⟨_, page, indices, prepared, parsed, mask, lookedUp⟩ := DictionaryIndex.decode_ok_iff.mp decoded
     obtain ⟨layout, valid, exact⟩ := ScalarPage.prepareFor_sound prepared
-    have rawLookups := congrArg (List.map (Option.map Utf8.Dictionary.octets)) lookedUp
-    simp only [List.map_map, Function.comp_def, Option.map_some] at rawLookups
     refine ⟨entries, rfl, params, layout, page, indices, original, encoding,
-      stored_wire (mapError_ok verified), Nat.le_of_not_gt expanded, ?_, exact, parsed, lookedUp, ?_, mask, ?_⟩
+      stored_wire (mapError_ok verified), Nat.le_of_not_gt expanded, ?_, exact, parsed, lookedUp, mask, ?_⟩
     · simpa [encoding] using valid
-    · simpa only [Array.getElem?_map, Function.comp_def] using rawLookups
     · have count := (DictionaryIndex.decode_counts decoded).1
       unfold ByteArrayFallback.declaredSlots
       cases kind : frame.value.kind <;>
         simp [FlatColumn.pageParameters, kind] at original ⊢ <;> subst params <;> exact count
+
+theorem decodePage_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {dictionary : Option (Array String)} {frame : Page.Frame} {text : List (Option String)}
+    (read : decodePage limits metadata source dictionary frame = .ok text) :
+    ∃ entries, dictionary = some entries ∧ PageWire limits source entries frame text := by
+  obtain ⟨entries, available, params, layout, page, indices, original, encoding, stored, expanded,
+    valid, exact, parsed, lookedUp, mask, count⟩ := decodeIndexPage_wire read
+  have rawLookups := congrArg (List.map (Option.map Utf8.Dictionary.octets)) lookedUp
+  simp only [List.map_map, Function.comp_def, Option.map_some] at rawLookups
+  refine ⟨entries, available, params, layout, page, indices, original, encoding, stored, expanded,
+    valid, exact, parsed, lookedUp, ?_, mask, count⟩
+  simpa only [Array.getElem?_map, Function.comp_def] using rawLookups
 
 private theorem pages_count {limits : Utf8.Dictionary.Snappy.Limits} {source : Bytes} {entries : Array String}
     {data : List Page.Frame} {pages : List (List (Option String))}

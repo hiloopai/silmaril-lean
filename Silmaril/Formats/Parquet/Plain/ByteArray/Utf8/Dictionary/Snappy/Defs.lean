@@ -59,9 +59,9 @@ def expandedBytes (frames : List Page.Frame) : Nat :=
   (frames.map fun frame => frame.header.stop - frame.header.start + frame.value.uncompressedSize).sum
 
 /-- Check the original stored CRC and expansion bound before decoding the
-exact PLAIN entries. Strict text validation covers the complete dictionary. -/
-def readDictionary (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
-    (frame : Page.Frame) : Except (FlatColumn.PageError DecodeError) (Array String) := do
+exact PLAIN entries as opaque bytes. -/
+def readDictionaryBytes (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (frame : Page.Frame) : Except (FlatColumn.PageError DecodeError) (List Bytes) := do
   let .dictionary header := frame.value.kind | throw .unsupportedKind
   if header.encoding ≠ 0 then .error (.encoding header.encoding)
   else if !metadata.encodings.contains 0 then .error (.decode (.unadvertisedEncoding 0))
@@ -74,16 +74,20 @@ def readDictionary (limits : Limits) (metadata : Footer.ColumnMetadata) (source 
       let _ ← (Page.Checksum.verify bounds.compressedLimit source frame).mapError (.decode ∘ .checksum)
       let expanded ← (Payload.decode bounds Payload.Codec.snappy.id
         (Page.Checksum.payloadBytes source frame).toList).mapError (.decode ∘ .payload)
-      let raw ← (Plain.ByteArray.decode limits.entryBytes header.numValues (Bytes.ofList expanded)).mapError
-        (.decode ∘ .entries)
-      let texts ← (raw.zipIdx.mapM Dictionary.decodeEntry).mapError (.decode ∘ .text)
-      return texts.toArray
+      (Plain.ByteArray.decode limits.entryBytes header.numValues (Bytes.ofList expanded)).mapError (.decode ∘ .entries)
+
+/-- Interpret every checked dictionary entry as strict STRING, including unused entries. -/
+def readDictionary (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (frame : Page.Frame) : Except (FlatColumn.PageError DecodeError) (Array String) := do
+  let raw ← readDictionaryBytes limits metadata source frame
+  let texts ← (raw.zipIdx.mapM Dictionary.decodeEntry).mapError (.decode ∘ .text)
+  return texts.toArray
 
 /-- Verify the entire stored body, including the original V2 level bytes.
 The scalar adapter selects the codec for the index suffix from the original flag. -/
-def decodePage (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
-    (dictionary : Option (Array String)) (frame : Page.Frame) :
-    Except (FlatColumn.PageError DecodeError) (List (Option String)) := do
+def decodeIndexPage {α : Type} (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (dictionary : Option (Array α)) (frame : Page.Frame) :
+    Except (FlatColumn.PageError DecodeError) (List (Option α)) := do
   let some params := FlatColumn.pageParameters .optional Payload.Codec.snappy.id frame.value |
     throw .unsupportedKind
   let cap := min limits.file.column.maxRows (Hybrid.runLimit - 1)
@@ -97,6 +101,8 @@ def decodePage (limits : Limits) (metadata : Footer.ColumnMetadata) (source : By
       let _ ← (Page.Checksum.verify limits.file.column.maxPageBytes source frame).mapError (.decode ∘ .checksum)
       (DictionaryIndex.decode entries params limits.scalar limits.indices
         (Page.Checksum.payloadBytes source frame)).mapError (.decode ∘ .indices)
+
+def decodePage := decodeIndexPage (α := String)
 
 /-- Check the expanded frame sum and the exact footer extent before the client
 can read a dictionary or data body. -/
@@ -125,6 +131,29 @@ def StoredWire (cap : Nat) (source : Bytes) (frame : Page.Frame) : Prop :=
   source.slice? frame.payload.start (some frame.payload.stop) = some (Page.Checksum.payloadBytes source frame) ∧
   (Page.Checksum.payloadBytes source frame).length = frame.value.compressedSize ∧
   frame.value.compressedSize ≤ cap
+
+/-- The original stored dictionary expands to the exact PLAIN entry bytes in order. -/
+def DictionaryBytesWire (limits : Limits) (source : Bytes) (frame : Page.Frame) (entries : List Bytes) : Prop :=
+  ∃ header expanded,
+    frame.value.kind = .dictionary header ∧ header.encoding = 0 ∧ header.numValues ≤ limits.maxDictionaryEntries ∧
+    StoredWire (limits.dictionaryBounds frame).compressedLimit source frame ∧
+    Payload.Decodes frame.value.uncompressedSize .snappy (Page.Checksum.payloadBytes source frame).toList expanded ∧
+    expanded.length = frame.value.uncompressedSize ∧ expanded.length ≤ limits.expandedDictionaryBytes ∧
+    expanded = Plain.ByteArray.wire entries ∧ entries.length = header.numValues
+
+/-- Exact tagged index windows and nullable slots for a dictionary of any value type. -/
+def IndexPageWire {α : Type} (limits : Limits) (source : Bytes) (entries : Array α)
+    (frame : Page.Frame) (slots : List (Option α)) : Prop :=
+  let body := Page.Checksum.payloadBytes source frame
+  ∃ (params : ScalarPage.Parameters) (layout : FlatPage.Layout) (page : ScalarPage.Prepared) (indices : List Nat),
+    FlatColumn.pageParameters .optional Payload.Codec.snappy.id frame.value = some params ∧ params.encoding = 8 ∧
+    StoredWire limits.file.column.maxPageBytes source frame ∧
+    frame.value.uncompressedSize ≤ limits.maxExpandedPageBytes ∧
+    ScalarPage.validateFor 8 params limits.scalar body = .ok layout ∧
+    ScalarPage.PreparedWire params limits.scalar layout body page ∧
+    DictionaryIndex.readIndices limits.indices (page.mask.count true) page.scalars = .ok indices ∧
+    indices.map (fun index => entries[index]?) = (slots.filterMap id).map some ∧
+    slots.map Option.isSome = page.mask ∧ slots.length = ByteArrayFallback.declaredSlots frame
 
 /-- The fully expanded dictionary has the declared extent and round-trips
 all PLAIN byte strings in original order, including unused entries. -/

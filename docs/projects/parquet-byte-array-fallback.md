@@ -192,3 +192,46 @@ same original group 2, column 1, frame 19, header 21009 error.
 ```sh
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.File.ScanTests
 ```
+
+## Opt-in Snappy fallback to native BinaryView
+
+`ByteArrayFallback.Snappy.convert` selects one named flat optional
+unannotated BYTE_ARRAY leaf from a checked Parquet snapshot. Parquet
+BINARY uses the BYTE_ARRAY physical type with no logical or converted
+annotation. The reader checks that fields 10 and 6 are both absent
+from the original selected schema element. It returns the original
+name and nullability in a native Arrow IPC V5 BinaryView field.
+Dictionary entries and PLAIN slots stay opaque bytes throughout.
+
+The selected codec-1 chunk requires a leading tag-0 dictionary, a
+nonempty tag-8 data prefix, and a nonempty PLAIN suffix. The checked
+phase walk rejects a return to tag 8. V1 checks the original CRC and
+expands the whole stored body. V2 checks the CRC over the whole stored
+body, retains the raw levels, and selects the index or value codec
+from the original compression flag. Stored and expanded byte totals
+include page headers and agree exactly with the selected footer chunk
+under their respective limits.
+
+The native readback law connects the original dictionary and PLAIN
+bytes to the exact nullable slots of each group through EOS. The first
+indexed source failure precedes IPC admission. Selection and annotation
+checks apply to the one requested column.
+
+PyArrow 26.0.1 produces genuine V1/V2 files with and without CRC.
+Thrift 0.25.0 observes five tag-8 data pages then four PLAIN pages in
+each of two 66-row groups. The V2 PLAIN suffix contains compressed
+and raw pages. PyArrow independently compares every BinaryView slot
+with its source read, including invalid UTF-8, NUL, null versus empty,
+and 12-byte and longer values. Controls cover the source caps and
+original late length, index, CRC and footer errors. The independently
+assembled transition control swaps two intact frames with valid CRCs.
+The annotation controls use one STRING file and a converted-only edit.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Snappy/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Snappy/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-snappy-fallback-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Snappy.Checks
+python3 scripts/parquet-snappy-fallback-binary-view-oracle/check.py "$(mktemp -d)"
+```

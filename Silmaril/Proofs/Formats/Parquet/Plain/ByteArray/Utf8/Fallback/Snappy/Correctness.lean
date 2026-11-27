@@ -37,33 +37,43 @@ private theorem map_present (slots : List (Option String)) :
   | nil => rfl
   | cons slot rest ih => cases slot <;> simp [ih]
 
-theorem decodePlain_wire {limits : Utf8.Fallback.Snappy.Limits} {metadata : Footer.ColumnMetadata}
-    {source : Bytes} {frame : Page.Frame} {slots : List (Option String)}
-    (read : decodePlain limits metadata source frame = .ok slots) : PlainPageWire limits source frame slots := by
-  unfold decodePlain at read
+theorem decodePlainBytes_wire {limits : Utf8.Fallback.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {frame : Page.Frame} {slots : List (Option Bytes)}
+    (read : decodePlainBytes limits metadata source frame = .ok slots) : PlainBytesWire limits source frame slots := by
+  unfold decodePlainBytes at read
   split at read <;> try contradiction
   rename_i params original
   split at read <;> try contradiction
   split at read <;> try contradiction
   rename_i expanded
   obtain ⟨status, verified, read⟩ := bind_ok read
-  obtain ⟨raw, physical, read⟩ := bind_ok read
-  have octets : slots.map (Option.map Utf8.Dictionary.octets) = raw :=
-    Utf8.decodeSlotsWith_exact (mapError_ok read)
-  have decoded := mapError_ok physical
+  have decoded := mapError_ok read
   obtain ⟨page, values, prepared, plain, mask, present, _, _⟩ := ScalarPage.decode_sound decoded
   obtain ⟨layout, validated, wire⟩ := ScalarPage.prepare_sound prepared
   have rawRead : Plain.ByteArray.decode (plainLimits limits) (page.mask.count true) page.scalars = .ok values := plain
   obtain ⟨_, exactPlain, _, _⟩ := Plain.ByteArray.decode_ok_iff.mp rawRead
-  have count : raw.length = ByteArrayFallback.declaredSlots frame := by
+  have count : slots.length = ByteArrayFallback.declaredSlots frame := by
     have exactCount := (ScalarPage.decode_counts decoded).1
     unfold ByteArrayFallback.declaredSlots
     cases kind : frame.value.kind <;>
       simp [FlatColumn.pageParameters, kind] at original ⊢ <;> subst params <;> exact exactCount
-  refine ⟨params, layout, page, original, Utf8.Dictionary.Snappy.stored_wire (mapError_ok verified),
-    Nat.le_of_not_gt expanded, validated, wire, ?_, ?_, ?_⟩
+  exact ⟨params, layout, page, original, Utf8.Dictionary.Snappy.stored_wire (mapError_ok verified),
+    Nat.le_of_not_gt expanded, validated, wire, mask, exactPlain.trans (congrArg Plain.ByteArray.wire present).symm,
+    count⟩
+
+theorem decodePlain_wire {limits : Utf8.Fallback.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {frame : Page.Frame} {slots : List (Option String)}
+    (read : decodePlain limits metadata source frame = .ok slots) : PlainPageWire limits source frame slots := by
+  unfold decodePlain at read
+  obtain ⟨raw, physical, read⟩ := bind_ok read
+  have octets : slots.map (Option.map Utf8.Dictionary.octets) = raw :=
+    Utf8.decodeSlotsWith_exact (mapError_ok read)
+  obtain ⟨params, layout, page, original, stored, expanded, valid, wire, mask, exactPlain, count⟩ :=
+    decodePlainBytes_wire physical
+  refine ⟨params, layout, page, original, stored, expanded, valid, wire, ?_, ?_, ?_⟩
   · simpa [← octets, List.map_map, Function.comp_def] using mask
-  · rw [exactPlain, ← present, ← octets, map_present]
+  · rw [← octets, map_present] at exactPlain
+    exact exactPlain
   · simpa [← octets] using count
 
 theorem decodeData_wire {limits : Utf8.Fallback.Snappy.Limits} {metadata : Footer.ColumnMetadata}

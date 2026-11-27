@@ -15,6 +15,19 @@ theorem stored_wire {cap : Nat} {source : Bytes} {frame : Page.Frame} {status : 
     (verified : Page.Checksum.verify cap source frame = .ok status) : StoredWire cap source frame :=
   Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.stored_wire verified
 
+/-- The original stored dictionary expands exactly to ordered opaque PLAIN entries. -/
+theorem readDictionaryBytes_wire {limits : Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {frame : Page.Frame} {entries : List Bytes}
+    (read : readDictionaryBytes limits metadata source frame = .ok entries) : DictionaryBytesWire limits source frame entries :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.readDictionaryBytes_wire read
+
+/-- The original frame determines its checked indices over the selected typed dictionary. -/
+theorem decodeIndexPage_wire {α : Type} {limits : Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {dictionary : Option (Array α)} {frame : Page.Frame} {text : List (Option α)}
+    (read : decodeIndexPage limits metadata source dictionary frame = .ok text) :
+    ∃ entries, dictionary = some entries ∧ IndexPageWire limits source entries frame text :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.decodeIndexPage_wire read
+
 /-- The original stored dictionary expands exactly to the ordered strict UTF-8 entries. -/
 theorem readDictionary_wire {limits : Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {entries : Array String}
