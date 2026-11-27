@@ -57,6 +57,12 @@ theorem RowFits.length {fields : List Field} {row : Row} (fits : RowFits fields 
     row.length = fields.length :=
   Proofs.Formats.Arrow.RecursiveSchema.Batch.Rows.row_length fits
 
+/-- Checked row typing applies to each original positional cell. -/
+theorem RowFits.cell_at {fields : List Field} {row : Row} (fits : RowFits fields row)
+    {index : Nat} (fieldBound : index < fields.length) (cellBound : index < row.length) :
+    CellFits fields[index] row[index] :=
+  Proofs.Formats.Arrow.RecursiveSchema.Batch.Rows.row_cell_at fits fieldBound cellBound
+
 /-- Successful native projection is aligned to the original schema and
 checked physical bits, signed words and List offset windows. -/
 theorem decode_wire {limits : Batch.Limits} {schema : Schema} {input : KBytes} {offset : Nat}

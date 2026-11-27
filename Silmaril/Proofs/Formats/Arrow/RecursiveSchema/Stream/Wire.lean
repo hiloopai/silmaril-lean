@@ -113,6 +113,19 @@ theorem chain_end {limits : Formats.Arrow.RecursiveSchema.Batch.Limits} {schema 
     exact ⟨unspent, finalOffset, by simp only [List.length_cons]; omega,
       by simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using endWire⟩
 
+theorem record_of_mem {limits : Formats.Arrow.RecursiveSchema.Batch.Limits} {schema : Schema}
+    {input : KBytes} {remaining ordinal offset : Nat} {batches : List Completed}
+    {terminal : End} (chain : CursorChain limits schema input remaining ordinal offset batches terminal)
+    {record : Completed} (member : record ∈ batches) :
+    RecordWire limits schema input record.ordinal record.offset record := by
+  induction chain with
+  | stop terminal => simp at member
+  | more original rest ih =>
+    rcases List.mem_cons.mp member with rfl | later
+    · obtain ⟨ordinal, offset, _, _⟩ := record_coordinates original
+      simpa only [ordinal, offset] using original
+    · exact ih later
+
 theorem readTrace_eos {limits : Formats.Arrow.RecursiveSchema.Batch.Limits}
     {input : KBytes} {trace : Trace} {ordinal offset : Nat}
     (accepted : readTrace limits input = .ok trace) (eos : trace.terminal = .eos ordinal offset) :

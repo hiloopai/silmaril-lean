@@ -112,4 +112,17 @@ theorem row_length {fields : List Field} {row : Row} (fits : RowFits fields row)
     cases fits with
     | cons _ tail => simp [ih tail]
 
+theorem row_cell_at {fields : List Field} {row : Row} (fits : RowFits fields row)
+    {index : Nat} (fieldBound : index < fields.length) (cellBound : index < row.length) :
+    CellFits fields[index] row[index] := by
+  induction fields generalizing row index with
+  | nil => simp at fieldBound
+  | cons field fields ih =>
+    cases fits with
+    | cons first rest =>
+      cases index with
+      | zero => exact first
+      | succ index =>
+        exact ih rest (Nat.lt_of_succ_lt_succ fieldBound) (Nat.lt_of_succ_lt_succ cellBound)
+
 end Silmaril.Proofs.Formats.Arrow.RecursiveSchema.Batch.Rows

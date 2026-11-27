@@ -42,6 +42,21 @@ theorem CursorChain.end_wire {limits : Batch.Limits} {schema : Schema} {input : 
       EndWire limits schema input unspent (ordinal + batches.length) finalOffset terminal :=
   Proofs.Formats.Arrow.RecursiveSchema.Stream.chain_end chain
 
+/-- Each retained record has its original frame at its reported coordinates. -/
+theorem CursorChain.record_of_mem {limits : Batch.Limits} {schema : Schema} {input : KBytes}
+    {remaining ordinal offset : Nat} {batches : List Completed} {terminal : End}
+    (chain : CursorChain limits schema input remaining ordinal offset batches terminal)
+    {record : Completed} (member : record ∈ batches) :
+    RecordWire limits schema input record.ordinal record.offset record :=
+  Proofs.Formats.Arrow.RecursiveSchema.Stream.record_of_mem chain member
+
+theorem RecordWire.rows {limits : Batch.Limits} {schema : Schema} {input : KBytes}
+    {ordinal offset : Nat} {record : Completed} (wire : RecordWire limits schema input ordinal offset record) :
+    record.observed.rows.length = record.observed.rowCount ∧
+      ∀ row ∈ record.observed.rows, Batch.Rows.RowFits schema.fields row := by
+  obtain ⟨_, _, _, _, logical, rfl⟩ := wire
+  exact ⟨logical.count.trans logical.rowCount.symm, logical.typed⟩
+
 theorem readTrace_eos {limits : Batch.Limits} {input : KBytes} {trace : Trace} {ordinal offset : Nat}
     (accepted : readTrace limits input = .ok trace) (eos : trace.terminal = .eos ordinal offset) :
     ordinal = trace.batches.length ∧ EnvelopeWire limits.schema.ipc input.toList offset .eos ∧
