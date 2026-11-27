@@ -41,6 +41,14 @@ theorem feed_wire {state next : State} {events : List Event}
     next.finish.flatMap rowEvents = state.finish.flatMap rowEvents ++ events :=
   Proofs.Formats.Parquet.ListPage.feed_wire h
 
+theorem feed_nil (state : State) : state.feed [] = .ok state :=
+  Proofs.Formats.Parquet.ListPage.feed_nil state
+
+theorem reconstruct_of_feed {events : List Event} {state : State}
+    (h : State.empty.feed events = .ok state) :
+    reconstruct events = .ok state.finish :=
+  Proofs.Formats.Parquet.ListPage.reconstruct_of_feed h
+
 /-- The reconstruction result and typed failure are invariant under event cuts. -/
 theorem feed_append (state : State) (left right : List Event) :
     state.feed (left ++ right) = (state.feed left).bind (·.feed right) :=

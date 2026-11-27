@@ -1,0 +1,41 @@
+native-crc-v1.parquet SHA-256 eac3e45e5144cfb055b7717bb4f58500201ff24eaab8fdb10f510d08b3d1d36c, footer [336, 866)
+  group 0 page 0 [4, 42), payload @28, 14 -> 12, CRC 57294991, reps [0], defs [0], PLAIN []
+  group 0 page 1 [42, 81), payload @67, 14 -> 12, CRC 1953329177, reps [0], defs [1], PLAIN []
+  group 0 page 2 [81, 127), payload @106, 21 -> 41, CRC -1616510666, reps [0, 1, 1, 1, 1, 1, 1, 1], defs [3, 3, 3, 3, 3, 3, 3, 2], PLAIN [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648]
+  group 0 page 3 [127, 171), payload @152, 19 -> 17, CRC -802795689, reps [0, 1], defs [3, 2], PLAIN [2147483647]
+  group 1 page 0 [171, 209), payload @195, 14 -> 12, CRC 57294991, reps [0], defs [0], PLAIN []
+  group 1 page 1 [209, 248), payload @234, 14 -> 12, CRC 1953329177, reps [0], defs [1], PLAIN []
+  group 1 page 2 [248, 292), payload @273, 19 -> 17, CRC 418747307, reps [0, 1], defs [3, 2], PLAIN [-7]
+  group 1 page 3 [292, 336), payload @317, 19 -> 17, CRC -484053868, reps [0, 1], defs [3, 2], PLAIN [0]
+  rows [[None, [], [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, None], [2147483647, None]], [None, [], [-7, None], [0, None]]]
+native-no-crc-v1.parquet SHA-256 2f38a0b781873c36d60647facdc3d074ca43059f929a99e5a5d0648239f5c3e0, footer [290, 820)
+  group 0 page 0 [4, 37), payload @23, 14 -> 12, CRC None, reps [0], defs [0], PLAIN []
+  group 0 page 1 [37, 70), payload @56, 14 -> 12, CRC None, reps [0], defs [1], PLAIN []
+  group 0 page 2 [70, 110), payload @89, 21 -> 41, CRC None, reps [0, 1, 1, 1, 1, 1, 1, 1], defs [3, 3, 3, 3, 3, 3, 3, 2], PLAIN [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648]
+  group 0 page 3 [110, 148), payload @129, 19 -> 17, CRC None, reps [0, 1], defs [3, 2], PLAIN [2147483647]
+  group 1 page 0 [148, 181), payload @167, 14 -> 12, CRC None, reps [0], defs [0], PLAIN []
+  group 1 page 1 [181, 214), payload @200, 14 -> 12, CRC None, reps [0], defs [1], PLAIN []
+  group 1 page 2 [214, 252), payload @233, 19 -> 17, CRC None, reps [0, 1], defs [3, 2], PLAIN [-7]
+  group 1 page 3 [252, 290), payload @271, 19 -> 17, CRC None, reps [0, 1], defs [3, 2], PLAIN [0]
+  rows [[None, [], [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, None], [2147483647, None]], [None, [], [-7, None], [0, None]]]
+assembled-continuation-v1.parquet SHA-256 02bd013992cab83d84a8c68becd44022c8b07b031073c1fa6a53b7f178ada064, footer [334, 504)
+  group 0 page 0 [4, 42), payload @28, 14 -> 12, CRC 57294991, reps [0], defs [0], PLAIN []
+  group 0 page 1 [42, 81), payload @67, 14 -> 12, CRC 1953329177, reps [0], defs [1], PLAIN []
+  group 0 page 2 [81, 127), payload @106, 21 -> 41, CRC -1616510666, reps [0, 1, 1, 1, 1, 1, 1, 1], defs [3, 3, 3, 3, 3, 3, 3, 2], PLAIN [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648]
+  group 0 page 3 [127, 171), payload @152, 19 -> 17, CRC -802795689, reps [0, 1], defs [3, 2], PLAIN [2147483647]
+  group 1 page 0 [171, 209), payload @195, 14 -> 12, CRC 57294991, reps [0], defs [0], PLAIN []
+  group 1 page 1 [209, 248), payload @234, 14 -> 12, CRC 1953329177, reps [0], defs [1], PLAIN []
+  group 1 page 2 [248, 292), payload @273, 19 -> 17, CRC 418747307, reps [0, 1], defs [3, 2], PLAIN [-7]
+  group 1 page 3 [292, 334), payload @315, 19 -> 17, CRC 2021695739, reps [1, 1], defs [3, 2], PLAIN [0]
+  rows [[None, [], [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, None], [2147483647, None]], [None, [], [-7, None, 0, None]]]
+native-crc-v1.arrows SHA-256 82c8b5b7ca425e6ec2770c5765f37df81951c4353657182c4c584b95ddf460bc, EOS [760, 768), rows [[None, [], [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, None], [2147483647, None]], [None, [], [-7, None], [0, None]]]
+native-no-crc-v1.arrows SHA-256 82c8b5b7ca425e6ec2770c5765f37df81951c4353657182c4c584b95ddf460bc, EOS [760, 768), rows [[None, [], [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, None], [2147483647, None]], [None, [], [-7, None], [0, None]]]
+assembled-continuation-v1.arrows SHA-256 258c566976a2c67b7a470cf2e41b837d5bbaed1d550fdbc0077ec7aafd7c3ac5, EOS [752, 760), rows [[None, [], [-2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, -2147483648, None], [2147483647, None]], [None, [], [-7, None, 0, None]]]
+crc control SHA-256 f828ae6925a0dc0af1ad6c2fca8e9e404e535f01f7ca0afcee5a501e722ab5e6
+crc: group 1 page 3 @292; one retained batch and no IPC bytes
+payload control SHA-256 1342e1e2b0b26023d96cf573fa88a1330459347df89cc997b27e54d585a0dbac
+payload: group 1 page 3 @292; one retained batch and no IPC bytes
+leading control SHA-256 9bc81fd4db385980b06ce2afc9ea0318fcc57b2139a01a934a268b6e5eec6fe2
+leading: group 1 page 0 @171; one retained batch and no IPC bytes
+budget control SHA-256 eac3e45e5144cfb055b7717bb4f58500201ff24eaab8fdb10f510d08b3d1d36c
+budget: group 1 page 3 @292; one retained batch and no IPC bytes

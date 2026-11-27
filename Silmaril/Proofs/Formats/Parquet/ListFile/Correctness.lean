@@ -141,9 +141,9 @@ public theorem openFile_wire {limits : ListFile.Limits} {source : Bytes} {checke
                     extents.1, extents.2, unmarked.1, unmarked.2.1, unmarked.2.2, checkList_wire tag⟩
           · contradiction
 
-public theorem frameGroup_wire {checked : Checked} {index : Nat} {framed : FramedGroup}
-    (h : checked.frameGroup index = .ok framed) : FramedGroupWire checked index framed := by
-  unfold Checked.frameGroup at h
+public theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat} {framed : FramedGroup}
+    (h : checked.frameGroupFor codec index = .ok framed) : FramedGroupWire checked index framed codec := by
+  unfold Checked.frameGroupFor at h
   cases groupRead : checked.snapshot.groupAt index with
   | none => simp [groupRead] at h
   | some group =>
@@ -175,6 +175,10 @@ public theorem frameGroup_wire {checked : Checked} {index : Nat} {framed : Frame
                 exact ⟨groupRead, columns, associated.1, associated.2, codec, absent.1, absent.2,
                   bounds, parsed, (Page.readChunk_chain parsed).2.2⟩
     · contradiction
+
+public theorem frameGroup_wire {checked : Checked} {index : Nat} {framed : FramedGroup}
+    (h : checked.frameGroup index = .ok framed) : FramedGroupWire checked index framed :=
+  frameGroupFor_wire h
 
 public theorem readGroup_wire {checked : Checked} {index : Nat} {slots : List ListPage.Row}
     (h : checked.readGroup index = .ok slots) : GroupWire checked index slots := by

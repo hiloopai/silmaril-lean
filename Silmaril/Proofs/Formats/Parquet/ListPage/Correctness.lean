@@ -76,6 +76,15 @@ public theorem feed_wire {state next : State} {events : List Event}
       rw [ih h, step_wire step, List.append_assoc]
       rfl
 
+public theorem feed_nil (state : State) : state.feed [] = .ok state := by
+  unfold State.feed
+  rfl
+
+public theorem reconstruct_of_feed {events : List Event} {state : State}
+    (h : State.empty.feed events = .ok state) :
+    reconstruct events = .ok state.finish := by
+  simp [reconstruct, h, Except.map]
+
 public theorem feed_append (state : State) (left right : List Event) :
     state.feed (left ++ right) = (state.feed left).bind (·.feed right) := by
   simp [State.feed, List.foldlM_append, bind, Except.bind]

@@ -22,6 +22,11 @@ theorem openFile_wire {limits : Limits} {source : Bytes} {checked : Checked}
     (h : openFile limits source = .ok checked) : OpenWire limits source checked :=
   Proofs.Formats.Parquet.ListFile.openFile_wire h
 
+/-- A codec-specific profile retains the original checked group and exact chunk. -/
+theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat} {framed : FramedGroup}
+    (h : checked.frameGroupFor codec index = .ok framed) : FramedGroupWire checked index framed codec :=
+  Proofs.Formats.Parquet.ListFile.frameGroupFor_wire h
+
 /-- The frame list comes from the original checked group and exact chunk. -/
 theorem frameGroup_wire {checked : Checked} {index : Nat} {framed : FramedGroup}
     (h : checked.frameGroup index = .ok framed) : FramedGroupWire checked index framed :=
