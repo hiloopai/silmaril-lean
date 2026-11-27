@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Formats.Compression.Zstd.Sequence.Defs
+import Silmaril.Formats.Compression.HistoryCopy.Thms
 
 public section
 
@@ -47,22 +48,20 @@ private theorem repeats_valid {offsets next : RepeatOffsets} {literalLength valu
     (positive : 0 < distance) : next.Valid := by
   cases wire <;> simp_all [RepeatOffsets.Valid]
 
+private theorem match_of_copy {distance : Nat} {history bytes : List UInt8}
+    (wire : Silmaril.Formats.Compression.HistoryCopy.Wire distance history bytes) :
+    MatchWire distance history bytes := by
+  induction wire with
+  | nil history => exact .nil history
+  | cons positive available lookup _ ih => exact .cons positive available lookup ih
+
 theorem copy_sound {distance : Nat} (positive : 0 < distance) (count : Nat)
     (data : Array UInt8) (available : distance ≤ data.size) :
     ∃ bytes, (copy distance positive count data available).toList = data.toList ++ bytes ∧
       bytes.length = count ∧ MatchWire distance data.toList bytes := by
-  induction count generalizing data with
-  | zero => exact ⟨[], by simp [copy], rfl, .nil _⟩
-  | succ count ih =>
-    have index : data.size - distance < data.size := by omega
-    let byte := data[data.size - distance]
-    have more : distance ≤ (data.push byte).size := by simp; omega
-    obtain ⟨bytes, shape, length, wire⟩ := ih (data.push byte) more
-    have lookup : data.toList[data.toList.length - distance]? = some byte := by
-      simp [byte, index, getElem?_pos]
-    refine ⟨byte :: bytes, ?_, by simp [length], .cons positive (by simpa) lookup ?_⟩
-    · simpa [copy, byte, List.append_assoc] using shape
-    · simpa using wire
+  obtain ⟨bytes, shape, length, wire⟩ :=
+    Silmaril.Formats.Compression.HistoryCopy.copy_sound positive count data available
+  exact ⟨bytes, shape, length, match_of_copy wire⟩
 
 private theorem step_sound {window remaining : Nat} {history written : Array UInt8}
     {literals suffix : List UInt8} {offsets next : RepeatOffsets} {command : Command}

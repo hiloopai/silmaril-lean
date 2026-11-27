@@ -1,5 +1,7 @@
 module
 
+public import Silmaril.Formats.Compression.HistoryCopy.Defs
+
 /-! # Execution of decoded Zstandard sequences
 
 RFC 8878 §§3.1.1.3.2, 3.1.1.4 and 3.1.1.5. The executor takes a decoded
@@ -131,13 +133,8 @@ inductive Runs (window : Nat) :
 
 namespace Internal
 
-/-- Copy only with a proven in-bounds index. The growing array permits overlap. -/
-def copy (distance : Nat) (positive : 0 < distance) :
-    Nat → (data : Array UInt8) → distance ≤ data.size → Array UInt8
-  | 0, data, _ => data
-  | count + 1, data, available =>
-    let byte := data[data.size - distance]'(by omega)
-    copy distance positive count (data.push byte) (by simp; omega)
+/-- Use the shared bytewise copy, with overlapping reads of the growing output. -/
+abbrev copy := HistoryCopy.copy
 
 def step (window remaining : Nat) (history : Array UInt8) (literals : List UInt8)
     (offsets : RepeatOffsets) (command : Command) :
