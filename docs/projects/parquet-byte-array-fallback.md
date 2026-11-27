@@ -655,3 +655,43 @@ and a second complete Zstandard frame appended to a compressed suffix.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Zstd.Dictionary.V2.Checks
 python3 scripts/parquet-zstd-v2-dictionary-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in Zstandard V2 dictionary-to-PLAIN BinaryView
+
+`ByteArrayFallback.Zstd.Fallback.V2.convert` reads one selected flat
+optional unannotated BYTE_ARRAY leaf. The original checked codec-6
+chunk must have one leading PLAIN dictionary, a nonempty tag-8 V2
+prefix, and a nonempty tag-0 V2 suffix. The phase check examines the
+original framed headers before decoding any bodies. A dictionary tag
+in the PLAIN phase is refused at its original group, column, page and
+header offset.
+
+Both data phases call their existing strict decoders with the same
+page and Zstandard limits. The dictionary, data frames, raw definition
+levels, and nullable slots retain their original wire witnesses. A
+stored CRC covers the complete original body and is checked before
+expansion. The V2 flag selects the exact literal suffix or one
+complete frame admitted by the bounded, dictionary-free Zstandard
+decoder. The checked source emits each completed footer group, followed
+by EOS or its first indexed error. Native BinaryView conversion requires
+source EOS and preserves exact opaque bytes and group boundaries.
+
+PyArrow 26.0.1 produces tag sequences `[8, 8, 8, 0, 0]` with suffix flags
+`[true, false, false, true, false]`, with and without page CRC.
+Thrift 0.25.0, independent Hybrid and CRC checks, and libzstd 1.5.7
+verify the dictionary, levels, references, payloads and frame extents.
+PyArrow compares Lean's native IPC against its Parquet reads, including
+null, empty, NUL and non-UTF-8 values. In the assembled revival control,
+two complete original pages are swapped verbatim, retaining their CRCs.
+Labeled mutations also cover CRCs in the dictionary and either data
+phase, a late literal length, and an appended second Zstandard frame.
+Native V1 and dictionary-only inputs exercise profile refusal.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Zstd/Fallback/V2/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Zstd/Fallback/V2/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-zstd-v2-fallback-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Zstd.Fallback.V2.Checks
+python3 scripts/parquet-zstd-v2-fallback-binary-view-oracle/check.py "$(mktemp -d)"
+```
