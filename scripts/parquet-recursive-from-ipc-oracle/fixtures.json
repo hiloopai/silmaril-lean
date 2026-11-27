@@ -1,0 +1,97 @@
+{
+  "description": "PyArrow IPC sources, complete Lean Parquet files and returned native IPC",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_ipc": {
+    "nullable_multi": {
+      "bytes": 1984,
+      "sha256": "7b86791679e9934c7387eabeb770c2d089106128e96e9219ae424f9d10a00908"
+    },
+    "required_lists": {
+      "bytes": 920,
+      "sha256": "279f017e24602fe600391d0fbda9cf7f7a675cb5a0797fcb3858614b0111c53d"
+    },
+    "schema_only": {
+      "bytes": 256,
+      "sha256": "8c4b6ffa622a113a1dfb765a8feb11924ab8283588e20ed9c95f873cea59547c"
+    },
+    "nested_lists": {
+      "bytes": 536,
+      "sha256": "12a8cb24b003533950bc31f5077d6832f1c57872aa2560491cfdf4d343d128c5"
+    },
+    "zero_width": {
+      "bytes": 296,
+      "sha256": "e0dba8ad66569f6db1914596ad397b12db5d72b91f633b315dc23534fb161bd7"
+    },
+    "legacy": {
+      "bytes": 476,
+      "sha256": "b171fa9fe26ace982099d0a7b047542197aafc7951c6e6daff2f1601dbf1f01e"
+    }
+  },
+  "labeled_edits": {
+    "late_null_count": {
+      "bytes": 1984,
+      "sha256": "156f8638dbc0384afd3c30fe406aa6bc1484b7ae7ba840595a46fed5c8a2e7bf"
+    },
+    "late_node_length": {
+      "bytes": 1984,
+      "sha256": "411511209502e31d73450ef2ea56e5c2ecfd06d4698f4c5f29483ffb0873494f"
+    },
+    "late_truncated_body": {
+      "bytes": 1975,
+      "sha256": "382a1813bf23ed2517db10d8c6238f6a37b13e2ca4b748c24b1864bb5b5805af"
+    },
+    "late_unaligned_metadata": {
+      "bytes": 1984,
+      "sha256": "4f57d66230f1cc56845f271593f48f1bb8a4bc02eefccc236867a9e604e6ade2"
+    },
+    "missing_eos": {
+      "bytes": 1976,
+      "sha256": "cbb089cb65834dc41ad9bc7c704fcedbb8b177ae67a75aa8bad98f9a641505e2"
+    },
+    "trailing_byte": {
+      "bytes": 1985,
+      "sha256": "09af68e297c4fbd15e5ea3c19faf67f1eece1eab419554434898b19536e815cc"
+    },
+    "legacy_at_eos": {
+      "bytes": 1984,
+      "sha256": "ca7c0cc114edadc2fda308fa683ae163ad99827a5580b86ad7d469099db248e8"
+    },
+    "eos_without_schema": {
+      "bytes": 8,
+      "sha256": "72a4fa3544e43a836ffcb268ce06ccdbc55d44d5e6b1b1c19216a53ea98301fd"
+    }
+  },
+  "lean_parquet": {
+    "nullable_multi": {
+      "bytes": 1266,
+      "sha256": "c5ea9f7ff4baa419fa384074d57881a0dd12fa1e481e7ae5b4d96cbb5af6ab75"
+    },
+    "required_lists": {
+      "bytes": 486,
+      "sha256": "26d6bde4b4b2e447ec8ede2f4f61689804ff84964c4de7a28f916ebcf5ccc46f"
+    },
+    "schema_only": {
+      "bytes": 83,
+      "sha256": "dbeeb35accd7437b961e6a7161e570d20296019b6bbc0d8e1d469e2923c90902"
+    }
+  },
+  "returned_ipc": {
+    "nullable_multi": {
+      "bytes": 2400,
+      "sha256": "67232bb993632244d59217a313ab0827b3e8806f3545a0ccb695a64c31b8b9d5"
+    },
+    "required_lists": {
+      "bytes": 1200,
+      "sha256": "507941866e2910a86cebd21ca20cbbb170c6f0a2663b0ba38855341a5506af2d"
+    },
+    "schema_only": {
+      "bytes": 360,
+      "sha256": "2abfdb9cdfa1649fa59bfc708f7a17364e6d68339b70693a952e755f9cd5d23c"
+    }
+  }
+}
