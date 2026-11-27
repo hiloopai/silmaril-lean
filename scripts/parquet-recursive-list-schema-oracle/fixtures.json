@@ -1,0 +1,41 @@
+{
+  "description": "Genuine PyArrow recursive Parquet LIST footers and labeled schema edits",
+  "fixture_license": "MIT",
+  "producer_pins": "../parquet-recursive-schema-oracle/fixtures.json",
+  "genuine_parquet": {
+    "nullable_lists": {
+      "bytes": 1495,
+      "sha256": "a838e2ad095b346a2d18b96f40b788564fa79a9b81020aa04ecabb299385a4c7"
+    },
+    "required_lists": {
+      "bytes": 779,
+      "sha256": "bc074c45d4e52712803af88ed70afa0dc70499fcec6b78968d9e690326211e43"
+    },
+    "standalone": {
+      "bytes": 292,
+      "sha256": "1c3431f3760f676fa7154f98b60759d5eea5a953b2b3fbfeacf49d058646e11d"
+    },
+    "nested_repeated": {
+      "bytes": 350,
+      "sha256": "5e9227fef3c8145f983ef9609dcd1eb10a3bbf8e71ab66d2a936e17f0a30a039"
+    }
+  },
+  "labeled_edits": {
+    "raw_repeated": {
+      "bytes": 1489,
+      "sha256": "9b696ac7ab90da8d5ce74b614ea582fbdc38817396d69586cacb3b936a31755a"
+    },
+    "bad_outer": {
+      "bytes": 1501,
+      "sha256": "624bc0e6bd29b54baf5528fb2054e51cce8e5be4f8752c03106520b99ca1bf86"
+    },
+    "bad_wrapper": {
+      "bytes": 1495,
+      "sha256": "da71c63db89e488acbcd0365e82c4aa08a72fb2a5678abfaf1504326942d5ad1"
+    },
+    "wrong_converted": {
+      "bytes": 1495,
+      "sha256": "bf225d7770b43ca5695a3483e1b6a0f4bbef1870a548516dc06aadd6d74bb9cc"
+    }
+  }
+}
