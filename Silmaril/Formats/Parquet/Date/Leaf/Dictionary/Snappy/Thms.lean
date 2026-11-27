@@ -54,6 +54,19 @@ theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
         page.params = { base with codec := Payload.Codec.snappy.id } :=
   Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.planData_wire planned
 
+/-- A dictionary decoder may retain its own error while sharing the original checked chunk. -/
+theorem checkGroupWithDictionary_wire {ε δ : Type} {codec : Payload.Codec} {wrap : GroupError → ε}
+    {dictionaryError : Page.Frame → δ → ε}
+    {readDictionary : Bytes → Page.Frame → Except δ (List Int32)}
+    {plan : List Page.Frame → Except ε (List DataPage)} {admitted : DataPage → Prop}
+    {valid : List DataPage → Prop} {limits : Limits} {bound : Bound} {index : Nat}
+    {checked : CheckedGroup}
+    (keeps : ∀ {frames data}, plan frames = .ok data →
+      data.map (·.frame) = frames ∧ (∀ page ∈ data, admitted page) ∧ valid data)
+    (accepted : checkGroupWithDictionary codec wrap dictionaryError readDictionary plan limits bound index = .ok checked) :
+    GroupWireWith limits bound index checked codec readDictionary admitted ∧ valid checked.data :=
+  Proofs.Formats.Parquet.Date.Leaf.Dictionary.Snappy.checkGroupWithDictionary_wire keeps accepted
+
 /-- A codec-specific plan shares the selected chunk and original frames. -/
 theorem checkGroupWithCodec_wire {ε : Type} {codec : Payload.Codec} {wrap : GroupError → ε}
     {readDictionary : Bytes → Page.Frame → Except PageError (List Int32)}

@@ -97,8 +97,9 @@ def planPages (plan : Page.Frame → Except PageError DataPage) (frames : List P
 
 /-- Use the original selected range and declared offsets. All frame sizes
 contribute to the chunk-wide bound on expanded bytes before decoding. -/
-def checkGroupWithCodec {ε : Type} (codec : Payload.Codec) (wrap : GroupError → ε)
-    (readDictionary : Bytes → Page.Frame → Except PageError (List Int32))
+def checkGroupWithDictionary {ε δ : Type} (codec : Payload.Codec) (wrap : GroupError → ε)
+    (dictionaryError : Page.Frame → δ → ε)
+    (readDictionary : Bytes → Page.Frame → Except δ (List Int32))
     (plan : List Page.Frame → Except ε (List DataPage))
     (limits : Limits) (bound : Bound) (index : Nat) : Except ε CheckedGroup := do
   let selected ← (selectChunk bound index).mapError (wrap ∘ .selection)
@@ -124,8 +125,15 @@ def checkGroupWithCodec {ε : Type} (codec : Payload.Codec) (wrap : GroupError �
           let declared := (data.map (·.params.numValues)).sum
           if declared ≠ rows then .error (wrap (.rowCount rows declared))
           else do
-            let entries ← (readDictionary bound.snapshot.bytes dictionary).mapError (wrap ∘ atFrame 0 dictionary)
+            let entries ← (readDictionary bound.snapshot.bytes dictionary).mapError (dictionaryError dictionary)
             return ⟨selected, dictionary, entries, data⟩
+
+def checkGroupWithCodec {ε : Type} (codec : Payload.Codec) (wrap : GroupError → ε)
+    (readDictionary : Bytes → Page.Frame → Except PageError (List Int32))
+    (plan : List Page.Frame → Except ε (List DataPage))
+    (limits : Limits) (bound : Bound) (index : Nat) : Except ε CheckedGroup :=
+  checkGroupWithDictionary codec wrap (fun frame => wrap ∘ atFrame 0 frame) readDictionary
+    plan limits bound index
 
 def checkGroupWith {ε : Type} (wrap : GroupError → ε)
     (plan : List Page.Frame → Except ε (List DataPage))
@@ -136,8 +144,8 @@ def checkGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupErr
   checkGroupWith id (planPages (planData bound)) limits bound index
 
 /-- The original selected chunk, with a caller-supplied compressed dictionary and page policy. -/
-structure GroupWireWith (limits : Limits) (bound : Bound) (index : Nat) (checked : CheckedGroup)
-    (codec : Payload.Codec) (readDictionary : Bytes → Page.Frame → Except PageError (List Int32))
+structure GroupWireWith {δ : Type} (limits : Limits) (bound : Bound) (index : Nat) (checked : CheckedGroup)
+    (codec : Payload.Codec) (readDictionary : Bytes → Page.Frame → Except δ (List Int32))
     (admitted : DataPage → Prop) : Prop where
   selected : selectChunk bound index = .ok checked.selection
   codec : checked.selection.column.metadata.codec = codec.id

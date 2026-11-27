@@ -28,6 +28,14 @@ theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked
     (accepted : checkGroup limits bound index = .ok checked) : GroupWire limits bound index checked :=
   Silmaril.Proofs.Formats.Parquet.Date.Leaf.Zstd.V2.checkGroup_wire accepted
 
+/-- Specialize the generic codec witness to the original V2 data flag. -/
+theorem suffixWire_of {limits : Limits} {frame : Page.Frame} {data : Page.DataV2}
+    {stored plain : List UInt8} (payload : FlatColumn.Zstd.PayloadWire limits.compression
+      (limits.pages.scalar.payloadBounds ⟨frame.value.compressedSize, frame.value.uncompressedSize⟩ data.definitionBytes)
+      (ScalarPage.v2Codec 6 (some data.isCompressed)) stored plain) :
+    SuffixWire limits frame data stored plain :=
+  Proofs.Formats.Parquet.Date.Leaf.Zstd.V2.suffixWire_of payload
+
 /-- The original level prefix supplies the mask and only the flag-selected suffix supplies values. -/
 theorem decodePage_wire {limits : Limits} {bound : Bound} {metadata : Footer.ColumnMetadata}
     {page : Date.Leaf.Gzip.DataPage} {ordinal plannedOrdinal : Nat} {slots : Slots}

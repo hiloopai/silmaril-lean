@@ -107,6 +107,14 @@ def PreparedWire (limits : Limits) (params : ScalarPage.Parameters) (layout : Fl
       PayloadWire limits.compression (limits.scalar.payloadBounds params.sizes definitions)
         (ScalarPage.v2Codec 6 flag) encoded page.scalars.toList
 
+/-- Prepare the caller's selected data encoding in an admitted codec-6 page.
+The V2 path preserves the raw levels and dispatches only the value suffix. -/
+def prepareFor (encoding : Int) (limits : Limits) (params : ScalarPage.Parameters)
+    (body : Bytes) : Except Error ScalarPage.Prepared := do
+  if params.codec ≠ Payload.Codec.zstd.id then throw (.codec params.codec)
+  let layout ← (ScalarPage.validateFor encoding params limits.scalar body).mapError Error.scalar
+  Internal.prepare limits params layout body
+
 def PageWire (limits : Limits) (columnLayout : FlatColumn.Layout) (metadata : Footer.ColumnMetadata)
     (header : Page.Header) (body : Bytes) (slots : List (Option Int32)) : Prop :=
   metadata.codec = 6 ∧ ∃ params layout page values,

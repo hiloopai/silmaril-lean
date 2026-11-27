@@ -104,11 +104,11 @@ private theorem prepare_sound {limits : Limits} {params : ScalarPage.Parameters}
       not_not.mp presentCount, ?_⟩
     simpa only [codec] using wire
 
-private theorem validate_bounds {params : ScalarPage.Parameters} {limits : ScalarPage.Limits} {body : Bytes}
-    {layout : FlatPage.Layout} (read : ScalarPage.validate params limits body = .ok layout) :
+private theorem validate_bounds {encoding : Int} {params : ScalarPage.Parameters} {limits : ScalarPage.Limits} {body : Bytes}
+    {layout : FlatPage.Layout} (read : ScalarPage.validateFor encoding params limits body = .ok layout) :
     body.length = params.sizes.compressed ∧ params.sizes.compressed ≤ limits.compressedBytes ∧
       params.sizes.uncompressed ≤ limits.uncompressedBytes := by
-  simp only [ScalarPage.validate, ScalarPage.validateFor] at read
+  simp only [ScalarPage.validateFor] at read
   split at read <;> try contradiction
   split at read <;> try contradiction
   split at read <;> try contradiction
@@ -118,6 +118,22 @@ private theorem validate_bounds {params : ScalarPage.Parameters} {limits : Scala
   split at read <;> try contradiction
   rename_i size
   exact ⟨not_not.mp size, Nat.le_of_not_gt compressed, Nat.le_of_not_gt uncompressed⟩
+
+theorem prepareFor_sound {encoding : Int} {limits : Limits} {params : ScalarPage.Parameters}
+    {body : Bytes} {page : ScalarPage.Prepared} (read : prepareFor encoding limits params body = .ok page) :
+    params.codec = 6 ∧ ∃ layout,
+      ScalarPage.validateFor encoding params limits.scalar body = .ok layout ∧
+      body.length = params.sizes.compressed ∧ params.sizes.compressed ≤ limits.scalar.compressedBytes ∧
+      params.sizes.uncompressed ≤ limits.scalar.uncompressedBytes ∧
+      PreparedWire limits params layout body page := by
+  unfold prepareFor at read
+  split at read
+  · contradiction
+  rename_i rejected
+  have codec : params.codec = 6 := not_not.mp rejected
+  obtain ⟨layout, valid, prepared⟩ := bind_ok read
+  obtain ⟨size, stored, expanded⟩ := validate_bounds (mapError_ok valid)
+  exact ⟨codec, layout, mapError_ok valid, size, stored, expanded, prepare_sound codec prepared⟩
 
 private theorem pageParameters_fields {layout : FlatColumn.Layout} {codec : Int} {header : Page.Header}
     {params : ScalarPage.Parameters} (read : pageParameters layout codec header = some params) :

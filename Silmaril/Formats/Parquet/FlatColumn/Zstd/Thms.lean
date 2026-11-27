@@ -14,6 +14,16 @@ theorem decodePayload_sound {limits : CompressionLimits} {bounds : Payload.Bound
     PayloadWire limits bounds codec input output :=
   Proofs.Formats.Parquet.FlatColumn.Zstd.decodePayload_sound read
 
+/-- Preparation for a selected encoding shares the exact Zstandard payload and level contract. -/
+theorem prepareFor_sound {encoding : Int} {limits : Limits} {params : ScalarPage.Parameters}
+    {body : Bytes} {page : ScalarPage.Prepared} (read : prepareFor encoding limits params body = .ok page) :
+    params.codec = 6 ∧ ∃ layout,
+      ScalarPage.validateFor encoding params limits.scalar body = .ok layout ∧
+      body.length = params.sizes.compressed ∧ params.sizes.compressed ≤ limits.scalar.compressedBytes ∧
+      params.sizes.uncompressed ≤ limits.scalar.uncompressedBytes ∧
+      PreparedWire limits params layout body page :=
+  Proofs.Formats.Parquet.FlatColumn.Zstd.prepareFor_sound read
+
 /-- V1 uses the entire original body. V2 keeps the raw level prefix and
     uses the resolved flag for the suffix, with both declared sizes checked. -/
 theorem decodePage_sound {limits : Limits} {layout : FlatColumn.Layout} {leaf : Footer.SchemaElement}

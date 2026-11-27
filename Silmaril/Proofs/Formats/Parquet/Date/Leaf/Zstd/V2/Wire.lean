@@ -52,7 +52,7 @@ theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked
   have same := (planData_wire planned).1
   exact ⟨same, ordinal, by rwa [same]⟩
 
-private theorem suffixWire_of {limits : Limits} {frame : Page.Frame} {data : Page.DataV2}
+theorem suffixWire_of {limits : Limits} {frame : Page.Frame} {data : Page.DataV2}
     {stored plain : List UInt8} (payload : FlatColumn.Zstd.PayloadWire limits.compression
       (limits.pages.scalar.payloadBounds ⟨frame.value.compressedSize, frame.value.uncompressedSize⟩ data.definitionBytes)
       (ScalarPage.v2Codec 6 (some data.isCompressed)) stored plain) :
