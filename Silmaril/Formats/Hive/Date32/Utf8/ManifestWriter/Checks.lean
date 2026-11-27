@@ -1,7 +1,9 @@
 module
 
+import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Pruning.Thms
 import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Thms
-meta import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Defs
+import Silmaril.Formats.Hive.Manifest.Thms
+meta import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Pruning.Defs
 
 namespace Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter
 
@@ -49,8 +51,8 @@ private def showCell : (kind : Kind) → Option (Value kind) → String
   | .byteArray _, some bytes => "b:" ++ String.intercalate "," (bytes.toList.map (fun byte => toString byte.toNat))
   | _, none => "null"
 
-private def observed (layout : Schema) (row : Scan.Row layout.toScan Value) : List String :=
-  List.ofFn fun i => showCell (layout.toScan.kind i).2 (row i)
+private def observed (output : Scan.Schema String Kind) (row : Scan.Row output Value) : List String :=
+  List.ofFn fun i => showCell (output.kind i).2 (row i)
 
 private def defaultPaths :=
   ["day=2024-02-29/label=caf%C3%A9%2Fblue/part-0.parquet",
@@ -67,7 +69,7 @@ private def customPaths :=
   let .eos := trace.termination | return false
   return files.map (·.path) == defaultPaths && files.map (·.groupRows) == [[2, 1], [2], [1]] &&
     trace.batches.map (·.rowCount) == [2, 1, 2, 1] &&
-    trace.rows.map (observed dateFirst) ==
+    trace.rows.map (observed dateFirst.toScan) ==
       [["-7", "b:255,0", "19782", "b:99,97,102,195,169,47,98,108,117,101"],
        ["null", "b:", "19782", "b:99,97,102,195,169,47,98,108,117,101"],
        ["11", "null", "19782", "b:99,97,102,195,169,47,98,108,117,101"],
@@ -78,7 +80,7 @@ private def customPaths :=
   let .ok trace := readManifest textFirst custom limits files | return false
   let .eos := trace.termination | return false
   return files.map (·.path) == customPaths && trace.batches.map (·.rowCount) == [2, 1, 2, 1] &&
-    trace.rows.head?.map (observed textFirst) ==
+    trace.rows.head?.map (observed textFirst.toScan) ==
       some ["-7", "b:255,0", "b:99,97,102,195,169,47,98,108,117,101", "19782"]
 
 #guard Id.run do
@@ -120,14 +122,116 @@ private def customPaths :=
   | .error (.routing (.row 6 (.render (.nullMarkerCollision "label")))) => true
   | _ => false
 
+private def project (layout : Schema) : Scan.Projection layout.toScan := by
+  rcases layout with ⟨intName, byteName, ⟨day, label, order⟩⟩
+  cases order <;> exact Scan.Projection.ofArray (#[3, 0, 2, 3] : Array (Fin 4))
+
+private def keepDay (layout : Schema) (predicate : Int32 → Bool) :
+    Scan.Predicate layout.keys.schema.toScan Value := by
+  rcases layout with ⟨_, _, ⟨_, _, order⟩⟩
+  cases order
+  · exact fun cells => (cells (0 : Fin 2)).map predicate
+  · exact fun cells => (cells (1 : Fin 2)).map predicate
+
+private def keepLeap (layout : Schema) := keepDay layout (· == 19782)
+
+private def observesPruning (layout : Schema) (options : PartitionPath.Options) : Bool := Id.run do
+  let .ok files := make layout options | return false
+  let .ok strict := readManifest layout options limits files | return false
+  let .ok selected := readSelected layout options limits (project layout) (keepLeap layout) files | return false
+  let .eos := selected.termination | return false
+  let output := (project layout).schema
+  return selected.batches.map (·.rowCount) == [2, 1] &&
+    selected.rows.map (observed output) ==
+      ((project layout).scan (fun row => keepLeap layout (TypedPartitions.partitionCells row)) strict.rows).map
+        (observed output)
+
+#guard observesPruning dateFirst {} && observesPruning textFirst custom
+
+#guard Id.run do
+  let .ok files := make dateFirst {} | return false
+  let empty : Scan.Projection dateFirst.toScan := Scan.Projection.ofArray #[]
+  let .ok trace := readSelected dateFirst {} limits empty (keepDay dateFirst (fun _ => true)) files | return false
+  let .eos := trace.termination | return false
+  return trace.batches.map (·.rowCount) == [2, 1, 1] && trace.rows.length == 4
+
+-- Both false and unknown payloads can be unreadable. A retained error stays visible.
+#guard Id.run do
+  let .ok [a, b, c] := make dateFirst {} | return false
+  let badB := {b with bytes := .empty}
+  let badC := {c with bytes := .empty}
+  let .ok strict := readManifest dateFirst {} limits [a, badB, badC] | return false
+  let .readError (.open rejected _) := strict.termination | return false
+  let .ok pruned := readSelected dateFirst {} limits (project dateFirst) (keepLeap dateFirst)
+    [a, badB, badC] | return false
+  let .eos := pruned.termination | return false
+  let .ok kept := readSelected dateFirst {} limits (project dateFirst) (keepDay dateFirst (fun _ => true))
+    [a, badB, badC, a] | return false
+  let .readError (.open failed _) := kept.termination | return false
+  return rejected == b.path && failed == c.path && kept.batches.map (·.rowCount) == [2, 1] &&
+    pruned.rows.map (observed (project dateFirst).schema) == kept.rows.map (observed (project dateFirst).schema)
+
+private def corruptSecond (layout : Schema) (file : File) : Option File := do
+  let opened ← (Int32ByteArrayGroup.File.openFile limits.reader file.bytes layout.intField layout.byteField).toOption
+  let group ← opened.projection.snapshot.groupAt 1
+  let column ← group.columns.head?
+  return {file with bytes := ⟨file.bytes.data.set! column.metadata.dataPageOffset.toNat 0⟩}
+
+#guard Id.run do
+  let .ok (a :: rest) := make textFirst custom | return false
+  let some bad := corruptSecond textFirst a | return false
+  let .ok trace := readSelected textFirst custom limits (project textFirst) (keepLeap textFirst) (bad :: rest) |
+    return false
+  let .readError (.source path (.parquet (.groupFailure 1 _))) := trace.termination | return false
+  return path == a.path && trace.batches.map (·.rowCount) == [2]
+
+#guard Id.run do
+  let .ok (a :: rest) := make dateFirst {} | return false
+  let invalid := {a with path := "day=2024-02-30/label=bad/part-0.parquet"}
+  match readSelected dateFirst {} limits (project dateFirst) (fun _ => none) (a :: invalid :: rest) with
+  | .error (.binding path (.conversion "day" (.invalidDate "2024-02-30"))) => return path == invalid.path
+  | _ => return false
+
 #print axioms namedRows_of_observe
 #print axioms fileInput_rows
 #print axioms FileMatches.cutBounds
 #print axioms emit_routing_error
 #print axioms emit_readback
 
-private def writeFixture (root : System.FilePath) (layout : Schema)
-    (options : PartitionPath.Options) : IO Unit := do
+#print axioms Manifest.scanFile_termination_eq_full
+#print axioms Manifest.scan_equivalent_thenFilter
+#print axioms scanSelectedPaths_admission_error
+#print axioms scanSelectedPaths_eq_scan_filter
+#print axioms readSelected_eq_postfilter
+#print axioms emit_readSelected
+#print axioms scanSelectedPaths_first_retained_error
+
+private def tracedResolve (run : String) (files : List File) (path : String) : Except Unit Bytes :=
+  dbg_trace s!"open\t{run}\t{path}"
+  resolve files path
+
+private def writePruning (root : System.FilePath) (name : String) (layout : Schema)
+    (options : PartitionPath.Options) (files : List File) : IO Unit := do
+  let projection := project layout
+  let keep := keepLeap layout
+  let paths := files.map (·.path)
+  let .ok strict := scanPaths (int32 := layout.intField) (byteArray := layout.byteField) (keys := layout.keys)
+    options limits.reader (tracedResolve (name ++ "-strict") files) projection keep paths |
+    throw (IO.userError "strict projected ingress failed")
+  let .ok pruned := scanSelectedPaths layout options limits (tracedResolve (name ++ "-pruned") files)
+    projection keep paths | throw (IO.userError "pruned ingress failed")
+  let .eos := strict.termination | throw (IO.userError "strict comparison did not reach EOS")
+  let .eos := pruned.termination | throw (IO.userError "pruned comparison did not reach EOS")
+  unless strict.rows.map (observed projection.schema) == pruned.rows.map (observed projection.schema) &&
+      strict.batches.map (·.rowCount) == pruned.batches.map (·.rowCount) do
+    throw (IO.userError "strict and pruned native observations differ")
+  let batches := pruned.batches.flatMap fun batch =>
+    toString batch.rowCount :: batch.toRows.map (fun row => String.intercalate "\t" (observed projection.schema row))
+  IO.FS.writeFile (root / "pruned.tsv") (String.intercalate "\n" batches ++ "\n")
+
+private def writeFixture (root : System.FilePath) (name : String) (layout : Schema)
+    (options : PartitionPath.Options) (pruning : Bool) : IO Unit := do
+  let root := root / name
   let .ok files := make layout options | throw (IO.userError "paired Hive emission failed")
   let .ok trace := readManifest layout options limits files | throw (IO.userError "paired Hive ingress failed")
   let .eos := trace.termination | throw (IO.userError "paired Hive read did not reach EOS")
@@ -137,13 +241,17 @@ private def writeFixture (root : System.FilePath) (layout : Schema)
     IO.FS.writeBinFile path file.bytes.data
   IO.FS.writeFile (root / "inventory.txt") (String.intercalate "\n" (files.map (·.path)) ++ "\n")
   let batches := trace.batches.flatMap fun batch =>
-    toString batch.rowCount :: batch.toRows.map (fun row => String.intercalate "\t" (observed layout row))
+    toString batch.rowCount :: batch.toRows.map (fun row => String.intercalate "\t" (observed layout.toScan row))
   IO.FS.writeFile (root / "batches.tsv") (String.intercalate "\n" batches ++ "\n")
+  if pruning then writePruning root name layout options files
 
 public def runWriterChecks (args : List String) : IO Unit := do
-  let [root] := args | throw (IO.userError "usage: Checks.lean <fixture-root>")
-  writeFixture (System.FilePath.mk root / "date-first") dateFirst {}
-  writeFixture (System.FilePath.mk root / "text-first") textFirst custom
+  let (root, pruning) ← match args with
+    | [root] => pure (System.FilePath.mk root, false)
+    | ["pruning", root] => pure (System.FilePath.mk root, true)
+    | _ => throw (IO.userError "usage: Checks.lean [pruning] <fixture-root>")
+  writeFixture root "date-first" dateFirst {} pruning
+  writeFixture root "text-first" textFirst custom pruning
 
 end Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter
 

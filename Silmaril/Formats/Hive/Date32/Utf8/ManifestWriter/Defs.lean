@@ -106,15 +106,18 @@ def emitBucket (schema : Schema) (limits : Limits) (bucket : Bucket schema) : Ex
   let output ← (MixedV1Writer.Multi.emit limits.writer (fileInput schema sizes bucket.rows)).mapError (.parquet path)
   return ⟨path, sizes, output.bytes⟩
 
+/-- Resolve the exact literal path in the supplied immutable manifest. -/
+def resolve (files : List File) (path : String) : Except Unit Bytes :=
+  match files.find? (fun file => file.path == path) with
+  | none => .error ()
+  | some file => .ok file.bytes
+
 /-- Reopen the returned bytes by exact literal path through the existing
 paired ingress, with the full typed schema and no row filter. -/
 def readManifest (schema : Schema) (options : PartitionPath.Options) (limits : Limits) (files : List File) :
     Except (Manifest.PrepareError Date32.Error) (Events.Trace schema.toScan Value ReadError) :=
   scanPaths (int32 := schema.intField) (byteArray := schema.byteField) (keys := schema.keys) options limits.reader
-    (fun path => match files.find? (fun file => file.path == path) with
-      | none => .error ()
-      | some file => .ok file.bytes)
-    ⟨schema.toScan.width, id⟩ (fun _ => some true) (files.map (·.path))
+    (resolve files) (Scan.Projection.id schema.toScan) (fun _ => some true) (files.map (·.path))
 
 /-- Check the actual ordered readback against the restored route plan.
 The comparison checks the typed rows and each actual group boundary. -/

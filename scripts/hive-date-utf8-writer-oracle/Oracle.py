@@ -48,7 +48,7 @@ def native_batches(path):
     return [[next(lines).split("\t") for _ in range(int(size))] for size in lines]
 
 
-def check_profile(root, marker, virtual, declared):
+def check_profile(root, marker, virtual, declared, opens=None):
     assert (root / "inventory.txt").read_text().splitlines() == declared
     assert sorted(path.relative_to(root).as_posix() for path in root.rglob("*.parquet")) == sorted(declared)
     paths = [str(root / path) for path in declared]
@@ -74,14 +74,41 @@ def check_profile(root, marker, virtual, declared):
             batches.append([list(map(wire_cell, (number, payload, *(values[name] for name, _ in virtual))))
                             for number, payload in group])
     assert batches == native_batches(root / "batches.tsv")
+    if opens is not None:
+        keep = ds.field("day") == pa.scalar(19782, pa.date32())
+        chosen = list(dataset.get_fragments(filter=keep))
+        retained = [Path(fragment.path).relative_to(root).as_posix() for fragment in chosen]
+        assert retained == declared[:1]
+        assert opens[root.name + "-strict"] == declared
+        assert opens[root.name + "-pruned"] == retained
+        positions = [3, 0, 2, 3]
+        expected = []
+        for fragment in chosen:
+            for group in fragment.split_by_row_group():
+                table = group.to_table(schema=dataset.schema, use_threads=False)
+                columns = [table[name].cast(pa.int32()).to_pylist() if name == "day" else table[name].to_pylist()
+                           for name in dataset.schema.names]
+                expected.append([list(map(wire_cell, (row[i] for i in positions)))
+                                 for row in zip(*columns, strict=True)])
+        assert expected == native_batches(root / "pruned.tsv")
     return len(batches)
 
 
 def main():
     assert pa.__version__ == "26.0.1"
     root = Path(sys.argv[1]).resolve()
-    groups = sum(check_profile(root / name, *profile) for name, profile in PROFILES.items())
+    opens = None
+    if len(sys.argv) == 3:
+        opens = {}
+        for line in Path(sys.argv[2]).read_text().splitlines():
+            if line.startswith("open\t"):
+                _, run, literal = line.split("\t")
+                opens.setdefault(run, []).append(literal)
+        assert set(opens) == {name + mode for name in PROFILES for mode in ("-strict", "-pruned")}
+    groups = sum(check_profile(root / name, *profile, opens=opens) for name, profile in PROFILES.items())
     print(f"PyArrow matched both partition orders, six native Parquet files and {groups} row groups.")
+    if opens is not None:
+        print("PyArrow matched projected retained groups. Lean resolver traces show three strict and one pruned open per order.")
 
 
 if __name__ == "__main__":

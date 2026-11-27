@@ -8,7 +8,7 @@ public section
 namespace Silmaril.Formats.Hive.Manifest
 
 open Silmaril.Relational Silmaril.Formats.Arrow
-open Silmaril.Formats.Hive.TypedPartitions (PartitionSchema Convert)
+open Silmaril.Formats.Hive.TypedPartitions (PartitionSchema Convert partitionCells)
 
 variable {Kind : Type*} {Value : Kind → Type*}
 variable {physical : Scan.Schema String Kind} {schema : PartitionSchema Kind}
@@ -56,5 +56,24 @@ theorem scan_first_terminal {Group Error : Type*} (opener : Opener Group physica
     run.rows = before.flatMap (fun file => (scanFile opener projection predicate file).rows) ++ last.rows ∧
       run.termination = last.termination :=
   Proofs.Formats.Hive.Manifest.scan_first_terminal opener projection predicate before current after exhausted stop
+
+/-- Filtering and projection preserve each opened file's terminal outcome. -/
+theorem scanFile_termination_eq_full {Group Error : Type*} (opener : Opener Group physical Value Error)
+    (projection : Scan.Projection (schema.extend physical)) (predicate : Scan.Predicate schema.toScan Value)
+    (file : File schema Value) :
+    (scanFile opener projection predicate file).termination =
+      (scanFile opener (Scan.Projection.id (schema.extend physical)) (fun _ => some true) file).termination :=
+  (Proofs.Formats.Hive.Manifest.scanFile_observation opener projection predicate file).2
+
+/-- Strict partition filtering and projection agree with applying the logical
+scan after full typed reading, for rows and the original terminal outcome. -/
+theorem scan_equivalent_thenFilter {Group Error : Type*} (opener : Opener Group physical Value Error)
+    (projection : Scan.Projection (schema.extend physical)) (predicate : Scan.Predicate schema.toScan Value)
+    (files : List (File schema Value)) :
+    Events.EventStream.Equivalent
+      (.ok ⟨projection.schema, scan opener projection predicate files⟩)
+      (.ok ⟨projection.schema, (scan opener (Scan.Projection.id (schema.extend physical)) (fun _ => some true)
+        files).scan projection (fun row => predicate (partitionCells row))⟩) :=
+  Proofs.Formats.Hive.Manifest.scan_equivalent_thenFilter opener projection predicate files
 
 end Silmaril.Formats.Hive.Manifest

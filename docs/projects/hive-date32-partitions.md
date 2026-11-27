@@ -278,3 +278,40 @@ Generate the files with
 and `lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Checks.lean "$tmp"`.
 Use the pinned PyArrow command above with
 `python -I /repo/scripts/hive-date-utf8-writer-oracle/Oracle.py /out`.
+
+## Skip-open selection and projection of paired manifests
+
+[`readSelected`](../../Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Pruning/Defs.lean)
+uses the same literal resolver and paired reader as certified emission.
+It admits all typed file declarations before evaluating the predicate
+or opening bytes. It then opens only occurrences for which the
+partition predicate returns SQL true. False and unknown leave the
+payload unopened. Retained file occurrences and groups stay in their
+original order. Any well-typed projection may reorder, repeat or
+omit positions, including projecting zero columns.
+
+A [successful strict read through EOS](../../Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Pruning/Thms.lean)
+certifies that the rejected files would exhaust too. In that case,
+the selected read agrees with stable typed post-filtering and
+projection on ordered rows and EOS. For writer output, this becomes
+a law over the original rows in first-seen directory order, stable
+within each directory. For arbitrary supplied manifests, the
+skip-open result is the strict scan on just the stable retained
+occurrences. A reached retained error keeps its original path and
+cause and the selected row prefix, including earlier groups from
+that file. Skipped payload errors are absent from this result.
+
+The fixture records calls to the literal resolver in the strict and
+pruned comparison runs. Each virtual order reaches three strict
+opens and one pruned open. The predicate accepts the leap day,
+rejects year zero, and returns unknown for a null DATE. PyArrow
+checks the selected native groups and repeated projection using
+the same typed DATE filter and verifies the physical and virtual
+values. Additional Lean controls exercise malformed declarations,
+skipped unreadable payloads, retained open failures, and an indexed
+second-group failure.
+
+Generate the fixture and resolver trace with
+`lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Checks.lean pruning "$tmp" > "$tmp/opens.log" 2>&1`.
+Use the pinned PyArrow command above with
+`python -I /repo/scripts/hive-date-utf8-writer-oracle/Oracle.py /out /out/opens.log`.
