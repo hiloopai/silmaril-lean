@@ -26,7 +26,7 @@ frames_at = PREVIOUS["frames_at"]
 CODECS = {**SCALAR["BASE_CODECS"], 2: PREVIOUS["COMPRESSED"]["gzip_body"]}
 
 
-def inspect_v1(wire, field, groups, codec, fallback):
+def inspect_v1(wire, field, groups, codec, fallback, codecs=CODECS):
     parquet = PREVIOUS["check_footer"](wire, field, groups)
     for index, ticks in enumerate(groups):
         metadata, frames = frames_at(wire, index)
@@ -38,7 +38,7 @@ def inspect_v1(wire, field, groups, codec, fallback):
         expanded = []
         for _, header, _, stored in frames:
             assert header[3][1] == len(stored) and zlib.crc32(stored) == header[4][1] % 2**32
-            raw = CODECS[codec](stored, header[2][1])
+            raw = codecs[codec](stored, header[2][1])
             assert len(raw) == header[2][1]
             expanded.append(raw)
         dictionary = frames[0][1]

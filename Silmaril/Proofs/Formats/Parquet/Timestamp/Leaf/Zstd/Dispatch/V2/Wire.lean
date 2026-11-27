@@ -66,7 +66,7 @@ theorem readDictionary_matches {limits : Limits} {leafLimits : Leaf.Limits} {bou
       | .fallback => Leaf.Fallback.Zstd.V2.readGroup limits leafLimits bound index := by
   obtain ⟨framed, _⟩ := planDictionary_source planned
   cases chosen : plan.profile <;>
-    simp [readDictionary, planned, chosen, Leaf.Dictionary.Zstd.V2.readGroup, Leaf.Dictionary.Zstd.V2.checkGroup,
+    simp [readDictionary, readFramedDictionary, planned, chosen, Leaf.Dictionary.Zstd.V2.readGroup, Leaf.Dictionary.Zstd.V2.checkGroup,
       Leaf.Fallback.Zstd.V2.readGroup, Leaf.Fallback.Zstd.V2.checkGroup, Leaf.Dictionary.Zstd.V2.checkGroupWith,
       framed, Except.mapError, Bind.bind, Except.bind]
 

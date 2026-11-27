@@ -44,11 +44,9 @@ def planDictionary (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (boun
   (Dictionary.frameGroupUsing .dictionary limits leafLimits bound index).map fun framed =>
     ⟨framed, scanHeaders bound framed.data 1 false (.ok [])⟩
 
-/-- Complete the selected strict profile using the planned headers, without
-reframing or planning any original data header a second time. -/
-def readDictionary (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
-    Except Leaf.Error (Slots bound) := do
-  let plan ← planDictionary limits leafLimits bound index
+/-- Complete the strict V2 profile on an already framed original dictionary chunk. -/
+def readFramedDictionary (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+    (plan : DictionaryPlan) : Except Leaf.Error (Slots bound) := do
   let data ← plan.headers.data
   let readEntries := Dictionary.Uncompressed.V2.readEntries limits leafLimits bound
   if plan.headers.hasPlain then
@@ -57,6 +55,12 @@ def readDictionary (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (boun
   else
     Dictionary.Snappy.readGroupUsing limits leafLimits bound
       (Dictionary.checkPlannedUsing plan.framed data (fun _ => .ok ()) readEntries)
+
+/-- Complete the selected strict profile without reframing or replanning data headers. -/
+def readDictionary (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except Leaf.Error (Slots bound) := do
+  let plan ← planDictionary limits leafLimits bound index
+  readFramedDictionary limits leafLimits bound plan
 
 def readGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
     Except Leaf.Error (Slots bound) := do

@@ -130,14 +130,14 @@ theorem readDictionary_matches {limits : Leaf.Dictionary.Limits} {leafLimits : L
       rw [headers, scan_classifies, Bool.false_or] at chosen
       exact chosen
     rw [plans_notPlain bound _ 1 noPlain] at plans
-    simp only [readDictionary, planned, chosen, Leaf.Dictionary.Uncompressed.V2.readGroup,
+    simp only [readDictionary, readFramedDictionary, planned, chosen, Leaf.Dictionary.Uncompressed.V2.readGroup,
       Leaf.Dictionary.Uncompressed.V2.checkGroup, Leaf.Dictionary.checkGroupUsing, framed,
       Leaf.Dictionary.checkFramedUsing, Bind.bind, Except.bind, Bool.false_eq_true, ↓reduceIte]
     rw [← plans]
     cases plan.headers.data <;> rfl
   | true =>
     simp only [planAt] at plans
-    simp only [readDictionary, planned, chosen, Leaf.Fallback.Uncompressed.V2.readGroup,
+    simp only [readDictionary, readFramedDictionary, planned, chosen, Leaf.Fallback.Uncompressed.V2.readGroup,
       Leaf.Fallback.Uncompressed.V2.checkGroup, Leaf.Dictionary.checkGroupUsing, framed,
       Leaf.Dictionary.checkFramedUsing, Bind.bind, Except.bind, ↓reduceIte]
     rw [← plans]

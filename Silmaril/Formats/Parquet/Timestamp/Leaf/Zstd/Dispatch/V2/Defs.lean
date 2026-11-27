@@ -44,18 +44,22 @@ def planDictionary (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) 
   ((Dictionary.frameGroupUsing .zstdDictionaryV2 limits.dictionary leafLimits bound index).mapError
     .selection).map fun framed => ⟨framed, dictionaryProfile framed.data⟩
 
-/-- Classify the original dictionary-backed frames once, then run only the
-selected planner and decoder on those frames. -/
+/-- Complete the selected strict V2 profile on the retained original frames. -/
+def readFramedDictionary (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+    (framed : Dictionary.FramedChunk) (choice : DictionaryProfile) : Except GroupError (Slots bound) :=
+  match choice with
+  | .references =>
+    Dictionary.Zstd.V2.readGroupUsing bound (Dictionary.Zstd.V2.decodePage limits leafLimits bound)
+      (Dictionary.Zstd.V2.checkFramedWith (· == 8) (fun _ => .ok ()) limits leafLimits bound framed)
+  | .fallback =>
+    Dictionary.Zstd.V2.readGroupUsing bound (Fallback.Zstd.V2.decodePage limits leafLimits bound)
+      (Dictionary.Zstd.V2.checkFramedWith Fallback.admits Fallback.checkSequence limits leafLimits bound framed)
+
+/-- Classify the original dictionary-backed frames once, then run the selected branch. -/
 def readDictionary (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
     Except GroupError (Slots bound) := do
   let plan ← planDictionary limits leafLimits bound index
-  match plan.profile with
-  | .references =>
-    Dictionary.Zstd.V2.readGroupUsing bound (Dictionary.Zstd.V2.decodePage limits leafLimits bound)
-      (Dictionary.Zstd.V2.checkFramedWith (· == 8) (fun _ => .ok ()) limits leafLimits bound plan.framed)
-  | .fallback =>
-    Dictionary.Zstd.V2.readGroupUsing bound (Fallback.Zstd.V2.decodePage limits leafLimits bound)
-      (Dictionary.Zstd.V2.checkFramedWith Fallback.admits Fallback.checkSequence limits leafLimits bound plan.framed)
+  readFramedDictionary limits leafLimits bound plan.framed plan.profile
 
 def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
     Except GroupError (Slots bound) := do
