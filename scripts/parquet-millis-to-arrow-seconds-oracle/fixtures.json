@@ -1,0 +1,24 @@
+{
+  "independent": {
+    "utc_v1": "79d96eeacc7f257a6410a221812951f882bb700d962a70417092668c67f2a7f4",
+    "local_v2": "b275224be95a296d5980d37d40b844fe71b330d5819b2f0c4a66e1cbed1ac207",
+    "offgrid_negative": "042a7f427b46531c8e12521c11bb7ae271df09b36f3bf5ac1779b575b12a7906",
+    "offgrid_positive": "2a9c41eedceb40a12b46e40154b82a6e6b68edecf9aa952b63fdbb8b5552f771",
+    "late_bad_source": "3d9a530d779cb9f20e988f2d47bb5989a4fee83b8bc9d678124bca32e81c221b",
+    "wrong_unit": "1b36b9729bbeb171c53868892ddf0ab5323de452997f6047a4a75d83584c2731",
+    "multi_field": "f837142f1fba633c3e3d893349f6d6c6fe9dd1353e329b3d11f0c6061ce44e38",
+    "page_less": "7674d2d2d4174ea6c439d20510f0143e88070a00781ac8dae113296e351c36f2"
+  },
+  "original_seconds": {
+    "utc_optional": "5b1a491d85d654e61ebaf294079fb4e1fcc34e5211ea224017f1d5d074565924",
+    "local_required": "bfa71f75ec1fbd4117b12d39737e756885bac95632b27e39e27b41c337b21246",
+    "all_empty": "94e73cd1e45d044960d04e2938a9c59696f8e299c85a1f1505384f41b3934e39",
+    "schema_only": "08349890f467b8845264e964f61333597dbf4dc521abbc05d5165db07c0b16c2"
+  },
+  "lean_parquet": {
+    "utc_optional": "a4b9dea452d56a9aa0001246ea77549ebc52022350b099d0e8f9bf88f5972a14",
+    "local_required": "a194f11bde293f1f361668b597c6f3db1ad8e366fa286f55c6b40440b9ff934a",
+    "all_empty": "d5bbdeec5b3d889e66273ff3bb8fb4c20677d68dd4933fcedef2d41f29d17ed6",
+    "schema_only": "d4bb88ed207dcb5a0364624e68767e6f56e56c5f04d9556b6ad8df9e2fef65b4"
+  }
+}
