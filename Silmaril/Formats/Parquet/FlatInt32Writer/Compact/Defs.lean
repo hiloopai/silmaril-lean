@@ -130,20 +130,29 @@ def chunkFor (physical : Int) (rows : Nat) (column : ColumnIndex) : Write Unit :
 
 def chunk (rows : Nat) (column : ColumnIndex) : Write Unit := chunkFor 1 rows column
 
-def groupFor (physical : Int) (rows : Nat) (columns : List ColumnIndex) : Write Unit := do
+structure TypedColumnIndex where
+  physical : Int
+  column : ColumnIndex
+
+/-- Serialize one flat row group with a physical type at each chunk position. -/
+def groupTyped (rows : Nat) (columns : List TypedColumnIndex) : Write Unit := do
   field 1 9
   listHeader 12 columns.length
-  for column in columns do chunkFor physical rows column
+  for column in columns do chunkFor column.physical rows column.column
   field 1 6
-  integer .i64 (columns.map ColumnIndex.size).sum
+  let size : Nat := (columns.map (·.column.size)).sum
+  integer .i64 size
   field 1 6
   integer .i64 rows
   octet 0
 
+def groupFor (physical : Int) (rows : Nat) (columns : List ColumnIndex) : Write Unit :=
+  groupTyped rows (columns.map fun column => ⟨physical, column⟩)
+
 def group (rows : Nat) (columns : List ColumnIndex) : Write Unit := groupFor 1 rows columns
 
-def Internal.footerGroupsWriting (physical : Int) (leaves : List (Write Unit))
-    (groups : List (Nat × List ColumnIndex)) : Write Unit := do
+def Internal.footerGroupsTyped (leaves : List (Write Unit))
+    (groups : List (Nat × List TypedColumnIndex)) : Write Unit := do
   field 1 5
   integer .i32 1
   field 1 9
@@ -154,8 +163,21 @@ def Internal.footerGroupsWriting (physical : Int) (leaves : List (Write Unit))
   integer .i64 (groups.map Prod.fst).sum
   field 1 9
   listHeader 12 groups.length
-  for (rows, chunks) in groups do groupFor physical rows chunks
+  for (rows, chunks) in groups do groupTyped rows chunks
   octet 0
+
+def Internal.tagGroups (physical : Int) (groups : List (Nat × List ColumnIndex)) :
+    List (Nat × List TypedColumnIndex) :=
+  groups.map fun (rows, chunks) => (rows, chunks.map fun column => ⟨physical, column⟩)
+
+def Internal.footerGroupsWriting (physical : Int) (leaves : List (Write Unit))
+    (groups : List (Nat × List ColumnIndex)) : Write Unit :=
+  Internal.footerGroupsTyped leaves (Internal.tagGroups physical groups)
+
+/-- The same Compact byte cap covers each ordered schema leaf and all typed chunks. -/
+def encodeGroupsTyped (limit : Nat) (leaves : List (Write Unit))
+    (groups : List (Nat × List TypedColumnIndex)) : Except Error Bytes :=
+  ((Internal.footerGroupsTyped leaves groups).run ⟨limit, .empty⟩).map (·.2.bytes)
 
 def Internal.footerGroupsFor (physical : Int) (writeLeaf : ColumnIndex → Write Unit) (columns : List ColumnIndex)
     (groups : List (Nat × List ColumnIndex)) : Write Unit :=

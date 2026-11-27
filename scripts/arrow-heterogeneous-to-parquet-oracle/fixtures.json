@@ -1,0 +1,14 @@
+{
+  "native_mixed": "b09c801a358c09db7f0334358bb8dce4690df3314f20daebf0b35fce2dd02dab",
+  "native_reordered": "6ccfd23dfe1da7f15dfa99ec956edd83508f3403138758473c6430d67f853b54",
+  "native_schema_only": "e1c7e08ff695d7aa18fa694dfe0a4bb839e8975c4d7bedfa6dda820e0d8b4eb6",
+  "native_seconds": "45b2516d710d582c401ae5f81b3f9a0c7f5c56670916587a5ab6979c9bdfd44e",
+  "native_duplicate": "82e7c136bfb1c52a0520d4c11152858c55cbdec26f5d92010470268bd3c629a3",
+  "native_empty_name": "159d1136d0af1bd7e11dc5f70f4d87065257d602d0c7e5e7cf0ffc4effeec270",
+  "native_nul_name": "11fb1d5c0af0a6187154afbbc99e34497ec498e2df465af0e6cbc3aec6f39665",
+  "native_required_null": "d5c5c4dadd60152e719768fd2e5414b6071aba14f68d590b71dd4864ca92c1f8",
+  "native_named_timezone": "87aa3bad523820384aee61273a4be26cc6d10830a4b38c1cdd35405dffe0a5a5",
+  "native_zero_width": "6664aa09a0ed75fadf7d69595d4a1b0af8f81605f3c244753545049a9d2720dc",
+  "mutated_seconds_trailing": "05ba71265655521b6d6424c2bcec5340c3c9ab98fa30013bba7ecc6de47bd876",
+  "mutated_late_trailing": "147853263dacd87768983e6787d69bf0112cf53723ef1fcab59c0d7806ecdf65"
+}
