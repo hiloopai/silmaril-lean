@@ -81,3 +81,32 @@ Schema, short EOS, and trailing data.
 python scripts/arrow-binary/batch_fixture.py
 lake build --wfail Silmaril.Formats.Arrow.Binary.Stream.Examples Silmaril.Formats.Arrow.Binary.Stream.Axioms
 ```
+
+## Opt-in modern IPC stream writer
+
+Import `Silmaril.Formats.Arrow.Binary.StreamWriter.Defs` for
+`StreamWriter.emit limits field batches`. Use one field declaration and an
+ordered list of batches, each a list of optional `KBytes`. The writer emits a
+V5 plain Binary schema, record batches, and a modern continuation EOS. It
+writes one validity, one signed-i32 offsets, and one data descriptor per
+record. Offsets start at zero and repeat for null and empty values. A null
+occupies a zero validity bit. Present bytes are opaque, including non-UTF-8.
+
+Required fields admit present values only. The total data length of each batch
+must be below `2^31`. Metadata, row and padded body limits apply per message,
+and the batch limit applies to the stream. The writer builds the complete
+carrier and checks it with the modern stream reader. Its success theorem
+`StreamWriter.emit_readback` in the `Thms` module recovers the exact field and
+ordered nullable octets by batch, together with the original frame ranges and
+exact EOS. The batch list distinguishes a schema-only stream from one empty
+RecordBatch.
+
+The little-endian PyArrow 26.0.1 oracle independently opens the emitted streams,
+validates plain Binary descriptors and values, and checks framing through EOS.
+It covers nullable and required fields, nulls and present empty values,
+schema-only output, and a single empty batch.
+
+```sh
+lake build --wfail Silmaril.Formats.Arrow.Binary.StreamWriter.Examples Silmaril.Formats.Arrow.Binary.StreamWriter.Axioms
+python scripts/arrow-binary/stream_writer_oracle.py /tmp/arrow-binary-oracle
+```
