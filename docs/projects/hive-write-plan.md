@@ -293,3 +293,35 @@ lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
 lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean /tmp/hive-row-groups
 python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-row-groups
 ```
+
+### Native row-group events
+
+[`RowGroups.Events.scanPruned`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Events/Defs.lean)
+admits the same schema and policy as relational restore. It checks the
+partition path before its predicate and opens only selected payloads. Each
+successful group contributes one aligned batch with the literal path,
+zero-based manifest occurrence and zero-based footer ordinal. Repeated
+literal paths retain separate occurrence indices. A failed group retains
+all prior batches, including earlier groups of that file. Exhaustion
+produces exactly EOS, including for an empty or entirely pruned manifest.
+
+The scan produces a pure completed trace. `Trace.toArrow` exposes a standard
+Arrow trace with the same batches and terminal outcome. The tagged view
+retains positions alongside those batches. `Trace.project` applies a
+logical projection and preserves positions and explicit row counts, even
+when the output has width zero or repeats columns. Skipped payloads remain
+unchecked.
+
+[`finish_scanPruned`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Events/Thms.lean)
+identifies the exhausted relational result with `restorePruned` and
+preserves the same typed errors. The file and manifest prefix laws give
+the complete ordered batches before the first reached failure and its
+original cause. The independent PyArrow replay reads each selected group
+separately and compares its occurrence, path, ordinal, count and typed
+slots to the Lean events in both marker profiles.
+
+```sh
+lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Checks
+lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/RowGroups/Checks.lean events /tmp/hive-row-group-events
+python3 scripts/hive-native-int32-row-groups-oracle/Oracle.py /tmp/hive-row-group-events --events
+```

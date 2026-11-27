@@ -68,7 +68,7 @@ theorem readPayload_footer (policy : Policy) (limits : FlatInt32Writer.Limits) (
       metadata.numRows = Int.ofNat file.rowCount ∧
       metadata.rowGroups.map Footer.RowGroup.numRows = file.groupRows.map Int.ofNat := by
   cases opened : openPayload policy limits leaf file with
-  | error reason => simp [readPayload, opened, bind, Except.bind] at read
+  | error reason => simp [readPayload, openGroupSource, opened, bind, Except.bind] at read
   | ok snapshot =>
     cases planned : planCuts policy file.rowCount with
     | error reason => simp [openPayload, planned, Except.mapError, bind, Except.bind] at opened
@@ -188,7 +188,7 @@ private theorem readParts_emitted (leaf : String) (schema : PartitionSchema Unit
       have total : file.groupRows.sum = (physicalSlots bucket.rows).length := by
         simpa [physicalSlots] using (planCuts_exact head.planned).2.1
       have flattened := (splitSlots_exact file.groupRows (physicalSlots bucket.rows) total).2
-      simp [List.mapM_cons, ih rest (index + 1), readPart, checkedPath, binding, head.read, flattened,
+      simp [List.mapM_cons, ih rest (index + 1), readPart, bindFileCells, checkedPath, binding, head.read, flattened,
         physicalSlots_rows, Except.mapError, bind, Except.bind, pure, Except.pure]
 
 private theorem restore_emitted (leaf : String) (schema : PartitionSchema Unit)
@@ -209,9 +209,9 @@ private theorem restore_emitted (leaf : String) (schema : PartitionSchema Unit)
     | ok parts =>
       simp [bound, Except.map] at restored
       subst rows
-      simp [FlatInt32.RowGroups.restore, restorePruned, schemaOk, nonzero,
+      simp [FlatInt32.RowGroups.restore, restorePruned, checkRead, schemaOk, nonzero,
         readParts_emitted leaf schema options decode policy limits filesMatch bound 0,
-        Except.mapError, Except.map, bind, Except.bind]
+        Except.map, bind, Except.bind]
 
 theorem restore_emit (db : FlatInt32.Database Name) (name : Name) (leaf : String)
     (schema : PartitionSchema Unit) (options : PartitionPath.Options)
@@ -249,18 +249,18 @@ private theorem readPart_pruned (leaf : String) (schema : PartitionSchema Unit)
     (read : readPart leaf schema options decode policy limits (fun _ => some true) (file, index) = .ok part) :
     readPart leaf schema options decode policy limits predicate (file, index) = .ok (keepPart predicate part) := by
   cases path : checkFilePath (Failure := DecodeFailure) file.path with
-  | error reason => simp [readPart, path, Except.mapError, bind, Except.bind] at read
+  | error reason => simp [readPart, bindFileCells, path, Except.mapError, bind, Except.bind] at read
   | ok directory =>
     cases binding : decodeDirectory schema options decode directory with
-    | error reason => simp [readPart, path, binding, Except.mapError, bind, Except.bind] at read
+    | error reason => simp [readPart, bindFileCells, path, binding, Except.mapError, bind, Except.bind] at read
     | ok cells =>
       cases payload : readPayload policy limits leaf file with
-      | error reason => simp [readPart, path, binding, payload, Except.mapError, bind, Except.bind] at read
+      | error reason => simp [readPart, bindFileCells, path, binding, payload, Except.mapError, bind, Except.bind] at read
       | ok groups =>
-        simp [readPart, path, binding, payload, Except.mapError, bind, Except.bind, pure, Except.pure] at read
+        simp [readPart, bindFileCells, path, binding, payload, Except.mapError, bind, Except.bind, pure, Except.pure] at read
         subst part
         cases keep : (predicate cells).getD false <;>
-          simp [readPart, path, binding, payload, keepPart, keep, Except.mapError, bind, Except.bind, pure, Except.pure]
+          simp [readPart, bindFileCells, path, binding, payload, keepPart, keep, Except.mapError, bind, Except.bind, pure, Except.pure]
 
 private theorem readParts_pruned (leaf : String) (schema : PartitionSchema Unit)
     (options : PartitionPath.Options) (decode : Convert Cell DecodeFailure) (policy : Policy)
@@ -295,18 +295,18 @@ theorem restorePruned_eq_filter (leaf : String) (schema : PartitionSchema Unit)
     restorePruned leaf schema options decode policy limits predicate files =
       .ok (Scan.select (fun row => predicate (partitionCells row)) rows) := by
   cases schemaOk : TypedPartitions.checkSchema (Failure := DecodeFailure) (physical leaf) schema with
-  | error reason => simp [FlatInt32.RowGroups.restore, restorePruned, schemaOk, Except.mapError, bind, Except.bind] at restored
+  | error reason => simp [FlatInt32.RowGroups.restore, restorePruned, checkRead, schemaOk, bind, Except.bind] at restored
   | ok success =>
     cases success
     by_cases zero : policy.rowsPerGroup = 0
-    · simp [FlatInt32.RowGroups.restore, restorePruned, schemaOk, zero, Except.mapError, bind, Except.bind] at restored
+    · simp [FlatInt32.RowGroups.restore, restorePruned, checkRead, schemaOk, zero, bind, Except.bind] at restored
     · cases read : files.zipIdx.mapM (readPart leaf schema options decode policy limits (fun _ => some true)) with
       | error reason =>
-        simp [FlatInt32.RowGroups.restore, restorePruned, schemaOk, zero, read, Except.mapError, Except.map, bind, Except.bind] at restored
+        simp [FlatInt32.RowGroups.restore, restorePruned, checkRead, schemaOk, zero, read, Except.map, bind, Except.bind] at restored
       | ok parts =>
-        simp [FlatInt32.RowGroups.restore, restorePruned, schemaOk, zero, read, Except.mapError, Except.map, bind, Except.bind] at restored
+        simp [FlatInt32.RowGroups.restore, restorePruned, checkRead, schemaOk, zero, read, Except.map, bind, Except.bind] at restored
         subst rows
-        simp [restorePruned, schemaOk, zero, readParts_pruned leaf schema options decode policy limits predicate files 0 parts read,
-          materialize_pruned, Except.mapError, Except.map, bind, Except.bind]
+        simp [restorePruned, checkRead, schemaOk, zero, readParts_pruned leaf schema options decode policy limits predicate files 0 parts read,
+          materialize_pruned, Except.map, bind, Except.bind]
 
 end Silmaril.Proofs.Formats.Hive.WritePlan.FlatInt32.RowGroups

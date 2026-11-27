@@ -99,19 +99,28 @@ def openPayload (policy : Policy) (limits : FlatInt32Writer.Limits) (leaf : Stri
       snapshot.metadata.rowGroups.map Footer.RowGroup.numRows ≠ sizes.map Int.ofNat then throw .dimensions
   return snapshot
 
-/-- Visit every checked footer ordinal in order. The snapshot decoder's
-indexed errors survive, including a failure after earlier successful groups. -/
-def readPayload (policy : Policy) (limits : FlatInt32Writer.Limits) (leaf : String) (file : File) :
-    Except PayloadError Slots := do
+/-- The checked footer and strict INT32 binding supply the original indexed source. -/
+def openGroupSource (policy : Policy) (limits : FlatInt32Writer.Limits) (leaf : String) (file : File) :
+    Except PayloadError (Reader.Source Nat (physical leaf) Cell SnapshotError) := do
   let snapshot ← openPayload policy limits leaf file
   let readerLimits := readLimits limits policy.rowsPerGroup
   let decode ← (Snapshot.FlatInt32.bind (InputFailure := Unit) readerLimits
     (physical leaf) snapshot.metadata).mapError (PayloadError.parquet ∘ Snapshot.Error.schema)
-  (List.range snapshot.groupCount).mapM fun index =>
-    ((snapshot.readGroup decode index).map fun rows => rows.map fun row => row (0 : Fin 1)).mapError .parquet
+  return snapshot.source decode
 
 def physicalSlots {leaf : String} (rows : Scan.Table (physical leaf) Cell) : List (Option Int32) :=
   rows.map fun row => row (0 : Fin 1)
+
+def readSlots {leaf : String} (source : Reader.Source Nat (physical leaf) Cell SnapshotError)
+    (index : Nat) : Except PayloadError (List (Option Int32)) :=
+  ((source.readGroup index).map physicalSlots).mapError .parquet
+
+/-- Visit every checked footer ordinal in order. The snapshot decoder's
+indexed errors survive, including a failure after earlier successful groups. -/
+def readPayload (policy : Policy) (limits : FlatInt32Writer.Limits) (leaf : String) (file : File) :
+    Except PayloadError Slots := do
+  let source ← openGroupSource policy limits leaf file
+  source.groups.mapM (readSlots source)
 
 /-- The literal path, admitted cut vector, and all actual decoded groups for
 one emitted occurrence. -/
@@ -146,6 +155,12 @@ def emit {Name Failure : Type*} (db : Database Name) (name : Name) (leaf : Strin
   if policy.rowsPerGroup = 0 then throw (.policy .zeroRowsPerGroup)
   buckets.mapM (emitBucket policy limits leaf)
 
+/-- Check the literal path and bind the typed directory before pruning. -/
+def bindFileCells {Failure : Type*} (schema : PartitionSchema Unit) (options : PartitionPath.Options)
+    (decode : Convert Cell Failure) (file : File) : Except (FileError Failure) (Scan.Row schema.toScan Cell) := do
+  let directory ← (checkFilePath file.path).mapError .path
+  (decodeDirectory schema options decode directory).mapError .partition
+
 /-- Bind the path before evaluating the partition predicate. A rejected
 occurrence supplies zero rows and its payload is never opened. -/
 def readPart {Failure : Type*} (leaf : String) (schema : PartitionSchema Unit)
@@ -154,13 +169,18 @@ def readPart {Failure : Type*} (leaf : String) (schema : PartitionSchema Unit)
     Except (ReadError Failure) (TypedPartition (physical leaf) schema Cell) :=
   let (file, index) := entry
   let read : Except (FileError Failure) _ := do
-    let directory ← (checkFilePath file.path).mapError .path
-    let cells ← (decodeDirectory schema options decode directory).mapError .partition
+    let cells ← bindFileCells schema options decode file
     if (predicate cells).getD false then
       let slots ← (readPayload policy limits leaf file).mapError .payload
       return ⟨cells, slots.flatten.map fun cell _ => cell⟩
     else return ⟨cells, []⟩
   read.mapError (.file index file.path)
+
+def checkRead {Failure : Type*} (leaf : String) (schema : PartitionSchema Unit)
+    (policy : Policy) : Except (ReadError Failure) Unit :=
+  match TypedPartitions.checkSchema (physical leaf) schema with
+  | .error reason => .error (.schema reason)
+  | .ok () => if policy.rowsPerGroup = 0 then .error (.policy .zeroRowsPerGroup) else .ok ()
 
 /-- Validate schema and cut width before the manifest. Validate each path
 before testing its typed value. False and unknown skip the file payload.
@@ -169,8 +189,7 @@ def restorePruned {Failure : Type*} (leaf : String) (schema : PartitionSchema Un
     (options : PartitionPath.Options) (decode : Convert Cell Failure) (policy : Policy)
     (limits : FlatInt32Writer.Limits) (predicate : Scan.Predicate schema.toScan Cell) (files : List File) :
     Except (ReadError Failure) (Scan.Table (schema.extend (physical leaf)) Cell) := do
-  (TypedPartitions.checkSchema (physical leaf) schema).mapError .schema
-  if policy.rowsPerGroup = 0 then throw (.policy .zeroRowsPerGroup)
+  checkRead leaf schema policy
   (files.zipIdx.mapM (readPart leaf schema options decode policy limits predicate)).map TypedPartitions.materialize
 
 /-- Read every manifest occurrence under the same bounded row-group policy. -/

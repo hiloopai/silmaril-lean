@@ -1,8 +1,9 @@
 module
 
 import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Thms
+import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Thms
 import Silmaril.Formats.Parquet.Snapshot.Footer.Thms
-meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Defs
+meta import Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups.Events.Defs
 
 namespace Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups
 
@@ -143,6 +144,81 @@ private def damage (file : File) (ordinal : Nat) : Option File := do
   let some damaged := damage skipped 1 | return false
   return (prune {} (first :: damaged :: target :: rest)).toOption.map observe == some selected
 
+private def trace (options : PartitionPath.Options) :=
+  Events.scanPruned leaf partitions options decode policy limits keep
+
+private def batchShape {schema : Scan.Schema String Unit} (result : Events.Trace schema String) :=
+  result.batches.map fun batch => (batch.position.fileIndex, batch.position.groupIndex, batch.columns.rowCount)
+
+#guard Id.run do
+  let .ok files := make {} | return false
+  let .ok result := trace {} files | return false
+  let .eos := result.toArrow.termination | return false
+  return batchShape result == [(0, 0, 2), (0, 1, 1), (2, 0, 2), (2, 1, 1)] &&
+    result.batches.map (fun batch => observe batch.columns.toRows) ==
+      [[(some 10, some 3), (some 11, some 3)], [(some 12, some 3)], [(some 4, none), (none, none)], [(some 7, none)]] &&
+    result.finish.toOption.map observe == (prune {} files).toOption.map observe
+
+#guard Id.run do
+  let .ok files := make customMarker | return false
+  let .ok result := trace customMarker files | return false
+  return result.batches.map (fun batch => batch.position.path) ==
+    ["key=3/part-0.parquet", "key=3/part-0.parquet", "key=null%2F%3D/part-0.parquet", "key=null%2F%3D/part-0.parquet"] &&
+    result.finish.toOption.map observe == some selected
+
+#guard Id.run do
+  let .ok (first :: skipped :: _) := make {} | return false
+  let .ok result := trace {} [first, skipped, first] | return false
+  return batchShape result == [(0, 0, 2), (0, 1, 1), (2, 0, 2), (2, 1, 1)] &&
+    result.batches.all (fun batch => batch.position.path == first.path)
+
+#guard Id.run do
+  let .ok files := make {} | return false
+  let .ok empty := trace {} [] | return false
+  let .ok rejected := Events.scanPruned leaf partitions {} decode policy limits (fun _ => none) files | return false
+  let .eos := empty.toArrow.termination | return false
+  let .eos := rejected.toArrow.termination | return false
+  return empty.batches.isEmpty && rejected.batches.isEmpty
+
+#guard Id.run do
+  let .ok (first :: skipped :: target :: later :: _) := make {} | return false
+  let some damaged := damage target 1 | return false
+  let invalid := {later with path := "../" ++ later.path}
+  let .ok result := trace {} [first, skipped, damaged, invalid] | return false
+  let .readError (.file 2 path (.payload (.parquet (.decode 1 (.profile (.page (.header (.missingField 1)))))))) :=
+    result.toArrow.termination | return false
+  return path == target.path && batchShape result == [(0, 0, 2), (0, 1, 1), (2, 0, 2)] &&
+    observe result.rows == selected.take 5
+
+#guard Id.run do
+  let .ok (first :: skipped :: target :: rest) := make {} | return false
+  let some damaged := damage skipped 1 | return false
+  let .ok result := trace {} (first :: damaged :: target :: rest) | return false
+  let .eos := result.toArrow.termination | return false
+  return result.finish.toOption.map observe == some selected
+
+#guard Id.run do
+  let .ok (first :: skipped :: _) := make {} | return false
+  let bad := {skipped with path := "../" ++ skipped.path}
+  let .ok result := Events.scanPruned leaf partitions {} decode policy limits (fun _ => some false) [first, bad] |
+    return false
+  let .readError (.file 1 path (.path (.path _ .invalidSegment))) := result.toArrow.termination | return false
+  return path == bad.path && result.batches.isEmpty
+
+#guard match Events.scanPruned leaf partitions {} decode {policy with rowsPerGroup := 0} limits keep [] with
+  | .error (.policy .zeroRowsPerGroup) => true
+  | _ => false
+
+#guard Id.run do
+  let .ok files := make {} | return false
+  let .ok result := trace {} files | return false
+  let zero : Scan.Projection expected := ⟨0, fun i => nomatch i⟩
+  let repeated : Scan.Projection expected := ⟨3, fun i => if i.val = 1 then (0 : Fin 2) else (1 : Fin 2)⟩
+  let projected := result.project repeated
+  return batchShape (result.project zero) == batchShape result && (result.project zero).rows.length == 6 &&
+    batchShape projected == batchShape result && projected.rows.map (fun row => List.ofFn row) ==
+      selected.map (fun (payload, key) => [key, payload, key])
+
 #print axioms planCuts_exact
 #print axioms splitSlots_exact
 #print axioms readPayload_footer
@@ -150,6 +226,16 @@ private def damage (file : File) (ordinal : Nat) : Option File := do
 #print axioms restore_emit
 #print axioms restorePruned_eq_filter
 #print axioms Snapshot.check_footer
+
+#print axioms Events.Trace.toArrow_rows
+#print axioms Events.finish_scanPruned
+#print axioms Events.scanFile_batches
+#print axioms Events.scanFile_first_error
+#print axioms Events.scanPruned_first_error
+#print axioms Events.Trace.project_positions
+#print axioms Events.Trace.project_finish
+
+private def showCell (cell : Option Int32) : String := cell.map (fun value => toString value.toInt) |>.getD "null"
 
 private def writeFixture (root : System.FilePath) (name : String) (options : PartitionPath.Options) : IO Unit := do
   let .ok files := make options | throw (IO.userError "multi-group native emit failed")
@@ -162,15 +248,31 @@ private def writeFixture (root : System.FilePath) (name : String) (options : Par
     IO.FS.writeBinFile path file.bytes.data
   let manifest := files.map fun file =>
     file.path ++ "\t" ++ toString file.rowCount ++ "\t" ++ String.intercalate "," (file.groupRows.map toString)
-  let showCell := fun (cell : Option Int32) => cell.map (fun value => toString value.toInt) |>.getD "null"
   let selected := (observe rows).map fun (payload, key) => showCell payload ++ "\t" ++ showCell key
   IO.FS.writeFile (directory / "manifest.tsv") (String.intercalate "\n" manifest ++ "\n")
   IO.FS.writeFile (directory / "selected.tsv") (String.intercalate "\n" selected ++ "\n")
 
+private def writeEvents (root : System.FilePath) (name : String) (options : PartitionPath.Options) : IO Unit := do
+  let .ok files := make options | throw (IO.userError "multi-group native emit failed")
+  let .ok result := trace options files | throw (IO.userError "manifest event open failed")
+  let .eos := result.toArrow.termination | throw (IO.userError "manifest event read failed")
+  let batches := result.batches.map fun batch =>
+    let pos := batch.position
+    let cells := (observe batch.columns.toRows).map fun (payload, key) => showCell payload ++ ":" ++ showCell key
+    String.intercalate "\t" [toString pos.fileIndex, pos.path, toString pos.groupIndex,
+      toString batch.columns.rowCount, String.intercalate "," cells]
+  IO.FS.writeFile (root / name / "events.tsv") (String.intercalate "\n" (batches ++ ["eos"]) ++ "\n")
+
 public def main (args : List String) : IO Unit := do
-  let [root] := args | throw (IO.userError "expected a fixture output directory")
+  let (root, events) ← match args with
+    | [root] => pure (root, false)
+    | ["events", root] => pure (root, true)
+    | _ => throw (IO.userError "expected a fixture output directory, optionally preceded by events")
   writeFixture root "default" {}
   writeFixture root "custom" customMarker
+  if events then
+    writeEvents root "default" {}
+    writeEvents root "custom" customMarker
 
 end Silmaril.Formats.Hive.WritePlan.FlatInt32.RowGroups
 
