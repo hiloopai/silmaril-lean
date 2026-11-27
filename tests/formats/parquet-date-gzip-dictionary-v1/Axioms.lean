@@ -1,3 +1,5 @@
+module
+
 import Silmaril.Formats.Parquet.Date.Leaf.Dictionary.Gzip.V1.Thms
 import Silmaril.Formats.Parquet.Date.Leaf.Fallback.Gzip.Thms
 
