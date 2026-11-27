@@ -94,7 +94,7 @@ private theorem pages_count {limits : Gzip.Fallback.Limits} {source : Bytes}
       | .inr ⟨_, _, _, _, _, _, _, _, _, _, _, count⟩ => count
     simp [count, ih]
 
-private theorem readFrames_wire {limits : Gzip.Fallback.Limits} {metadata : Footer.ColumnMetadata} {source : Bytes}
+theorem readFrames_wire {limits : Gzip.Fallback.Limits} {metadata : Footer.ColumnMetadata} {source : Bytes}
     {group column rows : Nat} {name : String} {frames : List Page.Frame} {slots : List (Option Bytes)}
     (read : readFrames limits metadata source group column name rows frames = .ok slots) :
     FramesWire limits metadata source rows frames slots := by

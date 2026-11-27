@@ -338,3 +338,40 @@ and reentry by swapping two intact CRC-valid frames.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Fallback.Checks
 python3 scripts/parquet-gzip-fallback-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in GZIP V1 per-group BinaryView dispatch
+
+`ByteArrayFallback.Gzip.Dispatch.convert` selects one flat optional
+unannotated BYTE_ARRAY leaf. It frames each original codec-2 chunk once.
+A recorded V1 PLAIN data header selects the strict fallback reader. All
+other frame lists go to the strict dictionary-only reader. The choice
+uses only original headers. The chosen reader checks its own admission,
+receives the original frame list, and returns its result directly.
+
+The agreement law compares the complete result, including every indexed
+failure, with the corresponding strict entry point on the same snapshot.
+The wire laws retain the original stored CRCs, the byte caps and
+one-member GZIP extents, and the exact nullable slots in footer order.
+Native BinaryView readback consumes EOS. The first source failure takes
+precedence over IPC admission.
+
+PyArrow 26.0.1 produces native mixed files with and without page CRC.
+Thrift 0.25.0 observes dictionary-only, fallback, dictionary-only groups
+of 40, 64 and 48 rows in the CRC file. The fallback group records five
+tag-8 data pages and three tag-0 data pages. The no-CRC file has the first
+two groups. Python zlib verifies the stored member extents. PyArrow
+compares the actual Lean IPC with its own Parquet row-group readback,
+including invalid UTF-8, NUL, null and empty values.
+
+Assembled controls exercise a late dictionary-branch CRC failure, a
+trailing member in a fallback page, reentry with intact CRC-valid frames,
+and CRC failures in two groups to check first-error order.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Dispatch/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Dispatch/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-gzip-dispatch-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Dispatch.Checks
+python3 scripts/parquet-gzip-dispatch-binary-view-oracle/check.py "$(mktemp -d)"
+```

@@ -47,6 +47,13 @@ theorem data_member {limits : Limits} {source : Bytes} {entries : Array Bytes}
       expanded.length = frame.value.uncompressedSize :=
   Proofs.Formats.Parquet.ByteArrayFallback.Gzip.Dictionary.data_member wire
 
+/-- The strict callback keeps its exact frame and ordered slot relation. -/
+theorem readFrames_wire {limits : Limits} {metadata : Footer.ColumnMetadata} {source : Bytes}
+    {group column rows : Nat} {name : String} {frames : List Page.Frame} {slots : List (Option Bytes)}
+    (read : readFrames limits metadata source group column name rows frames = .ok slots) :
+    FramesWire limits metadata source rows frames slots :=
+  Proofs.Formats.Parquet.ByteArrayFallback.Gzip.Dictionary.readFrames_wire read
+
 /-- The selected chunk preserves exact byte totals, dictionary, and original data-page order. -/
 theorem readGroup_wire {parquet : Limits} {name : String} {checked : Snappy.Checked name}
     {index : Nat} {slots : List (Option Bytes)} (read : readGroup parquet checked index = .ok slots) :

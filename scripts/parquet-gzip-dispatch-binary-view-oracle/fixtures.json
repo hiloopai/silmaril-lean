@@ -1,0 +1,10 @@
+{
+  "mixed-crc.parquet": "7243b17893b3ac5d28acdf751993406ab1f0986093d9f12450eca5752bdc4ac9",
+  "mixed-absent.parquet": "ee54035ae547fa0297e097c04c92210d5a5c020209f1651b57835ec1d8d25278",
+  "late-dictionary-crc.parquet": "f6a2fd6c04d14340c1949a3fc6e2e3e50486cf01bd728598681dbc5e9ab778e9",
+  "double-crc.parquet": "88aa4e29591edcc24f20dd5f78954215d65c1d207df0eaa13e168f8a76602abc",
+  "late-fallback-member.parquet": "d4b007965f47d4bf6e530e2f2db93b6d28e98d4fb38c83321c3ea17244dbb8bf",
+  "reentry.parquet": "5b435c068718e665214beae9e2c692568c2c72da4b252aec370756f86f76288f",
+  "mixed-crc.arrows": "4d8f0f62d1ac7d56044575d937b0357ed958c1c05d1d2c8f5387100ce1aabe12",
+  "mixed-absent.arrows": "f1a9e1e0f2fcd74b34f6672b39d148e5b7ca2b662d5b81b8fde8365b8963b396"
+}

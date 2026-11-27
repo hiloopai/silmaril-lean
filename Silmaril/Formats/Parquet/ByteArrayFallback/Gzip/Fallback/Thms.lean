@@ -35,6 +35,13 @@ theorem frames_members {limits : Limits} {metadata : Footer.ColumnMetadata} {sou
       expanded.length = frame.value.uncompressedSize :=
   Proofs.Formats.Parquet.ByteArrayFallback.Gzip.Fallback.frames_members wire frame present
 
+/-- The strict callback keeps its exact frame and ordered slot relation. -/
+theorem readFrames_wire {limits : Limits} {metadata : Footer.ColumnMetadata} {source : Bytes}
+    {group column rows : Nat} {name : String} {frames : List Page.Frame} {slots : List (Option Bytes)}
+    (read : readFrames limits metadata source group column name rows frames = .ok slots) :
+    FramesWire limits metadata source rows frames slots :=
+  Proofs.Formats.Parquet.ByteArrayFallback.Gzip.Fallback.readFrames_wire read
+
 /-- Exact byte totals and complete ordered pages with a nonempty dictionary prefix and PLAIN suffix. -/
 theorem readGroup_wire {parquet : Limits} {name : String} {checked : Snappy.Checked name}
     {index : Nat} {slots : List (Option Bytes)} (read : readGroup parquet checked index = .ok slots) :
