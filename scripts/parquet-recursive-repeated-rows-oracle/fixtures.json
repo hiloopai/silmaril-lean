@@ -1,0 +1,41 @@
+{
+  "description": "Genuine PyArrow repeated rows and labeled valid-column disagreements",
+  "fixture_license": "MIT",
+  "producer_pins": "../parquet-recursive-schema-oracle/fixtures.json",
+  "genuine_parquet": {
+    "nested_siblings": {
+      "bytes": 739,
+      "sha256": "52387d4726ede97a8cb4eca9509869fe6c3753ff51cf4e8daf2dcf2202e88244"
+    },
+    "schema_only": {
+      "bytes": 168,
+      "sha256": "1e73f0fb1f01bd3f097120d20b2a0a6c9f00acdce76c460a586cdca1676ef9d3"
+    }
+  },
+  "labeled_edits": {
+    "ancestor_presence": {
+      "bytes": 1495,
+      "sha256": "6ac3fb151eea8446f7609aa5ec3e10fb0a2d2653a35697a3ee5dd64e0b43a564"
+    },
+    "null_vs_empty": {
+      "bytes": 1495,
+      "sha256": "038431328a30692a1d04a49576fcf22bc0f371341c3c875c9994b960d27fadda"
+    },
+    "element_presence": {
+      "bytes": 1495,
+      "sha256": "10359a7bf2e038f7a4edeeecc69c92b90f31551e488fdc5b138e94b4810a6cf5"
+    },
+    "cardinality": {
+      "bytes": 1495,
+      "sha256": "c409b75c6e7b74d291bd958910ab3699b36b7f0fba68856f0e1e6f470997c4c4"
+    },
+    "nested_presence": {
+      "bytes": 739,
+      "sha256": "df1e04027bb295d1f7976bec534369c9d9bf6d90ec7c622e71fae1f3b759c978"
+    },
+    "explicit_empty": {
+      "bytes": 1854,
+      "sha256": "7ccca51a32df3b209688066dfe0e4a80de3a3dfc6dfca29f867afc6974385b74"
+    }
+  }
+}
