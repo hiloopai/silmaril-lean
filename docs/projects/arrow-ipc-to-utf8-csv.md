@@ -43,3 +43,30 @@ lake env lean -DautoImplicit=false -DwarningAsError=true --run scripts/arrow-to-
 python3 -m pip install --require-hashes -r tests/formats/arrow-ipc/requirements.txt
 python3 -I scripts/arrow-to-csv-utf8-oracle/verify.py /tmp/utf8.csv /tmp/utf8.arrows
 ```
+
+## Direct ordered mixed IPC and Scan
+
+`Csv.Typed.Utf8.MixedIpc.convert` reads the complete native mixed IPC
+stream through its Scan materializer, then exports the ordered table.
+The admitted fields are INT32, UTF8, and Utf8View. The result carries
+the full Arrow descriptors alongside the UTF-8 CSV bytes. The CSV
+header contains names in position order, including duplicates.
+Re-import takes the descriptor separately and checks the exact header,
+cell kinds, required cells, row bound, and input byte bound.
+
+Positive-width fields use `N` for null and `T` followed by the present
+UTF-8 text or canonical signed decimal. The typed CSV profile represents
+a zero-column header and each zero-column row with a single empty
+field. A positive-width table with no rows emits the header alone.
+The output byte cap applies after encoding. BinaryView and other field
+kinds outside the profile receive an indexed schema error. The existing
+UTF-8 wire alphabet governs representability.
+
+`convert_roundtrip` returns the exact Scan observation after checked
+re-import with the same CSV limits and descriptor. IPC batch boundaries
+are flattened in source order by Scan materialization. The independent
+oracle uses PyArrow 26.0.1 and CPython 3.13 to compare three IPC/CSV
+round trips, including duplicate names, an empty middle batch, schema-only
+input, and zero-width rows.
+[Direct bridge laws](../../Silmaril/Formats/Csv/Typed/Utf8/MixedIpc/Thms.lean) ·
+[Comparator](../../scripts/arrow-mixed-scan-csv-oracle/check.py)
