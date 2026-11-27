@@ -38,8 +38,21 @@ private def reads (fields : List Field) (inputs : List OrderedWriter.BatchInput)
   | .error (.ipc (.limit .totalRows)) => true
   | _ => false
 
-#guard match emit {} [⟨"text", false, .primitive .utf8⟩] [] with
-  | .error (.schema .unsupportedSchema) => true
-  | _ => false
+private def plain : OrderedWriter.BatchInput :=
+  ⟨3, [.utf8 "text" true [none, some "", some "é雪"],
+    .utf8View "view" true [some "a", none, some ""],
+    .utf8 "other" false [some "", some "雪", some "é"]]⟩
+
+#guard reads plain.fields [plain]
+#guard reads plain.fields []
+
+#guard Id.run do
+  let .ok wire := emit {} plain.fields [plain] | return false
+  let .ok index := MixedFlat.File.readIndex {} wire | return false
+  let some block := index.footer.blocks[0]? | return false
+  let .ok record := MixedFlat.readMetadata {} 1024 4096 index.footer.fields (MixedFlat.File.metadataSlice wire block)
+    | return false
+  return decide (index.footer.fields.map (·.kind) = [.primitive .utf8, .view .utf8, .primitive .utf8] ∧
+    record.counts = [0] ∧ record.batch.buffers.length = 8)
 
 end Silmaril.Formats.Arrow.MixedFlat.FileWriter

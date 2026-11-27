@@ -17,6 +17,14 @@ private def batch (rows : Nat) (text : List (Option String))
 
 private def empty : OrderedWriter.BatchInput := batch 0 [] [] []
 
+private def plainBatch (rows : Nat) (plain view : List (Option String))
+    (ints : List (Option Int32)) (other : List (Option String))
+    (binary : List (Option KBytes)) : OrderedWriter.BatchInput :=
+  ⟨rows, [.utf8 "u" true plain, .utf8View "v" true view, .int32 "i" false ints,
+    .utf8 "q" false other, .binary "b" true binary]⟩
+
+private def emptyPlain : OrderedWriter.BatchInput := plainBatch 0 [] [] [] [] []
+
 private def cases : List (String × List MixedFlat.Field × List OrderedWriter.BatchInput) :=
   [("mixed", empty.fields, [
     batch 3 [some "雪雪雪雪雪", none, some ""] [some (-7), some 0, some 42]
@@ -25,10 +33,29 @@ private def cases : List (String × List MixedFlat.Field × List OrderedWriter.B
     batch 2 [some "é", some "a"] [some (-2147483648), some 2147483647]
       [some (.leaf 2 65408), some (.leaf 12 1)]]),
    ("schema_only", empty.fields, []), ("empty", empty.fields, [empty]),
-   ("zero_width", [], [⟨3, []⟩, ⟨0, []⟩])]
+   ("zero_width", [], [⟨3, []⟩, ⟨0, []⟩]),
+   ("plain_mixed", emptyPlain.fields, [
+     plainBatch 3 [none, some "", some "é雪"] [some "雪雪雪雪雪", none, some ""]
+       [some (-7), some 0, some 42] [some "", some "é", some ("a".push (Char.ofNat 0) ++ "b")]
+       [some (.leaf 13 255), some .empty, none],
+     emptyPlain,
+     plainBatch 2 [some "🙂", some "é"] [some "", some "é"] [some 1, some 2]
+       [some "雪", some ""] [none, some (.leaf 2 65408)]]),
+   ("plain_schema_only", emptyPlain.fields, []), ("plain_empty", emptyPlain.fields, [emptyPlain])]
 
 private def unpack (bytes : ByteArray) : KBytes :=
   Silmaril.Formats.Arrow.Writer.emitWords 1 (bytes.data.toList.map UInt8.toNat)
+
+private inductive CellObservation where
+  | primitive (value : Value)
+  | binary (octets : List UInt8)
+  | text (value : String)
+  deriving DecidableEq
+
+private def observeCell : MixedFlat.Events.Cell → CellObservation
+  | .primitive value => .primitive value
+  | .binaryView value => .binary value.toList
+  | .utf8View value => .text value
 
 private def check (name : String) (wire : KBytes) (fields : List MixedFlat.Field)
     (expected : List OrderedWriter.BatchInput) : IO Unit := do
@@ -37,6 +64,7 @@ private def check (name : String) (wire : KBytes) (fields : List MixedFlat.Field
     throw (IO.userError s!"{name}: strict file index rejected")
   unless index.footer.fields == fields && index.footer.blocks.length == expected.length do
     throw (IO.userError s!"{name}: incorrect ordered schema or block count")
+  let mut expectedColumns : List (List (List (Option CellObservation))) := []
   let mut nextOffset := 16 + index.schemaSize
   for ((block, input), n) in (index.footer.blocks.zip expected).zipIdx do
     let .ok (.metadata size) := readEnvelope limits.observation.ipc wire block.offset |
@@ -51,6 +79,8 @@ private def check (name : String) (wire : KBytes) (fields : List MixedFlat.Field
       throw (IO.userError s!"{name}: indexed record rejected")
     unless MixedFlat.FileWriter.observe observed == input.observe do
       throw (IO.userError s!"{name}: wrong record order, row count or nullable values")
+    expectedColumns := (observed.columns.map fun (_, column) =>
+      (MixedFlat.Events.cells column).map (Option.map observeCell)) :: expectedColumns
     nextOffset := block.endOffset
   let .ok .eos := readEnvelope limits.observation.ipc wire nextOffset |
     throw (IO.userError s!"{name}: missing exact EOS")
@@ -61,9 +91,11 @@ private def check (name : String) (wire : KBytes) (fields : List MixedFlat.Field
   let .ok ⟨signature, trace⟩ := MixedFlat.File.Events.Pull.readAll limits wire |
     throw (IO.userError s!"{name}: pull open failed")
   let .eos := trace.termination | throw (IO.userError s!"{name}: pull did not reach EOS")
+  let columns := trace.batches.map fun event =>
+    List.ofFn fun i : Fin signature.width => (event.values i).map (Option.map observeCell)
   unless List.ofFn (fun i : Fin signature.width => (signature.kind i).1) == fields &&
-      trace.batches.map (·.rowCount) == expected.map (·.rowCount) do
-    throw (IO.userError s!"{name}: wrong pull schema or row-count sequence")
+      trace.batches.map (·.rowCount) == expected.map (·.rowCount) && columns == expectedColumns.reverse do
+    throw (IO.userError s!"{name}: wrong pull schema, row-count sequence or positional values")
 
 public def run (args : List String) : IO Unit := do
   let [path] := args | throw (IO.userError "expected a fixture directory")

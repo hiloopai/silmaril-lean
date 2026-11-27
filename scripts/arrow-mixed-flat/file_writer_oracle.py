@@ -30,6 +30,18 @@ PINS = {
         "882b395bef1dcd60d3b6c195bcf06663ebd0d2c856507d05d60fef1f5f7f4d9c",
         [(64, 80, 0), (144, 72, 0)],
     ),
+    "plain_mixed": (
+        "f300ec98b8ff6a62e5fafae7eaa6400f78b33f02366e8a928a7429e9f0c3999a",
+        [(320, 432, 216), (968, 392, 16), (1376, 432, 128)],
+    ),
+    "plain_schema_only": (
+        "0abfc65b66d917708215af7b17e8e084304bb85790e296a943ee6e4ef5c7afe3",
+        [],
+    ),
+    "plain_empty": (
+        "7a06c0a4daebacad70f3a492e32cf469eecc4d74fc430069da84dfc712e9845a",
+        [(320, 392, 16)],
+    ),
 }
 
 
@@ -48,6 +60,19 @@ def fixture_cases():
         ], schema=schema)
 
     empty = batch([], [], [])
+    plain_schema = pa.schema([
+        pa.field("u", pa.string()), pa.field("v", pa.string_view()),
+        pa.field("i", pa.int32(), nullable=False), pa.field("q", pa.string(), nullable=False),
+        pa.field("b", pa.binary_view()),
+    ])
+
+    def plain_batch(*columns):
+        return pa.record_batch([
+            pa.array(values, type=field.type)
+            for field, values in zip(plain_schema, columns, strict=True)
+        ], schema=plain_schema)
+
+    plain_empty = plain_batch([], [], [], [], [])
     return {
         "mixed": (schema, [
             batch(["雪" * 5, None, ""], [-7, 0, 42], [bytes([255]) + bytes(12), b"", None]),
@@ -60,6 +85,16 @@ def fixture_cases():
             pa.RecordBatch.from_struct_array(pa.array([{}] * rows, type=pa.struct([])))
             for rows in (3, 0)
         ]),
+        "plain_mixed": (plain_schema, [
+            plain_batch(
+                [None, "", "é雪"], ["雪" * 5, None, ""], [-7, 0, 42], ["", "é", "a\0b"],
+                [bytes([255]) + bytes(12), b"", None],
+            ),
+            plain_empty,
+            plain_batch(["🙂", "é"], ["", "é"], [1, 2], ["雪", ""], [None, bytes([128, 255])]),
+        ]),
+        "plain_schema_only": (plain_schema, []),
+        "plain_empty": (plain_schema, [plain_empty]),
     }
 
 

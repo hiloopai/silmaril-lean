@@ -241,4 +241,14 @@ theorem emit_events {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
   apply (MixedFlat.File.Events.Pull.readAll_eager.mpr ?_).1
   simp [MixedFlat.File.Events.read, checked, drained, bind, Except.bind, Except.mapError, pure, Except.pure]
 
+theorem emit_schema_exact {limits : MixedFlat.Limits} {fields : List MixedFlat.Field}
+    {batches : List BatchInput} {wire : KBytes} (written : emit limits fields batches = .ok wire) :
+    ∃ index : MixedFlat.File.Index wire,
+      MixedFlat.File.readIndex limits.observation.ipc wire = .ok index ∧ index.footer.fields = fields ∧
+      MixedFlat.readSchema limits.observation.ipc index.schemaMetadata = .ok fields ∧
+      readEnvelope limits.observation.ipc wire (index.span.start - 8) = .ok .eos := by
+  obtain ⟨_, index, _, _, _, indexed, _, fieldsExact, _, _, _, _, _, _, _⟩ := emit_index_exact written
+  obtain ⟨_, _, embedded, ended⟩ := MixedFlat.File.readIndex_exact indexed
+  exact ⟨index, indexed, fieldsExact, embedded.trans (congrArg Except.ok fieldsExact), ended⟩
+
 end Silmaril.Proofs.Formats.Arrow.MixedFlat.FileWriter

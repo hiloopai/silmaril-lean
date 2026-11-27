@@ -25,10 +25,17 @@ inductive Error where
 def observe (batch : MixedFlat.Observed) : StreamWriter.BatchObservation :=
   (batch.rowCount, Writer.observeColumns batch.columns)
 
+/-- The strict mixed file writer admits all four flat kinds represented
+by the ordered column encoder. -/
+def supported (fields : List Field) : Bool :=
+  fields.all fun field =>
+    match field.kind with
+    | .primitive .int32 | .primitive .utf8 | .view _ => true
+
 def emitRecord (limits : MixedFlat.Limits) (fields : List Field) (batch : BatchInput) (index : Nat) :
     Except Error Arrow.FileWriter.RecordFrame := do
   if batch.fields ≠ fields then throw (.record index .schemaMismatch)
-  let record ← (OrderedWriter.emitRecord limits batch).mapError (.record index)
+  let record ← (OrderedWriter.emitRecordWith limits batch supported).mapError (.record index)
   let frame := record.output
   let metadataSize := frame.metadataBytes.len
   let bytes := Arrow.StreamWriter.envelopeBytes metadataSize ++ (frame.metadataBytes ++ frame.body)
@@ -60,7 +67,7 @@ def assemble (limits : MixedFlat.Limits) (fields : List Field) (batches : List B
   let ipc := limits.observation.ipc
   if batches.length > ipc.batches then throw (.ipc (.limit .batches))
   (Body.checkBudget limits.observation fields.length (batches.map (·.rowCount)).sum).mapError .ipc
-  let schema ← (OrderedWriter.emitSchema ipc fields).mapError .schema
+  let schema ← (OrderedWriter.emitSchemaWith ipc fields supported).mapError .schema
   let records ← batches.zipIdx.mapM fun (batch, index) => emitRecord limits fields batch index
   let schemaEnd := 8 + schema.len
   let (blocks, body) := Arrow.FileWriter.packRecords schemaEnd records

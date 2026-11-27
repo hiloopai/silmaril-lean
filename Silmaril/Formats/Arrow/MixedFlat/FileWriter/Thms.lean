@@ -58,4 +58,14 @@ theorem emit_events {limits : MixedFlat.Limits} {fields : List Field}
       MixedFlat.File.Events.Pull.readAll limits wire = .ok ⟨MixedFlat.Events.schema fields, ⟨events, .eos⟩⟩ :=
   Proofs.Formats.Arrow.MixedFlat.FileWriter.emit_events written
 
+/-- The embedded Schema and footer retain the exact declared field kinds,
+including plain Utf8, and the original EOS precedes the footer. -/
+theorem emit_schema_exact {limits : MixedFlat.Limits} {fields : List Field}
+    {batches : List BatchInput} {wire : KBytes} (written : emit limits fields batches = .ok wire) :
+    ∃ index : MixedFlat.File.Index wire,
+      MixedFlat.File.readIndex limits.observation.ipc wire = .ok index ∧ index.footer.fields = fields ∧
+      MixedFlat.readSchema limits.observation.ipc index.schemaMetadata = .ok fields ∧
+      readEnvelope limits.observation.ipc wire (index.span.start - 8) = .ok .eos :=
+  Proofs.Formats.Arrow.MixedFlat.FileWriter.emit_schema_exact written
+
 end Silmaril.Formats.Arrow.MixedFlat.FileWriter

@@ -929,7 +929,7 @@ python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ### Checked mixed-flat file writer
 
 `MixedFlat.FileWriter.emit` writes a strict Arrow IPC V5 file from ordered
-Int32, BinaryView and Utf8View fields and batches. It reuses the ordered
+Int32, plain Utf8, BinaryView and Utf8View fields and batches. It reuses the ordered
 record encoder, the primitive file writer's block packer, and the shared
 File.fbs footer layout. The embedded Schema and footer carry the same
 ordered names, kinds and nullability. The writer accepts schema-only
@@ -945,9 +945,12 @@ agrees with the corresponding observation from ordered readback.
 embedded Schema plus the spans of every preceding record. `emit_events`
 aligns the actual native file pull trace through EOS.
 
-The writer profile follows the ordered encoders. Plain UTF-8 admission
-remains available through the file reader. Dictionary and nested fields
-are outside this writer profile.
+Plain Utf8 keeps its primitive descriptor in both schemas and uses
+validity, signed 32-bit offsets, and data buffers. It contributes no
+variadic count. Utf8View retains its distinct descriptor and count word.
+The plain-text oracle interleaves repeated plain fields with Int32 and
+both view kinds, including null, empty and multibyte strings. Dictionary
+and nested fields are outside this writer profile.
 
 The pinned little-endian PyArrow 26.0.1 oracle independently generates
 mixed, schema-only, empty and zero-width files, then checks their exact
