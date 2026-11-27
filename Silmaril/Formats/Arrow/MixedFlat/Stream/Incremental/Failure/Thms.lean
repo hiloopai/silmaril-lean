@@ -33,6 +33,18 @@ theorem replay_unique_at_error {limits : MixedFlat.Limits} {input : KBytes} {fie
     left = right ∧ a = b ∧ causeA = causeB :=
   Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.replayUnique replayA replayB failedA failedB
 
+/-- Drain the exact originally published batches through an immutable pull error. -/
+theorem replay_read_all_error {limits : MixedFlat.Limits} {input : KBytes}
+    {fields : List MixedFlat.Field} {offset : Nat} {final : Position} {batches : List (Published fields)}
+    {cause : Stream.Events.Error}
+    (valid : input.wf = true)
+    (schemaRead : Stream.readSchemaFrame limits.observation.ipc input = .ok (fields, offset))
+    (replay : Replay limits input fields (.ofRunning limits {} offset) batches final)
+    (failed : final.readNext limits input fields = .error cause) :
+    Stream.Events.readAll limits input =
+      .ok ⟨MixedFlat.Events.schema fields, ⟨batches.map Prod.snd, .readError cause⟩⟩ :=
+  Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.replay_read_all_error valid schemaRead replay failed
+
 /-- The exact emitted prefix replays against immutable pulls. The native
 error identifies the original EOS marker and the feed error identifies the
 first tail byte eight bytes later, at the same next batch ordinal. -/

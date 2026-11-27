@@ -760,3 +760,39 @@ prefix mismatch and budget precedence controls still run.
 make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.PrefixMismatch.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Field.Axioms'
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Field-node count rejection after complete framing
+
+`Incremental.Failure.NodeCount` covers the shared typed metadata error
+`MetadataError.nodeCount expected actual` after the incremental reader
+admits the complete RecordBatch frame. `feed_node_count_wire` retains
+the original envelope, metadata slice and checked body range.
+`node_count_exact` replays the complete preceding batches and absolute
+ranges, with the same metadata error in the immutable next read and
+eager reader. `node_count_pull_exact` gives the full immutable pull trace,
+including explicit empty batches. Admitted schedules that reach this
+error on the same octets under the same limits agree on all published
+batches, ranges and the exact cause. Those octets cannot finish successfully.
+
+Both typed readers check the remaining batch slot before the node count
+and apply the running row and cell budgets afterward. The incremental
+reader also checks the body-byte cap during framing, before the typed
+metadata parser. The immutable reader applies it after typed metadata
+admission. The incremental aggregate data-buffer cap can stop an earlier
+valid batch, while the immutable reader can continue to the node-count
+error. These distinct outcomes and other metadata or framing errors are
+outside the agreement theorem.
+
+The guards shorten the last node vector in a native stream and the
+pinned PyArrow 26.0.1 stream while preserving the declared frame extents.
+Both one-byte and uneven schedules compare the same earlier batch and
+explicit empty batch, and check the batch-slot, row/cell, body-byte and
+aggregate data-buffer precedence cases.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/NodeCount/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/NodeCount/Thms.lean) ·
+[Lean guards](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/NodeCount/Examples.lean)
+
+```sh
+make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.NodeCount.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.NodeCount.Axioms'
+python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
+```

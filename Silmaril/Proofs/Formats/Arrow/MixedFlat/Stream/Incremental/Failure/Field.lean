@@ -4,7 +4,6 @@ public import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Field.
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Thms
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Thms
 import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Portable.Thms
-import Silmaril.Formats.Arrow.MixedFlat.Stream.Events.Thms
 
 public section
 
@@ -108,49 +107,14 @@ theorem field_exact {limits : MixedFlat.Stream.Incremental.Limits} {wire : KByte
     have valid : (reference wire).wf = true := rfl
     simp [MixedFlat.Stream.read, valid, readSchema, eagerSuffix, bind, Except.bind, Except.map]
 
-private theorem replay_pull_failure {limits : MixedFlat.Limits} {input : KBytes}
-    {fields : List MixedFlat.Field} {before final : Position} {batches : List (Published fields)}
-    {cause : MixedFlat.Stream.Events.Error}
-    (replay : Replay limits input fields before batches final)
-    (failed : final.readNext limits input fields = .error cause)
-    (acc : List (MixedFlat.Events.Batch (MixedFlat.Events.schema fields))) :
-    Arrow.Events.BatchReader.read.pull (MixedFlat.Stream.Events.reader limits)
-      (MixedFlat.Events.schema fields) (before.remaining + 1)
-      (.at input fields before.remaining before.ordinal before.rows before.offset) acc =
-        ⟨acc.reverse ++ batches.map Prod.snd, .readError cause⟩ := by
-  induction replay generalizing acc with
-  | stop position =>
-    simp [Arrow.Events.BatchReader.read.pull, MixedFlat.Stream.Events.reader,
-      Position.readNext] at failed ⊢
-    simp [failed, Except.map]
-  | @next before final decoded following read _ ih =>
-    obtain ⟨fuel, available, _⟩ := MixedFlat.Stream.Events.readNext_record read
-    have step : (MixedFlat.Stream.Events.reader limits).next
-        (.at input fields before.remaining before.ordinal before.rows before.offset) =
-        .ok (some (decoded.event, .at input fields (before.remaining - 1) (before.ordinal + 1)
-          (before.rows + decoded.record.observed.rowCount) decoded.record.range.next)) := by
-      simp [MixedFlat.Stream.Events.reader, Position.readNext] at read ⊢
-      simp [read, Except.map]
-    rw [Arrow.Events.BatchReader.read.pull, step]
-    simpa [Position.after, available, List.reverse_cons, List.append_assoc] using
-      ih failed (decoded.event :: acc)
-
 theorem field_pull_exact {limits : MixedFlat.Stream.Incremental.Limits} {wire : KBytes}
     (run : Run limits wire) :
     MixedFlat.Stream.Events.readAll limits.mixed (reference wire) =
       .ok ⟨MixedFlat.Events.schema run.fields, ⟨run.batches.map Delivered.event,
         .readError run.nativeCause⟩⟩ := by
-  obtain ⟨startOffset, _, _, schemaRead, replay, _, _, _, failed, _⟩ := field_exact run
-  have trace := replay_pull_failure replay failed []
-  simp only [Position.ofRunning, Nat.sub_zero, List.reverse_nil,
-    List.nil_append, List.map_map, Function.comp_def, Delivered.published] at trace
-  have openedInput : (MixedFlat.Stream.Events.reader limits.mixed).openInput (reference wire) =
-      .ok ⟨MixedFlat.Events.schema run.fields, .at (reference wire) run.fields
-        limits.mixed.observation.ipc.batches 0 0 startOffset⟩ := by
-    simp [MixedFlat.Stream.Events.reader, MixedFlat.Stream.Events.admit, show (reference wire).wf = true from rfl,
-      schemaRead, Except.map, Except.mapError]
-  rw [MixedFlat.Stream.Events.readAll, Arrow.Events.BatchReader.read, openedInput]
-  simp only [Except.map, trace, Run.nativeCause]
+  obtain ⟨_, _, _, schemaRead, replay, _, _, _, failed, _⟩ := field_exact run
+  simpa only [List.map_map, Function.comp_def, Delivered.published, Run.nativeCause] using
+    replay_read_all_error rfl schemaRead replay failed
 
 theorem schedules_field_equivalent {limits : MixedFlat.Stream.Incremental.Limits} {left right : KBytes}
     (leftWf : left.wf = true) (rightWf : right.wf = true) (octets : left.toList = right.toList)
