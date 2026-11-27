@@ -34,7 +34,30 @@ original row ordinal. Each column carries the source chunk witness.
 calling the [recursive Arrow writer](arrow-recursive-stream-writer.md).
 Successful output has the original recursive declaration and one batch
 per admitted group, with strict native readback through exact EOS.
-A separate shared Arrow Events adapter can reuse the checked group reader.
+
+## Direct Arrow Events
+
+`Parquet.RecursiveSchema.Rows.Events.read` opens the original Parquet
+bytes and uses the shared Parquet row-group reader to emit positional
+`Arrow.Events`. It carries the original recursive field declarations
+and emits one batch for every complete row group, including zero-row
+groups. Footer or schema errors fail at open. After open, a reached
+group error terminates the trace at its original ordinal, with the
+original error and all earlier complete batches.
+
+The wire theorem relates each batch to the source group's `GroupWire`
+and identifies the first reached error or EOS. The IPC agreement theorem
+compares the direct and native IPC routes on their declarations, ordered
+logical rows, explicit batch counts and EOS when native conversion and
+readback succeed.
+
+`readProjected` applies shared positional projection to the validated
+Events. It can reorder and repeat positions or produce width zero.
+The shared identity and composition laws apply, and every projection
+preserves each batch count and the original terminal outcome. All
+declared source leaves are checked, including leaves omitted by
+projection. The direct adapter uses the same uncompressed PLAIN V1
+signed INT32/INT64 profile as the row-group reader.
 
 ## Reproduce
 
@@ -55,3 +78,19 @@ group, later row, and conflicting columns. Both source errors preempt
 writer admission under zero IPC limits. A separate labeled extra
 original column is rejected by the checked footer.
 [Fixture pins](../../scripts/parquet-recursive-rows-oracle/fixtures.json)
+
+To check the direct adapter and its shared projection laws:
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.Rows.Events.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-events-oracle/Axioms.lean
+python3 scripts/parquet-recursive-events-oracle/check.py
+```
+
+The direct oracle reuses the pinned populated, schema-only, multipage,
+checksummed and explicit empty-group sources above. PyArrow supplies
+expected positional declarations, rows and original group counts.
+The same late sibling edits retain group 0 and report the exact group 1
+cause after repeated and zero-width projections. The extra-column
+footer edit and a genuine annotated LIST file fail before any Events.
+[Schema refusal pin](../../scripts/parquet-recursive-schema-oracle/fixtures.json)

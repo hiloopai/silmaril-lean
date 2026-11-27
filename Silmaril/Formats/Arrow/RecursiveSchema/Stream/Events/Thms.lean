@@ -61,24 +61,24 @@ theorem read_eos {limits : Batch.Limits} {input : KBytes} {events : Σ source : 
   Proofs.Formats.Arrow.RecursiveSchema.Stream.Events.read_eos accepted eos
 
 /-- Projection preserves every batch count at any output width. -/
-theorem projectTrace_counts {source : Signature} (projection : Scan.Projection source)
-    (trace : Trace source) :
+theorem projectTrace_counts {source : Signature} {Failure : Type} (projection : Scan.Projection source)
+    (trace : Formats.Arrow.Events.Trace source Value Failure) :
     (projectTrace projection trace).batches.map (·.rowCount) = trace.batches.map (·.rowCount) :=
   Proofs.Formats.Arrow.RecursiveSchema.Stream.Events.projectTrace_counts projection trace
 
-theorem projectTrace_termination {source : Signature} (projection : Scan.Projection source)
-    (trace : Trace source) : (projectTrace projection trace).termination = trace.termination := rfl
+theorem projectTrace_termination {source : Signature} {Failure : Type} (projection : Scan.Projection source)
+    (trace : Formats.Arrow.Events.Trace source Value Failure) : (projectTrace projection trace).termination = trace.termination := rfl
 
-theorem projectTrace_rows {source : Signature} (projection : Scan.Projection source)
-    (trace : Trace source) : (projectTrace projection trace).rows = projection.project trace.rows :=
+theorem projectTrace_rows {source : Signature} {Failure : Type} (projection : Scan.Projection source)
+    (trace : Formats.Arrow.Events.Trace source Value Failure) : (projectTrace projection trace).rows = projection.project trace.rows :=
   Proofs.Formats.Arrow.RecursiveSchema.Stream.Events.projectTrace_rows projection trace
 
-theorem projectTrace_id {source : Signature} (trace : Trace source) :
+theorem projectTrace_id {source : Signature} {Failure : Type} (trace : Formats.Arrow.Events.Trace source Value Failure) :
     projectTrace (Scan.Projection.id source) trace = trace :=
   Proofs.Formats.Arrow.RecursiveSchema.Stream.Events.projectTrace_id trace
 
-theorem projectTrace_comp {source : Signature} (first : Scan.Projection source)
-    (second : Scan.Projection first.schema) (trace : Trace source) :
+theorem projectTrace_comp {source : Signature} {Failure : Type} (first : Scan.Projection source)
+    (second : Scan.Projection first.schema) (trace : Formats.Arrow.Events.Trace source Value Failure) :
     projectTrace (first.comp second) trace = projectTrace second (projectTrace first trace) :=
   Proofs.Formats.Arrow.RecursiveSchema.Stream.Events.projectTrace_comp first second trace
 

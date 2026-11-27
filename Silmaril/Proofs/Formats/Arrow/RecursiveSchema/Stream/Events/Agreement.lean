@@ -48,7 +48,7 @@ theorem eraseBatch_ofBatch (fields : List Field) (batch : Formats.Arrow.Recursiv
         intro row _
         exact eraseRow_ofRow (fits _ row.property)
       _ = _ := List.attach_map_subtype_val _
-  unfold eraseBatch ofBatch
+  unfold eraseBatch ofBatch rowsOfBatch
   rw [AlignedColumns.toRows_ofRows, rows]
   simp only [AlignedColumns.ofRows, List.length_map, List.length_attach, count]
 

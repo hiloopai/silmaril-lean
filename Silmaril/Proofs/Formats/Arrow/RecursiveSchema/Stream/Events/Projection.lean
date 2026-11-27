@@ -10,15 +10,15 @@ namespace Silmaril.Proofs.Formats.Arrow.RecursiveSchema.Stream.Events
 open Silmaril.Relational
 open Silmaril.Formats.Arrow.RecursiveSchema.Stream.Events
 
-theorem projectTrace_counts {source : Signature} (projection : Scan.Projection source)
-    (trace : Trace source) :
+theorem projectTrace_counts {source : Signature} {Failure : Type} (projection : Scan.Projection source)
+    (trace : Formats.Arrow.Events.Trace source Value Failure) :
     (projectTrace projection trace).batches.map (·.rowCount) =
       trace.batches.map (·.rowCount) := by
   simp only [projectTrace, List.map_map]
   rfl
 
-theorem projectTrace_rows {source : Signature} (projection : Scan.Projection source)
-    (trace : Trace source) :
+theorem projectTrace_rows {source : Signature} {Failure : Type} (projection : Scan.Projection source)
+    (trace : Formats.Arrow.Events.Trace source Value Failure) :
     (projectTrace projection trace).rows = projection.project trace.rows := by
   have rows (batch : BatchEvent source) :
       (projection.projectColumns batch).toRows = projection.project batch.toRows :=
@@ -27,7 +27,7 @@ theorem projectTrace_rows {source : Signature} (projection : Scan.Projection sou
     rows, Scan.Projection.project, List.map_flatMap]
   rfl
 
-theorem projectTrace_id {source : Signature} (trace : Trace source) :
+theorem projectTrace_id {source : Signature} {Failure : Type} (trace : Formats.Arrow.Events.Trace source Value Failure) :
     projectTrace (Scan.Projection.id source) trace = trace := by
   cases trace with
   | mk batches termination =>
@@ -37,10 +37,10 @@ theorem projectTrace_id {source : Signature} (trace : Trace source) :
     have same : (Scan.Projection.id source).projectColumns = id := funext each
     simp only [projectTrace, same]
     exact congrArg (fun columns : List (BatchEvent source) =>
-      (⟨columns, termination⟩ : Trace source)) (List.map_id batches)
+      (⟨columns, termination⟩ : Formats.Arrow.Events.Trace source Value Failure)) (List.map_id batches)
 
-theorem projectTrace_comp {source : Signature} (first : Scan.Projection source)
-    (second : Scan.Projection first.schema) (trace : Trace source) :
+theorem projectTrace_comp {source : Signature} {Failure : Type} (first : Scan.Projection source)
+    (second : Scan.Projection first.schema) (trace : Formats.Arrow.Events.Trace source Value Failure) :
     projectTrace (first.comp second) trace = projectTrace second (projectTrace first trace) := by
   simp only [projectTrace, List.map_map]
   rfl

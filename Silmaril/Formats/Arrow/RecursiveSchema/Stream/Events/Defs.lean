@@ -49,10 +49,15 @@ def ofRow (fields : List Field) (row : Batch.Rows.Row) (fits : Batch.Rows.RowFit
 def eraseRow {source : Signature} (row : Scan.Row source Value) : Batch.Rows.Row :=
   List.ofFn fun i => (row i).map Subtype.val
 
+def rowsOfBatch (fields : List Field) (batch : Batch.Rows.Observation)
+    (fits : ∀ row ∈ batch.rows, Batch.Rows.RowFits fields row) :
+    Scan.Table (signature fields) Value :=
+  batch.rows.attach.map fun row => ofRow fields row.val (fits _ row.property)
+
 /-- Use the shared transposition, which preserves the row count at width zero. -/
 def ofBatch (fields : List Field) (batch : Batch.Rows.Observation)
     (fits : ∀ row ∈ batch.rows, Batch.Rows.RowFits fields row) : BatchEvent (signature fields) :=
-  AlignedColumns.ofRows (batch.rows.attach.map fun row => ofRow fields row.val (fits _ row.property))
+  AlignedColumns.ofRows (rowsOfBatch fields batch fits)
 
 def eraseBatch {source : Signature} (event : BatchEvent source) : Batch.Rows.Observation :=
   ⟨event.rowCount, event.toRows.map eraseRow⟩
@@ -76,13 +81,16 @@ def read (limits : Batch.Limits) (input : KBytes) : EventStream :=
   | .ok trace =>
     .ok ⟨signature trace.schema.fields, ofTrace (limits := limits) (input := input) trace (by exact RecursiveSchema.Stream.readTrace_wire original)⟩
 
-/-- Logical positional projection of already validated events. -/
-def projectTrace {source : Signature} (projection : Scan.Projection source)
-    (trace : Trace source) : Trace projection.schema :=
+/-- Logical positional projection of validated recursive events, with
+the original error type and terminal outcome. -/
+def projectTrace {source : Signature} {Failure : Type} (projection : Scan.Projection source)
+    (trace : Arrow.Events.Trace source Value Failure) :
+    Arrow.Events.Trace projection.schema Value Failure :=
   ⟨trace.batches.map projection.projectColumns, trace.termination⟩
 
-def project (stream : EventStream) (projection : (source : Signature) → Scan.Projection source) :
-    EventStream :=
+def project {Failure : Type} (stream : Arrow.Events.EventStream (Option String) Value Failure)
+    (projection : (source : Signature) → Scan.Projection source) :
+    Arrow.Events.EventStream (Option String) Value Failure :=
   stream.map fun ⟨source, trace⟩ => ⟨(projection source).schema, projectTrace (projection source) trace⟩
 
 def readProjected (limits : Batch.Limits) (input : KBytes)
