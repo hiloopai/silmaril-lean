@@ -33,17 +33,19 @@ private theorem mapM_order {ε α β : Type} (f : α → Except ε β) :
     cases read
     exact .cons head (mapM_order f tail)
 
-private theorem runPage_wire {α ε : Type} {decode : DecodePage α ε} {leaf : Footer.SchemaElement}
+private theorem runPage_wire {α ε : Type} {codec : CodecProfile} {limits : Limits}
+    {decode : DecodePage α ε} {leaf : Footer.SchemaElement}
     {metadata : Footer.ColumnMetadata} {source : Bytes} {frame : Page.Frame} {slots : List (Option α)}
-    (read : runPage decode leaf metadata source frame = .ok slots) :
-    CallbackWire decode leaf metadata source frame slots := by
+    (read : runPage codec limits decode leaf metadata source frame = .ok slots) :
+    CheckedCallbackWire codec limits decode leaf metadata source frame slots := by
   unfold runPage at read
+  obtain ⟨status, checksum, read⟩ := bind_ok read
   obtain ⟨_, decoded, read⟩ := bind_ok read
   split at read <;> try contradiction
   rename_i count
   split at read <;> try contradiction
   cases read
-  exact ⟨mapError_ok decoded, not_not.mp count⟩
+  exact ⟨⟨status, mapError_ok checksum⟩, mapError_ok decoded, not_not.mp count⟩
 
 private theorem locateChunk_wire {profile : CodecProfile} {limits : Limits} {policy : Policy} {selection : Selection}
     {leaf : Footer.SchemaElement} {group : Footer.RowGroup} {metadata : Footer.ColumnMetadata}
@@ -66,11 +68,12 @@ private theorem locateChunk_wire {profile : CodecProfile} {limits : Limits} {pol
   obtain ⟨path, type, values⟩ := not_not.mp associated
   exact ⟨path, type, values, not_not.mp codec, span⟩
 
-theorem readColumnFor_wire {snapshot : Snapshot.Checked} {selection : Selection} {α ε : Type}
+theorem readColumnFor_checked_wire {snapshot : Snapshot.Checked} {selection : Selection} {α ε : Type}
     {binding : Binding snapshot selection} {limits : Limits} {policy : Policy} {decode : DecodePage α ε}
     {codec : CodecProfile} {index : Nat} {slots : List (Option α)}
     (read : readColumnFor codec binding limits policy decode index = .ok slots) :
-    ∃ group, ColumnWireFor codec binding limits decode index group slots := by
+    ∃ group, ColumnWireWith codec binding limits (CheckedCallbackWire codec limits decode binding.leaf)
+      index group slots := by
   unfold readColumnFor at read
   split at read <;> try contradiction
   rename_i group groupAt
@@ -92,5 +95,15 @@ theorem readColumnFor_wire {snapshot : Snapshot.Checked} {selection : Selection}
     span, mapError_ok framed, not_not.mp declared, ?_, rfl, count⟩
   rw [← List.zipIdx_map_fst 0 frames, List.forall₂_map_left_iff]
   exact (mapM_order _ decoded).imp (fun _ _ h => runPage_wire (mapError_ok h))
+
+theorem readColumnFor_wire {snapshot : Snapshot.Checked} {selection : Selection} {α ε : Type}
+    {binding : Binding snapshot selection} {limits : Limits} {policy : Policy} {decode : DecodePage α ε}
+    {codec : CodecProfile} {index : Nat} {slots : List (Option α)}
+    (read : readColumnFor codec binding limits policy decode index = .ok slots) :
+    ∃ group, ColumnWireFor codec binding limits decode index group slots := by
+  obtain ⟨group, column, chunk, frames, pages, groupAt, columnAt, path, physical, count,
+    codecAt, span, framed, declared, callbacks, output, rows⟩ := readColumnFor_checked_wire read
+  exact ⟨group, column, chunk, frames, pages, groupAt, columnAt, path, physical, count,
+    codecAt, span, framed, declared, callbacks.imp (fun _ _ wire => wire.2), output, rows⟩
 
 end Silmaril.Proofs.Formats.Parquet.FlatColumn

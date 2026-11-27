@@ -91,8 +91,8 @@ theorem openFile_wire (opened : openFile parquet input name layout = .ok checked
           Option.some.inj (raw.leafAt.symm.trans bound.binding.leafAt)
         exact ⟨rfl, (File.openFile_wire physical).1, selected, raw, leaf, annotation⟩
 
-private theorem decodeSlot_exact {group : Nat} {item : Option Bytes × Nat} {text : Option String}
-    (decoded : decodeSlot group item = .ok text) :
+private theorem decodeSlot_exact {ε : Type} {invalid : Nat → ε} {item : Option Bytes × Nat} {text : Option String}
+    (decoded : decodeSlotWith invalid item = .ok text) :
     text.map (fun value => (⟨value.toByteArray⟩ : Bytes)) = item.1 := by
   rcases item with ⟨value, index⟩
   cases value with
@@ -100,17 +100,17 @@ private theorem decodeSlot_exact {group : Nat} {item : Option Bytes × Nat} {tex
   | some bytes =>
     by_cases valid : bytes.data.IsValidUTF8
     · have same : some (String.fromUTF8 bytes.data valid) = text := by
-        simpa [decodeSlot, Option.mapM, String.fromUTF8?, valid, Bind.bind, Except.bind,
+        simpa [decodeSlotWith, Option.mapM, String.fromUTF8?, valid, Bind.bind, Except.bind,
           Pure.pure, Except.pure] using decoded
       subst text
       cases bytes
       rfl
-    · simp [decodeSlot, Option.mapM, String.fromUTF8?, valid] at decoded
+    · simp [decodeSlotWith, Option.mapM, String.fromUTF8?, valid] at decoded
 
-theorem decodeSlots_exact {group : Nat} {raw : List (Option Bytes)} {texts : List (Option String)}
-    (decoded : decodeSlots group raw = .ok texts) :
+theorem decodeSlotsWith_exact {ε : Type} {invalid : Nat → ε} {raw : List (Option Bytes)} {texts : List (Option String)}
+    (decoded : decodeSlotsWith invalid raw = .ok texts) :
     texts.map (fun slot => slot.map (fun value => (⟨value.toByteArray⟩ : Bytes))) = raw := by
-  have reads : List.Forall₂ (fun pair text => decodeSlot group pair = .ok text) raw.zipIdx texts :=
+  have reads : List.Forall₂ (fun pair text => decodeSlotWith invalid pair = .ok text) raw.zipIdx texts :=
     List.mapM_eq_ok_iff_forall₂.mp decoded
   have octets := reads.flip.imp (fun _ _ h => decodeSlot_exact h)
   have same : List.Forall₂ (· = ·)
@@ -119,6 +119,12 @@ theorem decodeSlots_exact {group : Nat} {raw : List (Option Bytes)} {texts : Lis
     List.forall₂_map_left_iff.mpr (List.forall₂_map_right_iff.mpr octets)
   rw [List.forall₂_eq_eq_eq, List.zipIdx_map_fst] at same
   exact same
+
+
+theorem decodeSlots_exact {group : Nat} {raw : List (Option Bytes)} {texts : List (Option String)}
+    (decoded : decodeSlots group raw = .ok texts) :
+    texts.map (fun slot => slot.map (fun value => (⟨value.toByteArray⟩ : Bytes))) = raw :=
+  decodeSlotsWith_exact decoded
 
 theorem readGroup_wire {group : Nat} {slots : List (Option String)}
     (decoded : checked.readGroup parquet group = .ok slots) :

@@ -47,6 +47,12 @@ responsibilities. [Binder and callback][defs] · [Snapshot](parquet-snapshot.md)
   at the group and column. Within each column framing and admission precede
   body decoding.
 
+`FlatColumn.readColumnFor .snappy` opts into codec 1 and verifies any
+page CRC over the complete stored body before the callback.
+`readColumnFor_checked_wire` pairs that checksum result with each
+original frame and callback result. The Snappy STRING decoder uses
+this path. [Snappy STRING profile](parquet-utf8-view.md#opt-in-snappy-plain-string)
+
 ## Mixed BOOLEAN and FLOAT profile
 
 `MixedBooleanFloat.openFile` checks the file byte cap and binds exactly two

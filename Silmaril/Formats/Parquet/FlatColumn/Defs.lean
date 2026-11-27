@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Formats.Parquet.Page.Defs
+public import Silmaril.Formats.Parquet.Page.Checksum.Defs
 public import Silmaril.Formats.Parquet.ScalarPage.Defs
 public import Silmaril.Formats.Parquet.Snapshot.Defs
 
@@ -84,11 +84,13 @@ structure Policy where
 inductive CodecProfile where
   | uncompressed
   | zstd
+  | snappy
   deriving DecidableEq, Repr
 
 @[expose] def CodecProfile.id : CodecProfile → Int
   | .uncompressed => Payload.Codec.uncompressed.id
   | .zstd => Payload.Codec.zstd.id
+  | .snappy => Payload.Codec.snappy.id
 
 structure Limits where
   framing : Page.Limits := {}
@@ -115,6 +117,7 @@ inductive ColumnError where
 
 inductive PageError (ε : Type) where
   | crcUnsupported
+  | checksum (cause : Page.Checksum.Error)
   | byteLimit
   | sizeMismatch
   | unsupportedKind
@@ -147,7 +150,7 @@ callback may obtain the levels from the matched flat leaf. -/
 
 private def admitPage {ε : Type} (codec : CodecProfile) (limits : Limits) (policy : Policy) (layout : Layout)
     (header : Page.Header) : Except (PageError ε) Unit := do
-  if header.crc.isSome then throw .crcUnsupported
+  if codec != .snappy && header.crc.isSome then throw .crcUnsupported
   if limits.maxPageBytes < header.compressedSize || limits.maxPageBytes < header.uncompressedSize then
     throw .byteLimit
   if codec == .uncompressed && header.compressedSize != header.uncompressedSize then throw .sizeMismatch
@@ -188,9 +191,17 @@ private def wrongNullCount {α : Type} (leaf : Footer.SchemaElement) (header : P
     | _ => false
   wrongV2Nulls || (leaf.repetition == some .required && !slots.all Option.isSome)
 
-private def runPage {α ε : Type} (decode : DecodePage α ε) (leaf : Footer.SchemaElement)
+/-- Snappy opts in to CRC verification on the original stored bytes.
+The other profiles still reject a checksum during page admission. -/
+@[expose] def pageChecksum (codec : CodecProfile) (limits : Limits) (source : Bytes) (frame : Page.Frame) :
+    Except Page.Checksum.Error Page.Checksum.Status :=
+  if codec == .snappy then Page.Checksum.verify limits.maxPageBytes source frame else .ok .absent
+
+private def runPage {α ε : Type} (codec : CodecProfile) (limits : Limits)
+    (decode : DecodePage α ε) (leaf : Footer.SchemaElement)
     (metadata : Footer.ColumnMetadata) (source : Bytes) (frame : Page.Frame) :
     Except (PageError ε) (List (Option α)) := do
+  let _ ← (pageChecksum codec limits source frame).mapError .checksum
   let slots ← (decode leaf metadata frame.value (frameBody source frame)).mapError .decode
   if slots.length ≠ pageSlots frame.value then .error (.outputCount (pageSlots frame.value) slots.length)
   else if wrongNullCount leaf frame.value slots then .error .nullCount
@@ -238,7 +249,7 @@ def readColumnFor {snapshot : Snapshot.Checked} {selection : Selection} {α ε :
     if declared ≠ rows then .error (columnFailure (.declaredCount rows declared))
     else do
       let pages ← entries.mapM fun entry =>
-        (runPage decode binding.leaf metadata snapshot.bytes entry.1).mapError (pageFailure entry)
+        (runPage codec limits decode binding.leaf metadata snapshot.bytes entry.1).mapError (pageFailure entry)
       let slots := pages.flatten
       if slots.length = rows then pure slots
       else throw (columnFailure (.outputCount rows slots.length))
@@ -257,8 +268,9 @@ and the advertised slot count in every callback invocation. -/
   decode leaf metadata frame.value (frameBody source frame) = .ok slots ∧
     slots.length = pageSlots frame.value
 
-@[expose] def ColumnWireFor {snapshot : Snapshot.Checked} {selection : Selection} {α ε : Type}
-    (codec : CodecProfile) (binding : Binding snapshot selection) (limits : Limits) (decode : DecodePage α ε)
+@[expose] def ColumnWireWith {snapshot : Snapshot.Checked} {selection : Selection} {α : Type}
+    (codec : CodecProfile) (binding : Binding snapshot selection) (limits : Limits)
+    (pageWire : Footer.ColumnMetadata → Bytes → Page.Frame → List (Option α) → Prop)
     (index : Nat) (group : Footer.RowGroup) (slots : List (Option α)) : Prop :=
   ∃ column chunk frames pages,
     snapshot.groupAt index = some group ∧
@@ -269,8 +281,19 @@ and the advertised slot count in every callback invocation. -/
     Page.columnSpan snapshot.footer.start column.metadata = some chunk ∧
     Page.readChunk limits.framing snapshot.bytes chunk = .ok frames ∧
     (frames.map (pageSlots ∘ Page.Frame.value)).sum = group.numRows.toNat ∧
-    List.Forall₂ (CallbackWire decode binding.leaf column.metadata snapshot.bytes) frames pages ∧
+    List.Forall₂ (pageWire column.metadata snapshot.bytes) frames pages ∧
     slots = pages.flatten ∧ slots.length = group.numRows.toNat
+
+@[expose] def CheckedCallbackWire {α ε : Type} (codec : CodecProfile) (limits : Limits) (decode : DecodePage α ε)
+    (leaf : Footer.SchemaElement) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (frame : Page.Frame) (slots : List (Option α)) : Prop :=
+  (∃ status, pageChecksum codec limits source frame = .ok status) ∧
+    CallbackWire decode leaf metadata source frame slots
+
+@[expose] def ColumnWireFor {snapshot : Snapshot.Checked} {selection : Selection} {α ε : Type}
+    (codec : CodecProfile) (binding : Binding snapshot selection) (limits : Limits) (decode : DecodePage α ε)
+    (index : Nat) (group : Footer.RowGroup) (slots : List (Option α)) : Prop :=
+  ColumnWireWith codec binding limits (CallbackWire decode binding.leaf) index group slots
 
 @[expose] def ColumnWire {snapshot : Snapshot.Checked} {selection : Selection} {α ε : Type}
     (binding : Binding snapshot selection) (limits : Limits) (decode : DecodePage α ε)

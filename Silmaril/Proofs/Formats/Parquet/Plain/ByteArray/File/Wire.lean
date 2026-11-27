@@ -47,7 +47,7 @@ theorem openFile_wire {limits : Limits} {source : Bytes} {name : String} {layout
     exact ⟨mapError_ok checkedSnapshot, Nat.le_of_not_gt fileCap, Nat.le_of_not_gt rowCap,
       FlatColumn.binding_leaf binding⟩
 
-private theorem decodePage_wire {limits : Limits} {layout : FlatColumn.Layout}
+theorem decodePage_wire {limits : Limits} {layout : FlatColumn.Layout}
     {leaf : Footer.SchemaElement} {metadata : Footer.ColumnMetadata} {source : Bytes}
     {frame : Page.Frame} {slots : List (Option Bytes)}
     (decoded : decodePage limits layout leaf metadata frame.value (FlatColumn.frameBody source frame) = .ok slots) :

@@ -54,6 +54,44 @@ lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Checks \
 python3 scripts/parquet-utf8-view-oracle/check.py "$(mktemp -d)"
 ```
 
+## Opt-in Snappy PLAIN STRING
+
+`Parquet.Plain.ByteArray.Utf8.Snappy.convert` uses the same checked
+STRING annotation and strict UTF-8 decoder for a selected flat required
+or optional BYTE_ARRAY leaf. This profile requires codec 1 and exact
+PLAIN tag 0. V1 expands the whole page body with Snappy and reads RLE
+levels. V2 checks the level lengths against both declared page sizes,
+then reads the raw levels and decodes only the value suffix. The resolved
+original V2 compression flag selects Snappy or a raw suffix. A present
+CRC is verified over the complete stored body before decoding. Dictionary
+pages and dictionary value encodings are outside this profile.
+
+`readGroup_wire` joins the original frame list and stored payload spans
+to the CRC decision, size caps, scalar preparation and exact nullable
+UTF-8 octets. `convert_readback` preserves one native Utf8View batch per
+footer group through EOS. The first failed group returns the original
+indexed cause before IPC limits are applied. Invalid UTF-8 includes the
+original group, column, page and header offset plus a zero-based logical
+slot within that page.
+
+PyArrow 26.0.1 produces V1 and V2 files both with and without CRC. Thrift
+0.25.0 checks the selected leaf, page headers, CRCs, and exact payload
+extents. V2 files contain both compressed and raw value suffixes. PyArrow
+independently compares the decoded Parquet slots and Lean IPC batches
+`[8, 1, 5]`, including null and empty strings, composed and decomposed
+text, multibyte text and NUL. Controls exercise the later expansion cap,
+CRC mismatch and invalid UTF-8 with exact page coordinates, along with
+codec and dictionary admission.
+
+[Definitions](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Snappy/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Snappy/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-snappy-utf8-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Snappy.Checks
+python3 scripts/parquet-snappy-utf8-view-oracle/check.py "$(mktemp -d)"
+```
+
 ## Native Utf8View to Parquet STRING
 
 `Parquet.Plain.ByteArray.Utf8.FromIpc.convert` reads one explicitly

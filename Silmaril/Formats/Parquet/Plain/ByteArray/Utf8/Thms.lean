@@ -46,7 +46,13 @@ theorem openFile_wire (opened : openFile parquet input name layout = .ok checked
 /-- An invalid present byte string reports its original group and logical slot. -/
 theorem decodeSlot_invalid {group slot : Nat} {raw : Bytes} (invalid : ¬ raw.data.IsValidUTF8) :
     decodeSlot group (some raw, slot) = .error (.invalidText group slot) := by
-  simp [decodeSlot, Option.mapM, String.fromUTF8?, invalid]
+  simp [decodeSlot, decodeSlotWith, Option.mapM, String.fromUTF8?, invalid]
+
+/-- Profile-specific coordinates do not affect the exact octet observation. -/
+theorem decodeSlotsWith_exact {ε : Type} {invalid : Nat → ε} {raw : List (Option Bytes)}
+    {texts : List (Option String)} (decoded : decodeSlotsWith invalid raw = .ok texts) :
+    texts.map (fun slot => slot.map (fun value => (⟨value.toByteArray⟩ : Bytes))) = raw :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.decodeSlotsWith_exact decoded
 
 /-- Strict text decoding preserves the exact original nullable byte slots. -/
 theorem decodeSlots_exact {group : Nat} {raw : List (Option Bytes)} {texts : List (Option String)}

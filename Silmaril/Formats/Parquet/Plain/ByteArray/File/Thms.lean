@@ -21,6 +21,15 @@ theorem openFile_wire {limits : Limits} {source : Bytes} {name : String} {layout
     checked.binding.leaf.repetition = some layout.repetition :=
   Proofs.Formats.Parquet.Plain.ByteArray.File.openFile_wire opened
 
+/-- The BYTE_ARRAY callback retains the codec selected by the checked chunk
+and uses the original page parameters and body. -/
+theorem decodePage_wire {limits : Limits} {layout : FlatColumn.Layout}
+    {leaf : Footer.SchemaElement} {metadata : Footer.ColumnMetadata} {source : Bytes}
+    {frame : Page.Frame} {slots : List (Option Bytes)}
+    (decoded : decodePage limits layout leaf metadata frame.value (FlatColumn.frameBody source frame) = .ok slots) :
+    PageWire limits layout metadata source frame slots :=
+  Proofs.Formats.Parquet.Plain.ByteArray.File.decodePage_wire decoded
+
 /-- The selected chunk's exact original frames yield one ordered slot list per
 frame, with the prepared mask, complete PLAIN suffix, and declared row count. -/
 theorem readGroup_wire {name : String} {layout : FlatColumn.Layout} {checked : Checked name layout}

@@ -73,14 +73,22 @@ leaf's annotation at the physical binding's column ordinal. -/
     | .error cause => .error cause
     | .ok annotation => .ok ⟨physical, annotation, limits.snapshot.footer, leaf, selected, decoded⟩
 
-@[expose] def decodeSlot (group : Nat) (item : Option Bytes × Nat) : Except Error (Option String) :=
+@[expose] def decodeSlotWith {ε : Type} (invalid : Nat → ε) (item : Option Bytes × Nat) :
+    Except ε (Option String) :=
   item.1.mapM fun bytes =>
     match String.fromUTF8? bytes.data with
     | some text => .ok text
-    | none => .error (.invalidText group item.2)
+    | none => .error (invalid item.2)
 
-@[expose] def decodeSlots (group : Nat) (raw : List (Option Bytes)) : Except Error (List (Option String)) :=
-  raw.zipIdx.mapM (decodeSlot group)
+@[expose] def decodeSlotsWith {ε : Type} (invalid : Nat → ε) (raw : List (Option Bytes)) :
+    Except ε (List (Option String)) :=
+  raw.zipIdx.mapM (decodeSlotWith invalid)
+
+@[expose] def decodeSlot (group : Nat) : Option Bytes × Nat → Except Error (Option String) :=
+  decodeSlotWith (Error.invalidText group)
+
+@[expose] def decodeSlots (group : Nat) : List (Option Bytes) → Except Error (List (Option String)) :=
+  decodeSlotsWith (Error.invalidText group)
 
 /-- Check the complete physical group, then validate present slots as strict
 UTF-8 in original logical row order. Null slots retain their positions. -/
