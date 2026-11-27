@@ -27,6 +27,7 @@ inductive ChunkEncoding where
   | dictionary
   | snappyDictionary
   | gzipDictionaryV1
+  | gzipDictionaryV2
   | snappyLegacyDictionaryV1
   | snappyLegacyFallbackV1
 
@@ -35,7 +36,7 @@ inductive ChunkEncoding where
   | .plain => limits.admitsCodec code
   | .dictionary => code == 0
   | .snappyDictionary | .snappyLegacyDictionaryV1 | .snappyLegacyFallbackV1 => code == 1
-  | .gzipDictionaryV1 => code == 2
+  | .gzipDictionaryV1 | .gzipDictionaryV2 => code == 2
 
 private def dictionaryMetadata (metadata : Footer.ColumnMetadata) : Bool :=
   metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 8 &&
@@ -49,7 +50,7 @@ def ChunkEncoding.admitsMetadata (encoding : ChunkEncoding) (metadata : Footer.C
         (rows == 0 || metadata.encodings.contains 0) && metadata.dictionaryPageOffset.isNone
     | .dictionary => dictionaryMetadata metadata &&
         metadata.totalCompressedSize == metadata.totalUncompressedSize
-    | .snappyDictionary | .gzipDictionaryV1 => dictionaryMetadata metadata
+    | .snappyDictionary | .gzipDictionaryV1 | .gzipDictionaryV2 => dictionaryMetadata metadata
     | .snappyLegacyDictionaryV1 =>
         metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 2 &&
           metadata.encodings.all (fun id => id == 2 || id == 3 || id == 4)
