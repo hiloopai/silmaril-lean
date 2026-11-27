@@ -58,3 +58,42 @@ lake build --wfail +Silmaril.Formats.Csv.Typed.Utf8.Thms +Silmaril.Formats.Csv.T
 make check CHECK_TARGETS='+Silmaril.Formats.Csv.Typed.Utf8.Thms +Silmaril.Formats.Csv.Typed.Utf8.Tests'
 python3 -I scripts/typed-utf8-csv-oracle/check.py
 ```
+
+## Opt-in row-budgeted decoding
+
+[`Typed.Utf8.Bounded.decode`](../../Silmaril/Formats/Csv/Typed/Utf8/Bounded/Defs.lean)
+uses the same UTF-8 field parser, exact ordered header, cell codecs,
+nullable tags, and zero-column marker as the complete typed decoder. It
+parses the header once and checks the remaining data-row budget before
+reading each nonempty body suffix. Each accepted marker at width zero
+costs one row. A header-only wire can complete with budget zero.
+
+The reader parses and validates one logical record at a time, including
+quoted newlines. It does not build a whole table of raw records. The
+budget bounds the accepted typed rows retained while decoding. Parsing
+can still allocate the header, the current record, and its fields. The
+wire is already supplied as a byte list. The row budget is not a bound
+on input size, field width, work, or total allocation.
+
+An empty suffix completes after a valid final record, with or without
+its final CRLF. A nonempty body suffix at a depleted budget instead
+returns `.rowLimit` before inspecting another record. Header failures
+precede body processing. Within the budget, the first reached malformed
+record or typed cell returns its CSV error. This can differ from the
+complete decoder, which lexes the entire wire before typed validation.
+
+`Bounded.decode_ok_iff` proves that success returns exactly the complete
+decoder's ordered table within the cap, with no partial result on error.
+The complete decoder and its existing named import keep their API and
+behavior.
+
+The CPython 3.14.7 oracle writes quoted multiline text, present-empty
+and null cells, width-zero markers, bare blank records, and late
+malformed cases. Lean checks exact and zero budgets and verifies the
+difference between reaching a bad record and stopping before it.
+
+```sh
+lake build --wfail +Silmaril.Formats.Csv.Typed.Utf8.Bounded.Checks
+python -I scripts/csv-row-budget-oracle/Generate.py /tmp/csv-row-budget
+lake env lean --run Silmaril/Formats/Csv/Typed/Utf8/Bounded/Checks.lean /tmp/csv-row-budget
+```
