@@ -1,0 +1,108 @@
+{
+  "description": "Genuine recursive Arrow IPC batches and controlled metadata and body edits",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c"
+  },
+  "genuine_ipc": {
+    "populated": {
+      "bytes": 2096,
+      "sha256": "38187024f71d3fc1838651be6a3c85c0c5edb4979d4874c0e24e9861737f7295"
+    },
+    "predecessor_empty": {
+      "bytes": 1224,
+      "sha256": "98ecd11474f8ed7cb6313bfec6fd96af85833e5558b2741da567741a2f0bde88"
+    },
+    "empty_schema": {
+      "bytes": 144,
+      "sha256": "1e31d71e6ad5132110f1fc3f7cef27e9a51e6c7fc6631cef8f4469c1e60ba149"
+    },
+    "compressed": {
+      "bytes": 2400,
+      "sha256": "80e40756f7fda65283fdcfbeb52423903e7de272b43db4a5d80f22d76d37ac93"
+    }
+  },
+  "labeled_edits": {
+    "missing_node": {
+      "bytes": 2096,
+      "sha256": "352d2fde5dd2e2b10f9453108e809f2f282f7578d5e5d675997c1c07aaabef45"
+    },
+    "missing_buffer": {
+      "bytes": 2096,
+      "sha256": "c2c86453ac9af7dd0f6088b93e0f4ae683dd86bb5b45744a086a33ec22cc42a3"
+    },
+    "extra_node": {
+      "bytes": 2112,
+      "sha256": "4afbf94adb47569bb1cb824e152510958272a85cadee18a16b239727fe02d0f8"
+    },
+    "extra_buffer": {
+      "bytes": 2096,
+      "sha256": "6290602ed4396315c180e5183263446453f098481906a6cf2c61e2cf42eb4328"
+    },
+    "struct_child_length": {
+      "bytes": 2096,
+      "sha256": "d9877ec9f9e98ddf5b0178e674b61fc0a1065a15058a862c921c91d873ec6834"
+    },
+    "list_terminal_length": {
+      "bytes": 2096,
+      "sha256": "389f19734a707e24b95822a23a877bf36a19af9f3eb23913b37b02ec30bbe82b"
+    },
+    "list_descending": {
+      "bytes": 2096,
+      "sha256": "0b63d479e7c91b8fbc5b26699605e8befd4067ba4237c16c298f27a2ebfb7532"
+    },
+    "list_negative": {
+      "bytes": 2096,
+      "sha256": "417ab86912f38fee2ad8538a4d19c7dc1f5211c721d1cd2bc9f90d2b39354fcb"
+    },
+    "list_nonzero_start": {
+      "bytes": 2096,
+      "sha256": "99c23dbe6208acd38fd831527f013780da6c8da74b514d151c7a9d316c291583"
+    },
+    "list_short": {
+      "bytes": 2096,
+      "sha256": "5097f475bde80a99f4156aa8e2409ef591ba904805e848c43c433aa627855b5d"
+    },
+    "integer_short": {
+      "bytes": 2096,
+      "sha256": "f3a759d178526361219035d789ace4887bf63e691e3338a12b66a8e448346f59"
+    },
+    "out_of_body": {
+      "bytes": 2096,
+      "sha256": "7afacff922301e1f1dade34b14fc95fc77125a74ecd08484785163db19a8f21c"
+    },
+    "overlap": {
+      "bytes": 2096,
+      "sha256": "6dc6da5348b370024d07110feb4fe07317f48cf50a332a6202daf975cf6969eb"
+    },
+    "negative_node": {
+      "bytes": 2096,
+      "sha256": "a7859ee272793d0d183439f53d8940366558cc85c54066c2a0acea9d69070d8d"
+    },
+    "negative_buffer": {
+      "bytes": 2096,
+      "sha256": "2a9747748d8cd647a0faa1a67103d67d7f38451736edaacb7aba7d1ee6127a44"
+    },
+    "null_count_bound": {
+      "bytes": 2096,
+      "sha256": "beecc506dec4737d9022ee4f9d8eb2e9a12f51fd18773adba066a717470e15cd"
+    },
+    "absent_bitmap": {
+      "bytes": 2096,
+      "sha256": "2bc27fee1d80207a61f7d03673d8e31ac717d4779c32fa837d71c244458f9af0"
+    },
+    "truncated_body": {
+      "bytes": 1447,
+      "sha256": "8bf04322a993c00cd2b4aea783f2c40c172fa0aabb3a84d5423f546177ac16d6"
+    },
+    "opaque_bitmap": {
+      "bytes": 2096,
+      "sha256": "affaa30761fb7c552926da6713360a00137c5d908f31287c273765a63a82954b"
+    }
+  }
+}

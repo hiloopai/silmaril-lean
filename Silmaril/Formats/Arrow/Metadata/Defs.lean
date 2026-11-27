@@ -634,6 +634,43 @@ public def fieldHeader (bytes : KBytes) (position : Nat) : Except Error FieldHea
   emptyVector bytes value 6 4 4 .customMetadata
   return ⟨name, nullable, kind, first, count⟩
 
+/-- Original fixed-stride vectors of an uncompressed V5 RecordBatch.
+Offsets are relative to the padded Message metadata. -/
+public structure BatchHeader where
+  bodyLength : Nat
+  rowCount : Nat
+  nodeFirst : Nat
+  nodeCount : Nat
+  bufferFirst : Nat
+  bufferCount : Nat
+  deriving DecidableEq, Repr
+
+/-- Check the shared V5 metadata and vector bounds before opening any
+FieldNode or Buffer. Each field in the recursive profile uses at most two
+buffers. -/
+public def batchHeader (limits : Limits) (bytes : KBytes) : Except Error BatchHeader := do
+  let (tag, payload, bodyLength) ← messageParts limits bytes
+  if tag ≠ 3 then throw (.unsupported (.messageKind tag))
+  let vectors ← batchVectors limits bytes payload
+  if vectors.nodeCount > limits.fields || vectors.bufferCount > 2 * limits.fields then
+    throw (.limit .fields)
+  noTable bytes payload 3 .compression
+  emptyVector bytes payload 4 8 8 .variadicBuffers
+  return ⟨bodyLength, vectors.rowCount, vectors.nodeFirst, vectors.nodeCount,
+    vectors.bufferFirst, vectors.bufferCount⟩
+
+/-- Read the indexed original FieldNode in a checked RecordBatch vector. -/
+public def batchNode (bytes : KBytes) (header : BatchHeader) (index : Nat) :
+    Except Error FieldNode :=
+  if index < header.nodeCount then readNodeAt bytes header.nodeFirst index
+  else .error (.malformed .batchLayout)
+
+/-- Read the indexed original Buffer in a checked RecordBatch vector. -/
+public def batchBuffer (bytes : KBytes) (header : BatchHeader) (index : Nat) :
+    Except Error Buffer :=
+  if index < header.bufferCount then readBufferAt bytes header.bufferFirst index
+  else .error (.malformed .batchLayout)
+
 end RecursiveSchema.Wire
 
 /-- Check the common V5 Message table and recover the body length for a
