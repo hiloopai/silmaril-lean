@@ -91,6 +91,24 @@ private theorem decodeField_encodeEntry (encode : Encode Value EncodeFailure) (d
       rw [inverse _ _ checked]
       rfl
 
+theorem encodeEntries_keys (encode : Encode Value EncodeFailure) (cells : Scan.Row schema.toScan Value)
+    {entries : PartitionPath.Partition} (encoded : encodeEntries encode cells = .ok entries) :
+    entries.map Prod.fst = schema.keys := by
+  let check (i : Fin schema.fields.size) := encodeEntry encode schema.fields[i] (cells i)
+  have accepted := mapM_accepted check encoded
+  have nameOf (i : Fin schema.fields.size) (entry : PartitionPath.Entry) (ok : check i = .ok entry) :
+      schema.fields[i].name = entry.1 :=
+    encodeEntry_name encode schema.fields[i] (cells i) entry ok
+  have fieldNames : (List.finRange schema.fields.size).map (fun i => schema.fields[i].name) = schema.keys := by
+    simp only [List.finRange, List.map_ofFn, Function.comp_def, PartitionSchema.keys]
+    rw [← List.ofFn_getElem (xs := schema.fields.toList), List.map_ofFn]
+    rfl
+  have aligned : List.Forall₂ (· = ·)
+      ((List.finRange schema.fields.size).map (fun i => schema.fields[i].name)) (entries.map Prod.fst) :=
+    List.forall₂_map_left_iff.mpr (List.forall₂_map_right_iff.mpr (accepted.imp nameOf))
+  rw [fieldNames, List.forall₂_eq_eq_eq] at aligned
+  exact aligned.symm
+
 private theorem decode_encodedEntries (encode : Encode Value EncodeFailure) (decode : Convert Value DecodeFailure)
     (inverse : CellLeftInverse schema encode decode) (cells : Scan.Row schema.toScan Value)
     {entries : PartitionPath.Partition} (encoded : encodeEntries encode cells = .ok entries)
@@ -102,16 +120,7 @@ private theorem decode_encodedEntries (encode : Encode Value EncodeFailure) (dec
   have nameOf (i : Fin schema.fields.size) (entry : PartitionPath.Entry) (ok : check i = .ok entry) :
       schema.fields[i].name = entry.1 :=
     encodeEntry_name encode schema.fields[i] (cells i) entry ok
-  have fieldNames : (List.finRange schema.fields.size).map (fun i => schema.fields[i].name) = schema.keys := by
-    simp only [List.finRange, List.map_ofFn, Function.comp_def, PartitionSchema.keys]
-    rw [← List.ofFn_getElem (xs := schema.fields.toList), List.map_ofFn]
-    rfl
-  have names : entries.map Prod.fst = schema.keys := by
-    have aligned : List.Forall₂ (· = ·)
-        ((List.finRange schema.fields.size).map (fun i => schema.fields[i].name)) (entries.map Prod.fst) :=
-      List.forall₂_map_left_iff.mpr (List.forall₂_map_right_iff.mpr (accepted.imp nameOf))
-    rw [fieldNames, List.forall₂_eq_eq_eq] at aligned
-    exact aligned.symm
+  have names := encodeEntries_keys encode cells encoded
   have noExtra : entries.find? (fun entry => !schema.keys.contains entry.1) = none := by
     apply List.find?_eq_none.mpr
     intro entry member
@@ -131,6 +140,22 @@ private theorem decode_encodedEntries (encode : Encode Value EncodeFailure) (dec
       ((PartitionPath.lookup_eq_some_iff unique).mpr seen)
   simp only [TypedPartitions.decode, names, keysValid, noExtra]
   exact sequenceFin_accepted schema.fields.size _ cells readCell
+
+theorem decode_renderedEntries (options : PartitionPath.Options)
+    (encode : Encode Value EncodeFailure) (decode : Convert Value DecodeFailure)
+    (inverse : CellLeftInverse schema encode decode) (cells : Scan.Row schema.toScan Value)
+    {entries : PartitionPath.Partition} {directory : String}
+    (encoded : encodeEntries encode cells = .ok entries) (rendered : PartitionPath.render options entries = .ok directory) :
+    TypedPartitions.decode schema decode entries = .ok cells := by
+  have keysValid : PartitionPath.validateKeys (entries.map Prod.fst) = .ok () := by
+    cases checked : PartitionPath.validateKeys (entries.map Prod.fst) with
+    | error reason =>
+      unfold PartitionPath.render at rendered
+      split at rendered <;> simp [PartitionPath.validate, checked, Bind.bind, Except.bind] at rendered
+    | ok accepted => cases accepted; rfl
+  rw [encodeEntries_keys encode cells encoded] at keysValid
+  exact decode_encodedEntries encode decode inverse cells encoded keysValid
+    (PartitionPath.parse_lookup (PartitionPath.parse_render_of_ok rendered)).1
 
 private theorem tagged_agree (options : PartitionPath.Options) (encode : Encode Value EncodeFailure)
     (rows : Scan.Table (schema.extend physical) Value) (offset : Nat)

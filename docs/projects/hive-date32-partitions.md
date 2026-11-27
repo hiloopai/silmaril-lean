@@ -211,3 +211,44 @@ Generate the fixture with `lake build --wfail +Silmaril.Formats.Hive.Date32.Utf8
 and `lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/Checks.lean "$tmp"`.
 Use the pinned PyArrow command above with
 `python -I /repo/scripts/hive-date-utf8-ingress-oracle/Oracle.py /out`.
+
+## Canonical DATE and UTF-8 directories
+
+[`Date32.Utf8.renderDirectory`](../../Silmaril/Formats/Hive/Date32/Utf8/Render/Defs.lean)
+takes the same two typed virtual cells and URI options as the paired
+read profile. The shared write-plan encoder visits the declared fields
+in order. It prints present DATE values as canonical ISO dates and
+checks that present text is valid UTF-8. Null cells bypass conversion.
+After key and option validation, the URI renderer rejects the first
+present value equal to the decoded null marker and percent-escapes the
+components. An empty UTF-8 value emits an empty assignment.
+
+The [public laws](../../Silmaril/Formats/Hive/Date32/Utf8/Render/Thms.lean)
+recover the ordered entries and the exact typed row. A file declaration
+whose checked parent is the rendered directory binds the same nullable
+DATE and UTF-8 cells under the same options, preserving the supplied
+literal filename and path. The encoder also supplies a left inverse
+for the generic Hive write plan.
+
+The PyArrow comparator parses eight actual Lean-rendered directories,
+including both declared orders, empty text, escaped UTF-8 and escaped
+keys and markers. Plain directories also match PyArrow's formatter.
+The comparator shows the DATE marker and UTF-8 marker ambiguities
+separately. PyArrow formats the corresponding present value and null
+identically and reads the shared spelling as null. Lean refuses the
+present collision.
+
+Generate the directories with
+`lake build --wfail +Silmaril.Formats.Hive.Date32.Utf8.Render.Checks`
+and `lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/Render/Checks.lean "$tmp/directories.tsv"`.
+Use the pinned PyArrow command above with
+`python -I /repo/scripts/hive-date-utf8-render-oracle/Oracle.py /out/directories.tsv`.
+
+The existing [mixed Parquet file writer](../../Silmaril/Formats/Parquet/MixedV1Writer/Multi/Defs.lean)
+provides checked INT32 and opaque BYTE_ARRAY groups. A paired Hive
+manifest writer needs a named-table adapter that admits the exact paired
+physical and two-key virtual schema, routes rows with the generic Hive
+write plan, and converts each stable physical bucket into bounded mixed
+writer groups. It also needs deterministic checked literal file paths,
+an all-or-error manifest result, and a law connecting the emitted bytes
+and group order to the paired manifest reader under the same options.
