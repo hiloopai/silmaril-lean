@@ -22,9 +22,14 @@ def schema (bound : Bound) : Scan.Schema String Date.Events.Kind :=
 def rows (bound : Bound) (slots : Slots) : Reader.RowGroup (schema bound) Date.Events.Cell :=
   slots.map fun slot _ => slot
 
+def rowsAtWith {ε δ : Type} (bound : Bound) (read : Nat → Except ε Slots)
+    (tag : Nat → ε → δ) (index : Nat) :
+    Except δ (Reader.RowGroup (schema bound) Date.Events.Cell) :=
+  ((read index).map (rows bound)).mapError (tag index)
+
 def rowsAt (limits : Date.Limits) (bound : Bound) (index : Nat) :
     Except Error (Reader.RowGroup (schema bound) Date.Events.Cell) :=
-  ((readGroup limits bound index).map (rows bound)).mapError (.groupFailure index)
+  rowsAtWith bound (readGroup limits bound) .groupFailure index
 
 def source (limits : Date.Limits) (bound : Bound) :
     Reader.Source Nat (schema bound) Date.Events.Cell Error :=
@@ -39,10 +44,15 @@ def readAll (limits : Date.Limits) (ordinal : Nat) (input : Bytes) :
     Arrow.Events.EventStream String Date.Events.Cell Error :=
   Reader.readAll (openSource limits ordinal input)
 
+/-- Denote the original footer order with the supplied selected-leaf decoder. -/
+def traceWith {ε δ : Type} (bound : Bound) (read : Nat → Except ε Slots)
+    (tag : Nat → ε → δ) : Arrow.Events.Trace (schema bound) Date.Events.Cell δ :=
+  let groups := Reader.denoteGroups (rowsAtWith bound read tag) (List.range bound.snapshot.groupCount)
+  ⟨groups.1.map AlignedColumns.ofRows, groups.2⟩
+
 def trace (limits : Date.Limits) (bound : Bound) :
     Arrow.Events.Trace (schema bound) Date.Events.Cell Error :=
-  let groups := Reader.denoteGroups (rowsAt limits bound) (List.range bound.snapshot.groupCount)
-  ⟨groups.1.map AlignedColumns.ofRows, groups.2⟩
+  traceWith bound (readGroup limits bound) .groupFailure
 
 inductive IpcError where
   | source (cause : Error)
@@ -51,15 +61,22 @@ inductive IpcError where
   deriving DecidableEq, Repr
 
 /-- Read the selected leaf through EOF before emitting the original group cuts. -/
+def emitWith {ε δ : Type} (output : Arrow.ObservationLimits) (bound : Bound)
+    (sourceError : ε → δ) (closed : δ) (writerError : Arrow.DateStream.Writer.Error → δ)
+    (events : Arrow.Events.Trace (schema bound) Date.Events.Cell ε) :
+    Except δ KBytes :=
+  match events.termination with
+  | .readError cause | .closeError cause => .error (sourceError cause)
+  | .closed => .error closed
+  | .eos =>
+    let batches := events.batches.map fun batch => batch.values ⟨0, Nat.zero_lt_succ 0⟩
+    (Arrow.DateStream.Writer.emit output bound.binding.leaf.name bound.nullable batches).mapError
+      writerError
+
 def emit (output : Arrow.ObservationLimits) (bound : Bound)
     (events : Arrow.Events.Trace (schema bound) Date.Events.Cell Error) :
     Except IpcError KBytes :=
-  match events.termination with
-  | .readError cause | .closeError cause => .error (.source cause)
-  | .closed => .error .closed
-  | .eos =>
-    let batches := events.batches.map fun batch => batch.values ⟨0, Nat.zero_lt_succ 0⟩
-    (Arrow.DateStream.Writer.emit output bound.binding.leaf.name bound.nullable batches).mapError .writer
+  emitWith output bound .source .closed .writer events
 
 /-- Open and read the strict selected-leaf source, returning complete native IPC on success. -/
 def toIpc (limits : Date.Limits) (output : Arrow.ObservationLimits) (ordinal : Nat)

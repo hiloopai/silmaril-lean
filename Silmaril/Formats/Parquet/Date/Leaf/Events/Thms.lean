@@ -9,6 +9,31 @@ namespace Silmaril.Formats.Parquet.Date.Leaf.Events
 
 open Silmaril.Relational
 
+/-- A failed group leaves exactly the successful prefix of the original footer order. -/
+theorem traceWith_firstError {ε δ : Type} {bound : Bound} {read : Nat → Except ε Slots}
+    {tag : Nat → ε → δ} {before after : List Nat} {index : Nat} {groups : List Slots} {cause : ε}
+    (split : List.range bound.snapshot.groupCount = before ++ index :: after)
+    (earlier : before.mapM read = .ok groups) (failed : read index = .error cause) :
+    traceWith bound read tag =
+      ⟨groups.map (AlignedColumns.ofRows ∘ rows bound), .readError (tag index cause)⟩ :=
+  Proofs.Formats.Parquet.Date.Leaf.Events.traceWith_firstError split earlier failed
+
+/-- Exhaustion witnesses one successful group read per original footer position. -/
+theorem traceWith_eof {ε δ : Type} {bound : Bound} {read : Nat → Except ε Slots}
+    {tag : Nat → ε → δ} (ended : (traceWith bound read tag).termination = .eos) :
+    ∃ groups, (List.range bound.snapshot.groupCount).mapM read = .ok groups ∧
+      traceWith bound read tag = ⟨groups.map (AlignedColumns.ofRows ∘ rows bound), .eos⟩ :=
+  Proofs.Formats.Parquet.Date.Leaf.Events.traceWith_eof ended
+
+/-- A complete selected-leaf trace retains its exact descriptor and batches in IPC. -/
+theorem emitWith_readback {ε δ : Type} {bound : Bound} {output : Arrow.ObservationLimits}
+    {sourceError : ε → δ} {closed : δ} {writerError : Arrow.DateStream.Writer.Error → δ}
+    {groups : List Slots} {wire : KBytes} (emitted : emitWith output bound sourceError closed writerError
+      ⟨groups.map (AlignedColumns.ofRows ∘ rows bound), .eos⟩ = .ok wire) :
+    Arrow.DateStream.read output.ipc wire =
+      .ok (Arrow.DateStream.Writer.observation bound.binding.leaf.name bound.nullable groups) :=
+  Proofs.Formats.Parquet.Date.Leaf.Events.emitWith_readback emitted
+
 /-- The event source enumerates original footer indices and retains successful
 batches before the first typed group failure. -/
 theorem readAll_reference {limits : Date.Limits} {ordinal : Nat} {input : Bytes} {bound : Bound}
