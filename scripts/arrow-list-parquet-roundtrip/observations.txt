@@ -1,0 +1,23 @@
+PyArrow 26.0.1
+nullable-list-int32.arrows SHA-256 9e7713e2b194d0a8e54da6024383b24f4ce09832ab9f3b678c9496aa87321f99, items/element, children [5, 0, 2], EOS [848, 856)
+  Parquet SHA-256 37314f869f217df9b684c0c291fc8e868fd2cc5efd0262f0982063d9b7e0b551, footer [131, 342)
+  group 0: frame [4, 61), 4 rows, reps [0, 0, 0, 1, 1, 0], defs [0, 1, 3, 2, 3, 2], PLAIN [-7, 0]
+  group 1: frame [61, 86), 0 rows, reps [], defs [], PLAIN []
+  group 2: frame [86, 131), 2 rows, reps [0, 0, 1], defs [1, 3, 3], PLAIN [-2147483648, 2147483647]
+  returned IPC SHA-256 7b5c880d7e6a1a82cb1f4fe3844efcec31667336087490379b68d91a935f08db, children [4, 0, 2], EOS [936, 944)
+  ordered nullable batches [[None, [], [-7, None, 0], [None]], [], [[], [-2147483648, 2147483647]]]
+schema-only.arrows SHA-256 460dc6303ae7a5bb88dca6f35b0366ac395068ced0139932fc39c3ceeec11534, résultats/element, children [], EOS [184, 192)
+  Parquet SHA-256 2023a450fc86597258dad7255f9b86081ccdbdf7df4462135f635bb7c2f5e9be, footer [4, 72)
+  returned IPC SHA-256 5b5106c3e7760a25bd1d2bcea4aef6b3e7dc69565aeff4f79313196602186008, children [], EOS [216, 224)
+  ordered nullable batches []
+empty-batch.arrows SHA-256 a92ee29202c65ebc29ce506c41905df6010f65d33b907dc949afac9da6f33380, résultats/element, children [0], EOS [376, 384)
+  Parquet SHA-256 ba931621b5e61c667bb9c527d6b3b0efe61b3ad684764302c482903a525e9fa4, footer [29, 151)
+  group 0: frame [4, 29), 0 rows, reps [], defs [], PLAIN []
+  returned IPC SHA-256 af42c768e27f1cc7466b668796c92ef8468a01f1cc33035afbeca67651d5accd, children [0], EOS [432, 440)
+  ordered nullable batches [[]]
+noncanonical-child.arrows SHA-256 5f0714baba0c65a41f882b87a8aee1b5ad28dc31135062413db4dac506733088
+original child name item refused; no Parquet carrier
+late-canonical.arrows SHA-256 83a99d9869564783999a19f28388ed0d9e642eac460868b2facd4919f8898998
+late IPC batch 2: truncated body; original source error, no Parquet carrier
+late-noncanonical.arrows SHA-256 9991dc045e5280914b51fd8d233f90be8bc04fb727db280815d5abb7dc742335
+late IPC batch 1: truncated body before child-name or writer admission; no Parquet carrier
