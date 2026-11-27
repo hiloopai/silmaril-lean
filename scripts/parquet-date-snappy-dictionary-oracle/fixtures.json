@@ -1,0 +1,455 @@
+{
+  "cpython": "3.13.5",
+  "pyarrow": "26.0.1",
+  "pyarrow_wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+  "thrift": "0.25.0",
+  "thrift_wheel_sha256": "aa0cfa1db4d2129114d9548c4fc7e85680013aa442692377606b6305d236a1c0",
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "cases": {
+    "v1_crc": {
+      "parquet": {
+        "bytes": 930,
+        "sha256": "121ef76b2f363d3bd457d3a10dd55f450d2978665652e72d729b475886d8244f"
+      },
+      "selected_ordinal": 1,
+      "field": "日付",
+      "nullable": true,
+      "groups": [
+        {
+          "span": [
+            82,
+            169
+          ],
+          "frames": [
+            82,
+            116
+          ],
+          "crc": [
+            486644222,
+            27562862
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "ffa18e149728f45a4627cb60e983421678c3ca7234fe57ca18168d4d43df3c79"
+          },
+          "data_stored": {
+            "bytes": 27,
+            "sha256": "dec1d72580495cbf79acc2ca047ad49201376224de3cbfd3238a2d660153f74c"
+          },
+          "data_expanded_bytes": 68,
+          "stored_level_bytes": 0,
+          "value_suffix_compressed": true,
+          "signed_dictionary": [
+            -2147483648,
+            -1,
+            2147483647
+          ],
+          "stored_suffix_start": 142,
+          "decoded_references": {
+            "bytes": 40,
+            "sha256": "94929c12446d9447cd1e090d5a10e292da771e2eba8ab5f81e3fbaa84a319a56"
+          },
+          "slot_count": 180,
+          "null_count": 30
+        },
+        {
+          "span": [
+            220,
+            291
+          ],
+          "frames": [
+            220,
+            254
+          ],
+          "crc": [
+            2140451355,
+            3310812614
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "a61f70c881824525bbaa44397f0808f6d01ceb527cad4a09da3d9e79dbc6b376"
+          },
+          "data_stored": {
+            "bytes": 12,
+            "sha256": "a4eabf67065aaddac54b6f34994d886bc8ddb71719eae3511d9e43082be96761"
+          },
+          "data_expanded_bytes": 10,
+          "stored_level_bytes": 0,
+          "value_suffix_compressed": true,
+          "signed_dictionary": [
+            0,
+            -7,
+            11016
+          ],
+          "stored_suffix_start": 279,
+          "decoded_references": {
+            "bytes": 4,
+            "sha256": "391ce44edacfa925bf6ca1bb8617f5addeda6957e34a6a62bdd70763db251030"
+          },
+          "slot_count": 6,
+          "null_count": 2
+        },
+        {
+          "span": [
+            369,
+            450
+          ],
+          "frames": [
+            369,
+            403
+          ],
+          "crc": [
+            808622271,
+            1761818574
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "34a4e7c83310dbce0e07cadeb94d6222012e95417e85f09b224837aa9d9e6b32"
+          },
+          "data_stored": {
+            "bytes": 21,
+            "sha256": "c2b5efd43e1d0c9cb2f250db37c7e62e4dd76a948f46c889a91909cc626ac82f"
+          },
+          "data_expanded_bytes": 60,
+          "stored_level_bytes": 0,
+          "value_suffix_compressed": true,
+          "signed_dictionary": [
+            -2,
+            -4,
+            -6
+          ],
+          "stored_suffix_start": 429,
+          "decoded_references": {
+            "bytes": 32,
+            "sha256": "8152cf12800722d5be2105b42afb7fe8ee4d95af7f9e05bb97bf4dcb8d57e1fe"
+          },
+          "slot_count": 180,
+          "null_count": 60
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 2152,
+        "sha256": "c2ad0b99796b50d817c60008a16441c847ccee4a2716b87aef6dba1fa9d288de"
+      }
+    },
+    "v2_crc": {
+      "parquet": {
+        "bytes": 979,
+        "sha256": "ee8185216c2c9ac5431212b6a9110f82880b487f66edd012a010bfc59b4f3054"
+      },
+      "selected_ordinal": 1,
+      "field": "日付",
+      "nullable": true,
+      "groups": [
+        {
+          "span": [
+            88,
+            193
+          ],
+          "frames": [
+            88,
+            122
+          ],
+          "crc": [
+            486644222,
+            3976396386
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "ffa18e149728f45a4627cb60e983421678c3ca7234fe57ca18168d4d43df3c79"
+          },
+          "data_stored": {
+            "bytes": 38,
+            "sha256": "f20062373421a9599a9d4b1b915167a6cfd95fa4820cd863f97052d4f9abc5c5"
+          },
+          "data_expanded_bytes": 64,
+          "stored_level_bytes": 24,
+          "value_suffix_compressed": true,
+          "signed_dictionary": [
+            -2147483648,
+            -1,
+            2147483647
+          ],
+          "stored_suffix_start": 179,
+          "decoded_references": {
+            "bytes": 40,
+            "sha256": "94929c12446d9447cd1e090d5a10e292da771e2eba8ab5f81e3fbaa84a319a56"
+          },
+          "slot_count": 180,
+          "null_count": 30
+        },
+        {
+          "span": [
+            247,
+            317
+          ],
+          "frames": [
+            247,
+            281
+          ],
+          "crc": [
+            2140451355,
+            3620101635
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "a61f70c881824525bbaa44397f0808f6d01ceb527cad4a09da3d9e79dbc6b376"
+          },
+          "data_stored": {
+            "bytes": 6,
+            "sha256": "fadbfd82710b7319b3438dea76a0fc53e5804c4ab33cbaca8c92aff45680dc57"
+          },
+          "data_expanded_bytes": 6,
+          "stored_level_bytes": 2,
+          "value_suffix_compressed": false,
+          "signed_dictionary": [
+            0,
+            -7,
+            11016
+          ],
+          "stored_suffix_start": 313,
+          "decoded_references": {
+            "bytes": 4,
+            "sha256": "391ce44edacfa925bf6ca1bb8617f5addeda6957e34a6a62bdd70763db251030"
+          },
+          "slot_count": 6,
+          "null_count": 2
+        },
+        {
+          "span": [
+            401,
+            499
+          ],
+          "frames": [
+            401,
+            435
+          ],
+          "crc": [
+            808622271,
+            595103976
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "34a4e7c83310dbce0e07cadeb94d6222012e95417e85f09b224837aa9d9e6b32"
+          },
+          "data_stored": {
+            "bytes": 32,
+            "sha256": "ad0a7bb83c8b57acead36771d9cd31df8dd324b3d08f739e4028a258b9619415"
+          },
+          "data_expanded_bytes": 56,
+          "stored_level_bytes": 24,
+          "value_suffix_compressed": true,
+          "signed_dictionary": [
+            -2,
+            -4,
+            -6
+          ],
+          "stored_suffix_start": 491,
+          "decoded_references": {
+            "bytes": 32,
+            "sha256": "8152cf12800722d5be2105b42afb7fe8ee4d95af7f9e05bb97bf4dcb8d57e1fe"
+          },
+          "slot_count": 180,
+          "null_count": 60
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 2152,
+        "sha256": "c2ad0b99796b50d817c60008a16441c847ccee4a2716b87aef6dba1fa9d288de"
+      }
+    },
+    "v2_no_crc": {
+      "parquet": {
+        "bytes": 923,
+        "sha256": "31a60065fcf3463335e6b2ff5da8ded888f062f0718ad7db93eb6edb3ecbcb46"
+      },
+      "selected_ordinal": 1,
+      "field": "日付",
+      "nullable": true,
+      "groups": [
+        {
+          "span": [
+            82,
+            175
+          ],
+          "frames": [
+            82,
+            110
+          ],
+          "crc": [
+            null,
+            null
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "ffa18e149728f45a4627cb60e983421678c3ca7234fe57ca18168d4d43df3c79"
+          },
+          "data_stored": {
+            "bytes": 38,
+            "sha256": "f20062373421a9599a9d4b1b915167a6cfd95fa4820cd863f97052d4f9abc5c5"
+          },
+          "data_expanded_bytes": 64,
+          "stored_level_bytes": 24,
+          "value_suffix_compressed": true,
+          "signed_dictionary": [
+            -2147483648,
+            -1,
+            2147483647
+          ],
+          "stored_suffix_start": 161,
+          "decoded_references": {
+            "bytes": 40,
+            "sha256": "94929c12446d9447cd1e090d5a10e292da771e2eba8ab5f81e3fbaa84a319a56"
+          },
+          "slot_count": 180,
+          "null_count": 30
+        },
+        {
+          "span": [
+            223,
+            281
+          ],
+          "frames": [
+            223,
+            251
+          ],
+          "crc": [
+            null,
+            null
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "a61f70c881824525bbaa44397f0808f6d01ceb527cad4a09da3d9e79dbc6b376"
+          },
+          "data_stored": {
+            "bytes": 6,
+            "sha256": "fadbfd82710b7319b3438dea76a0fc53e5804c4ab33cbaca8c92aff45680dc57"
+          },
+          "data_expanded_bytes": 6,
+          "stored_level_bytes": 2,
+          "value_suffix_compressed": false,
+          "signed_dictionary": [
+            0,
+            -7,
+            11016
+          ],
+          "stored_suffix_start": 277,
+          "decoded_references": {
+            "bytes": 4,
+            "sha256": "391ce44edacfa925bf6ca1bb8617f5addeda6957e34a6a62bdd70763db251030"
+          },
+          "slot_count": 6,
+          "null_count": 2
+        },
+        {
+          "span": [
+            359,
+            445
+          ],
+          "frames": [
+            359,
+            387
+          ],
+          "crc": [
+            null,
+            null
+          ],
+          "dictionary_stored": {
+            "bytes": 14,
+            "sha256": "34a4e7c83310dbce0e07cadeb94d6222012e95417e85f09b224837aa9d9e6b32"
+          },
+          "data_stored": {
+            "bytes": 32,
+            "sha256": "ad0a7bb83c8b57acead36771d9cd31df8dd324b3d08f739e4028a258b9619415"
+          },
+          "data_expanded_bytes": 56,
+          "stored_level_bytes": 24,
+          "value_suffix_compressed": true,
+          "signed_dictionary": [
+            -2,
+            -4,
+            -6
+          ],
+          "stored_suffix_start": 437,
+          "decoded_references": {
+            "bytes": 32,
+            "sha256": "8152cf12800722d5be2105b42afb7fe8ee4d95af7f9e05bb97bf4dcb8d57e1fe"
+          },
+          "slot_count": 180,
+          "null_count": 60
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 2152,
+        "sha256": "c2ad0b99796b50d817c60008a16441c847ccee4a2716b87aef6dba1fa9d288de"
+      }
+    }
+  },
+  "controls": {
+    "late_dictionary_crc": {
+      "parquet": {
+        "bytes": 979,
+        "sha256": "823405ef7e6394bfc957f7d1b7ebe59bc3244b1d4cb5c7db556e7c7b29ab806f"
+      },
+      "error": "(.source (.groupFailure 2 (.page 0 401 (.checksum (.mismatch 808622271 2906487241)))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "late_data_crc": {
+      "parquet": {
+        "bytes": 979,
+        "sha256": "37acb3d07ba52fc096162e3e61b83960ac210bfefb9f27aab8a317b9e6157ee6"
+      },
+      "error": "(.source (.groupFailure 2 (.page 1 435 (.checksum (.mismatch 595103976 3533870402)))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "late_reference_with_valid_crc": {
+      "parquet": {
+        "bytes": 979,
+        "sha256": "41f7bb8f40bfa1f723d806809ad4856c1140032a4082b80c81aa5a666d550c45"
+      },
+      "error": "(.source (.groupFailure 1 (.page 1 281 (.references (.outOfBounds 3)))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }",
+      "recomputed_crc": 2559035588,
+      "edited_offset": 315
+    },
+    "dictionary_expansion": {
+      "parquet": {
+        "bytes": 979,
+        "sha256": "ee8185216c2c9ac5431212b6a9110f82880b487f66edd012a010bfc59b4f3054"
+      },
+      "error": "(.source (.groupFailure 0 (.page 0 88 (.payload .outputLimit))))",
+      "source_limits": "{ maxDictionaryBytes := 11 }",
+      "output_limits": "{}"
+    },
+    "data_expansion": {
+      "parquet": {
+        "bytes": 979,
+        "sha256": "ee8185216c2c9ac5431212b6a9110f82880b487f66edd012a010bfc59b4f3054"
+      },
+      "error": "(.source (.groupFailure 0 (.page 1 122 (.references (.page (.payload .outputLimit))))))",
+      "source_limits": "{ scalar := ⟨16777216, 24, ⟨1048576, 16777216⟩, 0⟩ }",
+      "output_limits": "{}"
+    },
+    "chunk_expansion": {
+      "parquet": {
+        "bytes": 979,
+        "sha256": "ee8185216c2c9ac5431212b6a9110f82880b487f66edd012a010bfc59b4f3054"
+      },
+      "error": "(.source (.groupFailure 0 .expandedChunkLimit))",
+      "source_limits": "{ maxExpandedChunkBytes := 1 }",
+      "output_limits": "{}"
+    },
+    "snappy_fallback": {
+      "parquet": {
+        "bytes": 673,
+        "sha256": "4713509571e55053f5e97da2870d96975b6f6e85daa3a8607dae2c6b5f79f852"
+      },
+      "error": "(.source (.groupFailure 0 (.page 2 261 (.encoding 0))))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    }
+  }
+}
