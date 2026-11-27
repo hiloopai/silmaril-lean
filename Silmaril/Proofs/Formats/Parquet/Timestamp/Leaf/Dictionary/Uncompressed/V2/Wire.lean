@@ -17,24 +17,47 @@ open Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary (DataPage CheckedChunk)
 open Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Uncompressed.V2
 open Silmaril.Numeric.Timestamp (Ticks)
 
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧
+      Timestamp.Page.parameters bound.binding.leaf bound.levels Payload.Codec.uncompressed.id frame.value =
+        .ok page.params ∧
+      ∃ header, frame.value.kind = .dataV2 header ∧ admits header.encoding = true ∧
+        page.params = ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, bound.levels,
+          header.numValues, Payload.Codec.uncompressed.id, header.encoding, .v2 header.numNulls header.numRows
+            header.repetitionBytes header.definitionBytes (some header.isCompressed)⟩ := by
+  cases kind : frame.value.kind with
+  | dataV2 header =>
+    by_cases tag : admits header.encoding = true
+    · by_cases levels : Timestamp.Page.leafLevels? bound.binding.leaf = some bound.levels
+      · simp [planDataWith, kind, tag, Timestamp.Page.parameters, levels,
+          Bind.bind, Except.bind, Except.mapError, Pure.pure, Except.pure] at planned
+        have params := congrArg DataPage.params planned.symm
+        exact ⟨congrArg DataPage.frame planned.symm,
+          by simp [Timestamp.Page.parameters, kind, levels, params], header, rfl, tag, params⟩
+      · simp [planDataWith, kind, tag, Timestamp.Page.parameters, levels,
+          Bind.bind, Except.bind, Except.mapError] at planned
+    · simp [planDataWith, kind, tag, Bind.bind, Except.bind] at planned
+  | dataV1 _ | dictionary _ | skipped _ => simp [planDataWith, kind, Bind.bind, Except.bind] at planned
+
+theorem planDataWith_restrict {admits accepts : Int → Bool} {bound : Bound}
+    {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page)
+    (admitted : accepts page.params.encoding = true) :
+    planDataWith accepts bound frame = .ok page := by
+  obtain ⟨_, _, info, kind, tag, params⟩ := planDataWith_wire planned
+  rw [params] at admitted
+  simpa [planDataWith, kind, admitted, tag, Bind.bind, Except.bind] using planned
+
 theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :
     page.frame = frame ∧ ∃ header, frame.value.kind = .dataV2 header ∧ header.encoding = 8 ∧
       page.params = ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, bound.levels,
         header.numValues, Payload.Codec.uncompressed.id, 8, .v2 header.numNulls header.numRows
           header.repetitionBytes header.definitionBytes (some header.isCompressed)⟩ := by
-  cases kind : frame.value.kind with
-  | dataV2 header =>
-    by_cases tag : header.encoding = 8
-    · by_cases levels : Timestamp.Page.leafLevels? bound.binding.leaf = some bound.levels
-      · simp [planData, kind, tag, Timestamp.Page.parameters, levels,
-          Bind.bind, Except.bind, Except.mapError, Pure.pure, Except.pure] at planned
-        exact ⟨congrArg DataPage.frame planned.symm, header, rfl, tag,
-          congrArg DataPage.params planned.symm⟩
-      · simp [planData, kind, tag, Timestamp.Page.parameters, levels,
-          Bind.bind, Except.bind, Except.mapError] at planned
-    · simp [planData, kind, tag, Bind.bind, Except.bind] at planned
-  | dataV1 _ | dictionary _ | skipped _ => simp [planData, kind, Bind.bind, Except.bind] at planned
+  obtain ⟨same, _, header, kind, tag, params⟩ := planDataWith_wire planned
+  have encoding : header.encoding = 8 := by simpa using tag
+  exact ⟨same, header, kind, encoding, by simpa [encoding] using params⟩
 
 theorem readEntries_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
     {bound : Bound} {frame : Parquet.Page.Frame} {entries : List Int64}

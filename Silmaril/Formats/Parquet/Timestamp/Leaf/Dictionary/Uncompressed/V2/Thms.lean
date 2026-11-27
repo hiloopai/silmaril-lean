@@ -14,6 +14,26 @@ namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Uncompressed.V2
 open Silmaril.Relational
 open Silmaril.Numeric.Timestamp (Ticks)
 
+/-- The planner retains every original V2 parameter under its selected tag policy. -/
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧
+      Timestamp.Page.parameters bound.binding.leaf bound.levels Payload.Codec.uncompressed.id frame.value =
+        .ok page.params ∧
+      ∃ header, frame.value.kind = .dataV2 header ∧ admits header.encoding = true ∧
+        page.params = ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, bound.levels,
+          header.numValues, Payload.Codec.uncompressed.id, header.encoding, .v2 header.numNulls header.numRows
+            header.repetitionBytes header.definitionBytes (some header.isCompressed)⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Uncompressed.V2.planDataWith_wire planned
+
+/-- A stricter policy that accepts the original tag yields the same planned frame. -/
+theorem planDataWith_restrict {admits accepts : Int → Bool} {bound : Bound}
+    {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page)
+    (admitted : accepts page.params.encoding = true) :
+    planDataWith accepts bound frame = .ok page :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Uncompressed.V2.planDataWith_restrict planned admitted
+
 /-- The selected original data frame is V2 with the RLE_DICTIONARY tag and unchanged parameters. -/
 theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :

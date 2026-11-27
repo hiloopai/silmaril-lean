@@ -8,14 +8,18 @@ public import Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.Defs
 
 namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Uncompressed.V2
 
-/-- Retain the original codec-0 V2 header and require the RLE_DICTIONARY tag. -/
-def planData (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
+/-- Retain the original codec-0 V2 header and apply the caller's data tag policy. -/
+def planDataWith (admits : Int → Bool) (bound : Bound) (frame : Parquet.Page.Frame) :
+    Except DictionaryPageError DataPage := do
   if let .dictionary _ := frame.value.kind then throw .misplacedDictionary
   let .dataV2 header := frame.value.kind | throw (.parameters .unsupportedPage)
-  if header.encoding ≠ 8 then throw (.encoding header.encoding)
+  if !admits header.encoding then throw (.encoding header.encoding)
   let params ← (Timestamp.Page.parameters bound.binding.leaf bound.levels
     Payload.Codec.uncompressed.id frame.value).mapError .parameters
   return ⟨frame, params⟩
+
+/-- Require RLE_DICTIONARY after the leading PLAIN dictionary. -/
+def planData := planDataWith (· == 8)
 
 /-- Specialize the shared CRC-checked PLAIN dictionary reader to a literal body. -/
 def readEntries := Snappy.readEntriesWithCodec .uncompressed .plain
