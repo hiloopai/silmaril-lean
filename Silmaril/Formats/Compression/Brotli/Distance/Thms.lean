@@ -62,4 +62,20 @@ theorem read_sound {header : CompressedHeader.Header} {command : Command.Value} 
       after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit :=
   Proofs.Formats.Compression.Brotli.Distance.read_sound rep count read
 
+theorem WireAt.resolved {header : CompressedHeader.Header} {command : Command.Value} {bounds : Bounds}
+    {ring : Ring} {blockType : Nat} {bits : List Bool} {result : Result}
+    (wire : WireAt header command bounds ring blockType bits result) :
+    Resolved bounds ring command.copyLength result.code result.target.distance result.target result.ring :=
+  Proofs.Formats.Compression.Brotli.Distance.WireAt.resolved wire
+
+theorem readAt_sound {blockType : Nat} {header : CompressedHeader.Header} {command : Command.Value} {bounds : Bounds}
+    {ring : Ring} {bitLimit : Nat} {before after : LSBReader} {input : List Bool} {result : Result}
+    (rep : before.Rep input) (count : before.count < 8)
+    (read : Internal.readAt header blockType command bounds ring bitLimit before = .ok (result, after)) :
+    bounds.Valid ∧ 2 ≤ command.copyLength ∧ (command.distance = .implicitZero → after = before) ∧
+    ∃ used suffix, WireAt header command bounds ring blockType used result ∧
+      input = used ++ suffix ∧ after.Rep suffix ∧ after.count < 8 ∧
+      after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit :=
+  Proofs.Formats.Compression.Brotli.Distance.readAt_sound rep count read
+
 end Silmaril.Formats.Compression.Brotli.Distance

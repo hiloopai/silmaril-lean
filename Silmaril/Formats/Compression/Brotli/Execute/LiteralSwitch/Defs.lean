@@ -39,28 +39,31 @@ def Prefix.literalState (pref : Prefix) (initial : InsertCopy.State) : Literal.S
 
 /-- Preflight and read the command. The insertion's entire output
     debit is checked before any literal or literal switch is attempted. -/
+def readPrefixCore (header : CompressedHeader.Header) (block : Block) (limits : Limits)
+    (initial : InsertCopy.State) (before : LSBReader) : Except Error (Prefix × LSBReader) :=
+  if block.windowBits < 10 ∨ 24 < block.windowBits then .error (.bounds before.totalRead .window)
+  else if initial.execution.output.size < block.start ∨ block.endOutput ≤ initial.execution.output.size then
+    .error (.bounds before.totalRead .metaBlockExtent)
+  else if limits.output < initial.execution.output.size then .error (.bounds before.totalRead .outputLimit)
+  else do
+    let (runs, atCommand) ←
+      (BlockTypes.Switch.select header.initial.controls .insertCopy limits.bits initial.runs before).mapError
+        Error.insertCopySwitch
+    let ordinal := runs.insertCopy.current
+    let some tree := header.insertCopyTrees[ordinal]? | throw (.commandTree atCommand.totalRead ordinal)
+    let (command, atLiteral) ←
+      (Command.read tree (remainingBits limits.bits before atCommand) atCommand).mapError
+        (Error.command atCommand.totalRead)
+    let produced := initial.execution.output.size + command.insertLength
+    if block.endOutput < produced then .error (.bounds atLiteral.totalRead .metaBlockExtent)
+    else if limits.output < produced then .error (.bounds atLiteral.totalRead .outputLimit)
+    else .ok (⟨command, runs⟩, atLiteral)
+
 def readPrefix (header : CompressedHeader.Header) (block : Block) (limits : Limits)
     (initial : InsertCopy.State) (before : LSBReader) : Except Error (Prefix × LSBReader) :=
   match header.initial.controls.distance with
   | .multiple .. => .error (.distanceBlockTypes before.totalRead)
-  | .single =>
-    if block.windowBits < 10 ∨ 24 < block.windowBits then .error (.bounds before.totalRead .window)
-    else if initial.execution.output.size < block.start ∨ block.endOutput ≤ initial.execution.output.size then
-      .error (.bounds before.totalRead .metaBlockExtent)
-    else if limits.output < initial.execution.output.size then .error (.bounds before.totalRead .outputLimit)
-    else do
-      let (runs, atCommand) ←
-        (BlockTypes.Switch.select header.initial.controls .insertCopy limits.bits initial.runs before).mapError
-          Error.insertCopySwitch
-      let ordinal := runs.insertCopy.current
-      let some tree := header.insertCopyTrees[ordinal]? | throw (.commandTree atCommand.totalRead ordinal)
-      let (command, atLiteral) ←
-        (Command.read tree (remainingBits limits.bits before atCommand) atCommand).mapError
-          (Error.command atCommand.totalRead)
-      let produced := initial.execution.output.size + command.insertLength
-      if block.endOutput < produced then .error (.bounds atLiteral.totalRead .metaBlockExtent)
-      else if limits.output < produced then .error (.bounds atLiteral.totalRead .outputLimit)
-      else .ok (⟨command, runs⟩, atLiteral)
+  | .single => readPrefixCore header block limits initial before
 
 def read (header : CompressedHeader.Header) (block : Block) (limits : Limits)
     (initial : InsertCopy.State) (before : LSBReader) : Except Error (InsertCopy.Result × LSBReader) := do

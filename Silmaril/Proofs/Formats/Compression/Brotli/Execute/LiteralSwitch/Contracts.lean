@@ -31,20 +31,17 @@ theorem bind_mapped_ok {ε δ α β : Type} {action : Except ε α} {next : α �
   | error _ => cases parsed
   | ok result => exact ⟨result, rfl, parsed⟩
 
-theorem readPrefix_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+theorem readPrefixCore_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
     {initial : Execute.InsertCopy.State} {before after : LSBReader} {input : List Bool} {pref : Prefix}
     (rep : before.Rep input) (count : before.count < 8)
-    (parsed : readPrefix header block limits initial before = .ok (pref, after)) :
-    header.initial.controls.distance = .single ∧ 10 ≤ block.windowBits ∧ block.windowBits ≤ 24 ∧
+    (parsed : readPrefixCore header block limits initial before = .ok (pref, after)) :
+    10 ≤ block.windowBits ∧ block.windowBits ≤ 24 ∧
     block.start ≤ initial.execution.output.size ∧ initial.execution.output.size < block.endOutput ∧
     initial.execution.output.size + pref.command.insertLength ≤ block.endOutput ∧
     initial.execution.output.size + pref.command.insertLength ≤ limits.output ∧
     ∃ used suffix, PrefixWire header initial used pref ∧ Source before after input used suffix ∧
       used.length ≤ limits.bits := by
-  unfold readPrefix at parsed
-  split at parsed
-  · cases parsed
-  rename_i distance
+  unfold readPrefixCore at parsed
   split at parsed
   · cases parsed
   rename_i window
@@ -75,7 +72,7 @@ theorem readPrefix_sound {header : CompressedHeader.Header} {block : Block} {lim
       ⟨commandSplit, afterRep, afterCount, offset⟩
     have firstBound : block.start ≤ initial.execution.output.size := by omega
     have room : initial.execution.output.size < block.endOutput := by omega
-    refine ⟨distance, by omega, by omega, firstBound, room, Nat.le_of_not_gt blockCap, Nat.le_of_not_gt outputCap,
+    refine ⟨by omega, by omega, firstBound, room, Nat.le_of_not_gt blockCap, Nat.le_of_not_gt outputCap,
       switchBits ++ commandBits, suffix, ⟨other .literal (by decide), other .distance (by decide),
         switchBits, commandBits, table, rfl, wire, selected, commandWire⟩,
       Literal.Switch.Source.trans first second, ?_⟩
@@ -83,6 +80,22 @@ theorem readPrefix_sound {header : CompressedHeader.Header} {block : Block} {lim
     simp only [List.length_append]
     omega
   · cases parsed
+
+private theorem readPrefix_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+    {initial : Execute.InsertCopy.State} {before after : LSBReader} {input : List Bool} {pref : Prefix}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : readPrefix header block limits initial before = .ok (pref, after)) :
+    header.initial.controls.distance = .single ∧ 10 ≤ block.windowBits ∧ block.windowBits ≤ 24 ∧
+    block.start ≤ initial.execution.output.size ∧ initial.execution.output.size < block.endOutput ∧
+    initial.execution.output.size + pref.command.insertLength ≤ block.endOutput ∧
+    initial.execution.output.size + pref.command.insertLength ≤ limits.output ∧
+    ∃ used suffix, PrefixWire header initial used pref ∧ Source before after input used suffix ∧
+      used.length ≤ limits.bits := by
+  unfold readPrefix at parsed
+  split at parsed
+  · cases parsed
+  · rename_i single
+    exact ⟨single, readPrefixCore_sound rep count parsed⟩
 
 theorem Wire.distance_preserved {header : CompressedHeader.Header} {block : Block} {initial : Execute.InsertCopy.State}
     {bits : List Bool} {result : Execute.InsertCopy.Result} (wire : Wire header block initial bits result) :
@@ -203,15 +216,12 @@ private theorem Offset.prepend {before after : LSBReader} {input used tail : Lis
   exact ⟨used ++ read, suffix, by rw [first.split, split, List.append_assoc],
     by rw [position, first.position, List.length_append, Nat.add_assoc]⟩
 
-private theorem prefix_offset {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+theorem readPrefixCore_error_offset {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
     {initial : Execute.InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Execute.LiteralSwitch.Error}
     (rep : before.Rep input) (count : before.count < 8)
-    (parsed : readPrefix header block limits initial before = .error error) :
-    Offset before input error.bit := by
-  unfold readPrefix at parsed
-  split at parsed
-  · cases parsed
-    exact Offset.here before input
+    (parsed : readPrefixCore header block limits initial before = .error error) :
+    ∃ used suffix, input = used ++ suffix ∧ error.bit = before.totalRead + used.length := by
+  unfold readPrefixCore at parsed
   split at parsed
   · cases parsed
     exact Offset.here before input
@@ -258,6 +268,17 @@ private theorem prefix_offset {header : CompressedHeader.Header} {block : Block}
           · cases parsed
             exact Offset.prepend first (Offset.prepend second (Offset.here atLiterals rest))
           · cases parsed
+
+private theorem prefix_offset {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+    {initial : Execute.InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Execute.LiteralSwitch.Error}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : readPrefix header block limits initial before = .error error) :
+    Offset before input error.bit := by
+  unfold readPrefix at parsed
+  split at parsed
+  · cases parsed
+    exact Offset.here before input
+  · exact readPrefixCore_error_offset rep count parsed
 
 theorem Failure.offset {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
     {initial : Execute.InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Execute.LiteralSwitch.Error}

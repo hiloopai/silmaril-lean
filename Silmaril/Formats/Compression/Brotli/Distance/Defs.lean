@@ -52,11 +52,15 @@ def Bounds.maxBackward (bounds : Bounds) : Nat :=
 
 def contextId (copyLength : Nat) : Nat := min (copyLength - 2) 3
 
-def treeIndex? (map : Map) (copyLength : Nat) : Option Nat :=
-  let index := contextId copyLength
+/-- The four distance contexts form one row per distance block type. -/
+def treeIndexAt? (map : Map) (blockType copyLength : Nat) : Option Nat :=
+  let index := 4 * blockType + contextId copyLength
   match map with
   | .implicit entries => if index < entries then some 0 else none
   | .coded _ values => values[index]?
+
+def treeIndex? (map : Map) (copyLength : Nat) : Option Nat :=
+  treeIndexAt? map 0 copyLength
 
 /-- (Recent-distance age, signed delta), in RFC §4 symbol order. -/
 def shortCodes : Vector (Fin 4 × Int) 16 :=
@@ -158,6 +162,28 @@ inductive Wire (header : CompressedHeader.Header) (command : Command.Value) (bou
         (msbBits prefixCode prefixWidth ++ natBits extra (extraWidth header.initial.fields code))
         ⟨code, extra, target, after⟩
 
+/-- Distance decoding at the context row selected by the active distance run. -/
+inductive WireAt (header : CompressedHeader.Header) (command : Command.Value) (bounds : Bounds)
+    (ring : Ring) (blockType : Nat) : List Bool → Result → Prop where
+  | implicit {target : Target} {after : Ring} :
+      command.distance = .implicitZero →
+      Resolved bounds ring command.copyLength 0 ring.latest target after →
+      WireAt header command bounds ring blockType [] ⟨0, 0, target, after⟩
+  | explicit {tree code prefixCode prefixWidth extra : Nat} {table : Table} {target : Target} {after : Ring} :
+      command.distance = .explicit →
+      treeIndexAt? header.distanceMap blockType command.copyLength = some tree →
+      header.distanceTrees[tree]? = some table →
+      table.alphabetSize = header.initial.fields.distanceAlphabet →
+      table.codeFor code = some (prefixCode, prefixWidth) →
+      prefixWidth ≤ 15 →
+      code < header.initial.fields.distanceAlphabet →
+      extra < 2 ^ extraWidth header.initial.fields code →
+      Resolved bounds ring command.copyLength code (interpret header.initial.fields ring code extra).toNat
+        target after →
+      WireAt header command bounds ring blockType
+        (msbBits prefixCode prefixWidth ++ natBits extra (extraWidth header.initial.fields code))
+        ⟨code, extra, target, after⟩
+
 namespace Internal
 
 def route (bounds : Bounds) (ring : Ring) (copyLength code extra distance : Nat) :
@@ -178,9 +204,9 @@ def take (limit width : Nat) (before : LSBReader) : Except Error (Nat × LSBRead
     | none => .error .truncatedExtra
     | some result => .ok result
 
-def readExplicit (header : CompressedHeader.Header) (copyLength : Nat) (bounds : Bounds)
+def readExplicitAt (header : CompressedHeader.Header) (blockType copyLength : Nat) (bounds : Bounds)
     (ring : Ring) (bitLimit : Nat) (before : LSBReader) : Except Error (Result × LSBReader) :=
-  match treeIndex? header.distanceMap copyLength with
+  match treeIndexAt? header.distanceMap blockType copyLength with
   | none => .error .contextEntry
   | some tree =>
     match header.distanceTrees[tree]? with
@@ -197,6 +223,18 @@ def readExplicit (header : CompressedHeader.Header) (copyLength : Nat) (bounds :
           let result ← route bounds ring copyLength code extra (interpret fields ring code extra).toNat
           pure (result, after)
 
+/-- Distance value decoding after the caller selects the distance category row.
+    The implicit distance consumes no compressed symbol and ignores the row. -/
+def readAt (header : CompressedHeader.Header) (blockType : Nat) (command : Command.Value) (bounds : Bounds)
+    (ring : Ring) (bitLimit : Nat) (before : LSBReader) : Except Error (Result × LSBReader) :=
+  if bounds.windowBits < 10 ∨ 24 < bounds.windowBits then .error .window
+  else if command.copyLength < 2 then .error .copyLength
+  else match command.distance with
+    | .implicitZero => do
+      let result ← route bounds ring command.copyLength 0 0 ring.latest
+      pure (result, before)
+    | .explicit => readExplicitAt header blockType command.copyLength bounds ring bitLimit before
+
 end Internal
 
 /-- Resolve a pending copy after an insertion. A literal-only ending
@@ -205,13 +243,6 @@ def read (header : CompressedHeader.Header) (command : Command.Value) (bounds : 
     (ring : Ring) (bitLimit : Nat) (before : LSBReader) : Except Error (Result × LSBReader) :=
   match header.initial.controls.distance with
   | .multiple .. => .error .distanceBlockTypes
-  | .single =>
-    if bounds.windowBits < 10 ∨ 24 < bounds.windowBits then .error .window
-    else if command.copyLength < 2 then .error .copyLength
-    else match command.distance with
-      | .implicitZero => do
-        let result ← Internal.route bounds ring command.copyLength 0 0 ring.latest
-        pure (result, before)
-      | .explicit => Internal.readExplicit header command.copyLength bounds ring bitLimit before
+  | .single => Internal.readAt header 0 command bounds ring bitLimit before
 
 end Silmaril.Formats.Compression.Brotli.Distance

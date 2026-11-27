@@ -28,6 +28,39 @@ private theorem mapError_ok {ε α : Type} {action : Except ε α}
     action = .ok value := by
   cases action <;> cases read <;> rfl
 
+theorem applyCopy_sound {block : Block} {limits : Execute.Limits} {initial : State}
+    {command : Command.Value} {literals : List UInt8} {resolved : Distance.Result} {result : Result}
+    (read : applyCopy block limits initial command literals resolved = .ok result) :
+    result.command = command ∧ result.state.ring = resolved.ring ∧
+    result.state.output.size ≤ block.endOutput ∧ result.state.output.size ≤ limits.output ∧
+    ∃ distance matched, resolved.target = .backReference distance ∧ result.distance = some distance ∧
+      HistoryCopy.Wire distance (initial.output.toList ++ literals) matched ∧ matched.length = command.copyLength ∧
+      result.state.output.toList = initial.output.toList ++ literals ++ matched := by
+  unfold applyCopy at read
+  dsimp only at read
+  split at read <;> try contradiction
+  rename_i distance target
+  split at read <;> try contradiction
+  rename_i blockCap
+  split at read <;> try contradiction
+  rename_i outputCap
+  split at read <;> try contradiction
+  rename_i fits
+  cases read
+  let history := initial.output ++ literals.toArray
+  have inHistory : distance ≤ history.size := by simpa [history] using fits.2
+  obtain ⟨matched, output, length, copied⟩ :=
+    HistoryCopy.copy_sound fits.1 command.copyLength history inHistory
+  have rendered : history.toList = initial.output.toList ++ literals := by simp [history]
+  rw [rendered] at output copied
+  have outputSize := congrArg List.length output
+  simp only [Array.length_toList, List.length_append, length] at outputSize
+  refine ⟨rfl, rfl, ?_, ?_, distance, matched, target, rfl, copied, length, output⟩
+  · change (HistoryCopy.copy distance fits.1 command.copyLength history inHistory).size ≤ block.endOutput
+    omega
+  · change (HistoryCopy.copy distance fits.1 command.copyLength history inHistory).size ≤ limits.output
+    omega
+
 theorem copyTail_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
     {initial : State} {command : Command.Value} {literals : List UInt8} {bitLimit : Nat}
     {before after : LSBReader} {input : List Bool} {result : Result}
@@ -44,39 +77,19 @@ theorem copyTail_sound {header : CompressedHeader.Header} {block : Block} {limit
       after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit := by
   unfold copyTail at read
   obtain ⟨⟨resolved, cursor⟩, distanceRead, done⟩ := bind_ok read
-  simp only [] at done
-  split at done <;> try contradiction
-  rename_i distance target
-  split at done <;> try contradiction
-  rename_i blockCap
-  split at done <;> try contradiction
-  rename_i outputCap
-  split at done <;> try contradiction
-  rename_i fits
+  obtain ⟨executed, copied, done⟩ := bind_ok done
   cases done
   obtain ⟨_, _, minCopy, _, used, suffix, wire, split, rep', count', offset, bitCap⟩ :=
     Distance.read_sound rep count (mapError_ok distanceRead)
-  let history := initial.output ++ literals.toArray
-  have inHistory : distance ≤ history.size := by simpa [history] using fits.2
-  obtain ⟨matched, output, length, copied⟩ :=
-    HistoryCopy.copy_sound fits.1 command.copyLength history inHistory
-  have rendered : history.toList = initial.output.toList ++ literals := by simp [history]
-  rw [rendered] at output copied
+  obtain ⟨same, ring, extent, cap, distance, matched, target, observed, copied, length, output⟩ := applyCopy_sound copied
+  have sourceLength : (initial.output.toList ++ literals).length = initial.output.size + literals.length := by simp
+  have tail : TailWire header block command initial.ring (initial.output.toList ++ literals)
+      used matched result.distance result.state.ring := by
+    rw [observed, ring]
+    exact .copy (sourceLength ▸ pending) (by simpa only [sourceLength] using wire) target copied length
   have outputSize := congrArg List.length output
   simp only [Array.length_toList, List.length_append, length] at outputSize
-  have sourceLength : (initial.output.toList ++ literals).length = initial.output.size + literals.length := by
-    simp
-  have tail : TailWire header block command initial.ring (initial.output.toList ++ literals)
-      used matched (some distance) resolved.ring := by
-    refine .copy (sourceLength ▸ pending) ?_ target copied length
-    simpa only [sourceLength] using wire
-  refine ⟨rfl, ?_, ?_, ?_, used, matched, suffix, tail, output, split, rep', count', offset, bitCap⟩
-  · change initial.output.size < (HistoryCopy.copy distance fits.1 command.copyLength history inHistory).size
-    omega
-  · change (HistoryCopy.copy distance fits.1 command.copyLength history inHistory).size ≤ block.endOutput
-    omega
-  · change (HistoryCopy.copy distance fits.1 command.copyLength history inHistory).size ≤ limits.output
-    omega
+  exact ⟨same, by omega, extent, cap, used, matched, suffix, tail, output, split, rep', count', offset, bitCap⟩
 
 private theorem TailWire.length {header : CompressedHeader.Header} {block : Block} {command : Command.Value}
     {ring afterRing : Distance.Ring} {beforeCopy matched : List UInt8} {bits : List Bool} {distance : Option Nat}
@@ -107,9 +120,9 @@ theorem copyTail_rejects_overrun {header : CompressedHeader.Header} {block : Blo
   dsimp only
   constructor
   · intro exceeds
-    simp [copyTail, parsed, target, bind, Except.bind, exceeds, Except.mapError]
+    simp [copyTail, applyCopy, parsed, target, bind, Except.bind, exceeds, Except.mapError]
   · intro fits exceeds
-    simp [copyTail, parsed, target, bind, Except.bind, Nat.not_lt.mpr fits, exceeds, Except.mapError]
+    simp [copyTail, applyCopy, parsed, target, bind, Except.bind, Nat.not_lt.mpr fits, exceeds, Except.mapError]
 
 theorem read_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
     {initial : State} {before after : LSBReader} {input : List Bool} {result : Result}

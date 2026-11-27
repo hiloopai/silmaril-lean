@@ -8,6 +8,25 @@ public section
 
 namespace Silmaril.Formats.Compression.Brotli.Execute.LiteralSwitch
 
+theorem readPrefixCore_sound {header : CompressedHeader.Header} {block : Block} {limits : Limits}
+    {initial : InsertCopy.State} {before after : LSBReader} {input : List Bool} {pref : Prefix}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : readPrefixCore header block limits initial before = .ok (pref, after)) :
+    10 ≤ block.windowBits ∧ block.windowBits ≤ 24 ∧
+    block.start ≤ initial.execution.output.size ∧ initial.execution.output.size < block.endOutput ∧
+    initial.execution.output.size + pref.command.insertLength ≤ block.endOutput ∧
+    initial.execution.output.size + pref.command.insertLength ≤ limits.output ∧
+    ∃ used suffix, PrefixWire header initial used pref ∧
+      Literal.Switch.Source before after input used suffix ∧ used.length ≤ limits.bits :=
+  Proofs.Formats.Compression.Brotli.Execute.LiteralSwitch.readPrefixCore_sound rep count parsed
+
+theorem readPrefixCore_error_offset {header : CompressedHeader.Header} {block : Block} {limits : Limits}
+    {initial : InsertCopy.State} {before : LSBReader} {input : List Bool} {error : Error}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : readPrefixCore header block limits initial before = .error error) :
+    ∃ used suffix, input = used ++ suffix ∧ error.bit = before.totalRead + used.length :=
+  Proofs.Formats.Compression.Brotli.Execute.LiteralSwitch.readPrefixCore_error_offset rep count parsed
+
 /-- Exact command bits in the order insert-and-copy switch, command,
     switched literal sequence, and any distance/copy tail. -/
 theorem read_sound {header : CompressedHeader.Header} {block : Block} {limits : Limits}

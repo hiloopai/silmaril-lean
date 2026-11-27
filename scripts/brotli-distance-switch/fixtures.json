@@ -1,0 +1,215 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "provenance": "independent RFC 7932 assembly",
+  "wire_hex": "020280280a00845042a9a0a1164010442051114941280b9318",
+  "sha256": "3a15e3caa738914a383465fe8577fdefa768ba3ef91926b2a9127ff56a80c6a8",
+  "plain_hex": "4143414341434143434143414143414141",
+  "commands": [
+    {
+      "symbol": 144,
+      "before": 176,
+      "atLiterals": 178,
+      "atDistance": 180,
+      "atCode": 180,
+      "end": 181,
+      "selection": [
+        0,
+        0
+      ],
+      "code": [
+        17,
+        0
+      ],
+      "run": [
+        0,
+        1,
+        0
+      ],
+      "distance": 2,
+      "outputLength": 4,
+      "ring": [
+        2,
+        4,
+        11,
+        15
+      ]
+    },
+    {
+      "symbol": 2,
+      "before": 181,
+      "atLiterals": 183,
+      "atDistance": 183,
+      "atCode": 183,
+      "end": 183,
+      "selection": null,
+      "code": null,
+      "run": [
+        0,
+        1,
+        0
+      ],
+      "distance": 2,
+      "outputLength": 8,
+      "ring": [
+        2,
+        4,
+        11,
+        15
+      ]
+    },
+    {
+      "symbol": 130,
+      "before": 183,
+      "atLiterals": 185,
+      "atDistance": 185,
+      "atCode": 188,
+      "end": 190,
+      "selection": [
+        2,
+        1
+      ],
+      "code": [
+        20,
+        0
+      ],
+      "run": [
+        1,
+        0,
+        0
+      ],
+      "distance": 5,
+      "outputLength": 12,
+      "ring": [
+        5,
+        2,
+        4,
+        11
+      ]
+    },
+    {
+      "symbol": 130,
+      "before": 190,
+      "atLiterals": 192,
+      "atDistance": 192,
+      "atCode": 195,
+      "end": 196,
+      "selection": [
+        2,
+        0
+      ],
+      "code": [
+        18,
+        0
+      ],
+      "run": [
+        0,
+        1,
+        0
+      ],
+      "distance": 3,
+      "outputLength": 16,
+      "ring": [
+        3,
+        5,
+        2,
+        4
+      ]
+    },
+    {
+      "symbol": 136,
+      "before": 196,
+      "atLiterals": 198,
+      "atDistance": 199,
+      "atCode": 199,
+      "end": 199,
+      "selection": null,
+      "code": null,
+      "run": [
+        0,
+        1,
+        0
+      ],
+      "distance": null,
+      "outputLength": 17,
+      "ring": [
+        3,
+        5,
+        2,
+        4
+      ]
+    }
+  ],
+  "switches": [
+    [
+      2,
+      1,
+      0,
+      1,
+      1,
+      185,
+      186,
+      188
+    ],
+    [
+      3,
+      0,
+      1,
+      0,
+      1,
+      192,
+      193,
+      195
+    ]
+  ],
+  "failures": {
+    "D-type-cap": {
+      "bit": 185,
+      "cause": "Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.bitLimit",
+      "command": 2,
+      "stage": "switch-type"
+    },
+    "D-count-cap": {
+      "bit": 186,
+      "cause": "Silmaril.Formats.Compression.Brotli.BlockTypes.Error.bitLimit",
+      "command": 2,
+      "stage": "switch-length"
+    },
+    "D-symbol-cap": {
+      "bit": 188,
+      "cause": "Silmaril.Formats.Compression.Brotli.Distance.Error.symbol\n  (Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.bitLimit)",
+      "command": 2,
+      "stage": "distance"
+    },
+    "D-extra-cap": {
+      "bit": 188,
+      "cause": "Silmaril.Formats.Compression.Brotli.Distance.Error.extraBitLimit",
+      "command": 2,
+      "stage": "distance"
+    },
+    "D-copy-output-cap": {
+      "bit": 190,
+      "cause": "Silmaril.Formats.Compression.Brotli.Execute.Error.outputLimit",
+      "command": 2,
+      "stage": "copy"
+    },
+    "late-truncation": {
+      "bit": 192,
+      "cause": "Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.truncated",
+      "command": 3,
+      "stage": "switch-type"
+    }
+  },
+  "native_dictionary": {
+    "sha256": "6a552bdbff1a5d0e76e4b71ab59c9121d7182142b96e0173f6be16823c2f4a11",
+    "failure": {
+      "bit": 465,
+      "cause": [
+        28183,
+        8,
+        28174
+      ],
+      "command": 0,
+      "stage": "dictionary"
+    }
+  }
+}

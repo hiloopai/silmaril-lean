@@ -90,14 +90,11 @@ structure Wire (header : CompressedHeader.Header) (block : Block) (initial : Sta
 
 namespace Internal
 
-/-- Resolve the distance before applying the back-reference size debit.
-    A dictionary's base length is not a regenerated output count. -/
-def copyTail (header : CompressedHeader.Header) (block : Block) (limits : Limits)
-    (initial : State) (command : Command.Value) (literals : List UInt8)
-    (bitLimit : Nat) (before : LSBReader) : Except Error (Result × LSBReader) := do
+/-- Apply a resolved backward distance with the common output bounds and
+    the bytewise overlap copy. Dictionary addresses are handed back as errors. -/
+def applyCopy (block : Block) (limits : Limits) (initial : State) (command : Command.Value)
+    (literals : List UInt8) (resolved : Distance.Result) : Except Error Result :=
   let produced := initial.output.size + literals.length
-  let (resolved, after) ←
-    (Distance.read header command ⟨block.windowBits, produced⟩ initial.ring bitLimit before).mapError Error.distance
   match resolved.target with
   | .staticDictionary distance length wordId => .error (.unsupportedDictionary distance length wordId)
   | .backReference distance =>
@@ -106,8 +103,19 @@ def copyTail (header : CompressedHeader.Header) (block : Block) (limits : Limits
     else if valid : 0 < distance ∧ distance ≤ produced then
       let history := initial.output ++ literals.toArray
       let output := HistoryCopy.copy distance valid.1 command.copyLength history (by simpa [history] using valid.2)
-      .ok (⟨⟨output, resolved.ring⟩, command, some distance⟩, after)
+      .ok ⟨⟨output, resolved.ring⟩, command, some distance⟩
     else .error .copyBounds
+
+/-- Resolve the distance before applying the back-reference size debit.
+    A dictionary's base length is not a regenerated output count. -/
+def copyTail (header : CompressedHeader.Header) (block : Block) (limits : Limits)
+    (initial : State) (command : Command.Value) (literals : List UInt8)
+    (bitLimit : Nat) (before : LSBReader) : Except Error (Result × LSBReader) := do
+  let produced := initial.output.size + literals.length
+  let (resolved, after) ←
+    (Distance.read header command ⟨block.windowBits, produced⟩ initial.ring bitLimit before).mapError Error.distance
+  let result ← applyCopy block limits initial command literals resolved
+  pure (result, after)
 
 end Internal
 

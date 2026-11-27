@@ -115,14 +115,14 @@ private theorem take_sound {limit width extra : Nat} {before after : LSBReader} 
   obtain ⟨suffix, split, rep', fits, offset, count'⟩ := LSBReader.readBits_sound rep count actual
   exact ⟨by omega, fits, suffix, split, rep', count' ▸ Nat.mod_lt _ (by decide), offset⟩
 
-private theorem readExplicit_sound {header : CompressedHeader.Header} {command : Command.Value} {bounds : Bounds}
+private theorem readExplicitAt_sound {blockType : Nat} {header : CompressedHeader.Header} {command : Command.Value} {bounds : Bounds}
     {ring : Ring} {bitLimit : Nat} {before after : LSBReader} {input : List Bool} {result : Result}
     (mode : command.distance = .explicit) (rep : before.Rep input) (count : before.count < 8)
-    (read : readExplicit header command.copyLength bounds ring bitLimit before = .ok (result, after)) :
-    ∃ used suffix, Wire header command bounds ring used result ∧
+    (read : readExplicitAt header blockType command.copyLength bounds ring bitLimit before = .ok (result, after)) :
+    ∃ used suffix, WireAt header command bounds ring blockType used result ∧
       input = used ++ suffix ∧ after.Rep suffix ∧ after.count < 8 ∧
       after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit := by
-  unfold readExplicit at read
+  unfold readExplicitAt at read
   split at read <;> try contradiction
   rename_i tree treeRead
   split at read <;> try contradiction
@@ -153,6 +153,35 @@ private theorem readExplicit_sound {header : CompressedHeader.Header} {command :
   · simp only [List.length_append, msbBits_length, natBits_length]
     omega
 
+theorem readAt_sound {blockType : Nat} {header : CompressedHeader.Header} {command : Command.Value} {bounds : Bounds}
+    {ring : Ring} {bitLimit : Nat} {before after : LSBReader} {input : List Bool} {result : Result}
+    (rep : before.Rep input) (count : before.count < 8)
+    (read : readAt header blockType command bounds ring bitLimit before =
+      .ok (result, after)) :
+    bounds.Valid ∧ 2 ≤ command.copyLength ∧
+    (command.distance = .implicitZero → after = before) ∧
+    ∃ used suffix, WireAt header command bounds ring blockType used result ∧
+      input = used ++ suffix ∧ after.Rep suffix ∧ after.count < 8 ∧
+      after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit := by
+  unfold readAt at read
+  split at read <;> try contradiction
+  rename_i window
+  split at read <;> try contradiction
+  rename_i length
+  refine ⟨⟨by omega, by omega⟩, by omega, ?_⟩
+  split at read
+  · rename_i mode
+    obtain ⟨found, routed, done⟩ := bind_ok read
+    cases done
+    obtain ⟨codeEq, extraEq, resolved⟩ := route_sound routed
+    rcases result with ⟨actualCode, actualExtra, target, finalRing⟩
+    dsimp at codeEq extraEq
+    subst actualCode
+    subst actualExtra
+    exact ⟨fun _ => rfl, [], input, .implicit mode resolved, by simp, rep, count, by simp, by simp⟩
+  · rename_i mode
+    exact ⟨by simp [mode], readExplicitAt_sound mode rep count read⟩
+
 theorem read_sound {header : CompressedHeader.Header} {command : Command.Value} {bounds : Bounds}
     {ring : Ring} {bitLimit : Nat} {before after : LSBReader} {input : List Bool} {result : Result}
     (rep : before.Rep input) (count : before.count < 8)
@@ -166,22 +195,19 @@ theorem read_sound {header : CompressedHeader.Header} {command : Command.Value} 
   unfold Silmaril.Formats.Compression.Brotli.Distance.read at read
   split at read <;> try contradiction
   rename_i single
-  split at read <;> try contradiction
-  rename_i window
-  split at read <;> try contradiction
-  rename_i length
-  refine ⟨single, ⟨by omega, by omega⟩, by omega, ?_⟩
-  split at read
-  · rename_i mode
-    obtain ⟨found, routed, done⟩ := bind_ok read
-    cases done
-    obtain ⟨codeEq, extraEq, resolved⟩ := route_sound routed
-    rcases result with ⟨actualCode, actualExtra, target, finalRing⟩
-    dsimp at codeEq extraEq
-    subst actualCode
-    subst actualExtra
-    exact ⟨fun _ => rfl, [], input, .implicit mode resolved, by simp, rep, count, by simp, by simp⟩
-  · rename_i mode
-    exact ⟨by simp [mode], readExplicit_sound mode rep count read⟩
+  obtain ⟨valid, length, implicitCursor, used, suffix, wire, source⟩ := readAt_sound rep count read
+  refine ⟨single, valid, length, implicitCursor, used, suffix, ?_, source⟩
+  cases wire with
+  | implicit mode resolved => exact .implicit mode resolved
+  | explicit mode index table alphabet code width range extra resolved =>
+    exact .explicit mode index table alphabet code width range extra resolved
+
+theorem WireAt.resolved {header : CompressedHeader.Header} {command : Command.Value} {bounds : Bounds}
+    {ring : Ring} {blockType : Nat} {bits : List Bool} {result : Result}
+    (wire : WireAt header command bounds ring blockType bits result) :
+    Resolved bounds ring command.copyLength result.code result.target.distance result.target result.ring := by
+  cases wire with
+  | implicit _ resolved => exact (Resolved.valid resolved).1 ▸ resolved
+  | explicit _ _ _ _ _ _ _ _ resolved => exact (Resolved.valid resolved).1 ▸ resolved
 
 end Silmaril.Proofs.Formats.Compression.Brotli.Distance

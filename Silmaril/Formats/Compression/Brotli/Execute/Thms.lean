@@ -36,6 +36,16 @@ theorem copyTail_rejects_overrun {header : CompressedHeader.Header} {block : Blo
       Internal.copyTail header block limits initial command literals bitLimit before = .error .outputLimit) :=
   Proofs.Formats.Compression.Brotli.Execute.copyTail_rejects_overrun parsed target
 
+theorem applyCopy_sound {block : Block} {limits : Limits} {initial : State}
+    {command : Command.Value} {literals : List UInt8} {resolved : Distance.Result} {result : Result}
+    (read : Internal.applyCopy block limits initial command literals resolved = .ok result) :
+    result.command = command ∧ result.state.ring = resolved.ring ∧
+    result.state.output.size ≤ block.endOutput ∧ result.state.output.size ≤ limits.output ∧
+    ∃ distance matched, resolved.target = .backReference distance ∧ result.distance = some distance ∧
+      HistoryCopy.Wire distance (initial.output.toList ++ literals) matched ∧ matched.length = command.copyLength ∧
+      result.state.output.toList = initial.output.toList ++ literals ++ matched :=
+  Proofs.Formats.Compression.Brotli.Execute.applyCopy_sound read
+
 theorem copyTail_sound {header : CompressedHeader.Header} {block : Block} {limits : Limits}
     {initial : State} {command : Command.Value} {literals : List UInt8} {bitLimit : Nat}
     {before after : LSBReader} {input : List Bool} {result : Result}
