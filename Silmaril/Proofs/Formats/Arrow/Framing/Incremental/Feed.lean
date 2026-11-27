@@ -425,4 +425,38 @@ theorem feed_prefix_tail {limits : Limits} {input chunk : KBytes} {offset : Nat}
   simp [feed, valid, aligned, ← show filled = pending.feed chunk valid from rfl, long,
     header, nonempty, bind, Except.bind, Except.mapError, throw, throwThe, MonadExceptOf.throw]
 
+theorem finish_body_exact {limits : Limits} {input header : KBytes} {offset size : Nat}
+    {pending : Buffer size} (wf : input.wf = true)
+    (held : (State.body offset header size pending).InCarrier limits input)
+    (exhausted : (State.body offset header size pending).position = input.len)
+    (short : pending.bytes.len < size) :
+    let bodyStart := offset + 8 + header.len
+    readEnvelope limits input offset = .ok (.metadata header.len) ∧
+      readBody limits input bodyStart size = .error (.malformed .truncated) ∧
+      finish (.body offset header size pending) =
+        .error ⟨.body, bodyStart, .malformed .truncated⟩ := by
+  obtain ⟨envelope, _, planned, _⟩ := held
+  obtain ⟨startAligned, _, _, _, _, _, metadataAligned, _, _⟩ :=
+    (readEnvelope_iff _ _ _ _ wf).mp envelope
+  obtain ⟨bodyAligned, budget⟩ := planBody planned
+  change offset + 8 + header.len + pending.bytes.len = input.len at exhausted
+  have atBody : (offset + 8 + header.len) % 8 = 0 := by omega
+  have cutoff : input.len < offset + 8 + header.len + size := by omega
+  exact ⟨envelope, by simp [readBody, atBody, bodyAligned, Nat.not_lt.mpr budget, cutoff], rfl⟩
+
+theorem feed_body_wait {limits : Limits} {chunk header : KBytes} {offset size : Nat}
+    {pending : Buffer size} (valid : chunk.wf = true)
+    (short : pending.bytes.len + chunk.len < size) :
+    feed limits (.body offset header size pending) chunk =
+      .ok (.wait (.body offset header size (pending.feed chunk valid).buffered)) := by
+  let filled := pending.feed chunk valid
+  have same := (buffer_feed pending chunk valid).1
+  change filled.buffered.bytes.toList = (pending.bytes.toList ++ chunk.toList).take size at same
+  have length := congrArg List.length same
+  rw [KBytes.length_toList _ filled.buffered.source, List.length_take, List.length_append,
+    KBytes.length_toList _ pending.source, KBytes.length_toList _ valid,
+    Nat.min_eq_right (Nat.le_of_lt short)] at length
+  have stillShort : filled.buffered.bytes.len < size := by omega
+  simp [feed, valid, ← show filled = pending.feed chunk valid from rfl, stillShort, pure, Except.pure]
+
 end Silmaril.Proofs.Formats.Arrow.Framing.Incremental

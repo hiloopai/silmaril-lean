@@ -654,3 +654,38 @@ and compare the exact distinct causes across both schedules.
 make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Axioms'
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Finalization during a RecordBatch body
+
+`Incremental.Failure.BodyCutoff.Run` describes the entire supplied prefix
+ending strictly inside a planned RecordBatch body. The pending metadata
+must pass the immutable mixed RecordBatch metadata check, declare the same
+body length as the framing request, and have an available batch slot.
+These conditions matter because the immutable reader can reject a batch
+slot or typed metadata before reading the body. The incremental reader
+reaches these checks after it has framed the complete body.
+
+`wait_body` proves that a valid fragment leaving the body short returns
+ordinary waiting. `body_cutoff_exact` identifies the finish failure at the
+original body start and the immutable truncation at the original message
+start, with the same next batch ordinal. Every complete preceding batch
+and its absolute range replays in the original order. For schedules
+over the same supplied octets and limits, `schedules_body_equivalent`
+equates these prefixes and their exact typed finish causes.
+`body_cutoff_no_success` excludes a successful finish on the same
+supplied octets. Continuing the source before finish can complete the
+batch and reach EOS.
+
+The guards cut one byte short of the last body in native and pinned
+PyArrow streams and compare one-byte and uneven schedules. They include
+a cutoff exactly at the body boundary, resumption through EOS, and the
+body-byte cap at the declared length and one lower. A batch-count
+control exercises the distinct immutable batch-limit precedence.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/BodyCutoff/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/BodyCutoff/Thms.lean) ·
+[Lean guards](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/BodyCutoff/Examples.lean)
+
+```sh
+make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyCutoff.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyCutoff.Axioms'
+python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
+```

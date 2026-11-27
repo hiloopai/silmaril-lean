@@ -69,4 +69,26 @@ theorem feed_prefix_tail {limits : Limits} {input chunk : KBytes} {offset : Nat}
       .error ⟨.tail, offset + 8, .malformed .trailingBytes⟩ :=
   Proofs.Formats.Arrow.Framing.Incremental.feed_prefix_tail wf held incoming eos offered
 
+/-- At the declared input end, a short pending body has the original
+truncated body slice and precise finish failure. -/
+theorem finish_body_exact {limits : Limits} {input header : KBytes} {offset size : Nat}
+    {pending : Buffer size} (wf : input.wf = true)
+    (held : (State.body offset header size pending).InCarrier limits input)
+    (exhausted : (State.body offset header size pending).position = input.len)
+    (short : pending.bytes.len < size) :
+    let bodyStart := offset + 8 + header.len
+    readEnvelope limits input offset = .ok (.metadata header.len) ∧
+      readBody limits input bodyStart size = .error (.malformed .truncated) ∧
+      finish (.body offset header size pending) =
+        .error ⟨.body, bodyStart, .malformed .truncated⟩ :=
+  Proofs.Formats.Arrow.Framing.Incremental.finish_body_exact wf held exhausted short
+
+/-- A valid fragment that leaves the body short is ordinary waiting. -/
+theorem feed_body_wait {limits : Limits} {chunk header : KBytes} {offset size : Nat}
+    {pending : Buffer size} (valid : chunk.wf = true)
+    (short : pending.bytes.len + chunk.len < size) :
+    feed limits (.body offset header size pending) chunk =
+      .ok (.wait (.body offset header size (pending.feed chunk valid).buffered)) :=
+  Proofs.Formats.Arrow.Framing.Incremental.feed_body_wait valid short
+
 end Silmaril.Formats.Arrow.Framing.Incremental

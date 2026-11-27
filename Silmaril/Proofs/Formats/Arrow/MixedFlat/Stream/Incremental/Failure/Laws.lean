@@ -13,7 +13,7 @@ open Silmaril.Formats Silmaril.Formats.Arrow
 open MixedFlat.Stream.Incremental MixedFlat.Stream.Incremental.Failure
 open MixedFlat.Stream.Incremental.Portable (reference reference_congr completed_exact)
 
-private theorem replaySteps {size packed : Nat} {fields : List MixedFlat.Field}
+theorem replaySteps {size packed : Nat} {fields : List MixedFlat.Field}
     {before last : Cursor} {batches : List (Delivered fields)} {running : Running}
     (steps : RecordSteps size packed fields before batches last)
     (held : before.input.InCarrier before.limits.mixed.observation.ipc (.leaf size packed))
@@ -52,7 +52,7 @@ private theorem replaySteps {size packed : Nat} {fields : List MixedFlat.Field}
     refine ⟨final, finalPhase, ?_⟩
     simpa only [List.map_cons, Delivered.published, sameRecord, sameEvent] using Replay.next readMark replay
 
-private theorem replayUnique {limits : MixedFlat.Limits} {input : KBytes} {fields : List MixedFlat.Field}
+theorem replayUnique {limits : MixedFlat.Limits} {input : KBytes} {fields : List MixedFlat.Field}
     {initial a b : Position} {left right : List (Published fields)}
     {causeA causeB : MixedFlat.Stream.Events.Error}
     (replayA : Replay limits input fields initial left a)
