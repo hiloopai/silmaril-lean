@@ -177,4 +177,46 @@ theorem convertFor_readback {version : PageVersion} {limits : Limits} {source : 
     (h : (convertFor version limits source).wire = .ok wire) : Readback limits source wire version :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertFor_readback h
 
+/-- The shared group checks bind the original frame walk and checked footer totals. -/
+theorem readGroupUsing_checked {limits : Limits} {checked : ListFile.Checked} {walk : GroupWalk}
+    {ordinal expanded left : Nat} {rows : List Row}
+    (h : readGroupUsing limits checked walk ordinal expanded = .ok (rows, left)) :
+    ∃ framed budget state,
+      ListFile.FramedGroupWire checked ordinal framed 1 ∧
+      walk framed.chunk ⟨framed.chunk.metadata.numValues.toNat, expanded⟩ framed.frames = .ok (budget, state) ∧
+      budget.slots = 0 ∧ budget.expanded = left ∧ state.finish = rows ∧
+      rows.length = framed.group.numRows.toNat ∧
+      framed.chunk.metadata.numValues.toNat ≤ limits.parquet.maxGroupSlots ∧
+      framed.group.numRows.toNat ≤ checked.limits.page.maxRows :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.readGroupUsing_checked h
+
+/-- A successful group prefix passes the remaining file budget to the suffix. -/
+theorem readGroupsUsing_append {read : GroupReader} {checked : ListFile.Checked} {before after : List Nat}
+    {expanded left : Nat} {groups : List (List Row)}
+    (h : readGroupsUsing read checked expanded before = (groups, .ok left)) :
+    readGroupsUsing read checked expanded (before ++ after) =
+      let tail := readGroupsUsing read checked left after
+      (groups ++ tail.1, tail.2) :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.readGroupsUsing_append h
+
+/-- A group reader's first failure precedes native IPC admission. -/
+theorem convertUsing_first_error {read : GroupReader} {limits : Limits} {source : Bytes} {checked : ListFile.Checked}
+    {before after : List Nat} {ordinal left : Nat} {groups : List (List Row)} {cause : GroupError}
+    (opened : ListFile.openFile limits.parquet.file source = .ok checked)
+    (split : List.range checked.snapshot.groupCount = before ++ ordinal :: after)
+    (earlier : readGroupsUsing read checked limits.maxExpandedBytes before = (groups, .ok left))
+    (failed : read checked ordinal left = .error cause) :
+    (convertUsing limits read source).trace = .ok ⟨ListFile.schema checked,
+      ⟨groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked), .readError (.groupFailure ordinal cause)⟩⟩ ∧
+    (convertUsing limits read source).wire = .error (.source (.groupFailure ordinal cause)) :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertUsing_first_error opened split earlier failed
+
+/-- Checked group witnesses compose with exact native IPC readback. -/
+theorem convertUsing_readback {read : GroupReader} {limits : Limits}
+    {witness : ListFile.Checked → Nat → List Row → Nat → Prop} {source : Bytes} {wire : KBytes}
+    (sound : ∀ {checked ordinal expanded left rows}, read checked ordinal expanded = .ok (rows, left) →
+      witness checked ordinal rows (expanded - left) ∧ left ≤ expanded)
+    (h : (convertUsing limits read source).wire = .ok wire) : ReadbackUsing limits read witness source wire :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertUsing_readback sound h
+
 end Silmaril.Formats.Parquet.ListFile.Multi.Snappy

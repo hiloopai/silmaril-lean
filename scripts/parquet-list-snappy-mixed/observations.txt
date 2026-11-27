@@ -1,0 +1,35 @@
+PyArrow 26.0.1
+assembled-mixed.parquet SHA-256 3b1c21aedae3d02e83528922b789d5b43444975307d1fe3bd7774abe402d1157, footer [318, 488)
+  group 0 page 0 type 0, header @4, payload [26, 40), slots 1, row starts 1, null slots 1
+  group 0 page 1 type 3, header @40, payload [68, 72), slots 1, row starts 1, null slots 1
+  group 0 page 2 type 0, header @72, payload [95, 116), slots 8, row starts 1, null slots 1
+  group 0 page 3 type 3, header @116, payload [144, 156), slots 2, row starts 1, null slots 0
+  group 1 page 0 type 3, header @156, payload [184, 188), slots 1, row starts 1, null slots 1
+  group 1 page 1 type 0, header @188, payload [211, 225), slots 1, row starts 1, null slots 1
+  group 1 page 2 type 0, header @225, payload [248, 267), slots 2, row starts 1, null slots 1
+  group 1 page 3 type 3, header @267, payload [296, 318), slots 40, row starts 1, null slots 1
+  independent Thrift/level reconstruction and PyArrow agree
+assembled-v1-continuation.parquet SHA-256 f60da3bb9ff658867aad90249f86a2b5a8277794add161ab34d982eaf3fdf688, footer [355, 525)
+  group 0 page 0 type 0, header @4, payload [26, 40), slots 1, row starts 1, null slots 1
+  group 0 page 1 type 3, header @40, payload [68, 72), slots 1, row starts 1, null slots 1
+  group 0 page 2 type 0, header @72, payload [95, 116), slots 8, row starts 1, null slots 1
+  group 0 page 3 type 3, header @116, payload [144, 156), slots 2, row starts 1, null slots 0
+  group 1 page 0 type 3, header @156, payload [184, 188), slots 1, row starts 1, null slots 1
+  group 1 page 1 type 3, header @188, payload [216, 220), slots 1, row starts 1, null slots 1
+  group 1 page 2 type 0, header @220, payload [243, 262), slots 2, row starts 1, null slots 1
+  group 1 page 3 type 0, header @262, payload [285, 304), slots 2, row starts 0, null slots 1
+  group 1 page 4 type 3, header @304, payload [333, 355), slots 40, row starts 1, null slots 1
+  independent Thrift/level reconstruction and PyArrow agree
+assembled-mixed.arrows SHA-256 fb4aa241c18607de0b9b54ac3ff96c763fc922646f2ddcd22517c150902be9f5, EOS [912, 920)
+assembled-v1-continuation.arrows SHA-256 8f7638bd37c104ee3f54eca47eba2afcc7a0a85f9973fa686ead8fc3c3b0ade5, EOS [920, 928)
+assembled-starts-v2-mid-row.parquet SHA-256 a53f0a43d27305373a732abe6cf649b8a33a88fa41c3927294c3a8deb0e1c821
+starts-v2-mid-row: group 1 page 3 @267; one retained batch and no IPC bytes
+assembled-continues-after-v2.parquet SHA-256 a49f769800b083daddc104629b148f8d43f0c6aa020737315ffda2e1795e61ba
+continues-after-v2: group 1 page 3 @252; one retained batch and no IPC bytes
+assembled-continues-through-empty.parquet SHA-256 4c561b1b7ef5a0932bf567571aeb197da22f0b4159b2004751bd684a8ed89f00
+continues-through-empty: group 1 page 4 @285; one retained batch and no IPC bytes
+mutated-v1-crc.parquet SHA-256 632d876faf7a5b2e2c68af91a3cab2139d02f7c7ce791db85320fc9f26024542
+v1-crc: group 1 page 2 @225; one retained batch and no IPC bytes
+mutated-v2-crc.parquet SHA-256 1cdf89bb689ae3469b627ed799c2a5121969099e84a31bc08ac51783afd41efa
+v2-crc: group 1 page 3 @267; one retained batch and no IPC bytes
+expanded byte limit: group 1 page 3 @267; one retained batch and no IPC bytes

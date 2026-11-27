@@ -214,18 +214,27 @@ def readFrames (limits : Limits) (checked : ListFile.Checked) (column : Footer.C
 def expandedSize (frames : List Page.Frame) : Nat :=
   (frames.map (·.value.uncompressedSize)).sum
 
-def readGroupFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked) (ordinal expanded : Nat) :
-    Except GroupError (List Row × Nat) := do
+abbrev GroupWalk :=
+  Footer.ColumnChunk → Budget → List Page.Frame → Except GroupError (Budget × State)
+
+/-- Frame the original column once and enforce the shared group counts. -/
+def readGroupUsing (limits : Limits) (checked : ListFile.Checked) (walk : GroupWalk)
+    (ordinal expanded : Nat) : Except GroupError (List Row × Nat) := do
   let framed ← (checked.frameGroupFor 1 ordinal).mapError .framing
   let slotCount := framed.chunk.metadata.numValues.toNat
   let rowCount := framed.group.numRows.toNat
   if limits.parquet.maxGroupSlots < slotCount then return ← throw .slotLimit
   if checked.limits.page.maxRows < rowCount then return ← throw .rowLimit
-  let (left, state) ← readFramesFor version limits checked framed.chunk 0 ⟨slotCount, expanded⟩ State.empty framed.frames
+  let (left, state) ← walk framed.chunk ⟨slotCount, expanded⟩ framed.frames
   if left.slots ≠ 0 then return ← throw (.missingSlots left.slots)
   let rows := state.finish
   if rows.length ≠ rowCount then return ← throw (.rowCount rowCount rows.length)
   pure (rows, left.expanded)
+
+def readGroupFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked)
+    (ordinal expanded : Nat) : Except GroupError (List Row × Nat) :=
+  readGroupUsing limits checked (fun column budget => readFramesFor version limits checked column 0 budget State.empty)
+    ordinal expanded
 
 def readGroup (limits : Limits) (checked : ListFile.Checked) (ordinal expanded : Nat) :
     Except GroupError (List Row × Nat) :=
@@ -244,17 +253,24 @@ structure GroupWire (limits : Limits) (checked : ListFile.Checked) (ordinal : Na
     framed.group.numRows.toNat ≤ checked.limits.page.maxRows ∧
     expandedSize framed.frames = spent
 
+abbrev GroupReader :=
+  ListFile.Checked → Nat → Nat → Except GroupError (List Row × Nat)
+
 /-- Preserve the successful groups before the first indexed failure. A single
 expansion budget is threaded through the whole file. -/
-def readGroupsFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked) (expanded : Nat) :
+def readGroupsUsing (read : GroupReader) (checked : ListFile.Checked) (expanded : Nat) :
     List Nat → List (List Row) × Except SourceError Nat
   | [] => ([], .ok expanded)
   | ordinal :: rest =>
-    match readGroupFor version limits checked ordinal expanded with
+    match read checked ordinal expanded with
     | .error cause => ([], .error (.groupFailure ordinal cause))
     | .ok (rows, left) =>
-      let (groups, outcome) := readGroupsFor version limits checked left rest
+      let (groups, outcome) := readGroupsUsing read checked left rest
       (rows :: groups, outcome)
+
+def readGroupsFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked)
+    (expanded : Nat) (groups : List Nat) : List (List Row) × Except SourceError Nat :=
+  readGroupsUsing (readGroupFor version limits) checked expanded groups
 
 def readGroups (limits : Limits) (checked : ListFile.Checked) (expanded : Nat) (groups : List Nat) :
     List (List Row) × Except SourceError Nat :=
@@ -271,16 +287,19 @@ structure Result where
   trace : SourceTrace
   wire : Except Error KBytes
 
-def convertFor (version : PageVersion) (limits : Limits) (source : Bytes) : Result :=
+def convertUsing (limits : Limits) (read : GroupReader) (source : Bytes) : Result :=
   match ListFile.openFile limits.parquet.file source with
   | .error cause => ⟨.error (.openFailure cause), .error (.source (.openFailure cause))⟩
   | .ok checked =>
-    let (groups, outcome) := readGroupsFor version limits checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount)
+    let (groups, outcome) := readGroupsUsing read checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount)
     let batches := groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked)
     match outcome with
     | .error cause => ⟨.ok ⟨ListFile.schema checked, ⟨batches, .readError cause⟩⟩, .error (.source cause)⟩
     | .ok _ => ⟨.ok ⟨ListFile.schema checked, ⟨batches, .eos⟩⟩,
       (Arrow.ListInt32.Stream.Writer.emit limits.ipc (ToIpc.fieldOf checked) groups).mapError .writer⟩
+
+def convertFor (version : PageVersion) (limits : Limits) (source : Bytes) : Result :=
+  convertUsing limits (readGroupFor version limits) source
 
 def convert (limits : Limits) (source : Bytes) : Result :=
   convertFor .v1 limits source
@@ -288,6 +307,25 @@ def convert (limits : Limits) (source : Bytes) : Result :=
 /-- Select the strict V2 row-boundary profile. -/
 def convertV2 (limits : Limits) (source : Bytes) : Result :=
   convertFor .v2 limits source
+
+structure ReadbackUsing (limits : Limits) (read : GroupReader)
+    (witness : ListFile.Checked → Nat → List Row → Nat → Prop) (source : Bytes) (wire : KBytes) : Prop where
+  data : ∃ checked groups costs left decoded size,
+    ListFile.openFile limits.parquet.file source = .ok checked ∧
+    ListFile.OpenWire limits.parquet.file source checked ∧
+    readGroupsUsing read checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount) =
+      (groups, .ok left) ∧
+    List.Forall₂ (fun ordinal (batch : List Row × Nat) => witness checked ordinal batch.1 batch.2)
+      (List.range checked.snapshot.groupCount) (groups.zip costs) ∧
+    costs.length = groups.length ∧ costs.sum + left = limits.maxExpandedBytes ∧
+    (convertUsing limits read source).trace = .ok ⟨ListFile.schema checked,
+      ⟨groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked), .eos⟩⟩ ∧
+    Arrow.ListInt32.Stream.read limits.ipc wire = .ok decoded ∧
+    Arrow.ListInt32.Stream.Writer.Agrees (ToIpc.fieldOf checked) groups decoded ∧
+    wire.wf = true ∧
+    Arrow.readEnvelope limits.ipc.ipc wire 0 = .ok (.metadata size) ∧
+    Arrow.ListInt32.readSchema limits.ipc.ipc (wire.slice 8 size) = .ok (ToIpc.fieldOf checked) ∧
+    Arrow.ListInt32.Stream.BatchesWire limits.ipc wire limits.ipc.ipc.batches 0 0 (8 + size) decoded.batches
 
 structure Readback (limits : Limits) (source : Bytes) (wire : KBytes)
     (version : PageVersion := .v1) : Prop where
