@@ -26,4 +26,12 @@ def restoreManifest (leaf key : String) (options : PartitionPath.Options)
     Except (ReadError Error) (Scan.Table ((partition key).extend (physical leaf)) Cell) :=
   WritePlan.FlatInt32.RowGroups.restore leaf (partition key) options convert policy limits files
 
+/-- Bind each reached literal path and DATE cell before the predicate.
+Only a true result admits the payload for checking and decoding. -/
+def restoreSelected (leaf key : String) (options : PartitionPath.Options)
+    (policy : Policy) (limits : FlatInt32Writer.Limits)
+    (predicate : Scan.Predicate (partition key).toScan Cell) (files : List File) :
+    Except (ReadError Error) (Scan.Table ((partition key).extend (physical leaf)) Cell) :=
+  WritePlan.FlatInt32.RowGroups.restorePruned leaf (partition key) options convert policy limits predicate files
+
 end Silmaril.Formats.Hive.Date32

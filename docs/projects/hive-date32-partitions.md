@@ -138,3 +138,39 @@ emit and restore the same nine native files. The additional controls
 check missing and mismatched sources, routing precedence over an invalid
 cut policy, duplicate occurrences, alternate URI spelling, an empty
 manifest, and late path and DATE failures with unreadable payloads.
+
+## Selected manifest restore
+
+[`Date32.restoreSelected`](../../Silmaril/Formats/Hive/Date32/Manifest/Defs.lean)
+takes a predicate on the singleton nullable DATE partition row. After
+checking the declared schema and row-group width, it visits the literal
+manifest occurrences in their supplied order. For each reached occurrence,
+it checks the relative path syntax and required basename, decodes the
+Hive URI components, checks the declared key and the marker policy, and
+converts any present DATE text. These checks precede the predicate.
+A false or unknown result skips all per-file payload checks, including
+manifest dimensions, Parquet schema and footer validation, and group
+decoding. A true result uses the existing checked native file reader.
+
+Following a successful full restore, the
+[public laws](../../Silmaril/Formats/Hive/Date32/Manifest/Thms.lean)
+give exact equality to stable filtering of those rows, including repeated
+file occurrences. A reached binding failure preserves the original path,
+index and typed cause. After a prefix has completed, the first
+selected payload failure also carries the original path, occurrence and
+payload error, including any indexed group cause. The restore result
+returns an error in that case. Selecting from a manifest with unreadable
+payloads can succeed by skipping a validly bound rejected occurrence.
+
+The pruning fixture has a duplicate null-marker path and a leap-day file
+with two groups. Its damaged variant changes the second group's page
+header while leaving the footer and first group readable. Both Lean and
+the pinned PyArrow comparator agree with post-filtering on the clean
+fixture, skip the damaged payload under a rejecting predicate, and reach
+its error under a selecting predicate. The Lean guards also exercise
+unknown predicate results and malformed paths.
+
+Generate the fixture with
+`lake env lean --run Silmaril/Formats/Hive/Date32/Render/Checks.lean pruning "$tmp"`.
+Use the pinned outbound command above with
+`python -I /repo/scripts/hive-date32-render-oracle/Oracle.py /out --pruning`.

@@ -60,10 +60,12 @@ private def dbOf (key : String) (rows : List Row) : Database String := fun name 
 private def emit (key : String) (options : PartitionPath.Options) (rows : List Row) :=
   emitManifest (dbOf key rows) "source" leaf key options policy limits
 
+private def observeRows (key : String) (rows : Scan.Table ((partition key).extend (physical leaf)) Cell) : List Row :=
+  rows.map fun row => (TypedPartitions.physicalCells (schema := partition key) row (0 : Fin 1),
+    TypedPartitions.partitionCells (physical := physical leaf) row (0 : Fin 1))
+
 private def restore (key : String) (options : PartitionPath.Options) (files : List File) :=
-  (restoreManifest leaf key options policy limits files).map fun rows =>
-    rows.map fun row => (TypedPartitions.physicalCells (schema := partition key) row (0 : Fin 1),
-      TypedPartitions.partitionCells (physical := physical leaf) row (0 : Fin 1))
+  (restoreManifest leaf key options policy limits files).map (observeRows key)
 
 private def standardRows : List Row :=
   [(some 1, some 19782), (some 2, none), (none, some 19782), (some 3, some (-719528)),
@@ -140,6 +142,69 @@ private def markerRows : List Row := [(some 10, none), (some 11, some 11017)]
     return path == bad.path && reported == directory
   | _ => return false
 
+private def earlyOrNull : Scan.Predicate (partition "day").toScan Cell := fun cells =>
+  some ((cells (0 : Fin 1)).all (·.toInt < 0))
+
+private def throughLeap : Scan.Predicate (partition "day").toScan Cell := fun cells =>
+  some ((cells (0 : Fin 1)).all (·.toInt ≤ 19782))
+
+private def corruptLeap (file : File) : Option File := do
+  let checked ← (WritePlan.FlatInt32.RowGroups.openPayload policy limits leaf file).toOption
+  let group ← checked.groupAt 1
+  let column ← group.columns.head?
+  return {file with bytes := ⟨file.bytes.data.set! column.metadata.dataPageOffset.toNat 0⟩}
+
+private def pruningInput : Option (List File × List File) := do
+  let [leap, nulls, early, late] ← (emit "day" {} standardRows).toOption | none
+  let bad ← corruptLeap leap
+  return ([nulls, leap, early, nulls, late], [nulls, bad, early, nulls, late])
+
+private def selectedRows (predicate : Scan.Predicate (partition "day").toScan Cell) (files : List File) :=
+  (restoreSelected leaf "day" {} policy limits predicate files).map (observeRows "day")
+
+private def earlyRows : List Row := [(some 2, none), (none, none), (some 3, some (-719528)),
+  (some 2, none), (none, none)]
+
+#guard Id.run do
+  let some (clean, _) := pruningInput | return false
+  let .ok full := restore "day" {} clean | return false
+  return (selectedRows earlyOrNull clean).toOption == some earlyRows &&
+    (selectedRows earlyOrNull clean).toOption == some (full.filter fun row => row.2.all (·.toInt < 0)) &&
+    (selectedRows throughLeap clean).toOption == some (full.filter fun row => row.2.all (·.toInt ≤ 19782))
+
+#guard Id.run do
+  let some (_, damaged) := pruningInput | return false
+  return (selectedRows earlyOrNull damaged).toOption == some earlyRows &&
+    (selectedRows (fun cells => if (cells (0 : Fin 1)) == some 19782 then none else earlyOrNull cells)
+      damaged).toOption == some earlyRows
+
+-- Footer and the first group still decode. The selected second page gives its exact group error.
+#guard Id.run do
+  let some (_, first :: bad :: rest) := pruningInput | return false
+  let .ok source := WritePlan.FlatInt32.RowGroups.openGroupSource policy limits leaf bad | return false
+  let .ok slots := WritePlan.FlatInt32.RowGroups.readSlots source 0 | return false
+  match selectedRows throughLeap (first :: bad :: rest) with
+  | .error (.file 1 path (.payload (.parquet (.decode 1 (.profile (.page (.header (.missingField 1)))))))) =>
+    return path == bad.path && slots == [some 1, none]
+  | _ => return false
+
+#guard Id.run do
+  let some (_, first :: bad :: rest) := pruningInput | return false
+  let directory := "%64ay=2024%2D02%2d30"
+  let invalid := {bad with path := directory ++ "/part-0.parquet"}
+  match selectedRows (fun _ => some false) (first :: invalid :: rest) with
+  | .error (.file 1 path (.partition (.binding reported (.conversion "day" (.invalidDate "2024-02-30"))))) =>
+    return path == invalid.path && reported == directory
+  | _ => return false
+
+#guard Id.run do
+  let some (_, first :: bad :: rest) := pruningInput | return false
+  let invalid := {bad with path := "../" ++ bad.path}
+  match selectedRows (fun _ => none) (first :: invalid :: rest) with
+  | .error (.file 1 path (.path (.path reported .invalidSegment))) =>
+    return path == invalid.path && reported == invalid.path
+  | _ => return false
+
 #print axioms decodeDirectory_singleton
 #print axioms encodeText_ok_iff
 #print axioms encode_convert_leftInverse
@@ -152,23 +217,51 @@ private def markerRows : List Row := [(some 10, none), (some 11, some 11017)]
 #print axioms emitManifest_first_markerCollision
 #print axioms restoreManifest_first_binding_error
 
-private def writeFixture (root : System.FilePath) (name key : String) (options : PartitionPath.Options)
-    (input grouped : List Row) : IO Unit := do
-  let .ok files := emit key options input | throw (IO.userError "DATE manifest emission failed")
-  unless (restore key options files).toOption == some grouped do
-    throw (IO.userError "DATE manifest restoration did not match the grouped rows")
-  let directory := root / name
+#print axioms restoreSelected_eq_filter
+#print axioms restoreSelected_first_binding_error
+#print axioms restoreSelected_first_payload_error
+
+private def writeInventory (directory : System.FilePath) (files : List File) : IO Unit := do
   for file in files do
     let path := directory / file.path
     if let some parent := path.parent then IO.FS.createDirAll parent
     IO.FS.writeBinFile path file.bytes.data
   IO.FS.writeFile (directory / "inventory.txt") (String.intercalate "\n" (files.map (·.path)) ++ "\n")
 
+private def writeFixture (root : System.FilePath) (name key : String) (options : PartitionPath.Options)
+    (input grouped : List Row) : IO Unit := do
+  let .ok files := emit key options input | throw (IO.userError "DATE manifest emission failed")
+  unless (restore key options files).toOption == some grouped do
+    throw (IO.userError "DATE manifest restoration did not match the grouped rows")
+  writeInventory (root / name) files
+
+private def showSlot (slot : Option Int32) : String := slot.map (fun word => toString word.toInt) |>.getD "null"
+
+private def writeSelected (directory : System.FilePath) (name : String) (rows : List Row) : IO Unit :=
+  IO.FS.writeFile (directory / (name ++ ".tsv"))
+    (String.intercalate "\n" (rows.map fun (payload, day) => showSlot payload ++ "\t" ++ showSlot day) ++ "\n")
+
+private def writePruningFixture (root : System.FilePath) : IO Unit := do
+  let some (clean, damaged) := pruningInput | throw (IO.userError "DATE pruning fixture setup failed")
+  let .ok kept := selectedRows earlyOrNull clean | throw (IO.userError "DATE clean early selection failed")
+  let .ok through := selectedRows throughLeap clean | throw (IO.userError "DATE clean leap selection failed")
+  let .ok skipped := selectedRows earlyOrNull damaged | throw (IO.userError "DATE corrupt payload was reached")
+  unless (selectedRows throughLeap damaged).toOption.isNone do
+    throw (IO.userError "DATE selected corrupt payload did not fail")
+  writeInventory (root / "clean") clean
+  writeInventory (root / "damaged") damaged
+  writeSelected (root / "clean") "early" kept
+  writeSelected (root / "clean") "through-leap" through
+  writeSelected (root / "damaged") "early" skipped
+
 public def runRenderChecks (args : List String) : IO Unit := do
-  let [root] := args | throw (IO.userError "usage: Checks.lean <oracle-fixture-directory>")
-  writeFixture root "default" "day" {} standardRows standardGrouped
-  writeFixture root "escaped" specialKey specialMarker escapedRows escapedRows
-  writeFixture root "date-marker" "day" dateMarker markerRows markerRows
+  match args with
+  | ["pruning", root] => writePruningFixture root
+  | [root] =>
+    writeFixture root "default" "day" {} standardRows standardGrouped
+    writeFixture root "escaped" specialKey specialMarker escapedRows escapedRows
+    writeFixture root "date-marker" "day" dateMarker markerRows markerRows
+  | _ => throw (IO.userError "usage: Checks.lean [pruning] <oracle-fixture-directory>")
 
 end Silmaril.Formats.Hive.Date32
 

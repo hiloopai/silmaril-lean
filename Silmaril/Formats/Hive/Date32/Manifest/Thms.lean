@@ -12,7 +12,8 @@ namespace Silmaril.Formats.Hive.Date32
 open Silmaril.Relational Silmaril.Formats.Parquet
 open Snapshot.FlatInt32 (Cell)
 open WritePlan.FlatInt32 (Database physical namedRows)
-open WritePlan.FlatInt32.RowGroups (File FileError FileMatches Policy checkRead)
+open WritePlan.FlatInt32.RowGroups
+  (File FileError FileMatches PayloadError Policy bindFileCells checkRead readPayload)
 
 /-- Restore the exact original typed rows in first-seen directory order and
 source-relative order within each directory. The file relation certifies the
@@ -67,5 +68,49 @@ theorem restoreManifest_first_binding_error (leaf key : String) (options : Parti
       .error (.file before.length bad.path cause) :=
   Proofs.Formats.Hive.Date32.Manifest.restoreManifest_first_binding_error leaf key options policy limits
     before bad after cause rows admitted done failed
+
+/-- On a fully restored manifest, early partition selection agrees with
+stable filtering of the exact typed rows, including duplicate occurrences. -/
+theorem restoreSelected_eq_filter (leaf key : String) (options : PartitionPath.Options)
+    (policy : Policy) (limits : FlatInt32Writer.Limits)
+    (predicate : Scan.Predicate (partition key).toScan Cell) (files : List File)
+    (rows : Scan.Table ((partition key).extend (physical leaf)) Cell)
+    (restored : restoreManifest leaf key options policy limits files = .ok rows) :
+    restoreSelected leaf key options policy limits predicate files =
+      .ok (Scan.select (fun row => predicate (TypedPartitions.partitionCells row)) rows) :=
+  WritePlan.FlatInt32.RowGroups.restorePruned_eq_filter leaf (partition key) options convert policy limits
+    predicate files rows restored
+
+/-- Path and DATE binding precede the predicate, even if it would reject
+every occurrence. Preserve the original literal path and typed cause. -/
+theorem restoreSelected_first_binding_error (leaf key : String) (options : PartitionPath.Options)
+    (policy : Policy) (limits : FlatInt32Writer.Limits)
+    (predicate : Scan.Predicate (partition key).toScan Cell) (before : List File) (bad : File) (after : List File)
+    (cause : FileError Error) (rows : Scan.Table ((partition key).extend (physical leaf)) Cell)
+    (admitted : checkRead (Failure := Error) leaf (partition key) policy = .ok ())
+    (done : restoreSelected leaf key options policy limits predicate before = .ok rows)
+    (failed : bindFileCells (partition key) options convert bad = .error cause) :
+    restoreSelected leaf key options policy limits predicate (before ++ bad :: after) =
+      .error (.file before.length bad.path cause) :=
+  Proofs.Formats.Hive.Date32.Manifest.restoreSelected_first_binding_error leaf key options policy limits
+    predicate before bad after cause rows admitted done failed
+
+/-- A selected payload failure after an exhausted prefix retains its
+original manifest index, literal path, and exact cause, including any
+indexed row-group error. The remaining occurrences are immaterial. -/
+theorem restoreSelected_first_payload_error (leaf key : String) (options : PartitionPath.Options)
+    (policy : Policy) (limits : FlatInt32Writer.Limits)
+    (predicate : Scan.Predicate (partition key).toScan Cell) (before : List File) (bad : File) (after : List File)
+    (cause : PayloadError) (rows : Scan.Table ((partition key).extend (physical leaf)) Cell)
+    (cells : Scan.Row (partition key).toScan Cell)
+    (admitted : checkRead (Failure := Error) leaf (partition key) policy = .ok ())
+    (done : restoreSelected leaf key options policy limits predicate before = .ok rows)
+    (bound : bindFileCells (partition key) options convert bad = .ok cells)
+    (keep : (predicate cells).getD false = true)
+    (failed : readPayload policy limits leaf bad = .error cause) :
+    restoreSelected leaf key options policy limits predicate (before ++ bad :: after) =
+      .error (.file before.length bad.path (.payload cause)) :=
+  Proofs.Formats.Hive.Date32.Manifest.restoreSelected_first_payload_error leaf key options policy limits
+    predicate before bad after cause rows cells admitted done bound keep failed
 
 end Silmaril.Formats.Hive.Date32

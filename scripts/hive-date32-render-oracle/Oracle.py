@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.dataset as ds
+import pyarrow.parquet as pq
 
 
 CASES = {
@@ -67,9 +68,63 @@ def marker_collision():
     assert partitioning.parse(path + "/").equals(day.is_null())
 
 
+def read_selected(path):
+    return [tuple(None if cell == "null" else int(cell) for cell in row.split("\t"))
+            for row in path.read_text().splitlines()]
+
+
+def pruning_dataset(root):
+    null_path = "day=__HIVE_DEFAULT_PARTITION__/part-0.parquet"
+    leap_path = "day=2024-02-29/part-0.parquet"
+    inventory = [null_path, leap_path, "day=0000-01-01/part-0.parquet",
+                 null_path, "day=9999-12-31/part-0.parquet"]
+    assert (root / "inventory.txt").read_text().splitlines() == inventory
+    partitioning = ds.HivePartitioning(pa.schema([("day", pa.date32())]),
+                                       null_fallback="__HIVE_DEFAULT_PARTITION__", segment_encoding="uri")
+    return ds.dataset([str(root / path) for path in inventory], format="parquet",
+                      partitioning=partitioning, partition_base_dir=str(root))
+
+
+def ordered_rows(dataset, predicate=None):
+    table = dataset.to_table(filter=predicate, columns=["payload", "day"], use_threads=False)
+    return list(zip(table["payload"].to_pylist(), table["day"].cast(pa.int32()).to_pylist(), strict=True))
+
+
+def compare_pruning(root):
+    clean = pruning_dataset(root / "clean")
+    damaged = pruning_dataset(root / "damaged")
+    day = ds.field("day")
+    early = day.is_null() | (day < pa.scalar(0, pa.date32()))
+    through_leap = day.is_null() | (day <= pa.scalar(19782, pa.date32()))
+    full = ordered_rows(clean)
+    for name, predicate, keep in [
+        ("early", early, lambda epoch: epoch is None or epoch < 0),
+        ("through-leap", through_leap, lambda epoch: epoch is None or epoch <= 19782),
+    ]:
+        expected = [row for row in full if keep(row[1])]
+        assert ordered_rows(clean, predicate) == expected == read_selected(root / "clean" / f"{name}.tsv")
+    skipped = ordered_rows(damaged, early)
+    assert skipped == read_selected(root / "damaged" / "early.tsv") == ordered_rows(clean, early)
+
+    leap = pq.ParquetFile(root / "damaged" / "day=2024-02-29" / "part-0.parquet")
+    assert leap.num_row_groups == 2 and leap.read_row_group(0)["payload"].to_pylist() == [1, None]
+    for read in [lambda: leap.read_row_group(1), lambda: ordered_rows(damaged, through_leap)]:
+        try:
+            read()
+        except (pa.ArrowInvalid, OSError):
+            pass
+        else:
+            raise AssertionError("PyArrow accepted the damaged selected second row group")
+    print("PyArrow matched both clean selections and skipped the damaged payload only under the rejecting predicate.")
+
+
 def main():
     assert pa.__version__ == "26.0.1"
     root = Path(sys.argv[1]).resolve()
+    if sys.argv[2:] == ["--pruning"]:
+        compare_pruning(root)
+        return
+    assert len(sys.argv) == 2
     groups = sum(compare(root / name, *case) for name, case in CASES.items())
     marker_collision()
     print(f"PyArrow matched nine literal Parquet paths, {groups} groups, and six safe directory spellings.")
