@@ -123,6 +123,24 @@ Lean and PyArrow streams of the same Parquet groups. Moving the empty
 batch changes the complete observation while preserving the schema and
 the ordered nonempty batches. [Algebra laws][algebra-laws]
 
+### Ordered Scan rows
+
+`Composition.Ipc.Rows.readRows` materializes complete native events as a
+dependent `Scan.Observation`. The ordered schema labels carry the full
+Arrow field descriptors. Repeated names and descriptors occupy distinct
+positions. The adapter returns an ordered table without a named database
+destination. Each aligned batch contributes its declared rows, even when
+there are zero selected columns.
+
+`materialize_project` states that a typed Scan projection and its raw
+IPC positions produce the same schema and ordered nullable cells,
+including exact BinaryView octets. Materialization concatenates batches,
+so batch-sensitive equivalence implies table equivalence. The
+[relational rows oracle][relational-rows-oracle] checks a schema-only
+stream and a stream with the same schema and one explicit zero-row batch.
+They yield the same empty relational table and different complete events.
+[Relational row laws][relational-rows-laws]
+
 ```sh
 lake build --wfail +Silmaril.Formats.Parquet.FlatProjection.Checks
 python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-flat-projection
@@ -137,3 +155,5 @@ python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-fl
 [ipc-event-oracle]: ../../scripts/parquet-flat-projection-ipc-events-oracle/check.py
 [algebra-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Ipc/Algebra/Thms.lean
 [algebra-oracle]: ../../scripts/parquet-flat-ipc-observation-algebra-oracle/check.py
+[relational-rows-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Ipc/Rows/Thms.lean
+[relational-rows-oracle]: ../../scripts/parquet-flat-ipc-relational-rows-oracle/check.py
