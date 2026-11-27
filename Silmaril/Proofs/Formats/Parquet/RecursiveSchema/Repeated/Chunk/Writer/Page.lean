@@ -83,8 +83,7 @@ public theorem state_counts {limits : Repeated.Chunk.Limits} {input : Input} {ou
       input.start.rows + (input.atoms.map (·.levels)).countP Repeated.Chunk.LevelSlot.startsRow =
         output.after.rows := by
   obtain ⟨page, _, wire, levels, _, after⟩ := accepted.exact
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, slots, _⟩ := wire.original
-  simpa [levels, after] using slots.counts
+  simpa [levels, after] using wire.counts
 
 public theorem emit_wire {limits : Repeated.Chunk.Limits} {input : Input} {output : Output}
     (written : emit limits input = .ok output) :

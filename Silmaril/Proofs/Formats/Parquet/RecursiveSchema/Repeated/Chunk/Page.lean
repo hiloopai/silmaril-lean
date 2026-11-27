@@ -3,6 +3,9 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Thms
 import Silmaril.Formats.Parquet.Page.Checksum.Thms
+import Silmaril.Formats.Parquet.Payload.Thms
+import Silmaril.Formats.Parquet.FlatColumn.Zstd.Thms
+import Silmaril.Formats.Parquet.ScalarPage.BrotliRaw.Thms
 import Silmaril.Formats.Parquet.FlatPage.Thms
 import Silmaril.Formats.Parquet.Hybrid.Thms
 import Silmaril.Formats.Parquet.Plain.Thms
@@ -104,16 +107,81 @@ public theorem original_levels {leaf : Leaf} {ceiling : Nat} {reps defs : List N
   | nil => simp
   | cons _ _ _ _ ih => simp [ih.1, ih.2]
 
-private theorem checked_payload {maxBytes : Nat} {source : Bytes} {frame : Page.Frame}
+private theorem checked_extent {maxBytes : Nat} {source : Bytes} {frame : Page.Frame}
     {checksum : Page.Checksum.Status}
     (checked : Page.Checksum.verify maxBytes source frame = .ok checksum) :
-    source.slice? frame.payload.start (some frame.payload.stop) =
-      some (Page.Checksum.payloadBytes source frame) ∧
-      (Page.Checksum.payloadBytes source frame).length = frame.value.compressedSize := by
-  apply Page.Checksum.payload_exact
+    frame.value.compressedSize ≤ maxBytes ∧ Page.Checksum.PayloadWithin source frame := by
   cases checksum with
-  | absent => exact (Page.Checksum.verify_absent_iff.mp checked).2.1
-  | valid crc => exact (Page.Checksum.verify_valid_iff.mp checked).2.1
+  | absent => exact let h := Page.Checksum.verify_absent_iff.mp checked; ⟨h.1, h.2.1⟩
+  | valid crc => exact let h := Page.Checksum.verify_valid_iff.mp checked; ⟨h.1, h.2.1⟩
+
+public theorem decodePayload_wire {limits : Limits} {codec : ColumnCodec} {bounds : Payload.Bounds}
+    {stored body : Bytes} (read : decodePayload limits codec bounds stored = .ok body) :
+    CodecWire limits codec bounds stored body ∧
+      stored.length = bounds.compressedSize ∧ stored.length ≤ bounds.compressedLimit ∧
+      body.length = bounds.expectedSize ∧ body.length ≤ bounds.outputLimit := by
+  unfold decodePayload at read
+  split at read
+  · rename_i brotli
+    cases config : limits.brotliRaw with
+    | none => simp [config] at read
+    | some profile =>
+      cases decoded : ScalarPage.BrotliRaw.decodePayload profile bounds stored.toList with
+      | error => simp [config, decoded, Except.mapError, Except.map] at read
+      | ok bytes =>
+        simp only [config, decoded, Except.mapError, Except.map, Except.ok.injEq] at read
+        subst body
+        have witness := ScalarPage.BrotliRaw.decodePayload_sound decoded
+        have sizes := witness
+        obtain ⟨inputSize, inputCap, outputSize, outputCap, _⟩ := sizes
+        refine ⟨?_, by simpa using inputSize, by simpa using inputCap,
+          by simpa using outputSize, by simpa using outputCap⟩
+        simpa [CodecWire, brotli, config] using witness
+  · rename_i notBrotli
+    split at read
+    · rename_i zstd
+      cases decoded : FlatColumn.Zstd.decodePayload limits.zstd bounds codec.id stored.toList with
+      | error => simp [decoded, Except.mapError, Except.map] at read
+      | ok bytes =>
+        simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
+        subst body
+        have witness := FlatColumn.Zstd.decodePayload_sound decoded
+        have sizes := witness
+        obtain ⟨inputSize, inputCap, outputSize, outputCap, _⟩ := sizes
+        simpa [CodecWire, notBrotli, zstd] using
+          And.intro witness (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
+    · rename_i other
+      cases decoded : Payload.decode bounds codec.id stored.toList with
+      | error => simp [decoded, Except.mapError, Except.map] at read
+      | ok bytes =>
+        simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
+        subst body
+        obtain ⟨selected, id, model, inputSize, inputCap, outputSize, outputCap⟩ := Payload.decode_sound decoded
+        have original : selected = codec.payload := by
+          simpa only [ColumnCodec.id, Payload.Codec.ofId_id, Option.some.injEq] using id.symm
+        subst selected
+        simpa [CodecWire, notBrotli, other] using
+          And.intro model (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
+
+public theorem readV1Body_wire {limits : Limits} {codec : ColumnCodec} {source : Bytes}
+    {frame : Page.Frame} {body : Bytes}
+    (sizes : (codec == ColumnCodec.uncompressed) = true →
+      frame.value.uncompressedSize = frame.value.compressedSize)
+    (read : readV1Body limits codec source frame = .ok body) :
+    V1BodyWire limits codec source frame body := by
+  unfold readV1Body at read
+  obtain ⟨checksum, checked, read⟩ := bind_ok read
+  have verified := from_mapError checked
+  obtain ⟨cap, geometry⟩ := checked_extent verified
+  obtain ⟨stored, storedSize⟩ := Page.Checksum.payload_exact geometry
+  refine ⟨_, checksum, verified, stored, storedSize, storedSize.symm ▸ cap, ?_⟩
+  cases codec
+  case uncompressed =>
+    cases Except.ok.inj read
+    exact ⟨storedSize.trans (sizes rfl).symm, storedSize.symm ▸ cap, Payload.Decodes.uncompressed _, by simp⟩
+  all_goals
+    obtain ⟨model, _, _, bodySize, bodyCap⟩ := decodePayload_wire read
+    exact ⟨bodySize, bodyCap, model, fun _ => read⟩
 
 public theorem decodeSlots_wire {leaf : Leaf} {reps defs : List Nat} {suffix : Bytes}
     {start : State} {rowCeiling : Nat} {decoded : DecodedPage}
@@ -130,25 +198,32 @@ public theorem decodeSlots_wire {leaf : Leaf} {reps defs : List Nat} {suffix : B
   exact ⟨classifySlots_wire levelRead, words, exactWords, wordCount, width, mask,
     positions.trans ordered⟩
 
-public theorem decodePage_wire {limits : Limits} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodePage limits leaf source frame start remaining rowCeiling = .ok decoded) :
-    PageWire limits leaf source frame start remaining rowCeiling decoded := by
-  unfold decodePage at read
+public theorem decodeV1Page_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeV1Page limits codec leaf source frame start remaining rowCeiling = .ok decoded) :
+    PageWire limits leaf source frame start remaining rowCeiling decoded codec := by
+  unfold decodeV1Page at read
   obtain ⟨info, header, read⟩ := bind_ok read
-  obtain ⟨checksum, checked, read⟩ := bind_ok read
+  obtain ⟨body, decodedBody, read⟩ := bind_ok read
   obtain ⟨reps, repRead, read⟩ := bind_ok read
   obtain ⟨defs, defRead, read⟩ := bind_ok read
-  have verified := from_mapError checked
-  obtain ⟨payload, bodySize⟩ := checked_payload verified
+  obtain ⟨kind, encodings, cap, sizes⟩ :=
+    RecursiveSchema.Chunk.admitPageWith_wire (from_mapError header)
   obtain ⟨repetition, repCount⟩ := levels_wire (from_mapError repRead)
   obtain ⟨definition, _⟩ := levels_wire (from_mapError defRead)
-  obtain ⟨slots, words, exactWords, wordCount, width, mask, ordered⟩ := decodeSlots_wire read
+  have decodedWire := decodeSlots_wire read
   have count : decoded.levels.length = info.numValues := by
-    simpa only [List.length_map, repCount] using congrArg List.length (original_levels slots).1
-  exact ⟨info, Page.Checksum.payloadBytes source frame, reps, defs, words, checksum,
-    RecursiveSchema.Chunk.admitPage_wire (from_mapError header), verified, payload, bodySize,
-    repetition, definition, slots, exactWords, wordCount, width, mask, ordered, count⟩
+    simpa only [List.length_map, repCount] using congrArg List.length (original_levels decodedWire.slots).1
+  exact ⟨info, body, reps, defs, kind, encodings, cap, readV1Body_wire sizes decodedBody,
+    repetition, definition, decodedWire, count⟩
+
+public theorem v1_state_counts {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : PageWire limits leaf source frame start remaining rowCeiling decoded codec) :
+    start.slot + decoded.levels.length = decoded.after.slot ∧
+      start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, slots, _⟩ := wire.original
+  exact slot_counts slots.slots
 
 public theorem rejects_closed_continuation {leaf : Leaf} {ceiling rep defn : Nat}
     {reps defs : List Nat} {start : State} {slot : Slot}

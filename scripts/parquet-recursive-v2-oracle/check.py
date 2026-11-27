@@ -31,10 +31,11 @@ Page, Column = CHUNK["Page"], CHUNK["Column"]
 LEAN = CHUNK["LEAN"] + """\
 
 private def spans (file : Bytes) (group column : Nat)
-    (wanted : List (Option (Parquet.Page.DataV2 × Parquet.Page.V2Spans))) : IO Unit := do
+    (wanted : List (Option (Parquet.Page.DataV2 × Parquet.Page.V2Spans))) (limits : Limits := {}) :
+    IO Unit := do
   let source ← take (openFile {} file)
-  let binding ← take (bindChunk source.schema group column)
-  let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read {} binding)
+  let binding ← take (bindChunk source.schema group column limits)
+  let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read limits binding)
   let original := seen.pages.map fun page =>
     match page.frame.value.kind with
     | .dataV2 info => page.frame.v2Spans.map (fun regions => (info, regions))
@@ -119,17 +120,25 @@ def schema_term(fields):
         fields.get(7, (None, True))[1]).lower() + "⟩"
 
 
-def capture(wire, schema, rows):
+def snappy_block(codec, stored, size):
+    assert codec == 1
+    return pa.Codec("snappy").decompress(stored, size).to_pybytes()
+
+
+def capture(wire, schema, rows, *, codec=0, decode_block=snappy_block):
     _, leaves = SCHEMA["describe"](wire, schema, rows)
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     for (group, index), metadata, start, stop in columns(wire):
+        column_codec = metadata[4][1] if codec is None else codec
+        assert column_codec in (0, 1, 2, 4, 6, 7) and metadata[4][1] == column_codec
         (_, path), scalar, steps, repeated = leaves[index]
         group_rows = parquet.read_row_group(group).to_pylist()
         expected = [event for row in group_rows
                     for event in CHUNK["from_arrow"](row[path[0]], schema.field(path[0]), path[1:])]
-        slot, row, live, seen, v2 = 0, 0, False, [], []
+        slot, row, raw_size, live, seen, v2 = 0, 0, 0, False, [], []
         for ordinal, (header, fields, payload, body) in enumerate(FRAMES(wire, start, stop)):
-            assert fields[2][1] == fields[3][1] == len(body)
+            assert fields[3][1] == len(body)
+            raw_size += payload - header + fields[2][1]
             crc = fields[4][1] & 0xffffffff if 4 in fields else None
             if crc is not None:
                 assert crc == zlib.crc32(body)
@@ -149,14 +158,21 @@ def capture(wire, schema, rows):
                 rep = raw_levels(body[:rl], int(repeated is not None))
                 defs = raw_levels(body[rl:scalar_at], len(steps))
                 values = body[scalar_at:]
+                raw_values = fields[2][1] - scalar_at
+                assert raw_values >= 0
+                if column_codec != 0 and info.get(7, (None, True))[1]:
+                    values = decode_block(column_codec, values, raw_values)
+                assert len(values) == raw_values
                 assert not rep or rep[0] == 0
                 assert rep.count(0) == rows_on_page and sum(d != len(steps) for d in defs) == nulls
                 v2.append(f"(some ({schema_term(info)}, ⟨⟨{payload}, {payload+rl}⟩, "
                           f"⟨{payload+rl}, {payload+scalar_at}⟩, ⟨{payload+scalar_at}, {payload+len(body)}⟩⟩))")
             else:
                 assert tag == 0
+                raw = body if column_codec == 0 else decode_block(column_codec, body, fields[2][1])
+                assert len(raw) == fields[2][1]
                 count = fields[5][1][1][1]
-                rep, rest = CHUNK["level_section"](body, int(repeated is not None), count)
+                rep, rest = CHUNK["level_section"](raw, int(repeated is not None), count)
                 defs, values = CHUNK["level_section"](rest, len(steps), count)
                 v2.append("none")
             fmt = "<i" if scalar.type.bit_width == 32 else "<q"
@@ -176,7 +192,7 @@ def capture(wire, schema, rows):
             seen.append(Page(ordinal, header, payload, payload + len(body), crc, before,
                              (slot, row, live), events))
         assert seen[-1].stop == stop and metadata[5][1] == slot == len(expected)
-        assert metadata[6][1] == metadata[7][1] == stop - start and metadata[4][1] == 0
+        assert metadata[6][1] == raw_size and metadata[7][1] == stop - start
         assert row == len(group_rows)
         yield Column(group, index, path, scalar.type.bit_width, start, stop, slot, row, steps, seen), v2
 
@@ -333,9 +349,8 @@ def main():
             page_error(label, cause, group=0, ordinal=3, state=f"⟨4, 3, {live}⟩",
                        path='["items", "list", "element"]')
         code.extend([
-            f'  bindFailure (← load folder "snappy") 0 0 (.column ⟨0, 0, {leaf_path}⟩ (.codec 1))',
             f'  bindFailure (← load folder "indexed") 0 0 (.column ⟨0, 0, {leaf_path}⟩ .pageIndex)',
-            '  deny (.original (.snapshot (.invalidMetadata .pageInterval))) (openFile {} (← load folder "pageless_zero"))',
+            '  deny (.invalidMetadata .pageInterval) (Parquet.Snapshot.check (Failure := Unit) {} (← load folder "pageless_zero"))',
         ])
         fields, groups, _ = BRIDGE["observed"](files["nested"], limit=1)
         bridge.extend([
@@ -366,7 +381,7 @@ def main():
                     "lean_ipc": fingerprints(returned)}
         for kind, values in captured.items():
             assert values == pins[kind], f"{kind} fixture pins changed"
-    print("Checked native V2 pages, direct Events, exact IPC and seventeen typed source refusals")
+    print("Checked native V2 pages, direct Events, exact IPC and sixteen typed source refusals")
 
 
 if __name__ == "__main__":

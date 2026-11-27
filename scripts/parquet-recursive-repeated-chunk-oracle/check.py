@@ -62,9 +62,9 @@ private def deny {ε α : Type} [DecidableEq ε] [Repr ε] (wanted : ε) (result
 private def check (file : Bytes) (limits : Limits) (group column : Nat) (path : List String)
     (slots rows start stop : Nat) (expected : List ExpectedPage) : IO Unit := do
   let source ← take (openFile {} file)
-  let binding ← take (bindChunk source.schema group column)
-  unless binding.leaf.site.location.path = path ∧ binding.span.start = start ∧
-      binding.span.stop = stop ∧ binding.chunk.metadata.numValues = Int.ofNat slots ∧
+  let binding ← take (bindChunk source.schema group column limits)
+  unless binding.leaf.site.location.path = path ∧ binding.span? = some ⟨start, stop⟩ ∧
+      binding.chunk.metadata.numValues = Int.ofNat slots ∧
       binding.rowGroup.numRows = Int.ofNat rows do
     throw (IO.userError s!"original binding differs at ({group}, {column})")
   let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read limits binding)
@@ -81,7 +81,7 @@ private def check (file : Bytes) (limits : Limits) (group column : Nat) (path : 
 private def refuse (file : Bytes) (group column : Nat) (limits : Limits) (wanted : Error) :
     IO Unit := do
   let source ← take (openFile {} file)
-  let binding ← take (bindChunk source.schema group column)
+  let binding ← take (bindChunk source.schema group column limits)
   deny wanted (Parquet.RecursiveSchema.Repeated.Chunk.read limits binding)
 
 private def checkLongList (file : Bytes) : IO Unit := do

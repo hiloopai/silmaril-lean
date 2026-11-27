@@ -2089,12 +2089,11 @@ The continuation cannot jump back to its own label.
   the untyped elaboration. The typed elaboration runs it and checks the
   result against the capture context, a packet type for every block and
   the exit types, and given that check it returns the same graph with
-  its typing. That check on the elaborated graph is the one typed
-  hypothesis that remains; it is evaluated on both diamonds, and a wrong
-  packet type fails it though the scope checks hold. No theorem derives
-  it from types on the φ graph: a packet type has to type the φ operands
-  of its block and every register of the record, and there is no typing
-  judgement for φ graphs here to state that against. The default
+  its typing. In this item that check on the elaborated graph is a
+  hypothesis, and a wrong packet type fails it though the scope checks
+  hold. The later items give a typing certificate on the φ graph and
+  derive the check from it, at packet types computed from the φ rows and
+  the record. The default
   elaborator is unchanged, and a φ graph with an explicit injection is
   outside the fragment and does not elaborate.
   [Source checks](../../Silmaril/SSA/Isotope/Bridge/NamedFlat/Elaborates/Defs.lean) ·
@@ -2123,11 +2122,11 @@ The continuation cannot jump back to its own label.
   record and the payload has the declared type of the label. Both are
   for any typing of the versioned names in which the current version of
   every source register has its declared type. The typed elaboration is
-  not derived. The remaining statement is recorded as an open
-  proposition with its conditional theorems: the elaborated lowering of
-  a certified graph passes the typing check at the computed packet
-  types, when the capture context has the declared types of the
-  captures. It needs three things: that the versioned bodies keep the
+  not derived in this item. The statement to prove is that the
+  elaborated lowering of a certified graph passes the typing check at
+  the computed packet types, when the capture context has the declared
+  types of the captures; the following items prove it in three parts. It
+  needs three things: that the versioned bodies keep the
   current versions at their declared types, binder by binder, which the
   next item proves; that a versioned block, which takes its packet apart
   and unpacks the φ operands and the record, restores that state from
@@ -2166,11 +2165,11 @@ The continuation cannot jump back to its own label.
   operands and unpacks the record, and the names it binds there hold the
   rest of a tuple. The theorem is stated for any typing that is
   canonical from some depth on, so that a typing of the block can use it
-  after the prefix. Two parts of the open statement remained: the prefix
+  after the prefix. Two parts of the statement remained: the prefix
   of a versioned block from the computed packet type, which the next
   item proves, and the transport of the named typing to the typing check
   of the elaborated graph. The
-  open statement itself was probed for a missing hypothesis, with a
+  statement itself was probed for a missing hypothesis, with a
   capture bound again, repeated captures, the packet register as a
   capture, a φ destination that is also a capture and a binder, repeated
   block labels and row destinations, an exit label that is also a block,
@@ -2204,9 +2203,10 @@ The continuation cannot jump back to its own label.
   registers of a record need not be distinct, and the φ destinations
   need not be distinct or apart from the record or from the binders of
   the body: every binder of the prefix has its own version, and a name
-  is a register with a version. The one part of the open statement that
-  remains is the transport from the named typing of the versioned entry
-  and blocks to the typing check of the elaborated positional graph. On
+  is a register with a version. The one part of the statement that
+  remained is the transport from the named typing of the versioned entry
+  and blocks to the typing check of the elaborated positional graph,
+  which the next item proves. On
   the diamonds, with both tables and with explicit rows, every versioned
   block is typed by the theorem; a graph in which one register is a
   capture, the φ destination of a block, a register of its record and a
@@ -2214,6 +2214,116 @@ The continuation cannot jump back to its own label.
   [Block typing](../../Silmaril/SSA/Isotope/Bridge/NamedFlat/Phi/SourceTyping/Defs.lean) ·
   [Whole blocks](../../Silmaril/SSA/Isotope/Bridge/NamedFlat/Phi/SourceTyping/Thms.lean) ·
   [Diamonds and overlapping names](../../Silmaril/Proofs/SSA/Isotope/Bridge/Acyclic/Positional/Capture/Composition/LetCase/Handled/Institution/AtomNamedDiamondRegression.lean)
+- The typed elaboration of a certified φ graph is proved, and the open
+  statement is replaced by a theorem. The elaborated lowering of a
+  certified graph passes the typing check at the computed packet types,
+  when the capture context has the declared types of the captures. The
+  missing part was the transport from names to positions. A positional
+  context agrees with a typing of names when every position that a name
+  is sent to has the type of the name. The captures give such a context
+  for the entry and the packet gives one for a block. A binder adds the
+  newest slot at the type of its name and moves the older names one
+  slot, so the agreement is kept under every binder, and a name that is
+  bound again gets a newer slot of the same type. Under an agreement an
+  elaborated value has the type of the value, an elaborated primitive is
+  applied at its source type, and an elaborated body that is typed by
+  name passes the positional check, when each indexed label has the type
+  of the label. The index of a label is the first block with that label,
+  and otherwise the first position of the label among the exits; the
+  type at that index is the computed packet type of that block, or the
+  declared type of the label, which is what a jump to the label carries.
+  These are proved from the equations of the elaboration, and the entry
+  and the blocks are then the two theorems of the previous items. The
+  typed elaboration returns the elaborated graph at the computed packet
+  types, and with the theorem on closed tables no elaboration is run or
+  assumed: for a closed table, a graph in the fragment, a certified
+  normalized graph and captures that cover the inputs at their declared
+  types, the typed elaboration succeeds. Overlapping names and name
+  lookup do not invalidate the statement, and no hypothesis was added:
+  typing is by name, a name has one type, and the positional context
+  follows the names. On the diamonds, with the inferred table and with
+  explicit rows, the typing check of the elaborated graph is now a
+  consequence of the certificate and is not evaluated, also at the
+  packet types written by hand, which are equal to the computed ones;
+  the two graphs with overlapping names are treated the same way. In
+  this item the certificate is evaluated on the normalized graph; the
+  next item shows that the normalization keeps it. The default
+  elaborator is unchanged.
+  [From names to positions](../../Silmaril/SSA/Isotope/Bridge/NamedFlat/Phi/SourceTyping/Thms.lean) ·
+  [Proofs](../../Silmaril/Proofs/SSA/Isotope/Bridge/NamedFlat/Phi/SourceTyping.lean) ·
+  [Diamonds by proof](../../Silmaril/Proofs/SSA/Isotope/Bridge/Acyclic/Positional/Capture/Composition/LetCase/Handled/Institution/AtomNamedDiamondRegression.lean)
+- The forwarding normalization keeps the typing certificate, for any
+  table, with each copy at the declared type of its register. No
+  condition is needed: not closedness, not the fragment, and no
+  compatibility of forwarded operands with their destinations, so there
+  is no counterexample to the plain statement. The normalization changes
+  three things and reorders nothing. The reads of a body are renamed by
+  the reader of its block, and each φ operand of an original row by the
+  reader of its predecessor; a reader sends a register to itself or to a
+  copy of it, which has the same declared type, so operands, payloads
+  and φ operands keep their types, and the binders are unchanged. After
+  the original rows of a block, in the order of the table, there is one
+  new row for each register the block receives, with one operand for
+  each listed predecessor: the register as that predecessor reads it,
+  which has the type of the copy. The one fact about the graph that the
+  proof uses is that the entry or block that runs a body is a listed
+  predecessor of every block the body jumps to; otherwise the operand of
+  a copy row would be the unit default. That holds by the definition of
+  the predecessors, also when two blocks have the same label. The local
+  statement is for one body and is exported. With the theorem of the
+  previous item this gives the typed elaboration from checks on the
+  original graph and the table: the table is closed, the graph is in the
+  fragment and certified, and the captures cover the inputs at their
+  declared types. With the inferred table everything is a check on the
+  original graph: the scope check with arrival claims, the condition on
+  claims, a rank, the fragment and the typing certificate. On the direct
+  diamond and the changed-operand variant the certificate is evaluated
+  on the direct graph only, for both tables, and the typed elaboration
+  follows with no elaboration run or assumed. The packet types are still
+  those computed on the normalized graph; nothing here relates them to
+  types computed on the original graph, whose blocks receive no copies.
+  [Certificate preservation](../../Silmaril/SSA/Isotope/Bridge/NamedFlat/Phi/SourceTyping/Thms.lean) ·
+  [Proofs](../../Silmaril/Proofs/SSA/Isotope/Bridge/NamedFlat/Phi/SourceTyping.lean) ·
+  [Diamonds from source checks](../../Silmaril/Proofs/SSA/Isotope/Bridge/Acyclic/Positional/Capture/Composition/LetCase/Handled/Institution/AtomNamedDiamondRegression.lean)
+- One semantic square goes from the original φ graph to its compiled
+  program, from checks on the original graph only. On one side is the
+  independent φ evaluator of the original graph, which reads every φ
+  operand in the store of the predecessor, observed at the declared
+  exits in their order. On the other is the typed packed program of the
+  elaborated lowering of the normalized graph, run on the supplied input
+  record. They are equal as trees in every model of the primitives. The
+  square composes existing theorems and proves no denotation again: the
+  forwarding normalization keeps the φ run; the lowering and versioning
+  make it the lexical run of a named graph; the named elaboration keeps
+  that run at the numbered exits; and the packed program of a typed
+  elaborated graph runs as the graph does on the decoded captures. The
+  last three are the steps of the existing theorem for admissions of φ
+  graphs at the live-out exit interface. That theorem takes the
+  elaboration and its typing as fields of an admission, and its exits
+  carry a payload with a live-out record, so it does not apply to exits
+  of other types and it starts from compiler output. The same steps are
+  composed here at any exit types, and the elaboration and its typing
+  are obtained from the source by the earlier items. With the inferred
+  table the hypotheses are the scope check with arrival claims, the
+  condition on claims, a rank, the fragment, the typing certificate, and
+  captures that cover the inputs at their declared types; there is also
+  a form for any closed table under which no block defines a register it
+  receives. Typing and semantics stay apart: the certificate is used only to
+  have a typing of the elaborated graph, which the typed packed program
+  needs, and the steps on runs use no typing. The tree semantics is
+  stated one universe above the enumerations of the atom regressions, so
+  the two direct diamonds are declared again at that universe, with the
+  same blocks, rows, claims, rank and types, and the square is
+  instantiated on both, with the inferred table and with a table written
+  by hand; nothing is evaluated on a normalized, lowered or elaborated
+  graph. The square is not connected here to the ranked institution of
+  the atom regressions, whose arrows are about the table read back from
+  the elaborated graph: that needs the existing readback of that table
+  to be related to the packed program at this interface, which is a
+  separate statement.
+  [The source square](../../Silmaril/SSA/Isotope/Bridge/NamedFlat/Phi/SourceSemantics/Thms.lean) ·
+  [Proofs](../../Silmaril/Proofs/SSA/Isotope/Bridge/NamedFlat/Phi/SourceSemantics.lean) ·
+  [Both diamonds](../../Silmaril/Proofs/SSA/Isotope/Bridge/NamedFlat/Phi/SourceSemanticsRegression.lean)
 - At fixed source syntax, value context, and exits, lifting all target
   denotation witnesses up to equality of transported arrows is equivalent
   to reflection of region typing. Once the source judgement is typable,

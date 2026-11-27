@@ -1,0 +1,81 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "nested_snappy": {
+      "bytes": 2356,
+      "sha256": "b01fe3208b59f7603006652f5ceb6adbcc9a8abc7090a8ddedb47df41159ce09"
+    },
+    "mixed_snappy": {
+      "bytes": 2504,
+      "sha256": "f2cdaea9d19942ec1f67253e6495126c6ee1569401b21f527b666c8b2130723b"
+    },
+    "v1_snappy": {
+      "bytes": 976,
+      "sha256": "3322ea183d1a956e4d4690420dc9dadda8c757eda55ed843ba04763a377687d8"
+    },
+    "pageless_snappy": {
+      "bytes": 1735,
+      "sha256": "52479f10bc13a56a040ccb3d271075eee99216301889457b30466294187ed84f"
+    },
+    "gzip_v2": {
+      "bytes": 977,
+      "sha256": "1c5f12b6b0d7e1991f169c7c46a1ce2142a991d158497490dce7f5e2f56cf215"
+    }
+  },
+  "labeled_edits": {
+    "omitted": {
+      "bytes": 2361,
+      "sha256": "9066b645ec1c6e287f1a2af9b61392a5d408df4bff2ded21194276016c0b1235"
+    },
+    "trailing": {
+      "bytes": 2363,
+      "sha256": "d210c8687fe5b889418690a40a71e055c69037afc16919aaaa79571508e3b149"
+    },
+    "truncated": {
+      "bytes": 2341,
+      "sha256": "9629dbbf59bc16a2354ca91dd69079e01d9953db1dc9e32a6b68940236b8e6ee"
+    },
+    "short_output": {
+      "bytes": 2341,
+      "sha256": "9a0cf819860b8103c271ee04c3f72028b21e79d2a7538dccaf7809c347478d21"
+    },
+    "wrong_raw_size": {
+      "bytes": 2362,
+      "sha256": "fb442ea1f0945ecc961191b942ddb090cdd7f31c974fe53d270efcddc6fa1ec1"
+    },
+    "bad_crc": {
+      "bytes": 2362,
+      "sha256": "e5317c5c5d7708b4fc7ae82d5e1665fd9a0061655c6c676e174127428726d869"
+    },
+    "crc_over_decoded": {
+      "bytes": 2361,
+      "sha256": "b61d0ff7d21344d9d726232d7bf7581b23c8c7cada97cf345e4cebcd69d0ed93"
+    },
+    "bad_extent": {
+      "bytes": 2361,
+      "sha256": "d0be318a73cb6e2e28a26b69648f0636d753f2e990477ad5b61664308e325744"
+    },
+    "wrong_chunk_total": {
+      "bytes": 2356,
+      "sha256": "01cff8aea5537bde580ef530e17755642d846c1963988e3367feff1d27e6241e"
+    }
+  },
+  "lean_ipc": {
+    "nested_snappy": {
+      "bytes": 3992,
+      "sha256": "2a9f0548ca9576078713f7150cfdf8426684dcaa7ec47c39e284760778638eb7"
+    },
+    "mixed_snappy": {
+      "bytes": 3992,
+      "sha256": "2a9f0548ca9576078713f7150cfdf8426684dcaa7ec47c39e284760778638eb7"
+    },
+    "omitted": {
+      "bytes": 3992,
+      "sha256": "2a9f0548ca9576078713f7150cfdf8426684dcaa7ec47c39e284760778638eb7"
+    }
+  }
+}

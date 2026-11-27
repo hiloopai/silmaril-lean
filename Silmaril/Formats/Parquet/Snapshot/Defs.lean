@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Formats.Parquet.Footer.Defs
 public import Silmaril.Formats.Parquet.Footer.PageLessInt32.Defs
-public import Silmaril.Formats.Parquet.Footer.PageLessTimestamp.Defs
+public import Silmaril.Formats.Parquet.Footer.PageLessRecursive.Defs
 public import Silmaril.Formats.Parquet.Reader.Defs
 
 /-! Bind a finite immutable Parquet byte snapshot to a typed Arrow reader.
@@ -38,11 +38,12 @@ structure Checked where
   metadata : Footer.Metadata
   private groups : Array Footer.RowGroup
   private pageLessTimestamp : Bool
+  private pageLessRecursive : Bool
 
 def check {Failure : Type*} (limits : Limits) (bytes : Bytes) : Except (Error Failure) Checked := do
   let (footer, metadata) ← (Footer.readFooter limits.footer bytes).mapError .footer
   (Footer.validate footer.start limits.maxSchemaDepth metadata).mapError .invalidMetadata
-  pure ⟨bytes, footer, metadata, metadata.rowGroups.toArray, false⟩
+  pure ⟨bytes, footer, metadata, metadata.rowGroups.toArray, false, false⟩
 
 /-- Explicitly admit the pinned zero-page INT32 convention. Retain the original
 unfiltered metadata and bytes in footer order. -/
@@ -50,17 +51,40 @@ def checkPageLessInt32 (limits : Limits) (bytes : Bytes) :
     Except Footer.PageLessInt32.Error Checked := do
   let (footer, metadata) ← (Footer.readFooter limits.footer bytes).mapError .footer
   Footer.PageLessInt32.validate limits.footer limits.maxSchemaDepth bytes footer metadata
-  pure ⟨bytes, footer, metadata, metadata.rowGroups.toArray, false⟩
+  pure ⟨bytes, footer, metadata, metadata.rowGroups.toArray, false, false⟩
 
 /-- An exact zero-byte TIMESTAMP group is available only through this profile. -/
 def checkPageLessTimestamp (limits : Limits) (bytes : Bytes) :
     Except Footer.PageLessTimestamp.Error Checked := do
   let (footer, metadata) ← (Footer.readFooter limits.footer bytes).mapError .footer
   Footer.PageLessTimestamp.validate limits.footer limits.maxSchemaDepth bytes footer metadata
-  pure ⟨bytes, footer, metadata, metadata.rowGroups.toArray, true⟩
+  pure ⟨bytes, footer, metadata, metadata.rowGroups.toArray, true, false⟩
 
 def Checked.admitsPageLessTimestamp (snapshot : Checked) (group : Footer.RowGroup) : Bool :=
   snapshot.pageLessTimestamp && Footer.PageLessTimestamp.isPageLess group
+
+inductive RecursiveError where
+  | original (cause : Error Unit)
+  | pageLess (cause : Footer.PageLessRecursive.Error)
+  deriving DecidableEq, Repr
+
+/-- Retain ordinary strict admission. Only a failed strict interval check with
+an exact typed empty-group candidate can enter the raw no-page policy. -/
+def checkRecursive (limits : Limits) (bytes : Bytes) : Except RecursiveError Checked := do
+  let (footer, metadata) ← (Footer.readFooter limits.footer bytes).mapError
+    (fun error => .original (.footer error))
+  match Footer.validate footer.start limits.maxSchemaDepth metadata with
+  | .ok () =>
+    return ⟨bytes, footer, metadata, metadata.rowGroups.toArray, false, false⟩
+  | .error reason =>
+    if reason ≠ .pageInterval ||
+        !metadata.rowGroups.any Footer.PageLessRecursive.isPageLess then
+      throw (.original (.invalidMetadata reason))
+    (Footer.PageLessRecursive.validate limits.footer limits.maxSchemaDepth bytes footer metadata).mapError .pageLess
+    return ⟨bytes, footer, metadata, metadata.rowGroups.toArray, false, true⟩
+
+def Checked.admitsPageLessRecursive (snapshot : Checked) (group : Footer.RowGroup) : Bool :=
+  snapshot.pageLessRecursive && Footer.PageLessRecursive.isPageLess group
 
 def Checked.groupCount (snapshot : Checked) : Nat := snapshot.groups.size
 

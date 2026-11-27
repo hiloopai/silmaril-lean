@@ -36,7 +36,7 @@ private structure SchemaGroup where
 
 /-- Extract ordered physical leaves from a checked depth-first schema. The root
 name is omitted from column paths. The legacy required root marker is admitted. -/
-private def schemaLeaves (maxDepth : Nat) (schema : List SchemaElement) :
+def schemaLeaves (maxDepth : Nat) (schema : List SchemaElement) :
     Except ValidationError (List (List String × PhysicalType)) := do
   let root :: nodes := schema | throw .schema
   let some count := root.numChildren | throw .schema

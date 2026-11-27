@@ -63,12 +63,49 @@ a register with a version. A typing by name can go wrong only if one
 name is bound at two types, and the versioning never binds a name twice
 in a block.
 
-What remains for the typed elaboration is `Task.certifiedChecks`. One
-thing is not proved: that the elaboration to positional terms turns the
-named typing of the versioned entry and blocks into the typing check of
-the elaborated graph. Given the open statement, the typed elaboration
-returns the elaborated graph at the computed packet types; with the
-theorem on closed tables no elaboration is assumed.
+The elaboration replaces names by positions, and it keeps the typing. A
+positional context agrees with a typing of names when every position
+that a name is sent to has the type of the name. The captures give such
+a context for the entry, when the capture context has the declared types
+of the captures; the packet gives one for a block. A binder adds the
+newest slot at the type of its name and moves the older names one slot,
+so the agreement is kept under every binder; a name that is bound again
+simply gets a newer slot of the type of the name. An elaborated value
+then has the type of the value, an elaborated primitive is applied at
+its source type, and an elaborated jump carries a value of the type of
+its index. The index of a label is the first block with that label, and
+otherwise the first position of the label among the exits; the type at
+that index is the computed packet type of that block, or the declared
+type of the label, which is the type that a jump to the label carries.
+
+So the elaborated lowering of a certified φ graph passes the typing check
+at the computed packet types, when the capture context has the declared
+types of the captures. The typed elaboration returns the elaborated
+graph; with the theorem on closed tables no elaboration is assumed, and
+every hypothesis is a check on the φ graphs.
+
+Nothing about names is assumed beyond the certificate. Overlapping names
+do not invalidate the statement: typing is by name, a name has one type,
+and the positional context follows the names through every binder.
+
+The forwarding normalization keeps the certificate, for any table, with
+the copies at the declared types of their registers. It changes three
+things and reorders nothing. The reads of a body are renamed by the
+reader of its block, and each φ operand by the reader of its
+predecessor; a reader sends a register to itself or to a copy of it, so
+it keeps types. The rows of a block get, after the original rows and in
+the order of the table, one row for each register the block receives,
+with one operand for each listed predecessor: the register as that
+predecessor reads it, which has the type of the copy. The one fact about
+the graph that is used is that a body is a listed predecessor of every
+block it jumps to; otherwise the operand of a copy row would be the unit
+default. That is so by the definition of the predecessors.
+
+So the typed elaboration follows from checks on the original graph: its
+certificate, its fragment, a closed table, and captures that cover the
+inputs at their declared types. With the inferred table the closedness
+comes from the scope check with claims, the condition on claims and a
+rank.
 -/
 
 public section
@@ -253,10 +290,52 @@ theorem block_typed (graph : Graph V K F) (types : V → Ty Base) (exitType : Op
         (Phi.OrderedExits.lowerBlock graph item.1 item.2)).body.toRegion = true :=
   block_typed_proof graph types exitType certificate item member
 
-/-- Given the open statement, the typed elaboration of the lowering of a
-certified φ graph returns the elaborated graph at the computed packet
-types. -/
-theorem compileTyped_of_certified (open_ : Task.certifiedChecks Base V K F) (graph : Graph V K F)
+/-- An elaborated body that is typed by name passes the positional check,
+when the positional context agrees with the typing of names and each
+indexed label has the type of the label. -/
+theorem body_checked {N L : Type u} [DecidableEq N] {labels : Nat}
+    (index : L → Option (Fin labels)) (types : Fin labels → Ty Base) (ty : N → Ty Base)
+    (labelType : L → Ty Base)
+    (labelsOk : ∀ label i, index label = some i → types i = labelType label) {n : Nat}
+    (names : Names N n) (ctx : BoundCtx (Ty Base) n) (source : CFG.Body N L F)
+    (code : LambdaSSA.Flat F labels n) (agree : ∀ z i, names z = some i → ctx.get i = ty z)
+    (typed : regionTyped ty labelType source.toRegion = true)
+    (elaborated : body index names source = some code) : checkBody types ctx code = true :=
+  body_checked_proof index types ty labelType labelsOk names ctx source code agree typed
+    elaborated
+
+omit [DecidableEq Base] [HasTy F (Ty Base)] in
+/-- The index that the elaboration gives a label has the type that a jump
+to the label carries: the computed packet type at the first block of
+that label, or the declared type at the first position of the label
+among the exits. -/
+theorem labels_typed (graph : Graph V K F) (exits : List (Option K)) (types : V → Ty Base)
+    (exitType : Option K → Ty Base) (label : Option K)
+    (i : Fin ((Versioning.compile (Phi.OrderedExits.lower graph)).blocks.length + exits.length))
+    (indexed : labelIndex (Versioning.compile (Phi.OrderedExits.lower graph)).blocks exits label =
+      some i) :
+    SSA.FiniteSum.append (internal graph types) (external exits exitType) i =
+      targetType graph types exitType label :=
+  labels_typed_proof graph exits types exitType label i indexed
+
+/-- The elaborated lowering of a certified φ graph passes the typing check
+at the computed packet types, when the capture context has the declared
+types of the captures. -/
+theorem certified_checks (graph : Graph V K F) (exits : List (Option K)) (types : V → Ty Base)
+    (exitType : Option K → Ty Base) {n : Nat} (captures : Fin n → Option V)
+    (captureTypes : BoundCtx (Ty Base) n)
+    (target : LambdaSSA.FiniteCFG F (Versioning.compile (Phi.OrderedExits.lower graph)).blocks.length
+      exits.length n)
+    (certificate : certified graph types exitType = true)
+    (declared : ∀ i, captureTypes.get i = lifted types (captures i))
+    (elaborated : NamedFlat.compile (Phi.OrderedExits.lower graph) exits captures = some target) :
+    check target captureTypes (internal graph types) (external exits exitType) = true :=
+  certified_checks_proof graph exits types exitType captures captureTypes target certificate
+    declared elaborated
+
+/-- The typed elaboration of the lowering of a certified φ graph returns
+the elaborated graph at the computed packet types. -/
+theorem compileTyped_of_certified (graph : Graph V K F)
     (exits : List (Option K)) (types : V → Ty Base) (exitType : Option K → Ty Base) {n : Nat}
     (captures : Fin n → Option V) (captureTypes : BoundCtx (Ty Base) n)
     {target : LambdaSSA.FiniteCFG F (Versioning.compile (Phi.OrderedExits.lower graph)).blocks.length
@@ -268,15 +347,34 @@ theorem compileTyped_of_certified (open_ : Task.certifiedChecks Base V K F) (gra
         (internal graph types) (external exits exitType) = some result ∧ result.val = target :=
   compileTyped_of_check (Phi.OrderedExits.lower graph) exits captures captureTypes
     (internal graph types) (external exits exitType) elaborated
-    (open_ graph exits types exitType captures captureTypes target certificate declared elaborated)
+    (certified_checks graph exits types exitType captures captureTypes target certificate declared
+      elaborated)
 
-/-- Given the open statement, the typed elaboration succeeds for the
-normalized graph of a closed forwarding table, from checks on the φ
-graphs only: the table is closed, the graph is in the fragment, the
-normalized graph is certified, and the captures cover the declared inputs
-at their declared types. -/
-theorem compileTyped_of_closed
-    (open_ : Task.certifiedChecks Base (Phi.Forward.Name V K) K F) (graph : Graph V K F)
+/-- A certified body stays certified under the forwarding normalization,
+when the entry or block that runs it is a listed predecessor of every
+block it jumps to. -/
+theorem body_forward_typed (graph : Graph V K F) (table : Phi.Forward.Table V K)
+    (types : V → Ty Base) (exitType : Option K → Ty Base) (pred : Option K)
+    (source : CFG.Body V (Option K) F)
+    (listed : ∀ key, some key ∈ source.targets → pred ∈ graph.predecessors key)
+    (typed : bodyTyped graph types exitType pred source = true) :
+    bodyTyped (Phi.Forward.forward graph table) (forwardTypes types) exitType pred
+      (Phi.Forward.body (Phi.Forward.reader table pred) source) = true :=
+  forward_body_typed_proof graph table types exitType pred source listed typed
+
+/-- The forwarding normalization keeps the certificate, for any table,
+with the copies at the declared types of their registers. -/
+theorem certified_forward (graph : Graph V K F) (table : Phi.Forward.Table V K)
+    (types : V → Ty Base) (exitType : Option K → Ty Base)
+    (certificate : certified graph types exitType = true) :
+    certified (Phi.Forward.forward graph table) (forwardTypes types) exitType = true :=
+  certified_forward_proof graph table types exitType certificate
+
+/-- The typed elaboration succeeds for the normalized graph of a closed
+forwarding table, from checks on the φ graphs only: the table is closed,
+the graph is in the fragment, the normalized graph is certified, and the
+captures cover the declared inputs at their declared types. -/
+theorem compileTyped_of_closed (graph : Graph V K F)
     (table : Phi.Forward.Table V K) (exits : List (Option K)) (inputs : List V)
     (types : Phi.Forward.Name V K → Ty Base) (exitType : Option K → Ty Base) {n : Nat}
     (captures : Fin n → Option (Phi.Forward.Name V K)) (captureTypes : BoundCtx (Ty Base) n)
@@ -290,9 +388,55 @@ theorem compileTyped_of_closed
       (external exits exitType)).isSome = true := by
   obtain ⟨target, elaborated⟩ := Option.isSome_iff_exists.mp
     (NamedFlat.Phi.compile_of_closed graph table exits inputs captures isClosed fragment covered)
-  obtain ⟨result, typed, _⟩ := compileTyped_of_certified open_ (Phi.Forward.forward graph table)
+  obtain ⟨result, typed, _⟩ := compileTyped_of_certified (Phi.Forward.forward graph table)
     exits types exitType captures captureTypes certificate declared elaborated
   rw [typed]
   rfl
+
+/-- The typed elaboration of the normalized graph of a closed forwarding
+table succeeds, from checks on the original graph and the table: the
+table is closed, the graph is in the fragment and certified, and the
+captures cover the declared inputs at their declared types. -/
+theorem compileTyped_of_source (graph : Graph V K F) (table : Phi.Forward.Table V K)
+    (exits : List (Option K)) (inputs : List V) (types : V → Ty Base)
+    (exitType : Option K → Ty Base) {n : Nat}
+    (captures : Fin n → Option (Phi.Forward.Name V K)) (captureTypes : BoundCtx (Ty Base) n)
+    (isClosed : Phi.Forward.closed graph table exits inputs = true)
+    (fragment : NamedFlat.Phi.plain graph = true)
+    (covered : ∀ z ∈ inputs, ∃ i, captures i = some (Sum.inl z))
+    (certificate : certified graph types exitType = true)
+    (declared : ∀ i, captureTypes.get i = lifted (forwardTypes types) (captures i)) :
+    (compileTyped (Phi.OrderedExits.lower (Phi.Forward.forward graph table)) exits captures
+      captureTypes (internal (Phi.Forward.forward graph table) (forwardTypes types))
+      (external exits exitType)).isSome = true :=
+  compileTyped_of_closed graph table exits inputs (forwardTypes types) exitType captures
+    captureTypes isClosed fragment covered (certified_forward graph table types exitType certificate)
+    declared
+
+/-- The typed elaboration after the inferred normalization succeeds, from
+checks on the original graph only: the existing scope check with arrival
+claims, claims that list no register of their block, a rank, the
+fragment, the typing certificate, and captures that cover the declared
+inputs at their declared types. -/
+theorem compileTyped_infer_of_ranked (graph : Graph V K F) (exits : List (Option K))
+    (inputs : List V) (arrivals : CFG.Cyclic.Phi.GlobalSSA.Certificate V K) (rank : K → Nat)
+    (types : V → Ty Base) (exitType : Option K → Ty Base) {n : Nat}
+    (captures : Fin n → Option (Phi.Forward.Name V K)) (captureTypes : BoundCtx (Ty Base) n)
+    (inScope : Phi.OrderedExits.check graph exits inputs arrivals = true)
+    (claims : Phi.Forward.claimed graph arrivals = true)
+    (acyclic : Phi.Forward.ranked graph rank = true)
+    (fragment : NamedFlat.Phi.plain graph = true)
+    (covered : ∀ z ∈ inputs, ∃ i, captures i = some (Sum.inl z))
+    (certificate : certified graph types exitType = true)
+    (declared : ∀ i, captureTypes.get i = lifted (forwardTypes types) (captures i)) :
+    (compileTyped (Phi.OrderedExits.lower
+        (Phi.Forward.forward graph (Phi.Forward.infer graph exits inputs))) exits captures
+      captureTypes
+      (internal (Phi.Forward.forward graph (Phi.Forward.infer graph exits inputs))
+        (forwardTypes types))
+      (external exits exitType)).isSome = true :=
+  compileTyped_of_source graph _ exits inputs types exitType captures captureTypes
+    (Phi.Forward.closed_infer_of_ranked graph exits inputs arrivals rank inScope claims acyclic)
+    fragment covered certificate declared
 
 end Silmaril.Isotope.Bridge.NamedFlat.Phi.SourceTyping

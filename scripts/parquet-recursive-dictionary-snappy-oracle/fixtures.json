@@ -1,0 +1,121 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "default_v1": {
+      "bytes": 4525,
+      "sha256": "2487fb998958a70f38eaa01ecec609ea0fbda7d5a0e85d05bcdc8e0ba51b1950"
+    },
+    "default_v2": {
+      "bytes": 4405,
+      "sha256": "e02ac8977ddfde448ff7894e734a4ae8c0e328c9aad768936992342991e79e87"
+    },
+    "compressed_indices_v2": {
+      "bytes": 1827,
+      "sha256": "4de9e902a861b35c808272b4a30ca774de1f323eb4c20ac0f4f20a7ede1d0d38"
+    },
+    "fallback_v1": {
+      "bytes": 4602,
+      "sha256": "a5e72d646b43ace28499b7bbabb817a1804f67e7c79d16e6c49bf350585d9194"
+    },
+    "fallback_v2": {
+      "bytes": 4537,
+      "sha256": "c601b0ba0cd12915228a7eab78c6908d696b0250c286ddff50ddc3b93723dc37"
+    }
+  },
+  "labeled_edits": {
+    "v2_raw_bypass": {
+      "bytes": 1847,
+      "sha256": "11fb2b3389a21c8051e30d04c19ced339c1e53c53ee5555d56326ba48d06fb3b"
+    },
+    "v1_midrow_fallback": {
+      "bytes": 653,
+      "sha256": "7f18666c3af16bf78ab2c9f7ce451a539e27673aca5aaab0e85e27ea9e042497"
+    },
+    "late_v1_indices": {
+      "bytes": 4533,
+      "sha256": "01fe73b682a513c4712d6af189298485223a25d79144da57c632501bb1aae6f9"
+    },
+    "late_v2_indices": {
+      "bytes": 1836,
+      "sha256": "14456a65b06e364972c58a719db36ea335e67508b72d3b92e75268440702dd15"
+    },
+    "dict_crc": {
+      "bytes": 4609,
+      "sha256": "651e86fdc55c20ae5605e31f22a2db37b7f27775fc45b412c10a3c2f58f38075"
+    },
+    "dict_malformed": {
+      "bytes": 4573,
+      "sha256": "09a6c18c10e1da1926ae3220a3087989aa054f4712918807968effdd5d721a39"
+    },
+    "dict_extent": {
+      "bytes": 4609,
+      "sha256": "f0c5475390c48c6dcb4c99aa97b770c3ff795b59cea183687936d6897cd7b819"
+    },
+    "v1_body_malformed": {
+      "bytes": 4513,
+      "sha256": "73824f2bde564cfa3a9e174e696fb5e97e64cfa814af3422c6cfa2f5175819e1"
+    },
+    "v2_malformed": {
+      "bytes": 1826,
+      "sha256": "96972492084c75147e2dff38a00bedf34ec9bc9f160e448dd275cc325447a4dc"
+    },
+    "v2_extent": {
+      "bytes": 1834,
+      "sha256": "d5f2956de2e5af3f9f47d3a1c02661a69b6896dc6dc86c61ebc9cdcf529ef6b2"
+    },
+    "v2_snappy_trailing": {
+      "bytes": 1835,
+      "sha256": "cebcd9f65dfe4fffd40eb42be06da5875bb5ad306514a12d243845967e947978"
+    },
+    "v2_stored_crc": {
+      "bytes": 1834,
+      "sha256": "fd12994fea72791157fa5ff8d46981c6f7d34814e6f3b585782b94b01925eca8"
+    },
+    "v2_raw_extent": {
+      "bytes": 1847,
+      "sha256": "f24bc08a0903473262e467e8ec8d3eb3d3e6d5c5719e7b2b0b3ceb35190d0417"
+    },
+    "wrong_raw_total": {
+      "bytes": 1827,
+      "sha256": "6a29e3f9b01d861d2f2a7ab258098257e63e3abfa332c9559d5826c01d463a94"
+    },
+    "short_stored_total": {
+      "bytes": 1827,
+      "sha256": "00aba69d533fdc7f8f5bf8fb475a3566853061057a16ec05aa0fa582916f6f12"
+    }
+  },
+  "lean_ipc": {
+    "default_v1": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "default_v2": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "compressed_indices_v2": {
+      "bytes": 3848,
+      "sha256": "2de43c5f868b02761fd665a1ee86214b1fdbda44f9893f31e33592d829d8150c"
+    },
+    "fallback_v1": {
+      "bytes": 2680,
+      "sha256": "e1ee71ffe1743a59a2217f83e38565ca1d761ea0333303f685bb5305e1a1111d"
+    },
+    "fallback_v2": {
+      "bytes": 2680,
+      "sha256": "e1ee71ffe1743a59a2217f83e38565ca1d761ea0333303f685bb5305e1a1111d"
+    },
+    "v2_raw_bypass": {
+      "bytes": 3848,
+      "sha256": "2de43c5f868b02761fd665a1ee86214b1fdbda44f9893f31e33592d829d8150c"
+    },
+    "v1_midrow_fallback": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    }
+  }
+}

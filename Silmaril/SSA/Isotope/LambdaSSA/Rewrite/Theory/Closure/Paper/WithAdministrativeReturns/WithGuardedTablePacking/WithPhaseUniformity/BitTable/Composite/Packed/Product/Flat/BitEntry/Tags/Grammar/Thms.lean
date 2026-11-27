@@ -83,8 +83,8 @@ theorems.
 
 ## Not covered
 
-* Typing of `NTable.flat` in the flat judgment, and a reader for more
-  than two blocks.
+* Typing of `NTable.flat` in the flat judgment and a reader at every
+  size are in `Read/Thms.lean`.
 * Blocks that use the captured input, request-free blocks, and
   completeness in default Paper.
 -/

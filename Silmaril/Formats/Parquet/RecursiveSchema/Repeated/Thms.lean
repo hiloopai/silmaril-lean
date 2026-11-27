@@ -15,7 +15,7 @@ open RecursiveSchema (Entry Location entries RepetitionWire Unannotated)
 
 theorem Source.bytes_exact {limits : Snapshot.Limits} {bytes : Bytes} (source : Source limits bytes) :
     source.snapshot.bytes = bytes :=
-  Snapshot.check_bytes source.original
+  (Snapshot.checkRecursive_exact source.original).2.1
 
 /-- The staged grammar owns the exact typed and raw preorder schema vector. -/
 theorem Compiled.original {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}

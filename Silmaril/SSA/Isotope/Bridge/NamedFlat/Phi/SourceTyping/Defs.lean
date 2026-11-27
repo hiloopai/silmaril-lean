@@ -26,8 +26,8 @@ registers, in the order of its layout. So the packet type is the product
 of the row types and of the types of the record.
 
 The typed elaboration checks the elaborated graph against a packet type
-for every block. `Task.certifiedChecks` states that the computed packet
-types pass that check for a certified graph; it is open.
+for every block. The computed packet types pass that check for a
+certified graph.
 
 The named typing `regionTyped` gives one type to every name and one to
 every label. The versioned entry is typed in the canonical typing
@@ -206,20 +206,5 @@ def blockTyping (graph : Graph V K F) (types : V → Ty Base) (key : K) (block :
       recordType (lifted types) ((Versioning.slots (Phi.OrderedExits.lower graph)
         (Phi.OrderedExits.lowerBlock graph key block)).drop ((version - 2) / 2))
     else types register
-
-/-- Open: the elaborated lowering of a certified φ graph passes the typing
-check at the computed packet types, when the capture context has the
-declared types of the captures. -/
-def Task.certifiedChecks (Base V K : Type u) (F : Type v) [DecidableEq Base] [HasTy F (Ty Base)]
-    [DecidableEq V] [DecidableEq K] : Prop :=
-  ∀ (graph : Graph V K F) (exits : List (Option K)) (types : V → Ty Base)
-    (exitType : Option K → Ty Base) {n : Nat} (captures : Fin n → Option V)
-    (captureTypes : BoundCtx (Ty Base) n)
-    (target : LambdaSSA.FiniteCFG F (Versioning.compile (Phi.OrderedExits.lower graph)).blocks.length
-      exits.length n),
-    certified graph types exitType = true →
-    (∀ i, captureTypes.get i = lifted types (captures i)) →
-    NamedFlat.compile (Phi.OrderedExits.lower graph) exits captures = some target →
-    check target captureTypes (internal graph types) (external exits exitType) = true
 
 end Silmaril.Isotope.Bridge.NamedFlat.Phi.SourceTyping

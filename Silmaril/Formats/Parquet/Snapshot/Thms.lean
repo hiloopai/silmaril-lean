@@ -4,6 +4,7 @@ public import Silmaril.Formats.Parquet.Snapshot.Defs
 import Silmaril.Proofs.Formats.Parquet.Snapshot.Correctness
 import Silmaril.Proofs.Formats.Parquet.Snapshot.PageLessInt32
 import Silmaril.Proofs.Formats.Parquet.Snapshot.PageLessTimestamp
+import Silmaril.Proofs.Formats.Parquet.Snapshot.PageLessRecursive
 
 public section
 
@@ -39,6 +40,24 @@ theorem checkPageLessTimestamp_exact {limits : Limits} {input : Bytes} {snapshot
       (∀ index, snapshot.groupAt index = snapshot.metadata.rowGroups[index]?) ∧
       ∀ group, snapshot.admitsPageLessTimestamp group = Footer.PageLessTimestamp.isPageLess group :=
   Proofs.Formats.Parquet.Snapshot.PageLessTimestamp.check_exact opened
+
+theorem Checked.admitsPageLessRecursive_isPageLess {snapshot : Checked} {group : Footer.RowGroup}
+    (admitted : snapshot.admitsPageLessRecursive group = true) :
+    Footer.PageLessRecursive.isPageLess group = true :=
+  Proofs.Formats.Parquet.Snapshot.admitsPageLessRecursive_isPageLess admitted
+
+/-- Recursive admission retains the unfiltered original footer and verifies the
+raw no-page policy whenever empty carriers are enabled. -/
+theorem checkRecursive_exact {limits : Limits} {input : Bytes} {snapshot : Checked}
+    (opened : checkRecursive limits input = .ok snapshot) :
+    Footer.readFooter limits.footer input = .ok (snapshot.footer, snapshot.metadata) ∧
+      snapshot.bytes = input ∧ snapshot.groupCount = snapshot.metadata.rowGroups.length ∧
+      (∀ index, snapshot.groupAt index = snapshot.metadata.rowGroups[index]?) ∧
+      ∀ group, snapshot.admitsPageLessRecursive group = true →
+        Footer.PageLessRecursive.isPageLess group = true ∧
+        Footer.PageLessRecursive.validate limits.footer limits.maxSchemaDepth input
+          snapshot.footer snapshot.metadata = .ok () :=
+  Proofs.Formats.Parquet.Snapshot.checkRecursive_exact opened
 
 /-- The checked snapshot retains the metadata parsed from the original footer. -/
 theorem check_metadata {limits : Limits} {bytes : Bytes} {checked : Checked}
