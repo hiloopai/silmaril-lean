@@ -616,3 +616,42 @@ sources exercise the strict gates.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Zstd.Plain.V2.Checks
 python3 scripts/parquet-zstd-v2-plain-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in Zstandard V2 dictionary-only BinaryView
+
+`ByteArrayFallback.Zstd.Dictionary.V2.convert` selects one flat optional
+unannotated BYTE_ARRAY leaf. Each codec-6 chunk has one leading PLAIN
+dictionary and a nonempty sequence of tag-8 RLE_DICTIONARY Data Page V2
+frames. The original chunk and frame extents, offsets, dictionary limits
+and footer row counts are checked before IPC emission.
+
+The dictionary uses one complete frame admitted by the bounded,
+dictionary-free Zstandard decoder. The original stored CRC, when
+present, covers the entire dictionary or data body and is checked
+before expansion. Data definition levels remain raw. The original
+`is_compressed` flag selects one complete checked Zstandard frame or the
+literal width-prefixed Hybrid index stream. The decoder checks the exact
+index count and extent, looks up each index in the original dictionary,
+and reconstructs nullable slots in wire order. Successful conversion
+writes those exact byte slots in footer-ordered BinaryView batches
+through EOS. Indexed source failures precede IPC admission. V1 data and
+PLAIN fallback return typed errors at their original frame coordinates.
+
+PyArrow 26.0.1 produces dictionary-only V2 files with and without page
+CRC and native examples of both data flags. Thrift 0.25.0, independent
+Hybrid and CRC checks, and libzstd 1.5.7 verify the original dictionary,
+index, level and stored-frame extents. PyArrow compares the resulting Lean
+IPC with the input Parquet groups, including unused entries, all-null
+data, present empty values, NUL and non-UTF-8 bytes. Native V1 and
+dictionary-to-PLAIN inputs test strict refusal. Labeled mutations test a
+bad dictionary CRC, a bad raw-level CRC, an out-of-range literal index
+and a second complete Zstandard frame appended to a compressed suffix.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Zstd/Dictionary/V2/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Zstd/Dictionary/V2/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-zstd-v2-dictionary-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Zstd.Dictionary.V2.Checks
+python3 scripts/parquet-zstd-v2-dictionary-binary-view-oracle/check.py "$(mktemp -d)"
+```

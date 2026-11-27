@@ -1,0 +1,14 @@
+{
+  "v2-crc.parquet": "2a575b4375bfb5a495a3df2152cada19435fa61bd2e87cb90c71d2b58c56ac3c",
+  "v2-absent.parquet": "06a9bcf24a18e74001d5cec556cfbe5ad77941485c8576e9d5c0a22221d5b49d",
+  "compressed-tail.parquet": "09df2c7c4cd5aff3aa2d291564b895e4a709316170808abac6197ae70ff3c192",
+  "bad-dictionary-crc.parquet": "3101ca7306d5ac30751e10ac2c3704f474b57155222aaa871b077e0b80179f82",
+  "bad-level-crc.parquet": "cb57d40905c4cb3833c8683595eadeaf25e0c61c62fe18c949dfa7bbfb478df8",
+  "bad-raw-index.parquet": "891826bea9877b38eb6fe335ae15b15637d60fd01a63dc6eb07d62d8a3344e93",
+  "extra-frame.parquet": "563c7e827072363d63b76e1b47d3bcf2442c716b5e00c710ec7cbc1004bdbf63",
+  "fallback.parquet": "2ff78649cdc8ba15cbd7d7f561d939b5f48996de3c4ec7b149e290d5e8399e64",
+  "v1.parquet": "c96dacb542573d2d7a14445833b79b92c1df05b5e5926b144cd26f41b789796b",
+  "v2-crc.arrows": "f862ff5888a4682ead431dd6f57e9109c870a7d5cdffaf89827b7141e153e813",
+  "v2-absent.arrows": "f862ff5888a4682ead431dd6f57e9109c870a7d5cdffaf89827b7141e153e813",
+  "compressed-tail.arrows": "71e84d95cc15f07c46575512b877d88f638830d0dc7957b37736123431a30f5f"
+}
