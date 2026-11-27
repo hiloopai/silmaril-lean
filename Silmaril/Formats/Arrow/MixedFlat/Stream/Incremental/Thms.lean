@@ -35,6 +35,21 @@ theorem packed_frame {ipc : Arrow.Limits} {len raw : Nat} {frame : Frame}
         .ok (metadataBytes frame.body) :=
   Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.packed_frame original bodyWf
 
+/-- The typed decode phase is reached only after metadata and the running
+batch, aggregate data-buffer, row and cell checks pass. -/
+theorem decode_rejected {limits : Limits}
+    {fields : List MixedFlat.Field} {running : Running} {frame : Frame}
+    {cause : MixedFlat.Error}
+    (failed : decode limits fields running frame = .error (.record (.decode cause))) :
+    ∃ metadata,
+      MixedFlat.readMetadata limits.mixed.observation.ipc limits.mixed.view.dataBuffers
+        limits.mixed.totalDataBuffers fields (metadataBytes frame.metadata) = .ok metadata ∧
+      running.ordinal < limits.mixed.observation.ipc.batches ∧
+      running.dataBuffers + metadata.counts.sum ≤ limits.totalDataBuffers ∧
+      Body.checkBudget limits.mixed.observation fields.length (running.rows + metadata.batch.rowCount) = .ok () ∧
+      MixedFlat.readParsed limits.mixed fields metadata (metadataBytes frame.body) = .error cause :=
+  Proofs.Formats.Arrow.MixedFlat.Stream.Incremental.decode_rejected failed
+
 /-- A field error has passed the batch, metadata, running budgets and body
 layout checks. It retains the exact downstream column cause. -/
 theorem decode_field_checked {limits : Limits}

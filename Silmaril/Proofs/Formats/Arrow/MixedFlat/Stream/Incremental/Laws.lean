@@ -133,18 +133,17 @@ private theorem field_extent {limits : MixedFlat.Limits} {fields : List MixedFla
     · simp [MixedFlat.readParsed, MixedFlat.bindBatch, source, extent, bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at failed
     · simp [MixedFlat.readParsed, MixedFlat.bindBatch, source, bind, Except.bind, throw, throwThe, MonadExceptOf.throw] at failed
 
-theorem decode_field_checked {limits : MixedFlat.Stream.Incremental.Limits}
+theorem decode_rejected {limits : MixedFlat.Stream.Incremental.Limits}
     {fields : List MixedFlat.Field} {running : Running} {frame : Frame}
-    {index : Nat} {cause : MixedFlat.ColumnError}
-    (failed : decode limits fields running frame = .error (.record (.decode (.field index cause)))) :
+    {cause : MixedFlat.Error}
+    (failed : decode limits fields running frame = .error (.record (.decode cause))) :
     ∃ metadata,
       MixedFlat.readMetadata limits.mixed.observation.ipc limits.mixed.view.dataBuffers
         limits.mixed.totalDataBuffers fields (metadataBytes frame.metadata) = .ok metadata ∧
       running.ordinal < limits.mixed.observation.ipc.batches ∧
       running.dataBuffers + metadata.counts.sum ≤ limits.totalDataBuffers ∧
       Body.checkBudget limits.mixed.observation fields.length (running.rows + metadata.batch.rowCount) = .ok () ∧
-      metadata.bodyLength = frame.body.len ∧
-      MixedFlat.readParsed limits.mixed fields metadata (metadataBytes frame.body) = .error (.field index cause) := by
+      MixedFlat.readParsed limits.mixed fields metadata (metadataBytes frame.body) = .error cause := by
   unfold decode at failed
   dsimp only at failed
   split at failed
@@ -168,9 +167,23 @@ theorem decode_field_checked {limits : MixedFlat.Stream.Incremental.Limits}
         change (Except.error (.record (.decode fault)) : Except BatchError (Delivered fields)) = _ at failed
         simp only [Except.error.injEq, BatchError.record.injEq, MixedFlat.Stream.BatchError.decode.injEq] at failed
         subst fault
-        exact ⟨metadata, rfl, by omega, Nat.le_of_not_gt enough, budget,
-          field_extent (body := metadataBytes frame.body) parsed, parsed⟩
+        exact ⟨metadata, rfl, by omega, Nat.le_of_not_gt enough, budget, parsed⟩
       · contradiction
+
+theorem decode_field_checked {limits : MixedFlat.Stream.Incremental.Limits}
+    {fields : List MixedFlat.Field} {running : Running} {frame : Frame}
+    {index : Nat} {cause : MixedFlat.ColumnError}
+    (failed : decode limits fields running frame = .error (.record (.decode (.field index cause)))) :
+    ∃ metadata,
+      MixedFlat.readMetadata limits.mixed.observation.ipc limits.mixed.view.dataBuffers
+        limits.mixed.totalDataBuffers fields (metadataBytes frame.metadata) = .ok metadata ∧
+      running.ordinal < limits.mixed.observation.ipc.batches ∧
+      running.dataBuffers + metadata.counts.sum ≤ limits.totalDataBuffers ∧
+      Body.checkBudget limits.mixed.observation fields.length (running.rows + metadata.batch.rowCount) = .ok () ∧
+      metadata.bodyLength = frame.body.len ∧
+      MixedFlat.readParsed limits.mixed fields metadata (metadataBytes frame.body) = .error (.field index cause) := by
+  obtain ⟨metadata, admitted, available, dataBudget, rowsBudget, parsed⟩ := decode_rejected failed
+  exact ⟨metadata, admitted, available, dataBudget, rowsBudget, field_extent (body := metadataBytes frame.body) parsed, parsed⟩
 
 private theorem aligned_eq {fields : List MixedFlat.Field} {observed : MixedFlat.Observed}
     {left right : MixedFlat.Events.Batch (MixedFlat.Events.schema fields)}

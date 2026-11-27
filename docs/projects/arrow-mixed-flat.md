@@ -835,3 +835,43 @@ control compares one-byte and uneven schedules with immutable readback.
 make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.RecordMetadata.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.RecordMetadata.Axioms'
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Shared RecordBatch body layout rejection
+
+`Incremental.Failure.BodyLayout` covers a field-assignment error or a
+malformed descriptor layout reported by the shared binder on a complete,
+admitted RecordBatch. The wire witness retains the absolute frame
+range, admitted metadata, and exact original body. It records the
+available batch slot, accepted running row/cell checks and accepted
+incremental aggregate data-buffer check before the binder rejection.
+
+The immutable reader checks the envelope and batch slot, parses shared
+metadata, then reads the declared body before checking running rows and
+cells. The incremental reader completes framing, including the declared
+body, before checking the batch slot and shared metadata. It checks its
+stream-wide aggregate data-buffer allowance before running rows and
+cells. Both readers check rows before cells and then invoke the shared
+binder. A framing failure or a budget refusal can change which error is
+observed. Those cases are outside this agreement law. Per-record count
+limits in the shared metadata parser are separate from the incremental
+aggregate allowance.
+
+The laws preserve every preceding complete batch and its absolute range,
+the full immutable pull trace, and the eager error. Admitted schedules
+reaching a covered layout error on the same octets and limits preserve the
+exact trace and cause. Successful finish is impossible under those
+conditions.
+
+Synthetic edits to the pinned PyArrow stream retain the complete frame
+while making a node disagree with the row count or extending a descriptor
+beyond the body. The one-byte and uneven controls preserve the prior data
+and explicit empty batch. The budget controls show common row and cell
+preemption, and the divergent incremental aggregate rejection.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/BodyLayout/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/BodyLayout/Thms.lean) ·
+[Lean guards](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/BodyLayout/Examples.lean)
+
+```sh
+make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.BodyLayout.Axioms'
+python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
+```
