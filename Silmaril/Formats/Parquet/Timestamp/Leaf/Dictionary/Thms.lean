@@ -40,6 +40,18 @@ theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataP
       page.params.encoding = 8 :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.planData_wire read
 
+/-- One scan preserves the selected chunk's original frames and footer offsets. -/
+theorem frameGroupUsing_wire {encoding : Leaf.ChunkEncoding} {limits : Limits}
+    {leafLimits : Leaf.Limits} {bound : Bound} {index : Nat} {framed : FramedChunk}
+    (accepted : frameGroupUsing encoding limits leafLimits bound index = .ok framed) :
+    selectChunkWith encoding leafLimits bound index = .ok framed.chunk ∧
+      framed.chunk.span.stop - framed.chunk.span.start ≤ limits.maxChunkBytes ∧
+      Parquet.Page.readChunk leafLimits.framing bound.snapshot.bytes framed.chunk.span = .ok framed.frames ∧
+      Parquet.Page.Chain framed.chunk.span framed.chunk.span.start framed.chunk.span.stop framed.frames ∧
+      framed.chunk.column.metadata.dictionaryPageOffset = some (framed.dictionary.header.start : Int) ∧
+      framed.chunk.column.metadata.dataPageOffset = (framed.firstData.header.start : Int) :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.frameGroupUsing_wire accepted
+
 /-- The codec-specific planners keep the same checked chunk, original
 frame offsets and declared row count. -/
 theorem checkGroupUsing_wire {encoding : Leaf.ChunkEncoding} {limits : Limits}

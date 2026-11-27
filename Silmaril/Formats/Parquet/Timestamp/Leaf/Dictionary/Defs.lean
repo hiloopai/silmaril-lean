@@ -54,31 +54,58 @@ def planDataWith (admits : Int → Bool) (bound : Bound) (frame : Parquet.Page.F
 def planData (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage :=
   planDataWith (· == 8) bound frame
 
-/-- Share the original checked dictionary framing between data profiles.
-Check the profile's page sequence and declared slot total before body decoding. -/
-def checkGroupUsing (encoding : Leaf.ChunkEncoding) (limits : Limits) (leafLimits : Leaf.Limits)
-    (bound : Bound) (index : Nat)
-    (plan : Parquet.Page.Frame → Except DictionaryPageError DataPage)
-    (validate : List DataPage → Except Leaf.Error Unit)
-    (read : Parquet.Page.Frame → Except DictionaryPageError (List Int64)) :
-    Except Leaf.Error CheckedChunk := do
+/-- The original selected chunk and its dictionary and nonempty data frame list. -/
+structure FramedChunk where
+  chunk : Leaf.Chunk
+  dictionary : Parquet.Page.Frame
+  firstData : Parquet.Page.Frame
+  remainingData : List Parquet.Page.Frame
+
+def FramedChunk.data (framed : FramedChunk) : List Parquet.Page.Frame :=
+  framed.firstData :: framed.remainingData
+
+def FramedChunk.frames (framed : FramedChunk) : List Parquet.Page.Frame :=
+  framed.dictionary :: framed.data
+
+/-- Read the selected original chunk once and check the two footer offsets. -/
+def frameGroupUsing (encoding : Leaf.ChunkEncoding) (limits : Limits) (leafLimits : Leaf.Limits)
+    (bound : Bound) (index : Nat) : Except Leaf.Error FramedChunk := do
   let chunk ← selectChunkWith encoding leafLimits bound index
   if limits.maxChunkBytes < chunk.span.stop - chunk.span.start then throw .dictionaryChunkLimit
   let frames ← (Parquet.Page.readChunk leafLimits.framing bound.snapshot.bytes chunk.span).mapError .framing
   let dictionary :: rest := frames | throw .dictionaryMissing
   if chunk.column.metadata.dictionaryPageOffset ≠ some (dictionary.header.start : Int) then
     throw .dictionaryOffset
-  let first :: _ := rest | throw .dictionaryMissingData
+  let first :: following := rest | throw .dictionaryMissingData
   if chunk.column.metadata.dataPageOffset ≠ (first.header.start : Int) then
     throw (atFrame 1 first .dataOffset)
-  let data ← (rest.zipIdx 1).mapM fun (frame, ordinal) =>
+  return ⟨chunk, dictionary, first, following⟩
+
+/-- Check the selected profile's headers and row total before decoding the
+leading dictionary. -/
+def checkFramedUsing (framed : FramedChunk)
+    (plan : Parquet.Page.Frame → Except DictionaryPageError DataPage)
+    (validate : List DataPage → Except Leaf.Error Unit)
+    (read : Parquet.Page.Frame → Except DictionaryPageError (List Int64)) :
+    Except Leaf.Error CheckedChunk := do
+  let data ← (framed.data.zipIdx 1).mapM fun (frame, ordinal) =>
     (plan frame).mapError (atFrame ordinal frame)
   validate data
-  let expected := chunk.group.numRows.toNat
+  let expected := framed.chunk.group.numRows.toNat
   let actual := (data.map (·.params.numValues)).sum
   if actual ≠ expected then throw (.rowCount expected actual)
-  let entries ← (read dictionary).mapError (atFrame 0 dictionary)
-  return ⟨chunk, dictionary, entries, data⟩
+  let entries ← (read framed.dictionary).mapError (atFrame 0 framed.dictionary)
+  return ⟨framed.chunk, framed.dictionary, entries, data⟩
+
+/-- Share the original checked dictionary framing between data profiles. -/
+def checkGroupUsing (encoding : Leaf.ChunkEncoding) (limits : Limits) (leafLimits : Leaf.Limits)
+    (bound : Bound) (index : Nat)
+    (plan : Parquet.Page.Frame → Except DictionaryPageError DataPage)
+    (validate : List DataPage → Except Leaf.Error Unit)
+    (read : Parquet.Page.Frame → Except DictionaryPageError (List Int64)) :
+    Except Leaf.Error CheckedChunk := do
+  let framed ← frameGroupUsing encoding limits leafLimits bound index
+  checkFramedUsing framed plan validate read
 
 /-- Use the original uncompressed dictionary and header policy. -/
 def checkGroupWith (admits : Int → Bool) (validate : List DataPage → Except Leaf.Error Unit)

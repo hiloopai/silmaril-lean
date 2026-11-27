@@ -1,0 +1,13 @@
+{
+  "local_micros": "d3592fbf6dc5e29589023480eaf7c607133abead4ae930e7ade162a7c7eabdf7",
+  "mutated_data_offset": "46510fdc1c7345d047d0cbb32bb6ccec468790b789bda2c458ab2bc10583df9e",
+  "mutated_dictionary_member": "0ec4f8014d3805764824a57e709ab8ecf0e25234c655816b231f7e9ef47683f8",
+  "mutated_fallback_member": "6c157e407ad64de24ecb1599eb9d914786a99d8e04f5297bd13a57c1f6415dd7",
+  "mutated_fallback_outer": "050a9dd723119a84c589b94b329d0d953aa5a0b67f2fb827ed7790399a31f0d3",
+  "mutated_missing_prefix": "a3c4818260d32c977a658349f28745d45b20b49d1747e7ec378405fcf6f21e19",
+  "mutated_reentry": "6cde45b984fd4268b87bb2d011bd7056194d7af08f9914b2b5a3b1b22d435bce",
+  "mutated_reference_member": "c20122c3f0e790fbc3ff459fbebe36b977e073e70a3ac314ae069076f6c2bac1",
+  "mutated_two_failures": "04b7524c02748b759a24e72f8a478bbc926f6c8153c68605047c7209efcf10a3",
+  "utc_nanos": "83e11b330ac16e49ffaf70cabb0cf397e2a5e0a31f1910a454933e106c72e0ce",
+  "v2": "c12153f8b046b7b8e7e148b654cf8119168a91d93f711905f0ed2c9b3ca0ca03"
+}
