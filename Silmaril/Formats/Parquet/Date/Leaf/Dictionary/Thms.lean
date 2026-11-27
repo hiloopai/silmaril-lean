@@ -11,6 +11,19 @@ namespace Silmaril.Formats.Parquet.Date.Leaf.Dictionary
 
 open Silmaril.Relational
 
+/-- The leading PLAIN dictionary and its original bounded frames are attached
+to the same selected row group. -/
+theorem checkGroup_exact {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
+    (read : checkGroup limits bound index = .ok checked) : GroupWire limits bound index checked :=
+  Proofs.Formats.Parquet.Date.Leaf.Dictionary.checkGroup_exact read
+
+/-- A successful modern dictionary page selects its original typed payload. -/
+theorem decodePage_wire {limits : Limits} {bound : Bound}
+    {dictionary : DictionaryChunk.Dictionary} {page : DictionaryChunk.DataPage}
+    {ordinal : Nat} {slots : Slots} (decoded : decodePage limits bound dictionary page ordinal = .ok slots) :
+    PageWire limits bound.snapshot.bytes dictionary page slots :=
+  Proofs.Formats.Parquet.Date.Leaf.Dictionary.decodePage_wire decoded
+
 /-- The same original selected chunk supplies the bounded frame chain, signed PLAIN
 dictionary entries, and ordered dictionary-coded nullable slots. -/
 theorem readGroup_exact {limits : Limits} {bound : Bound} {index : Nat} {slots : Slots}

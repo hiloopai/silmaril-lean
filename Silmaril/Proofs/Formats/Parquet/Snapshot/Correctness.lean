@@ -26,6 +26,22 @@ theorem check_metadata {limits : Limits} {bytes : Bytes} {checked : Checked}
     cases opened
     rfl
 
+theorem check_groups {limits : Limits} {input : Bytes} {snapshot : Checked}
+    (opened : check (Failure := Failure) limits input = .ok snapshot) :
+    snapshot.groupCount = snapshot.metadata.rowGroups.length ∧
+      ∀ index, snapshot.groupAt index = snapshot.metadata.rowGroups[index]? := by
+  cases footer : Footer.readFooter limits.footer input with
+  | error cause => simp [check, footer, Except.mapError, Bind.bind, Except.bind] at opened
+  | ok spanAndMetadata =>
+    obtain ⟨span, metadata⟩ := spanAndMetadata
+    cases validation : Footer.validate span.start limits.maxSchemaDepth metadata with
+    | error cause => simp [check, footer, validation, Except.mapError, Bind.bind, Except.bind] at opened
+    | ok result =>
+      cases result
+      simp [check, footer, validation, Except.mapError, Bind.bind, Except.bind, pure, Except.pure] at opened
+      subst snapshot
+      simp [Checked.groupCount, Checked.groupAt]
+
 theorem readGroup_ok_iff (snapshot : Checked) (decode : DecodeGroup schema Value Failure)
     (index : Nat) (rows : Reader.RowGroup schema Value) :
     snapshot.readGroup decode index = .ok rows ↔ ∃ group,

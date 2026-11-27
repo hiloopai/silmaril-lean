@@ -1,0 +1,592 @@
+{
+  "cpython": "3.13.5",
+  "pyarrow": "26.0.1",
+  "pyarrow_wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+  "thrift": "0.25.0",
+  "thrift_wheel_sha256": "aa0cfa1db4d2129114d9548c4fc7e85680013aa442692377606b6305d236a1c0",
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "producer_settings": {
+    "dictionary_pagesize_limit": 8,
+    "write_batch_size": 4,
+    "data_page_size": 24
+  },
+  "cases": {
+    "1.0": {
+      "parquet": {
+        "bytes": 1063,
+        "sha256": "453a32f4178d39f783108de7556e9db911da605eb8188c43e883a26079f329d8"
+      },
+      "selected_ordinal": 1,
+      "field": "日付",
+      "nullable": true,
+      "groups": [
+        {
+          "span": [
+            157,
+            351
+          ],
+          "dictionary_header": 157,
+          "dictionary_payload": [
+            171,
+            183
+          ],
+          "signed_dictionary": [
+            -2147483648,
+            -11,
+            2147483647
+          ],
+          "data": [
+            {
+              "tag": 8,
+              "header": 183,
+              "payload": [
+                202,
+                212
+              ],
+              "validity": [
+                1,
+                0,
+                1,
+                1
+              ],
+              "indices": [
+                0,
+                1,
+                2
+              ],
+              "signed_slots": [
+                -2147483648,
+                null,
+                -11,
+                2147483647
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 212,
+              "payload": [
+                231,
+                261
+              ],
+              "validity": [
+                1,
+                1,
+                0,
+                1,
+                1,
+                1,
+                1,
+                0
+              ],
+              "indices": null,
+              "signed_slots": [
+                -100,
+                -99,
+                null,
+                -97,
+                -96,
+                -95,
+                -94,
+                null
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 261,
+              "payload": [
+                280,
+                314
+              ],
+              "validity": [
+                1,
+                1,
+                1,
+                1,
+                0,
+                1,
+                1,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                -92,
+                -91,
+                -90,
+                -89,
+                null,
+                -87,
+                -86,
+                -85
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 314,
+              "payload": [
+                333,
+                351
+              ],
+              "validity": [
+                1,
+                0,
+                1,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                -84,
+                null,
+                -82,
+                -81
+              ]
+            }
+          ]
+        },
+        {
+          "span": [
+            504,
+            698
+          ],
+          "dictionary_header": 504,
+          "dictionary_payload": [
+            518,
+            530
+          ],
+          "signed_dictionary": [
+            -17,
+            2147483647,
+            -2147483648
+          ],
+          "data": [
+            {
+              "tag": 8,
+              "header": 530,
+              "payload": [
+                549,
+                559
+              ],
+              "validity": [
+                1,
+                1,
+                0,
+                1
+              ],
+              "indices": [
+                0,
+                1,
+                2
+              ],
+              "signed_slots": [
+                -17,
+                2147483647,
+                null,
+                -2147483648
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 559,
+              "payload": [
+                578,
+                612
+              ],
+              "validity": [
+                1,
+                1,
+                1,
+                0,
+                1,
+                1,
+                1,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                200,
+                201,
+                202,
+                null,
+                204,
+                205,
+                206,
+                207
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 612,
+              "payload": [
+                631,
+                661
+              ],
+              "validity": [
+                0,
+                1,
+                1,
+                1,
+                1,
+                0,
+                1,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                null,
+                209,
+                210,
+                211,
+                212,
+                null,
+                214,
+                215
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 661,
+              "payload": [
+                680,
+                698
+              ],
+              "validity": [
+                1,
+                1,
+                0,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                216,
+                217,
+                null,
+                219
+              ]
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 680,
+        "sha256": "85785f8ce5972cc45a0e4a36ef509e90b44ad8d080c2088b01040e1dd8915688"
+      }
+    },
+    "2.0": {
+      "parquet": {
+        "bytes": 1101,
+        "sha256": "62433f419cfcd971ce1f131d1d9a8cca3b047b50fbcbfd689f359e9d57f45ef4"
+      },
+      "selected_ordinal": 1,
+      "field": "日付",
+      "nullable": true,
+      "groups": [
+        {
+          "span": [
+            172,
+            370
+          ],
+          "dictionary_header": 172,
+          "dictionary_payload": [
+            186,
+            198
+          ],
+          "signed_dictionary": [
+            -2147483648,
+            -11,
+            2147483647
+          ],
+          "data": [
+            {
+              "tag": 8,
+              "header": 198,
+              "payload": [
+                222,
+                228
+              ],
+              "validity": [
+                1,
+                0,
+                1,
+                1
+              ],
+              "indices": [
+                0,
+                1,
+                2
+              ],
+              "signed_slots": [
+                -2147483648,
+                null,
+                -11,
+                2147483647
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 228,
+              "payload": [
+                252,
+                278
+              ],
+              "validity": [
+                1,
+                1,
+                0,
+                1,
+                1,
+                1,
+                1,
+                0
+              ],
+              "indices": null,
+              "signed_slots": [
+                -100,
+                -99,
+                null,
+                -97,
+                -96,
+                -95,
+                -94,
+                null
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 278,
+              "payload": [
+                302,
+                332
+              ],
+              "validity": [
+                1,
+                1,
+                1,
+                1,
+                0,
+                1,
+                1,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                -92,
+                -91,
+                -90,
+                -89,
+                null,
+                -87,
+                -86,
+                -85
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 332,
+              "payload": [
+                356,
+                370
+              ],
+              "validity": [
+                1,
+                0,
+                1,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                -84,
+                null,
+                -82,
+                -81
+              ]
+            }
+          ]
+        },
+        {
+          "span": [
+            538,
+            736
+          ],
+          "dictionary_header": 538,
+          "dictionary_payload": [
+            552,
+            564
+          ],
+          "signed_dictionary": [
+            -17,
+            2147483647,
+            -2147483648
+          ],
+          "data": [
+            {
+              "tag": 8,
+              "header": 564,
+              "payload": [
+                588,
+                594
+              ],
+              "validity": [
+                1,
+                1,
+                0,
+                1
+              ],
+              "indices": [
+                0,
+                1,
+                2
+              ],
+              "signed_slots": [
+                -17,
+                2147483647,
+                null,
+                -2147483648
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 594,
+              "payload": [
+                618,
+                648
+              ],
+              "validity": [
+                1,
+                1,
+                1,
+                0,
+                1,
+                1,
+                1,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                200,
+                201,
+                202,
+                null,
+                204,
+                205,
+                206,
+                207
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 648,
+              "payload": [
+                672,
+                698
+              ],
+              "validity": [
+                0,
+                1,
+                1,
+                1,
+                1,
+                0,
+                1,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                null,
+                209,
+                210,
+                211,
+                212,
+                null,
+                214,
+                215
+              ]
+            },
+            {
+              "tag": 0,
+              "header": 698,
+              "payload": [
+                722,
+                736
+              ],
+              "validity": [
+                1,
+                1,
+                0,
+                1
+              ],
+              "indices": null,
+              "signed_slots": [
+                216,
+                217,
+                null,
+                219
+              ]
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 680,
+        "sha256": "85785f8ce5972cc45a0e4a36ef509e90b44ad8d080c2088b01040e1dd8915688"
+      }
+    }
+  },
+  "controls": {
+    "late_truncated_plain": {
+      "parquet": {
+        "bytes": 1100,
+        "sha256": "18135bd85ea36f94164addd216ac65d74d00c69dd180e5b20c6f58bc15757c08"
+      },
+      "error": "(.source (.groupFailure 1 (.plain 4 698 (.plain .truncated))))",
+      "output_limits": "{ ipc := { batches := 0 } }",
+      "header_offset": 698
+    },
+    "plain_before_references": {
+      "parquet": {
+        "bytes": 1101,
+        "sha256": "d138850411a1d0415f2eea71ee71a542b3ec5954ee298276f79aed708d0a2a88"
+      },
+      "error": "(.source (.groupFailure 0 (.prefixEncoding 1 198 0)))",
+      "output_limits": "{}"
+    },
+    "dictionary_reentry": {
+      "parquet": {
+        "bytes": 1101,
+        "sha256": "b165363ada6f0946dc28a6d55e133f1f2ddb5d83abc32123093f27cbed92a2a3"
+      },
+      "error": "(.source (.groupFailure 0 (.suffixEncoding 3 278 8)))",
+      "output_limits": "{}"
+    },
+    "dictionary_only": {
+      "parquet": {
+        "bytes": 1202,
+        "sha256": "4f400dba78c0ff4bec2d1d98172b21c1d780d772a1c833bb11ea4ed5de3ba871"
+      },
+      "error": "(.source (.groupFailure 0 .missingPlain))",
+      "output_limits": "{}"
+    },
+    "plain_only": {
+      "parquet": {
+        "bytes": 1110,
+        "sha256": "1d5159a56a02094428fc67d7b0ad2130b39955115131625908550671d881c49b"
+      },
+      "error": "(.source (.groupFailure 0 (.dictionary .missingDictionary)))",
+      "output_limits": "{}"
+    },
+    "compressed": {
+      "parquet": {
+        "bytes": 1188,
+        "sha256": "287682103b62000e61a993810fa833362695bc986796a4cb76edcffbde15ba61"
+      },
+      "error": "(.source (.groupFailure 0 (.dictionary (.chunk .columnCodec))))",
+      "output_limits": "{}"
+    },
+    "output_budget": {
+      "parquet": {
+        "bytes": 1101,
+        "sha256": "62433f419cfcd971ce1f131d1d9a8cca3b047b50fbcbfd689f359e9d57f45ef4"
+      },
+      "error": "(.writer (.writer (.limit .batches)))",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    }
+  }
+}

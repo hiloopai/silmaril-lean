@@ -30,6 +30,13 @@ theorem check_metadata {limits : Limits} {bytes : Bytes} {checked : Checked}
     checked.metadata = metadata :=
   Proofs.Formats.Parquet.Snapshot.check_metadata opened footer
 
+/-- The strict snapshot retains all original footer groups at their original indices. -/
+theorem check_groups {limits : Limits} {input : Bytes} {snapshot : Checked}
+    (opened : check (Failure := Failure) limits input = .ok snapshot) :
+    snapshot.groupCount = snapshot.metadata.rowGroups.length ∧
+      ∀ index, snapshot.groupAt index = snapshot.metadata.rowGroups[index]? :=
+  Proofs.Formats.Parquet.Snapshot.check_groups opened
+
 /-- A successful indexed read returns exactly the decoder's rows at the
 footer's declared count. -/
 theorem Checked.readGroup_ok_iff (snapshot : Checked) (decode : DecodeGroup schema Value Failure)

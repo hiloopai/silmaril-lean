@@ -33,7 +33,7 @@ private theorem forAllMapM {ε α β : Type} (decode : α → Except ε β) :
         subst ys
         exact .cons head (ih tail)
 
-private theorem decodePage_wire {limits : Limits} {bound : Bound}
+theorem decodePage_wire {limits : Limits} {bound : Bound}
     {dictionary : DictionaryChunk.Dictionary} {page : DictionaryChunk.DataPage}
     {ordinal : Nat} {slots : Slots} (decoded : decodePage limits bound dictionary page ordinal = .ok slots) :
     PageWire limits bound.snapshot.bytes dictionary page slots := by
@@ -56,6 +56,31 @@ private theorem count_wire {limits : Limits} {source : Bytes}
     have count := (DictionaryIndex.decode_counts head.2).1
     simp [count, ih]
 
+theorem checkGroup_exact {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
+    (read : checkGroup limits bound index = .ok checked) : GroupWire limits bound index checked := by
+  cases selection : selectChunk bound index with
+  | error cause => simp [checkGroup, selection, Except.mapError, Bind.bind, Except.bind] at read
+  | ok selected =>
+    cases framed : frame limits bound selected with
+    | error cause => simp [checkGroup, selection, framed, Except.mapError, Bind.bind, Except.bind] at read
+    | ok chunk =>
+      cases leading : chunk.dictionary with
+      | none => simp [checkGroup, selection, framed, leading, Except.mapError, Bind.bind, Except.bind] at read
+      | some dictionary =>
+        cases kind : dictionary.frame.value.kind <;>
+          simp [checkGroup, selection, framed, leading, kind, Except.mapError, Bind.bind, Except.bind] at read
+        rename_i header
+        by_cases plain : header.encoding = 0
+        · simp [plain, Pure.pure, Except.pure] at read
+          subst checked
+          have admitted := DictionaryChunk.read_admitted framed
+          have span := Option.some.inj
+            (admitted.interval.symm.trans (Date.Leaf.selectChunk_exact selection).2.2.2.2.1)
+          refine ⟨selection, framed, span, admitted, ?_, ?_, leading, header, kind, plain⟩
+          · simpa [span] using (Page.readChunk_chain admitted.frames).2.2
+          · simpa [span] using DictionaryChunk.read_payloads framed
+        · simp [plain] at read
+
 theorem readGroup_exact {limits : Limits} {bound : Bound} {index : Nat} {slots : Slots}
     (read : Dictionary.readGroup limits bound index = .ok slots) :
     ∃ selected chunk dictionary header pages,
@@ -70,44 +95,30 @@ theorem readGroup_exact {limits : Limits} {bound : Bound} {index : Nat} {slots :
       header.encoding = 0 ∧ dictionary.Exact limits bound.snapshot.bytes ∧
       List.Forall₂ (PageWire limits bound.snapshot.bytes dictionary) chunk.data pages ∧
       slots = pages.flatten ∧ slots.length = selected.group.numRows.toNat := by
-  cases selection : selectChunk bound index with
-  | error cause => simp [Dictionary.readGroup, selection, Except.mapError, Bind.bind, Except.bind] at read
-  | ok selected =>
-    cases checked : frame limits bound selected with
+  cases planned : checkGroup limits bound index with
+  | error cause =>
+    simp [Dictionary.readGroup, planned, Bind.bind, Except.bind] at read
+  | ok checked =>
+    let decode := fun (entry : DictionaryChunk.DataPage × Nat) =>
+      decodePage limits bound checked.dictionary entry.1 entry.2
+    cases decoded : (checked.chunk.data.zipIdx 1).mapM decode with
     | error cause =>
-      simp [Dictionary.readGroup, selection, checked, Except.mapError, Bind.bind, Except.bind] at read
-    | ok chunk =>
-      cases leading : chunk.dictionary with
-      | none =>
-        simp [Dictionary.readGroup, selection, checked, leading, Except.mapError, Bind.bind, Except.bind] at read
-      | some dictionary =>
-        cases kind : dictionary.frame.value.kind <;>
-          simp [Dictionary.readGroup, selection, checked, leading, kind, Except.mapError, Bind.bind,
-            Except.bind] at read
-        rename_i header
-        by_cases plain : header.encoding = 0
-        · let decode := fun (entry : DictionaryChunk.DataPage × Nat) =>
-            decodePage limits bound dictionary entry.1 entry.2
-          cases decoded : (chunk.data.zipIdx 1).mapM decode with
-          | error cause =>
-            simp [plain, decode, decoded] at read
-          | ok pages =>
-            have values : pages.flatten = slots := by
-              simpa [plain, decode, decoded, Bind.bind, Except.bind, Pure.pure, Except.pure] using read
-            have zipped := (forAllMapM decode decoded).imp (fun _ _ h => decodePage_wire h)
-            have ordered : List.Forall₂ (PageWire limits bound.snapshot.bytes dictionary) chunk.data pages := by
-              have mapped := List.forall₂_map_left_iff.mpr zipped
-              simpa using mapped
-            have admitted := DictionaryChunk.read_admitted checked
-            have span := Option.some.inj
-              (admitted.interval.symm.trans (Date.Leaf.selectChunk_exact selection).2.2.2.2.1)
-            have bounded := DictionaryChunk.read_payloads checked
-            refine ⟨selected, chunk, dictionary, header, pages, rfl, checked, span, admitted, ?_, ?_,
-              leading, kind, plain, admitted.dictionary _ leading, ordered, values.symm, ?_⟩
-            · simpa [span] using (Page.readChunk_chain admitted.frames).2.2
-            · simpa [span] using bounded
-            · rw [← values, count_wire ordered, admitted.slots]
-        · simp [plain] at read
+      simp [Dictionary.readGroup, planned, decode, decoded, Bind.bind, Except.bind] at read
+    | ok pages =>
+      have values : pages.flatten = slots := by
+        simpa [Dictionary.readGroup, planned, decode, decoded, Bind.bind, Except.bind,
+          Pure.pure, Except.pure] using read
+      have zipped := (forAllMapM decode decoded).imp (fun _ _ h => decodePage_wire h)
+      have ordered : List.Forall₂ (PageWire limits bound.snapshot.bytes checked.dictionary)
+          checked.chunk.data pages := by
+        have mapped := List.forall₂_map_left_iff.mpr zipped
+        simpa using mapped
+      have wire := checkGroup_exact planned
+      obtain ⟨header, kind, plain⟩ := wire.plainDictionary
+      exact ⟨checked.selection, checked.chunk, checked.dictionary, header, pages, wire.selected,
+        wire.framed, wire.span, wire.admitted, wire.chain, wire.payloads, wire.leading, kind, plain,
+        wire.admitted.dictionary _ wire.leading, ordered, values.symm, by
+          rw [← values, count_wire ordered, wire.admitted.slots]⟩
 
 theorem pageWire_exact {limits : Limits} {source : Bytes} {dictionary : DictionaryChunk.Dictionary}
     {page : DictionaryChunk.DataPage} {slots : Slots}
