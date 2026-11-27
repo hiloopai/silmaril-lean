@@ -197,4 +197,23 @@ public theorem prepared_v1_gzip_member {params : Parameters} {limits : Limits} {
   cases expansion with
   | gzip exactMember => exact ⟨expanded, exactMember, length⟩
 
+public theorem exactPayload_gzip_v2 {compressed uncompressed : Nat} {isCompressed : Bool}
+    {stored decoded : List UInt8}
+    (wire : ExactPayload compressed uncompressed (v2Codec Payload.Codec.gzip.id (some isCompressed)) stored decoded) :
+    stored.length = compressed ∧ decoded.length = uncompressed ∧
+      (if isCompressed then Compression.Gzip.decoder stored = some (decoded, []) else stored = decoded) := by
+  obtain ⟨storedSize, expandedSize, codec, selected, expansion⟩ := wire
+  refine ⟨storedSize, expandedSize, ?_⟩
+  cases isCompressed
+  · change Payload.Codec.ofId Payload.Codec.uncompressed.id = some codec at selected
+    rw [Payload.Codec.ofId_id] at selected
+    cases selected
+    cases expansion
+    rfl
+  · change Payload.Codec.ofId Payload.Codec.gzip.id = some codec at selected
+    rw [Payload.Codec.ofId_id] at selected
+    cases selected
+    cases expansion with
+    | gzip member => exact member
+
 end Silmaril.Proofs.Formats.Parquet.ScalarPage

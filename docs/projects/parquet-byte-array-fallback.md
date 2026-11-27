@@ -416,3 +416,44 @@ strict version and encoding gates.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Dictionary.V2.Checks
 python3 scripts/parquet-gzip-v2-dictionary-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in GZIP V2 dictionary-to-PLAIN BinaryView
+
+`ByteArrayFallback.Gzip.Fallback.V2.convert` selects one flat optional
+unannotated BYTE_ARRAY leaf. Each selected codec-2 chunk begins with an
+original PLAIN dictionary, then contains a nonempty prefix of tag-8 V2
+data pages and a nonempty suffix of tag-0 V2 data pages. The reader checks
+the original tag schedule before decoding any bodies. A return to tag 8
+reports the original indexed header.
+
+The original CRC covers the entire stored body for both encodings.
+The raw definition section fits both declared sizes. The original
+`is_compressed` flag selects either one complete GZIP member or the exact
+raw suffix. The page laws connect those bytes to ordered dictionary
+lookups or exact length-prefixed PLAIN values. Native BinaryView retains
+opaque nullable bytes in footer group order through EOS. The first
+indexed source error precedes IPC admission.
+
+PyArrow 26.0.1 produces genuine fallback files with and without CRC.
+Thrift 0.25.0 observes tags `[8, 8, 8, 0, 0]` and flags
+`[true, false, false, true, false]` in both groups, with an all-null
+dictionary-coded page. An independent RLE walk and Python zlib recover
+the original levels and suffix bytes. PyArrow compares native Lean IPC
+with its own selected Parquet rows, including invalid UTF-8, NUL, null
+and empty values.
+
+Assembled controls corrupt a raw definition prefix in each encoding
+under CRC, alter a raw PLAIN length word, append an empty GZIP member to a
+compressed PLAIN suffix, and move intact CRC-valid frames to create
+dictionary reentry. The original compressed and raw PLAIN pages also
+exercise the GZIP call cap. Genuine V1 fallback and the V2 dictionary-only
+reader exercise the existing strict gates.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Fallback/V2/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Fallback/V2/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-gzip-v2-fallback-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Fallback.V2.Checks
+python3 scripts/parquet-gzip-v2-fallback-binary-view-oracle/check.py "$(mktemp -d)"
+```

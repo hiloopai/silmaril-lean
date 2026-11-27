@@ -70,6 +70,14 @@ theorem prepared_v1_gzip_member {params : Parameters} {limits : Limits} {layout 
       expanded.length = params.sizes.uncompressed :=
   Proofs.Formats.Parquet.ScalarPage.prepared_v1_gzip_member version codec wire
 
+/-- The original V2 flag selects one GZIP member or exact raw suffix bytes. -/
+theorem exactPayload_gzip_v2 {compressed uncompressed : Nat} {isCompressed : Bool}
+    {stored decoded : List UInt8}
+    (wire : ExactPayload compressed uncompressed (v2Codec Payload.Codec.gzip.id (some isCompressed)) stored decoded) :
+    stored.length = compressed ∧ decoded.length = uncompressed ∧
+      (if isCompressed then Compression.Gzip.decoder stored = some (decoded, []) else stored = decoded) :=
+  Proofs.Formats.Parquet.ScalarPage.exactPayload_gzip_v2 wire
+
 theorem prepared_mask_length {params : Parameters} {limits : Limits} {source : Bytes}
     {page : Prepared} (h : prepare params limits source = .ok page) :
     page.mask.length = params.numValues :=

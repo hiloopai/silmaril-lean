@@ -7,7 +7,7 @@ import Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Dictionary.Thms
 import Silmaril.Formats.Parquet.ByteArrayFallback.Snappy.Thms
 import Silmaril.Formats.Parquet.ByteArrayFallback.Thms
 import Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.Thms
-import Silmaril.Formats.Parquet.Payload.Thms
+import Silmaril.Formats.Parquet.ScalarPage.Thms
 
 public section
 
@@ -50,24 +50,13 @@ theorem data_suffix {limits : Gzip.Dictionary.V2.Limits} {source : Bytes} {entri
   subst params
   obtain ⟨_, _, repetition, storedFits, expandedFits, _, definitions, encoded, width, split, levels, presentCount, payload⟩ :=
     prepared
-  obtain ⟨storedSize, expandedSize, codec, selected, decoded⟩ := payload
+  obtain ⟨storedSize, expandedSize, suffix⟩ := ScalarPage.exactPayload_gzip_v2 payload
   refine ⟨header, layout, definitions, encoded, page.scalars, indices, kind, tag, repetition, storedFits, expandedFits,
-    width, split, ?_, ?_, storedSize, expandedSize, ?_, ?_, lookedUp⟩
+    width, split, ?_, ?_, storedSize, expandedSize, suffix, ?_, lookedUp⟩
   · rw [mask]
     exact levels
   · rw [mask]
     exact presentCount
-  · cases flag : header.isCompressed
-    · simp only [ScalarPage.v2Codec, flag, Option.getD_some, Bool.false_eq_true, ↓reduceIte,
-        Payload.Codec.ofId_id, Option.some.injEq] at selected
-      subst codec
-      cases decoded
-      rfl
-    · simp only [ScalarPage.v2Codec, flag, Option.getD_some, ↓reduceIte,
-        Payload.Codec.ofId_id, Option.some.injEq] at selected
-      subst codec
-      cases decoded with
-      | gzip member => simpa only [flag, ↓reduceIte] using member
   · rw [mask]
     exact parsed
 
