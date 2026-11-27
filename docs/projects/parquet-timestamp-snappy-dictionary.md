@@ -82,3 +82,56 @@ python3 -m venv /tmp/parquet-timestamp-snappy-dictionary
 /tmp/parquet-timestamp-snappy-dictionary/bin/pip install --no-deps --require-hashes -r tests/formats/columnar-timestamp-wire/requirements.txt
 /tmp/parquet-timestamp-snappy-dictionary/bin/python -I scripts/parquet-timestamp-snappy-dictionary-oracle/check.py
 ```
+
+## Deprecated V1 dictionary tags
+
+`Timestamp.Leaf.Dictionary.Snappy.LegacyV1.convert` explicitly admits the
+parquet-java `PARQUET_1_0` profile for one modern flat INT64 TIMESTAMP
+leaf. Each selected codec-1 chunk has a leading dictionary page tagged
+`PLAIN_DICTIONARY` (2), followed by V1 data pages with the same tag. The
+dictionary stores ordinary signed PLAIN words and the data uses the same
+bounded hybrid reference decoder as tag 8. The existing dictionary-only
+and fallback entry points retain their admission policies.
+
+The profile uses the checked snapshot and original footer offsets. It
+normalizes `BIT_PACKED` (4) to RLE only where the corresponding maximum
+level is zero and the level stream is absent. An optional definition
+stream still requires RLE. The stored checksum covers the complete
+original payload. Snappy expands the whole body within the admitted
+length before separating V1 levels from references.
+
+The file and group laws recover one ordered native Arrow V5 batch per
+footer group through EOS. The original descriptor, signed ticks and null
+positions are exact. After successful page planning, the first failed
+page retains its original ordinal, absolute header offset and cause.
+A late source failure preserves earlier complete events and takes
+precedence over IPC writer admission.
+
+Two unmodified parquet-java 1.16.0 files cover nullable local micros and
+required UTC nanos, chunk-local dictionaries, multiple groups, signed
+Int64 endpoints and checksummed V1 data. Thrift, zlib and PyArrow
+independently check the page headers, stored CRCs, expanded levels,
+reference indices and native IPC. The oracle also constructs three
+controls that preserve frame extents. They damage a stored CRC, introduce
+an out-of-range reference after a null with a recomputed CRC, and put a
+BIT_PACKED tag on an optional definition stream. The first two mutations
+are independently refused by PyArrow.
+
+[Theorem header](../../Silmaril/Formats/Parquet/Timestamp/Leaf/Dictionary/Snappy/LegacyV1/Thms.lean) ·
+[parquet-java producer](../../scripts/parquet-timestamp-snappy-legacy-dictionary-oracle/Write.java) ·
+[Comparator](../../scripts/parquet-timestamp-snappy-legacy-dictionary-oracle/check.py) ·
+[Fixture hashes](../../scripts/parquet-timestamp-snappy-legacy-dictionary-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.LegacyV1.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-timestamp-snappy-legacy-dictionary-oracle/Axioms.lean
+/tmp/parquet-timestamp-snappy-dictionary/bin/python -I scripts/parquet-timestamp-snappy-legacy-dictionary-oracle/check.py
+
+fixture_tmp=$(mktemp -d)
+mvn -B -q -f scripts/parquet-dictionary-chunk/pom.xml \
+  org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath \
+  -Dmdep.outputFile="$fixture_tmp/classpath"
+java -cp "$(cat "$fixture_tmp/classpath")" \
+  scripts/parquet-timestamp-snappy-legacy-dictionary-oracle/Write.java "$fixture_tmp"
+sha256sum "$fixture_tmp"/*.parquet
+```

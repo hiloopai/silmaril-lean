@@ -14,12 +14,20 @@ def dictionaryBounds (limits : Dictionary.Limits) (leafLimits : Leaf.Limits)
     frame.value.uncompressedSize, min limits.maxDictionaryBytes leafLimits.page.uncompressedBytes,
     leafLimits.page.gzipCalls⟩
 
+inductive DictionaryTag where
+  | plain
+  | plainDictionary
+
+def DictionaryTag.id : DictionaryTag → Int
+  | .plain => 0
+  | .plainDictionary => 2
+
 /-- Verify the dictionary CRC, when present, over the original stored payload.
 The span and caps are checked before Snappy expansion. -/
-def readEntries (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+def readEntriesWith (tag : DictionaryTag) (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
     (frame : Parquet.Page.Frame) : Except DictionaryPageError (List Int64) := do
   let .dictionary header := frame.value.kind | throw .expectedDictionary
-  if header.encoding ≠ 0 then throw (.encoding header.encoding)
+  if header.encoding ≠ tag.id then throw (.encoding header.encoding)
   if limits.maxEntries < header.numValues then throw .entryLimit
   let bounds := dictionaryBounds limits leafLimits frame
   if bounds.outputLimit < bounds.expectedSize then throw (.payload .outputLimit)
@@ -28,6 +36,11 @@ def readEntries (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound :
   let body ← (Payload.decode bounds Payload.Codec.snappy.id
     (Leaf.Internal.body bound frame).toList).mapError .payload
   (Plain.decodeInt64 header.numValues (Bytes.ofList body)).mapError .entries
+
+/-- Read a dictionary with the modern PLAIN tag. -/
+def readEntries (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+    (frame : Parquet.Page.Frame) : Except DictionaryPageError (List Int64) :=
+  readEntriesWith .plain limits leafLimits bound frame
 
 def planDataWith (admits : Int → Bool) (bound : Bound) (frame : Parquet.Page.Frame) :
     Except DictionaryPageError DataPage := do
@@ -69,13 +82,18 @@ def DataWire (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bo
     DictionaryIndex.decode entries page.params leafLimits.page limits.indices
       (Leaf.Internal.body bound page.frame) = .ok slots
 
-def readGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
-    Except Leaf.Error (Slots bound) := do
-  let checked ← checkGroup limits leafLimits bound index
+/-- Decode the original page list of an admitted chunk in wire order. -/
+def readGroupUsing (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+    (checked : Except Leaf.Error CheckedChunk) : Except Leaf.Error (Slots bound) := do
+  let checked ← checked
   let entries := checked.entries.toArray
   let pages ← (checked.data.zipIdx 1).mapM fun (page, ordinal) =>
     decodePage limits leafLimits bound entries page ordinal
   return pages.flatten.map (Option.map bound.binding.descriptor.decode)
+
+def readGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except Leaf.Error (Slots bound) :=
+  readGroupUsing limits leafLimits bound (checkGroup limits leafLimits bound index)
 
 def readBound (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) :
     Events.ToIpc.Source :=

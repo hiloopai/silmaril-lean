@@ -27,6 +27,22 @@ theorem stored_verified {cap : Nat} {bound : Bound} {frame : Parquet.Page.Frame}
       | .valid crc => frame.value.crc = some crc ∧ Compression.crc32Spec stored.toList = crc :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.stored_verified verified
 
+/-- The original dictionary page tag selects the bounded Snappy PLAIN-word decoder. -/
+theorem readEntriesWith_wire {tag : DictionaryTag} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
+    {bound : Bound} {frame : Parquet.Page.Frame} {entries : List Int64}
+    (read : readEntriesWith tag limits leafLimits bound frame = .ok entries) :
+    ∃ header status expanded,
+      frame.value.kind = .dictionary header ∧ header.encoding = tag.id ∧
+      header.numValues ≤ limits.maxEntries ∧
+      Parquet.Page.Checksum.verify (dictionaryBounds limits leafLimits frame).compressedLimit
+        bound.snapshot.bytes frame = .ok status ∧
+      Payload.Decodes frame.value.uncompressedSize .snappy (Leaf.Internal.body bound frame).toList expanded ∧
+      expanded.length = frame.value.uncompressedSize ∧
+      expanded.length ≤ (dictionaryBounds limits leafLimits frame).outputLimit ∧
+      Plain.decodeInt64 header.numValues (Bytes.ofList expanded) = .ok entries ∧
+      entries.length = header.numValues :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.readEntriesWith_wire read
+
 /-- The original stored dictionary is verified before expansion into exact
 bounded PLAIN signed words. -/
 theorem readEntries_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
@@ -108,6 +124,16 @@ theorem data_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits
       indices.map (fun index => entries.toArray[index]?) = (slots.filterMap id).map some :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.data_decodes read
 
+/-- Decode an admitted chunk against its dictionary in its original page order. -/
+theorem readGroupUsing_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {admission : Except Leaf.Error CheckedChunk} {slots : Slots bound}
+    (read : readGroupUsing limits leafLimits bound admission = .ok slots) :
+    ∃ checked pages, admission = .ok checked ∧
+      List.Forall₂ (DataWire limits leafLimits bound checked.entries.toArray) checked.data pages ∧
+      slots = pages.flatten.map (Option.map bound.binding.descriptor.decode) ∧
+      slots.length = (checked.data.map (·.params.numValues)).sum :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.readGroupUsing_wire read
+
 /-- The group preserves all physical page slots in frame order and interprets
 them under the retained descriptor. -/
 theorem readGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
@@ -117,6 +143,18 @@ theorem readGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limi
       slots = pages.flatten.map (Option.map bound.binding.descriptor.decode) ∧
       slots.length = checked.chunk.group.numRows.toNat :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.readGroup_wire read
+
+/-- Return the first failed data page in an admitted chunk. -/
+theorem readGroupUsing_first_page_error {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
+    {bound : Bound} {ordinal : Nat} {admission : Except Leaf.Error CheckedChunk} {checked : CheckedChunk} {page : DataPage}
+    {before after : List (DataPage × Nat)} {outputs : List (List (Option Int64))} {cause : Leaf.Error}
+    (admitted : admission = .ok checked)
+    (split : checked.data.zipIdx 1 = before ++ (page, ordinal) :: after)
+    (earlier : before.mapM (fun (item, i) =>
+      decodePage limits leafLimits bound checked.entries.toArray item i) = .ok outputs)
+    (failed : decodePage limits leafLimits bound checked.entries.toArray page ordinal = .error cause) :
+    readGroupUsing limits leafLimits bound admission = .error cause :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.readGroupUsing_first_page_error admitted split earlier failed
 
 /-- After successful planning, the first failed data page returns its
 original typed error. -/
@@ -142,7 +180,7 @@ theorem readEntries_checksum_error {limits : Dictionary.Limits} {leafLimits : Le
     (failed : Parquet.Page.Checksum.verify (dictionaryBounds limits leafLimits frame).compressedLimit
       bound.snapshot.bytes frame = .error cause) :
     readEntries limits leafLimits bound frame = .error (.checksumFailure cause) := by
-  simp [readEntries, kind, encoding, Nat.not_lt.mpr count, Nat.not_lt.mpr size, failed,
+  simp [readEntries, readEntriesWith, DictionaryTag.id, kind, encoding, Nat.not_lt.mpr count, Nat.not_lt.mpr size, failed,
     Except.mapError, Bind.bind, Except.bind]
 
 /-- A refused data checksum keeps its wire ordinal and original header offset. -/

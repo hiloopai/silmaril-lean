@@ -1,0 +1,7 @@
+{
+  "bad_crc": "7bf608c142e1ef8053b79b42764d9e4c02f9f8ad52e384cc7a3e4eaba195b47c",
+  "bad_level_tag": "21cfdf5881549540889eaf5cbd62ab30757586bfff674891740fc14d533fab32",
+  "bad_ref": "abc95626d97878e3cdcd5e10cfb846ea6ee6c9810b04cfa4b6ed06e0e81f175c",
+  "local_micros": "06f9615ad04f170d58189b512eea5554f2dd06bd72a1d43f150a06fb8295127e",
+  "utc_nanos": "95c4cfcd107f8f2f248d55a8fe515f3c796d846df0907fea30ad93e20ec76c73"
+}
