@@ -1,0 +1,721 @@
+{
+  "cpython": "3.13.5",
+  "pyarrow": "26.0.1",
+  "pyarrow_wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+  "thrift": "0.25.0",
+  "thrift_wheel_sha256": "aa0cfa1db4d2129114d9548c4fc7e85680013aa442692377606b6305d236a1c0",
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "frame_extent_libzstd": "1.5.7",
+  "zlib_runtime": "1.3.1",
+  "case": {
+    "assembly": {
+      "bytes": 4948,
+      "sha256": "7b7ed1385056ad73ca9f1f87943931adead52ed67c1ccaf2a50984bc3dbeff31"
+    },
+    "genuine_parents": {
+      "plain": {
+        "bytes": 1186,
+        "sha256": "f7844461816f9bcb61650984b39341b4f123368dc5e27e8be5b3c691b7b40189"
+      },
+      "zstd_plain": {
+        "bytes": 1356,
+        "sha256": "b76887a4e29b1be6c877c3a9a3591910e0576262a22e48ae972d05dc48b79cf2"
+      },
+      "snappy_plain": {
+        "bytes": 1050,
+        "sha256": "935736cbb2adf041aea5ee0b84935a5e1dad9448fa138d877cbe47783b8937f5"
+      },
+      "snappy_dictionary": {
+        "bytes": 979,
+        "sha256": "ee8185216c2c9ac5431212b6a9110f82880b487f66edd012a010bfc59b4f3054"
+      },
+      "snappy_fallback": {
+        "bytes": 3009,
+        "sha256": "d5ab127616c19bb8e3fdd1caa7a53260683547f4601392d22fc632a0ddbfc970"
+      },
+      "snappy_fallback_literal": {
+        "bytes": 1607,
+        "sha256": "4dcd03d8a25f13c1f67c504eb2853d02d7a8f8897c0623a60076cc0735cdf695"
+      }
+    },
+    "field": "日付",
+    "ordinal": 1,
+    "nullable": true,
+    "codecs": [
+      2,
+      1,
+      6,
+      1,
+      2,
+      1,
+      1,
+      1
+    ],
+    "groups": [
+      {
+        "span": [
+          199,
+          430
+        ],
+        "data": [
+          {
+            "frame": 199,
+            "stored_start": 229,
+            "parquet_crc": 2102569370,
+            "stored": {
+              "bytes": 43,
+              "sha256": "963c0a7ff6e8f01e3c5bf0a6082b936d04a46e3fdb79979dbb6ad727f9e45c56"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 3,
+              "sha256": "8401ad268e1c66fdd30deaecb675e73cb649740b68587d8d0d8ddfab2363f885"
+            },
+            "stored_suffix": {
+              "bytes": 40,
+              "sha256": "b49b9ee21d05a32f91ef623cdf2825c08da7103620baffb05d1ec578f623b9f4"
+            }
+          },
+          {
+            "frame": 272,
+            "stored_start": 302,
+            "parquet_crc": 3151066499,
+            "stored": {
+              "bytes": 55,
+              "sha256": "a85515f866c6ab0b50230fbc5819388e7146ab29e3fb4626ca46b5e760a1ad01"
+            },
+            "tag": 0,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 3,
+              "sha256": "955d664355cfec4555799f8540814cd33e4279c946079b286841b80a9d5210e1"
+            },
+            "stored_suffix": {
+              "bytes": 52,
+              "sha256": "1ee4715409a4f8fe47334a9eb5aa16829485dac328f67f122fa5c92fc396200a"
+            }
+          },
+          {
+            "frame": 357,
+            "stored_start": 387,
+            "parquet_crc": 2102569370,
+            "stored": {
+              "bytes": 43,
+              "sha256": "963c0a7ff6e8f01e3c5bf0a6082b936d04a46e3fdb79979dbb6ad727f9e45c56"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 3,
+              "sha256": "8401ad268e1c66fdd30deaecb675e73cb649740b68587d8d0d8ddfab2363f885"
+            },
+            "stored_suffix": {
+              "bytes": 40,
+              "sha256": "b49b9ee21d05a32f91ef623cdf2825c08da7103620baffb05d1ec578f623b9f4"
+            }
+          }
+        ],
+        "source_group": [
+          "plain",
+          0
+        ],
+        "profile": "gzip_plain"
+      },
+      {
+        "span": [
+          514,
+          619
+        ],
+        "dictionary": {
+          "frame": 514,
+          "stored_start": 534,
+          "parquet_crc": 486644222,
+          "stored": {
+            "bytes": 14,
+            "sha256": "ffa18e149728f45a4627cb60e983421678c3ca7234fe57ca18168d4d43df3c79"
+          }
+        },
+        "data": [
+          {
+            "frame": 548,
+            "stored_start": 581,
+            "parquet_crc": 3976396386,
+            "stored": {
+              "bytes": 38,
+              "sha256": "f20062373421a9599a9d4b1b915167a6cfd95fa4820cd863f97052d4f9abc5c5"
+            },
+            "tag": 8,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 24,
+              "sha256": "62e0a5cf253bd825f1cb33dca46f45d6fd8bb25afa4ff353426774a8dc20e599"
+            },
+            "stored_suffix": {
+              "bytes": 14,
+              "sha256": "d6cccf64563318ba7e192e0e87a1bba6d96f80275a6f658d2c5140d304f589b4"
+            }
+          }
+        ],
+        "source_group": [
+          "snappy_dictionary",
+          0
+        ],
+        "profile": "snappy_dictionary"
+      },
+      {
+        "span": [
+          907,
+          1130
+        ],
+        "data": [
+          {
+            "frame": 907,
+            "stored_start": 937,
+            "parquet_crc": 3055462518,
+            "stored": {
+              "bytes": 39,
+              "sha256": "e8702585a7a50c5244352976d1b778fcc7416f6d1f6d06c88fe3d8fc7bd4dd30"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 3,
+              "sha256": "8401ad268e1c66fdd30deaecb675e73cb649740b68587d8d0d8ddfab2363f885"
+            },
+            "stored_suffix": {
+              "bytes": 36,
+              "sha256": "5daad354dd9aea0d64a32034778717c91f7105db5d5af4f2dce5029a403b47ed"
+            }
+          },
+          {
+            "frame": 976,
+            "stored_start": 1006,
+            "parquet_crc": 3151066499,
+            "stored": {
+              "bytes": 55,
+              "sha256": "a85515f866c6ab0b50230fbc5819388e7146ab29e3fb4626ca46b5e760a1ad01"
+            },
+            "tag": 0,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 3,
+              "sha256": "955d664355cfec4555799f8540814cd33e4279c946079b286841b80a9d5210e1"
+            },
+            "stored_suffix": {
+              "bytes": 52,
+              "sha256": "1ee4715409a4f8fe47334a9eb5aa16829485dac328f67f122fa5c92fc396200a"
+            }
+          },
+          {
+            "frame": 1061,
+            "stored_start": 1091,
+            "parquet_crc": 3055462518,
+            "stored": {
+              "bytes": 39,
+              "sha256": "e8702585a7a50c5244352976d1b778fcc7416f6d1f6d06c88fe3d8fc7bd4dd30"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 3,
+              "sha256": "8401ad268e1c66fdd30deaecb675e73cb649740b68587d8d0d8ddfab2363f885"
+            },
+            "stored_suffix": {
+              "bytes": 36,
+              "sha256": "5daad354dd9aea0d64a32034778717c91f7105db5d5af4f2dce5029a403b47ed"
+            }
+          }
+        ],
+        "source_group": [
+          "zstd_plain",
+          0
+        ],
+        "profile": "zstd_plain"
+      },
+      {
+        "span": [
+          1283,
+          1488
+        ],
+        "data": [
+          {
+            "frame": 1283,
+            "stored_start": 1313,
+            "parquet_crc": 976747983,
+            "stored": {
+              "bytes": 55,
+              "sha256": "c9f2c9befe98f46a8fc95621ba7a4c069cf655a387385c2356a84ad6f258abfd"
+            },
+            "tag": 0,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 3,
+              "sha256": "955d664355cfec4555799f8540814cd33e4279c946079b286841b80a9d5210e1"
+            },
+            "stored_suffix": {
+              "bytes": 52,
+              "sha256": "69cb94b347eea12a0f9f90716120bcad8c240402c3f21104cc3de9eddff19adf"
+            }
+          },
+          {
+            "frame": 1368,
+            "stored_start": 1398,
+            "parquet_crc": 835837575,
+            "stored": {
+              "bytes": 30,
+              "sha256": "5bbba0f49f1c843afc4f6d69195947890243eb158efc5144f927a32bd0d4f020"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 3,
+              "sha256": "8401ad268e1c66fdd30deaecb675e73cb649740b68587d8d0d8ddfab2363f885"
+            },
+            "stored_suffix": {
+              "bytes": 27,
+              "sha256": "a09015d3a7047fdd7e59b443869c6ef3654c99ce737987e11e0f86f45bfbf784"
+            }
+          },
+          {
+            "frame": 1428,
+            "stored_start": 1458,
+            "parquet_crc": 835837575,
+            "stored": {
+              "bytes": 30,
+              "sha256": "5bbba0f49f1c843afc4f6d69195947890243eb158efc5144f927a32bd0d4f020"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 3,
+              "sha256": "8401ad268e1c66fdd30deaecb675e73cb649740b68587d8d0d8ddfab2363f885"
+            },
+            "stored_suffix": {
+              "bytes": 27,
+              "sha256": "a09015d3a7047fdd7e59b443869c6ef3654c99ce737987e11e0f86f45bfbf784"
+            }
+          }
+        ],
+        "source_group": [
+          "snappy_plain",
+          1
+        ],
+        "profile": "snappy_plain"
+      },
+      {
+        "span": [
+          1683,
+          1914
+        ],
+        "data": [
+          {
+            "frame": 1683,
+            "stored_start": 1713,
+            "parquet_crc": 976747983,
+            "stored": {
+              "bytes": 55,
+              "sha256": "c9f2c9befe98f46a8fc95621ba7a4c069cf655a387385c2356a84ad6f258abfd"
+            },
+            "tag": 0,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 3,
+              "sha256": "955d664355cfec4555799f8540814cd33e4279c946079b286841b80a9d5210e1"
+            },
+            "stored_suffix": {
+              "bytes": 52,
+              "sha256": "69cb94b347eea12a0f9f90716120bcad8c240402c3f21104cc3de9eddff19adf"
+            }
+          },
+          {
+            "frame": 1768,
+            "stored_start": 1798,
+            "parquet_crc": 2102569370,
+            "stored": {
+              "bytes": 43,
+              "sha256": "963c0a7ff6e8f01e3c5bf0a6082b936d04a46e3fdb79979dbb6ad727f9e45c56"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 3,
+              "sha256": "8401ad268e1c66fdd30deaecb675e73cb649740b68587d8d0d8ddfab2363f885"
+            },
+            "stored_suffix": {
+              "bytes": 40,
+              "sha256": "b49b9ee21d05a32f91ef623cdf2825c08da7103620baffb05d1ec578f623b9f4"
+            }
+          },
+          {
+            "frame": 1841,
+            "stored_start": 1871,
+            "parquet_crc": 2102569370,
+            "stored": {
+              "bytes": 43,
+              "sha256": "963c0a7ff6e8f01e3c5bf0a6082b936d04a46e3fdb79979dbb6ad727f9e45c56"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 3,
+              "sha256": "8401ad268e1c66fdd30deaecb675e73cb649740b68587d8d0d8ddfab2363f885"
+            },
+            "stored_suffix": {
+              "bytes": 40,
+              "sha256": "b49b9ee21d05a32f91ef623cdf2825c08da7103620baffb05d1ec578f623b9f4"
+            }
+          }
+        ],
+        "source_group": [
+          "plain",
+          1
+        ],
+        "profile": "gzip_plain"
+      },
+      {
+        "span": [
+          2214,
+          3097
+        ],
+        "dictionary": {
+          "frame": 2214,
+          "stored_start": 2234,
+          "parquet_crc": 2361492790,
+          "stored": {
+            "bytes": 14,
+            "sha256": "600091351780aae20bfa54cd31640d2d17c5401e7ac7a75deff7180c859dbecb"
+          }
+        },
+        "data": [
+          {
+            "frame": 2248,
+            "stored_start": 2280,
+            "parquet_crc": 3026041291,
+            "stored": {
+              "bytes": 27,
+              "sha256": "ee91fad5a849cea07bf364605ddd2220235107c03eaea50e3836ab0c56f54ec1"
+            },
+            "tag": 8,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 17,
+              "sha256": "9c34ae48c82ecdd625db15dc05aeff61c81c44febdf9c86c319f43dc14193352"
+            },
+            "stored_suffix": {
+              "bytes": 10,
+              "sha256": "c87562eb96b752740395e2ba86591197354e860757e319aa10cecfe1b834269f"
+            }
+          },
+          {
+            "frame": 2307,
+            "stored_start": 2341,
+            "parquet_crc": 1129153208,
+            "stored": {
+              "bytes": 194,
+              "sha256": "5b3ceb9c73f73a2d6c2fc18fb418f9b94f57c6f62f14565a77bd17cc63cb219f"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 17,
+              "sha256": "91343dc3069cbd6d8cf51f13e03a2a8110019a5ac8e0f8338c700d457e903a38"
+            },
+            "stored_suffix": {
+              "bytes": 177,
+              "sha256": "178a1a615e4ebbf12b3ca48351313e9f98c97cb70cc3150712b4d3a2b3bd39f7"
+            }
+          },
+          {
+            "frame": 2535,
+            "stored_start": 2569,
+            "parquet_crc": 657304591,
+            "stored": {
+              "bytes": 453,
+              "sha256": "a09cdffd040f75b767a7bcef82cc986281da56de41dc2166254cb95933311407"
+            },
+            "tag": 0,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 17,
+              "sha256": "ca5759dc86487477c243eeaa38c16b622907bd56cc22a4cc7d14be233d665058"
+            },
+            "stored_suffix": {
+              "bytes": 436,
+              "sha256": "4bd39b935763f0cce59adc71a78ebdd1b897f6fd707954cb427c1357d35e252b"
+            }
+          },
+          {
+            "frame": 3022,
+            "stored_start": 3055,
+            "parquet_crc": 2814783565,
+            "stored": {
+              "bytes": 42,
+              "sha256": "bd938ac3cb5eed2ffb98415d2452fa67c9f25fc86b507754d2748d9ef99ef603"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 17,
+              "sha256": "d210077caf48f656d1819474b8b958fa1de20601acb2f8c0817d63b743e7c579"
+            },
+            "stored_suffix": {
+              "bytes": 25,
+              "sha256": "b1e5b5e1c0e9310e4a8605107fafd231df4c409985c3516a81d42d0368994d40"
+            }
+          }
+        ],
+        "source_group": [
+          "snappy_fallback",
+          0
+        ],
+        "profile": "snappy_fallback"
+      },
+      {
+        "span": [
+          3151,
+          3221
+        ],
+        "dictionary": {
+          "frame": 3151,
+          "stored_start": 3171,
+          "parquet_crc": 2140451355,
+          "stored": {
+            "bytes": 14,
+            "sha256": "a61f70c881824525bbaa44397f0808f6d01ceb527cad4a09da3d9e79dbc6b376"
+          }
+        },
+        "data": [
+          {
+            "frame": 3185,
+            "stored_start": 3215,
+            "parquet_crc": 3620101635,
+            "stored": {
+              "bytes": 6,
+              "sha256": "fadbfd82710b7319b3438dea76a0fc53e5804c4ab33cbaca8c92aff45680dc57"
+            },
+            "tag": 8,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 2,
+              "sha256": "156f78959ba789c395968c7fe71efaa8b3a43fbbab9b2352bc3859e9ed12cb38"
+            },
+            "stored_suffix": {
+              "bytes": 4,
+              "sha256": "391ce44edacfa925bf6ca1bb8617f5addeda6957e34a6a62bdd70763db251030"
+            }
+          }
+        ],
+        "source_group": [
+          "snappy_dictionary",
+          1
+        ],
+        "profile": "snappy_dictionary"
+      },
+      {
+        "span": [
+          3445,
+          3864
+        ],
+        "dictionary": {
+          "frame": 3445,
+          "stored_start": 3465,
+          "parquet_crc": 2621169068,
+          "stored": {
+            "bytes": 14,
+            "sha256": "3f9b7acd34091834722d5939b8ddf2c6f51c437556c57056f5fb3d998e314536"
+          }
+        },
+        "data": [
+          {
+            "frame": 3479,
+            "stored_start": 3509,
+            "parquet_crc": 950723269,
+            "stored": {
+              "bytes": 13,
+              "sha256": "7b924a2fd8e56ebfb04bb76eb5f85005274120512482c1e354622dae6157cbff"
+            },
+            "tag": 8,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 5,
+              "sha256": "8b0b6e3c76f54de013b766ec03cf64b1f8bee82fc8c2e347aba196ca4d188610"
+            },
+            "stored_suffix": {
+              "bytes": 8,
+              "sha256": "dbdb5ebde80d28fabd5191ef0d2f0ec73e150e317e5865f229c542f556c3f613"
+            }
+          },
+          {
+            "frame": 3522,
+            "stored_start": 3554,
+            "parquet_crc": 753700972,
+            "stored": {
+              "bytes": 113,
+              "sha256": "536127ac7da16cdc0567b258d0487583c60d58c3535758a6327a3ba142bb20a4"
+            },
+            "tag": 0,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 5,
+              "sha256": "793fedfa7e212b6b685033e10967d710e19fc329eb0ed57a854237dd245409e1"
+            },
+            "stored_suffix": {
+              "bytes": 108,
+              "sha256": "801ddd3fec9aab7c5767b085f97cf3c0129d957959279c476519640ab7ea598d"
+            }
+          },
+          {
+            "frame": 3667,
+            "stored_start": 3698,
+            "parquet_crc": 871453781,
+            "stored": {
+              "bytes": 21,
+              "sha256": "48250fec1106c8c5285d16e17e4734164752c15f51b1d2352f4c8bb16cd735e7"
+            },
+            "tag": 0,
+            "is_compressed": true,
+            "levels": {
+              "bytes": 5,
+              "sha256": "50ba31364b593f8f48e5e0da66b2d52fe2977411d5af35ff393cf82a07eab7aa"
+            },
+            "stored_suffix": {
+              "bytes": 16,
+              "sha256": "d5a8750d6cd94ef08fc5fb882d12327fb8e20d580e4ecbb5a44303901094e2f1"
+            }
+          },
+          {
+            "frame": 3719,
+            "stored_start": 3751,
+            "parquet_crc": 485471390,
+            "stored": {
+              "bytes": 113,
+              "sha256": "3b60a42c42df1cc8e25854e12219053ef2b9fb76ea875179189ed6948aa20df7"
+            },
+            "tag": 0,
+            "is_compressed": false,
+            "levels": {
+              "bytes": 5,
+              "sha256": "793fedfa7e212b6b685033e10967d710e19fc329eb0ed57a854237dd245409e1"
+            },
+            "stored_suffix": {
+              "bytes": 108,
+              "sha256": "e84a05ab629b277e652c16ca8c0f0122ab022b50d2b9a141adb6772d648103d4"
+            }
+          }
+        ],
+        "source_group": [
+          "snappy_fallback_literal",
+          1
+        ],
+        "profile": "snappy_fallback"
+      }
+    ],
+    "lean_ipc": {
+      "bytes": 5648,
+      "sha256": "3fc7e9a8693c5ae89892fba29bcff284fdaa57141ed9ffe8e31d0ec63cbabf11"
+    }
+  },
+  "controls": {
+    "mutated_late_zstd_plain_crc": {
+      "parquet": {
+        "bytes": 4948,
+        "sha256": "f0b80bc5e6599a2c9cee6df18b2a0314a0df5ef105beb83335fe7c36de0a956b"
+      },
+      "group": 2,
+      "codec": 6,
+      "cause": "(.twoCodec (.zstd (.plain (.zstd (.checksum 0 907 (.mismatch 3055462518 4170687455))))))",
+      "ipc_batch_cap": 0
+    },
+    "mutated_late_snappy_plain_crc": {
+      "parquet": {
+        "bytes": 4948,
+        "sha256": "010db48ef531743ea4c7615ed5b8767b837eef4cc3a269f8af7edeaad0a135be"
+      },
+      "group": 3,
+      "codec": 1,
+      "cause": "(.snappy (.plain (.plain (.page 2 1428 (.checksum (.mismatch 835837575 229719439))))))",
+      "ipc_batch_cap": 0
+    },
+    "mutated_late_gzip_plain_crc": {
+      "parquet": {
+        "bytes": 4948,
+        "sha256": "bf7a8f6e3ca6df7d53a243616fde9403bfe489fcb08193ed7818a93ffae7b901"
+      },
+      "group": 4,
+      "codec": 2,
+      "cause": "(.twoCodec (.gzip (.plain (.gzip (.page 2 1841 (.checksum (.mismatch 2102569370 977362785)))))))",
+      "ipc_batch_cap": 0
+    },
+    "mutated_late_snappy_dictionary_crc": {
+      "parquet": {
+        "bytes": 4948,
+        "sha256": "474a04d9099caf5f6f3f5b759b918e583a762a5935dfe3ab8b3349de19c26c21"
+      },
+      "group": 6,
+      "codec": 1,
+      "cause": "(.snappy (.dictionaryBacked (.chunk (.page 0 3151 (.checksum (.mismatch 2140451355 3801830253))))))",
+      "ipc_batch_cap": 0
+    },
+    "mutated_late_snappy_fallback_crc": {
+      "parquet": {
+        "bytes": 4948,
+        "sha256": "ae8393c73598ef3042ab7c17b44440d63a9526cd4020f714f5905a16e8e3df89"
+      },
+      "group": 7,
+      "codec": 1,
+      "cause": "(.snappy (.dictionaryBacked (.decode (.snappy (.page 4 3719 (.checksum (.mismatch 485471390 2864210323)))))))",
+      "ipc_batch_cap": 0
+    },
+    "mutated_two_codecs_first_error": {
+      "parquet": {
+        "bytes": 4948,
+        "sha256": "f8f338e8cf0522305be98e2dc70d1a880dc19541cb68172381012254ef16420a"
+      },
+      "group": 3,
+      "codec": 1,
+      "cause": "(.snappy (.plain (.plain (.page 2 1428 (.checksum (.mismatch 835837575 229719439))))))",
+      "ipc_batch_cap": 0
+    },
+    "mutated_snappy_reentry_before_later_header": {
+      "parquet": {
+        "bytes": 4948,
+        "sha256": "f73b5d348b85a0a356662d97aa6cec3cf8094398eb863f14b3be02e9d4624ad5"
+      },
+      "group": 7,
+      "codec": 1,
+      "cause": "(.snappy (.dictionaryBacked (.sequence (.suffixEncoding 3 3667 8))))",
+      "ipc_batch_cap": 0
+    },
+    "mutated_unknown_footer_codec": {
+      "parquet": {
+        "bytes": 4949,
+        "sha256": "8fe39f61454ddd937c8becf0f26a1c6dc188c1043f70a168adb3b0151f6acab7"
+      },
+      "group": 6,
+      "codec": 77,
+      "cause": "(.twoCodec (.unsupportedCodec 77))",
+      "ipc_batch_cap": 0
+    },
+    "mutated_snappy_body_labelled_zstd": {
+      "parquet": {
+        "bytes": 4948,
+        "sha256": "e15e251e11b79f8c4eb8b11844bd59cb16c96dfcf5a195a444e9075f5623d02f"
+      },
+      "group": 3,
+      "codec": 6,
+      "cause": "(.twoCodec (.zstd (.plain (.zstd (.decode 1 1368 (.frame (.frame .badMagic)))))))",
+      "ipc_batch_cap": 0
+    },
+    "genuine_unsupported_uncompressed": {
+      "parquet": {
+        "bytes": 2465,
+        "sha256": "95198bfc36bb595117e7df4a66b60f2168ccfb5c83c3568a89aa4a84fb063fd2"
+      },
+      "group": 0,
+      "codec": 0,
+      "cause": "(.twoCodec (.unsupportedCodec 0))",
+      "ipc_batch_cap": 0
+    }
+  }
+}

@@ -37,16 +37,19 @@ def selectedCodec (bound : Bound) (index : Nat) : Except Leaf.Error Int := do
   let some column := group.columns[bound.ordinal]? | throw (.chunkIndex bound.ordinal)
   return column.metadata.codec
 
-/-- Choose exactly one V2 dispatcher by codec ID. Its existing checks own the
-selected chunk, frame chain and payload. -/
-def readGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError Slots := do
-  let actual ← (selectedCodec bound index).mapError .selection
+/-- Dispatch with the codec ID obtained from the checked selected footer. -/
+def readWithCodec (limits : Limits) (bound : Bound) (index : Nat) (actual : Int) : Except GroupError Slots :=
   if actual = Payload.Codec.gzip.id then
     (Gzip.Dispatch.V2.WithPlain.readGroup limits.gzip bound index).mapError .gzip
   else if actual = Payload.Codec.zstd.id then
     (Zstd.Dispatch.V2.readGroup limits.zstd bound index).mapError .zstd
   else
     .error (.unsupportedCodec actual)
+
+/-- Run the strict dispatcher selected by the original footer codec ID. -/
+def readGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError Slots := do
+  let actual ← (selectedCodec bound index).mapError .selection
+  readWithCodec limits bound index actual
 
 def trace (limits : Limits) (bound : Bound) :
     Arrow.Events.Trace (Events.schema bound) Date.Events.Cell Error :=
