@@ -1,0 +1,8 @@
+{
+  "native_v1": "d95611579b99ce8a9082666fda3293dcb15b10c61bc803494cb866093e766a32",
+  "native_v2": "c31660fa274e257720b6041d76aa6e407d0742861fd9fcb8ea6c283b8e306e87",
+  "native_schema_only": "a632a81fa2501512d275e3e37cfab8b2992014e269fe4071f299ecc6779d5644",
+  "native_unannotated_binary": "2f166d2f41432a79ae0caa6b4eb0f73d00a08110640b9c4d0f4e3e8a9617dd23",
+  "native_checksummed_v1": "12cd91efcc615a8052a3f951fbe1fdf13b7552bf5f4398b0f686a972667813f0",
+  "mutated_late_timestamp_dictionary_magic": "89ea7aa0893c2c838265fc638948826ed6d91a4ed2012ab9adde3a1ebac0bba9"
+}
