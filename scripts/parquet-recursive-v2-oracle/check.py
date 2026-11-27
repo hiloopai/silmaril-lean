@@ -129,7 +129,7 @@ def capture(wire, schema, rows, *, codec=0, decode_block=snappy_block):
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     for (group, index), metadata, start, stop in columns(wire):
         column_codec = metadata[4][1] if codec is None else codec
-        assert column_codec in (0, 1, 7) and metadata[4][1] == column_codec
+        assert column_codec in (0, 1, 2, 7) and metadata[4][1] == column_codec
         (_, path), scalar, steps, repeated = leaves[index]
         group_rows = parquet.read_row_group(group).to_pylist()
         expected = [event for row in group_rows

@@ -145,7 +145,7 @@ public theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf :
         split at read
         · contradiction
         · obtain ⟨model, before, _, after, _⟩ := decodePayload_wire read
-          exact .compressed compressed notRaw model before after (by omega)
+          exact .compressed compressed notRaw model before after (by omega) read
 
 public theorem decodeV2Page_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}

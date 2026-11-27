@@ -145,10 +145,10 @@ public theorem readV1Body_wire {limits : Limits} {codec : ColumnCodec} {source :
   cases codec
   case uncompressed =>
     cases Except.ok.inj read
-    exact ⟨storedSize.trans (sizes rfl).symm, storedSize.symm ▸ cap, .uncompressed _⟩
+    exact ⟨storedSize.trans (sizes rfl).symm, storedSize.symm ▸ cap, .uncompressed _, by simp⟩
   all_goals
     obtain ⟨model, _, _, bodySize, bodyCap⟩ := decodePayload_wire read
-    exact ⟨bodySize, bodyCap, model⟩
+    exact ⟨bodySize, bodyCap, model, fun _ => read⟩
 
 public theorem decodeSlots_wire {leaf : Leaf} {reps defs : List Nat} {suffix : Bytes}
     {start : State} {rowCeiling : Nat} {decoded : DecodedPage}

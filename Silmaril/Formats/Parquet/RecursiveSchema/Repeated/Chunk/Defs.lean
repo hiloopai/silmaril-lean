@@ -4,7 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Defs
 public import Silmaril.Formats.Parquet.ScalarPage.Defs
 
-/-! Checked unindexed PLAIN V1/V2 chunks with UNCOMPRESSED, Snappy or LZ4_RAW, at most one
+/-! Checked unindexed PLAIN V1/V2 chunks with UNCOMPRESSED, Snappy, GZIP or LZ4_RAW, at most one
 repeated ancestor and independent bounds on slots and row starts. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -19,6 +19,8 @@ abbrev Word := RecursiveSchema.Chunk.Word
 
 structure Limits extends RecursiveSchema.Chunk.Limits where
   maxSlots : Nat := 1024 * 1024
+  /-- Controller calls per reached GZIP member, independent of stored and raw bytes. -/
+  gzipCalls : Nat := 65536
 
 /-- This profile uses neither offset indexes nor column indexes. Only V1
 can continue a row across pages. -/
@@ -30,16 +32,18 @@ instance (chunk : Footer.ColumnChunk) : Decidable (Unindexed chunk) := by
   unfold Unindexed
   infer_instance
 
-/-- Only the identity codec and the two raw block codecs in this profile. -/
+/-- The column codecs admitted by the recursive profile. GZIP uses one member. -/
 inductive ColumnCodec where
   | uncompressed
   | snappy
+  | gzip
   | lz4Raw
   deriving DecidableEq, Repr
 
 def ColumnCodec.payload : ColumnCodec → Payload.Codec
   | .uncompressed => .uncompressed
   | .snappy => .snappy
+  | .gzip => .gzip
   | .lz4Raw => .lz4Raw
 
 def ColumnCodec.id (codec : ColumnCodec) : Int :=
@@ -48,6 +52,7 @@ def ColumnCodec.id (codec : ColumnCodec) : Int :=
 def ColumnCodec.ofId : Int → Option ColumnCodec
   | 0 => some .uncompressed
   | 1 => some .snappy
+  | 2 => some .gzip
   | 7 => some .lz4Raw
   | _ => none
 
@@ -327,7 +332,8 @@ def decodePayload (codec : ColumnCodec) (bounds : Payload.Bounds) (stored : Byte
   ((Payload.decode bounds codec.id stored.toList).mapError .payload).map Bytes.ofList
 
 def v1BodyBounds (limits : Limits) (frame : Page.Frame) : Payload.Bounds :=
-  ⟨frame.value.compressedSize, limits.maxBodyBytes, frame.value.uncompressedSize, limits.maxBodyBytes, 0⟩
+  ⟨frame.value.compressedSize, limits.maxBodyBytes, frame.value.uncompressedSize,
+    limits.maxBodyBytes, limits.gzipCalls⟩
 
 /-- The serialized V1 body, including each level prefix, uses the column
 codec. Verify the stored frame before extracting bytes or expanding it. -/
@@ -337,7 +343,7 @@ def readV1Body (limits : Limits) (codec : ColumnCodec) (source : Bytes) (frame :
   let stored := Page.Checksum.payloadBytes source frame
   match codec with
   | .uncompressed => return stored
-  | .snappy | .lz4Raw => decodePayload codec (v1BodyBounds limits frame) stored
+  | .snappy | .gzip | .lz4Raw => decodePayload codec (v1BodyBounds limits frame) stored
 
 structure V1BodyWire (limits : Limits) (codec : ColumnCodec) (source : Bytes) (frame : Page.Frame)
     (body : Bytes) : Prop where
@@ -346,7 +352,8 @@ structure V1BodyWire (limits : Limits) (codec : ColumnCodec) (source : Bytes) (f
     source.slice? frame.payload.start (some frame.payload.stop) = some stored ∧
     stored.length = frame.value.compressedSize ∧ stored.length ≤ limits.maxBodyBytes ∧
     body.length = frame.value.uncompressedSize ∧ body.length ≤ limits.maxBodyBytes ∧
-    Payload.Decodes frame.value.uncompressedSize codec.payload stored.toList body.toList
+    Payload.Decodes frame.value.uncompressedSize codec.payload stored.toList body.toList ∧
+    (codec ≠ .uncompressed → decodePayload codec (v1BodyBounds limits frame) stored = .ok body)
 
 def decodeV1Page (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (source : Bytes)
     (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
@@ -432,7 +439,7 @@ def v2LevelBytes (info : Page.DataV2) : Nat :=
 def v2ValueBounds (limits : Limits) (frame : Page.Frame) (info : Page.DataV2) : Payload.Bounds :=
   let levels := v2LevelBytes info
   ⟨frame.value.compressedSize - levels, limits.maxBodyBytes,
-    frame.value.uncompressedSize - levels, limits.maxBodyBytes - levels, 0⟩
+    frame.value.uncompressedSize - levels, limits.maxBodyBytes - levels, limits.gzipCalls⟩
 
 /-- Check both extents before subtracting the original raw level prefix.
 Only the independently bounded stored value suffix enters the codec. -/
@@ -461,6 +468,7 @@ inductive V2SuffixWire (limits : Limits) (codec : ColumnCodec) (frame : Page.Fra
       stored.length = (v2ValueBounds limits frame info).compressedSize →
       raw.length = (v2ValueBounds limits frame info).expectedSize →
       frame.value.uncompressedSize ≤ limits.maxBodyBytes →
+      decodePayload codec (v2ValueBounds limits frame info) stored = .ok raw →
       V2SuffixWire limits codec frame info stored raw
 
 /-- Verify CRC on the original body, decode the original level spans, and

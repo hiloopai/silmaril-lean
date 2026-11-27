@@ -1,0 +1,89 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "v1": {
+      "bytes": 2504,
+      "sha256": "0d15f95938a31f72de2dca65e7ff036b2f7ffacf05f11bd375d426c5c16b5232"
+    },
+    "v2": {
+      "bytes": 2422,
+      "sha256": "6b847b2f013edd332d0f565854b305e200e60ac992a322b244d112a429f86715"
+    },
+    "pageless": {
+      "bytes": 2614,
+      "sha256": "3e6207b0bd48abf12b806ed71e373d50de58eb6a45b5b8ffa69f77c7fbeadce3"
+    }
+  },
+  "labeled_edits": {
+    "v1_stored_crc": {
+      "bytes": 2510,
+      "sha256": "cfe733152b4411a5347c6082d8e9a0b750a1d2157d293c41fa65ad6e2007e08d"
+    },
+    "v1_gzip_crc": {
+      "bytes": 2510,
+      "sha256": "13e04e6f5baf526d19ec073602677d8e784575d5aa7ac06066df50f841df40f4"
+    },
+    "v1_gzip_isize": {
+      "bytes": 2510,
+      "sha256": "53b0e74a7edc254ea033e482ac81fe042821278dd23bb8d09a1c64279af41a0c"
+    },
+    "v1_trailing": {
+      "bytes": 2511,
+      "sha256": "e0cb596f9bf7051166fd557493d92716df22ddac6369631a3935426249c560f1"
+    },
+    "v1_second_member": {
+      "bytes": 2560,
+      "sha256": "e43e319a5380e7662d5003cd8de0a3463849a4d4d9ead6c3bfde5a1bfd351e2c"
+    },
+    "v1_short_output": {
+      "bytes": 2481,
+      "sha256": "83cd05984f8a09dfbf3ff8b4282700c44341ffaf162f15417243be3718408923"
+    },
+    "v1_footer_total": {
+      "bytes": 2504,
+      "sha256": "2c6b509983d7ea53c4bed952a14bb390a256f8ed99680d837abafb3249da94e7"
+    },
+    "v2_stored_crc": {
+      "bytes": 2428,
+      "sha256": "1fae7c83474a9378ca81f295352360bf4eca57cfd372ab9522a847a49101914c"
+    },
+    "v2_gzip_crc": {
+      "bytes": 2429,
+      "sha256": "ec4796d0054cf6127b10d291868f0337a2b5d5db2517ad0d7eb9c9fbe2a98f93"
+    },
+    "v2_gzip_isize": {
+      "bytes": 2429,
+      "sha256": "cafb89a13145078bebb89fa01cac75000e7e9615cccb1ff0272e1733529c6d87"
+    },
+    "v2_trailing": {
+      "bytes": 2430,
+      "sha256": "1b357ff0eec4bb8058096434d5a599affceac053ea3f6275e3e0e463d4508684"
+    },
+    "v2_second_member": {
+      "bytes": 2459,
+      "sha256": "4f91b09b529f9034d322cab3c94f0127fff0736c1c868f24f45332d241209599"
+    },
+    "v2_short_output": {
+      "bytes": 2420,
+      "sha256": "7e889dc37599ad2f5e02041de359281ee792fcbd4cd4fae2be4df52c8b804059"
+    },
+    "v2_footer_total": {
+      "bytes": 2422,
+      "sha256": "f4f467e9514559f293cb3f8f1904d2e6add664e28a89e98bf7236756be0354b8"
+    }
+  },
+  "lean_ipc": {
+    "v1": {
+      "bytes": 3992,
+      "sha256": "2a9f0548ca9576078713f7150cfdf8426684dcaa7ec47c39e284760778638eb7"
+    },
+    "v2": {
+      "bytes": 3992,
+      "sha256": "2a9f0548ca9576078713f7150cfdf8426684dcaa7ec47c39e284760778638eb7"
+    }
+  }
+}

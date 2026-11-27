@@ -214,9 +214,7 @@ def verify(scratch):
     raw_total = THRIFT["column_metadata"](MIXED["metadata"](native), group, column)[6][1]
     code.append(f'  refuse (← load folder "wrong_chunk_total") {group} {column} {{}} '
                 f'(.chunk {address} ⟨{col.start}, {col.stop}⟩ (.uncompressedSize {raw_total+1} {raw_total}))')
-    first_path = '["packet", "items", "list", "élément", "lo"]'
     code.extend([
-        f'  bindFailure (← load folder "gzip_v2") 0 0 (.column ⟨0, 0, {first_path}⟩ (.codec 2))',
         '  deny (.original (.snapshot (.invalidMetadata .pageInterval))) (openFile {} (← load folder "pageless_snappy"))',
     ])
 
@@ -248,7 +246,7 @@ def verify(scratch):
         ipc[name] = wire
     pages = sum(len(col.pages) for fixture in captured.values() for col in fixture.values())
     print(f"Checked {pages} original pages including {len(compressed)} compressed and {len(raw)} raw "
-          "in the all-Snappy input, three native IPC streams and twelve typed refusals")
+          "in the all-Snappy input, three native IPC streams and eleven typed refusals")
     return {"genuine_parquet": fingerprints(genuine), "labeled_edits": fingerprints(labeled),
             "lean_ipc": fingerprints(ipc)}
 

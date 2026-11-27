@@ -56,8 +56,8 @@ CRC computed over the decoded body, extent arithmetic, cumulative
 metadata size and stored and decoded body limits. Direct Events
 preserves the completed group and terminal cause through empty
 projection. The native IPC route returns the same original failure
-ahead of writer limits. Genuine Gzip V2 and Snappy pageless
-sources exercise the profile refusals.
+ahead of writer limits. A genuine Snappy pageless source exercises the footer refusal.
+The reader also admits [bounded single-member GZIP](parquet-recursive-gzip.md).
 [Fixture pins](../../scripts/parquet-recursive-v2-snappy-oracle/fixtures.json)
 
 ```sh
