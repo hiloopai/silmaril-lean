@@ -1,0 +1,53 @@
+{
+  "description": "Genuine PyArrow nested Parquet and labeled original schema edit",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "deep": {
+      "bytes": 1865,
+      "sha256": "590011386218646cab289510d208bc86dcb3a8512666de2ad7be492aeffe1ab7"
+    },
+    "required_path": {
+      "bytes": 1016,
+      "sha256": "8d05a0e194d813e6bc1366c1bb489b2e00428a346944acb36d4598268970fdfe"
+    },
+    "schema_only": {
+      "bytes": 187,
+      "sha256": "a68862bc589fc54ba32589239fe6ba96815d6673121eb2c07451dfe4a35e1846"
+    },
+    "annotated": {
+      "bytes": 233,
+      "sha256": "cc7592d71a0e3888088bf0b17f513e2918a38778dc111aa42311ecba27955f56"
+    },
+    "list": {
+      "bytes": 288,
+      "sha256": "69c3244102bcb90650296537f8000730bb43f86d71d6c7896e52434de605790b"
+    },
+    "float": {
+      "bytes": 229,
+      "sha256": "78385cfcb3046bd0ba3e995103215dd47606fce44b60e4c3c50683214d3f99d4"
+    },
+    "snappy": {
+      "bytes": 1028,
+      "sha256": "ac69319b104274e94af5ea8b89cd2654ec151d4915db796207adefd1b9078043"
+    },
+    "delta": {
+      "bytes": 1036,
+      "sha256": "b2d1766f1a648cf9ba768c647a8f6398fb57b00a9834e96fb2c0a52fbb722eb5"
+    }
+  },
+  "labeled_edits": {
+    "unannotated_repeated": {
+      "bytes": 282,
+      "sha256": "f51eaf76bbb346ab6399252ee46f4194243c686b3f464fd78af684048719bd1c"
+    }
+  }
+}
