@@ -1,0 +1,11 @@
+{
+  "optional.arrows": "b510b8df5420999602ae258d2066263bee007cd565353cdd6c840b08ca7258a6",
+  "required.arrows": "e134774401b6d5858467a70d9c92015b9fc4fbf7acc419e63bd7574f72bafb93",
+  "schema-only.arrows": "b752c1732e2b53f79bbcbf16095d7b6abb342d0c43240f5e35037cd920d89b77",
+  "binary.arrows": "6fad640db8c1483d655c88382038c9bcfe63956a0e06f4e3e00e46970acd6c25",
+  "truncated.arrows": "520f8ff253b44199b9465cff0a4a6a3e9b2fd08453eca9cdeb0ea61d6bb185ca",
+  "bad-text.arrows": "48be6f0bd1e1a61106d60c63d998882a617797ab9ba1eb173952aff1e756a846",
+  "optional.parquet": "5f94a94852cf204d3be28906713b25565cf23a091cc6da175b2881053bc5588f",
+  "required.parquet": "236177b7a2e3f0b640091f18d3492ce2a36587cddcb2ff2852f4aca4c6ec362d",
+  "schema-only.parquet": "51e99b41b7fbaeba6f5cd505d6a55bc4e6792906ecd67aba9a7fa1cedc6e43fc"
+}

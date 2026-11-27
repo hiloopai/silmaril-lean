@@ -53,3 +53,46 @@ lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Checks \
   +Silmaril.Formats.Parquet.Plain.ByteArray.ToIpc.Checks
 python3 scripts/parquet-utf8-view-oracle/check.py "$(mktemp -d)"
 ```
+
+## Native Utf8View to Parquet STRING
+
+`Parquet.Plain.ByteArray.Utf8.FromIpc.convert` reads one explicitly
+declared Utf8View field through exact Arrow IPC EOS. The writer uses
+the field's original name and nullability and emits one uncompressed
+PLAIN V1 BYTE_ARRAY page per batch. The footer writes both the empty
+modern STRING marker and converted UTF8 code 0.
+
+The output uses the strings' existing UTF-8 octets. Null and empty
+strings have distinct slots. Every explicit batch has a row group,
+including a zero-row batch with a real page header. A schema-only
+stream writes the declared STRING leaf with zero groups. File, group,
+row, chunk, page, value and footer budgets govern writing. The writer
+measures page spans and budgets the footer before materializing page
+bodies. It returns a file only after the checked STRING reader
+recovers the original annotation and all batches.
+
+`convert_readback` links the complete native source, including its
+original schema and record windows through EOS, to the checked
+Parquet file. `SinkWire` records one group per source batch and the
+exact original nullable UTF-8 octets in its framed PLAIN chunk.
+`convert_source_error` preserves the original native IPC failure.
+
+Pinned PyArrow 26.0.1 produces the input streams and reads the output
+Parquet with the original text and batch boundaries. Thrift 0.25.0
+checks the leaf markers, every original chunk offset, and the complete
+PLAIN page bodies with exact UTF-8 lengths and definition levels.
+The optional and required cases have group counts `[5, 0, 4]` and
+`[2, 0, 2]`. The comparison covers composed and decomposed spellings,
+multibyte text, embedded NUL, and the distinction between null and
+an empty string. Separate controls exercise source truncation,
+invalid UTF-8 in the last source batch, explicitly binary input,
+and writer budgets.
+
+[Definitions](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/FromIpc/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/FromIpc/Thms.lean) ·
+[Fixture hashes](../../scripts/utf8-view-to-parquet-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.FromIpc.Checks
+python3 scripts/utf8-view-to-parquet-oracle/check.py "$(mktemp -d)"
+```
