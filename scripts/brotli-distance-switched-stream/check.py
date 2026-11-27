@@ -99,7 +99,7 @@ def native_cases(work, reference, traced):
         compare(work, wire, plain, trace)
         pins[str(quality)] = {"sha256": sha256(wire).hexdigest(), "output_sha256": sha256(plain).hexdigest(),
                               "output": len(plain), "blocks": trace["blocks"], "ends": trace["ends"],
-                              "types": types, "switchCounts": list(counts.items()),
+                              "types": types, "switchCounts": [[category, count] for category, count in counts.items()],
                               "switchTraceSha256": sha256(json.dumps(trace["switches"]).encode()).hexdigest(),
                               "ring": trace["ring"]}
         print(f"Native quality {quality}: {len(plain)} bytes, types {types}, switch counts {counts}")
