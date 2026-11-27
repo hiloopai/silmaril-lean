@@ -17,6 +17,15 @@ theorem decodeText_ok_iff (text : String) (day : DateInterop.Date32.Payload) :
       Csv.Typed.Codecs.Date32.print day = some text.toUTF8.data.toList :=
   Proofs.Formats.Hive.Date32.decodeText_ok_iff text day
 
+/-- Bind a singleton parsed directory, converting only present DATE text. -/
+theorem decodeDirectory_singleton (key : String) (options : PartitionPath.Options)
+    (directory : String) (text : Option String) (nonempty : key ≠ "")
+    (parsed : PartitionPath.parse options directory = .ok [(key, text)]) :
+    WritePlan.decodeDirectory (partition key) options convert directory =
+      ((text.mapM decodeText).mapError fun reason =>
+        WritePlan.RestoreError.binding directory (.conversion key reason)).map (fun day _ => day) :=
+  Proofs.Formats.Hive.Date32.decodeDirectory_singleton key options directory text nonempty parsed
+
 /-- Once Hive has admitted the literal path and parsed its named entry, a
 marker becomes null and only a present value is passed to the DATE codec. -/
 theorem bindFileCells_singleton (key : String) (options : PartitionPath.Options) (file : File)

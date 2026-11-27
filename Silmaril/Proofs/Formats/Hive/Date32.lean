@@ -20,15 +20,13 @@ theorem decodeText_ok_iff (text : String) (day : DateInterop.Date32.Payload) :
   unfold decodeText
   cases Csv.Typed.Codecs.Date32.parse text.toUTF8.data.toList <;> simp
 
-theorem bindFileCells_singleton (key : String) (options : PartitionPath.Options) (file : File)
+theorem decodeDirectory_singleton (key : String) (options : PartitionPath.Options)
     (directory : String) (text : Option String) (nonempty : key ≠ "")
-    (path : Hive.WritePlan.FlatInt32.checkFilePath (Failure := Error) file.path = .ok directory)
     (parsed : PartitionPath.parse options directory = .ok [(key, text)]) :
-    bindFileCells (partition key) options convert file =
+    WritePlan.decodeDirectory (partition key) options convert directory =
       ((text.mapM decodeText).mapError fun reason =>
-        FileError.partition (.binding directory (.conversion key reason))).map (fun day _ => day) := by
-  simp only [bindFileCells, path, Hive.WritePlan.decodeDirectory, parsed, Except.mapError,
-    Bind.bind, Except.bind]
+        WritePlan.RestoreError.binding directory (.conversion key reason)).map (fun day _ => day) := by
+  simp only [WritePlan.decodeDirectory, parsed, Except.mapError]
   simp [TypedPartitions.decode, TypedPartitions.PartitionSchema.keys, partition, PartitionPath.validateKeys,
     nonempty, TypedPartitions.decodeField, PartitionPath.lookup, convert]
   have constantRows (day : Option DateInterop.Date32.Payload) :
@@ -47,6 +45,17 @@ theorem bindFileCells_singleton (key : String) (options : PartitionPath.Options)
     | ok day =>
       simp [Option.mapM, h, Except.map]
       exact congrArg Except.ok (constantRows (some day))
+
+theorem bindFileCells_singleton (key : String) (options : PartitionPath.Options) (file : File)
+    (directory : String) (text : Option String) (nonempty : key ≠ "")
+    (path : Hive.WritePlan.FlatInt32.checkFilePath (Failure := Error) file.path = .ok directory)
+    (parsed : PartitionPath.parse options directory = .ok [(key, text)]) :
+    bindFileCells (partition key) options convert file =
+      ((text.mapM decodeText).mapError fun reason =>
+        FileError.partition (.binding directory (.conversion key reason))).map (fun day _ => day) := by
+  simp only [bindFileCells, path, Except.mapError, decodeDirectory_singleton key options directory text nonempty parsed,
+    Bind.bind, Except.bind]
+  cases text.mapM decodeText <;> rfl
 
 theorem scanPruned_first_binding_error (leaf key : String) (options : PartitionPath.Options)
     (policy : Policy) (limits : FlatInt32Writer.Limits) (predicate : Scan.Predicate (partition key).toScan Cell)

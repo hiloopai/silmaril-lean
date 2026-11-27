@@ -65,3 +65,50 @@ docker run --rm --network host --platform linux/amd64 \
     python -m pip install --require-hashes -r /tmp/requirements.txt
     python -I /repo/scripts/hive-date32-oracle/Oracle.py /out'
 ```
+
+## Canonical outbound paths
+
+[`Date32.renderDirectory`](../../Silmaril/Formats/Hive/Date32/Render/Defs.lean)
+takes one declared key, explicit Hive URI options, and a nullable signed
+epoch day. It emits one relative `key=value` segment. The shared DATE
+printer accepts days from −719528 through 2932896 inclusive and emits
+canonical ten-byte date text. Null uses the supplied nonempty marker.
+The existing Hive renderer checks the key and required keys, rejects a
+present text equal to the marker, and percent-escapes keys and values.
+
+Marker equality uses decoded text. For example, with marker `2000-02-29`,
+a null renders as `day=2000-02-29` and the present leap date is refused
+with `nullMarkerCollision`. With the literal marker `2000%2D02%2D29`,
+null instead renders as `day=2000%252D02%252D29`. An out-of-range
+present day fails before Hive key and marker validation.
+
+[`decodeDirectory_renderDirectory`](../../Silmaril/Formats/Hive/Date32/Render/Thms.lean)
+recovers the same nullable epoch day under the same key and options.
+The present-cell encoder also satisfies the existing write plan's left
+inverse, so it can be passed to native manifest emission and restored
+with the existing DATE reader. Supplied file paths retain their literal
+spelling. The formatter generates a directory, and the existing
+manifest writer owns file admission and emission.
+
+The outbound fixture uses the native write plan with interleaved dates,
+nulls, year endpoints and an escaped key and marker. PyArrow reads nine
+actual Parquet files at the generated literal paths and compares ten
+groups, in explicit manifest and footer order. With the simple key it
+also independently reproduces six directory spellings, and demonstrates
+that PyArrow writes the same spelling for a valid DATE marker and the
+present value equal to it. PyArrow reads that spelling as null. Lean
+refuses the present value.
+
+```sh
+tmp=$(mktemp -d)
+lake build --wfail +Silmaril.Formats.Hive.Date32.Render.Checks
+lake env lean --run Silmaril/Formats/Hive/Date32/Render/Checks.lean "$tmp"
+docker run --rm --network host --platform linux/amd64 \
+  -v "$PWD:/repo:ro" -v "$tmp:/out:ro" \
+  python@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d \
+  sh -ec 'printf "%s\n" \
+    "pyarrow==26.0.1 --hash=sha256:7ae48ab53610b85e004b03bccff593fbdf22186d0ab48ed42c90797915dac814" \
+    "numpy==2.5.5 --hash=sha256:c48960d420e90cf305cb1fde0d4e6082cc90512cda87a9acf0b6e04e91cf4abe" > /tmp/requirements.txt
+    python -m pip install --require-hashes -r /tmp/requirements.txt
+    python -I /repo/scripts/hive-date32-render-oracle/Oracle.py /out'
+```
