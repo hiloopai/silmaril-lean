@@ -57,4 +57,30 @@ theorem readBlock_error {header : CompressedHeader.Header} {window length comman
           (Execute.InsertCopy.State.start header initial) before input error :=
   Proofs.Formats.Compression.Brotli.Execute.DistanceSwitch.Dictionary.Block.readBlock_error rep count parsed
 
+/-- A counted payload reports exactly the unused command slots. -/
+theorem readBlockCounted_sound {header : CompressedHeader.Header} {window length commandCap : Nat} {limits : Limits}
+    {initial : Execute.State} {final : BlockResult} {before : LSBReader} {input : List Bool}
+    (rep : before.Rep input) (count : before.count < 8)
+    (parsed : readBlockCounted header window length commandCap limits initial before = .ok final) :
+    final.state.execution.output.size = initial.output.size + length ∧ final.state.execution.output.size ≤ limits.output ∧
+    ∃ used suffix chunks,
+      CommandsWire header ⟨window, initial.output.size, length⟩ limits before
+        (Execute.InsertCopy.State.start header initial) before input suffix chunks final.state final.cursor ∧
+      final.state.execution.output.toList = initial.output.toList ++ chunks.flatten ∧
+      chunks.length + final.remainingCommands = commandCap ∧ Source before final.cursor input used suffix ∧ used.length ≤ limits.bits :=
+  Proofs.Formats.Compression.Brotli.Execute.DistanceSwitch.Dictionary.Block.readBlockCounted_sound rep count parsed
+
+/-- The counted payload preserves the same first failure and original coordinates. -/
+theorem readBlockCounted_error {header : CompressedHeader.Header} {window length commandCap : Nat}
+    {limits : Limits} {initial : Execute.State} {before : LSBReader} {input : List Bool}
+    {error : BlockError} (rep : before.Rep input) (count : before.count < 8)
+    (parsed : readBlockCounted header window length commandCap limits initial before = .error error) :
+    (∃ used suffix, input = used ++ suffix ∧ error.bit = before.totalRead + used.length) ∧
+      match error with
+      | .initialOutput bit => limits.output < initial.output.size ∧ bit = before.totalRead
+      | .fuel .. | .command .. =>
+        FailurePath header ⟨window, initial.output.size, length⟩ limits before commandCap 0
+          (Execute.InsertCopy.State.start header initial) before input error :=
+  Proofs.Formats.Compression.Brotli.Execute.DistanceSwitch.Dictionary.Block.readBlockCounted_error rep count parsed
+
 end Silmaril.Formats.Compression.Brotli.Execute.DistanceSwitch.Dictionary

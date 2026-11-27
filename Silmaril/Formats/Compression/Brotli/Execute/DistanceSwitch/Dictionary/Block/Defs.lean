@@ -12,16 +12,28 @@ namespace Silmaril.Formats.Compression.Brotli.Execute.DistanceSwitch.Dictionary
 open LiteralSwitch (remainingBits)
 open Literal.Switch (Source)
 
-/-- Read a payload after its checked header. Each attempt at a pending
-    command spends one command slot, including a zero-output dictionary
-    transform. The completed block needs no further slot. -/
-def readBlock (header : CompressedHeader.Header) (window length commandCap : Nat) (limits : Limits)
-    (initial : Execute.State) (before : LSBReader) : Except BlockError (InsertCopy.State × LSBReader) :=
+structure BlockResult where
+  state : InsertCopy.State
+  cursor : LSBReader
+  remainingCommands : Nat
+
+/-- The same bounded payload loop returns its unused command slots to a caller
+    composing multiple meta-blocks. An empty emission still takes a slot. -/
+def readBlockCounted (header : CompressedHeader.Header) (window length commandCap : Nat) (limits : Limits)
+    (initial : Execute.State) (before : LSBReader) : Except BlockError BlockResult :=
   if limits.output < initial.output.size then .error (.initialOutput before.totalRead)
   else
     let block : Block := ⟨window, initial.output.size, length⟩
-    LiteralSwitch.Internal.runWith (read header block) BlockError.command BlockError.fuel block limits before
+    LiteralSwitch.Internal.runWithResult (fun remaining state cursor => ⟨state, cursor, remaining⟩)
+      (read header block) BlockError.command BlockError.fuel block limits before
       commandCap 0 (InsertCopy.State.start header initial) before
+
+/-- Read a payload after its checked header and project its execution state
+    and cursor. The completed block needs no additional command slot. -/
+def readBlock (header : CompressedHeader.Header) (window length commandCap : Nat) (limits : Limits)
+    (initial : Execute.State) (before : LSBReader) : Except BlockError (InsertCopy.State × LSBReader) :=
+  (readBlockCounted header window length commandCap limits initial before).map fun result =>
+    (result.state, result.cursor)
 
 /-- Each step connects an original command, its reader transition, and
     its actual output chunk to the input state of the following step. -/

@@ -13,7 +13,7 @@ open Silmaril.Formats.Compression
 open Silmaril.Formats.Compression.Brotli
 open Silmaril.Formats.Compression.Brotli.Execute (Block)
 open Silmaril.Formats.Compression.Brotli.Execute.LiteralSwitch (remainingBits)
-open Silmaril.Formats.Compression.Brotli.Execute.LiteralSwitch.Internal (runWith)
+open Silmaril.Formats.Compression.Brotli.Execute.LiteralSwitch.Internal (runWith runWithResult)
 open Silmaril.Formats.Compression.Brotli.Execute.DistanceSwitch
 open Silmaril.Formats.Compression.Brotli.Literal.Switch (Source)
 
@@ -53,14 +53,14 @@ private theorem run_sound {header : CompressedHeader.Header} {block : Block} {li
       chunks.length ≤ fuel ∧ Source before after input used suffix := by
   induction fuel generalizing index initial final before after input with
   | zero =>
-    unfold runWith at parsed
+    unfold runWith runWithResult at parsed
     split at parsed
     · rename_i done
       cases parsed
       exact ⟨outFit, bitFit, [], input, [], .done done, by simp, ⟨rfl, rep, count, by simp⟩⟩
     · cases parsed
   | succ fuel ih =>
-    unfold runWith at parsed
+    unfold runWith runWithResult at parsed
     split at parsed
     · rename_i done
       cases parsed
@@ -115,9 +115,9 @@ private theorem run_failure {header : CompressedHeader.Header} {block : Block} {
   induction fuel generalizing index state before input with
   | zero =>
     have done : state.execution.output.size = block.endOutput := by omega
-    simp [runWith, done] at parsed
+    simp [runWith, runWithResult, done] at parsed
   | succ fuel ih =>
-    unfold runWith at parsed
+    unfold runWith runWithResult at parsed
     split at parsed
     · cases parsed
     · rename_i pending

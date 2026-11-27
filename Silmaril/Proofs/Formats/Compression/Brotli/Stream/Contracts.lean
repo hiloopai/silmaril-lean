@@ -122,13 +122,13 @@ theorem readBodyWith_sound {ε : Type} {onError : Stream.Error → ε} {compress
     cases parsed
     exact ⟨outFits, bitFits, [], input, [], .terminal initial, rfl, cursor, by simp⟩
   | metadata last length =>
-    unfold readBodyWith at parsed
+    unfold readBodyWith readBodyWithResult at parsed
     obtain ⟨⟨bytes, stop⟩, bodyRead, done⟩ := bind_mapped_ok parsed
     cases done
     obtain ⟨suffix, extent, bits, next, position, fits⟩ := alignedBody_sound cursor bodyRead
     exact ⟨outFits, fits, _, suffix, [], .metadata initial extent, bits, next, position⟩
   | raw length =>
-    unfold readBodyWith at parsed
+    unfold readBodyWith readBodyWithResult at parsed
     dsimp only at parsed
     split at parsed
     · contradiction
@@ -139,7 +139,7 @@ theorem readBodyWith_sound {ε : Type} {onError : Stream.Error → ε} {compress
     refine ⟨?_, bitCap, _, suffix, bytes, .raw extent, bits, next, position⟩
     simpa [extent] using Nat.le_of_not_gt fits
   | compressed last length =>
-    unfold readBodyWith at parsed
+    unfold readBodyWith readBodyWithResult at parsed
     dsimp only at parsed
     split at parsed
     · contradiction
@@ -251,7 +251,7 @@ private theorem readBlocksWith_sound {ε : Type} {onError : Stream.Error → ε}
   induction fuel generalizing index initial before input with
   | zero => contradiction
   | succ fuel ih =>
-    unfold readBlocksWith at read
+    unfold readBlocksWith readBlocksWithState at read
     obtain ⟨⟨header, payload⟩, headRead, read⟩ := bind_mapped_ok read
     obtain ⟨tail, valid, headBits, next, position⟩ := readHeader_sound cursor headRead
     obtain ⟨⟨⟩, within, read⟩ := bind_mapped_ok read
@@ -290,7 +290,7 @@ theorem decodeWith_sound {ε : Type} {onError : Stream.Error → ε} {body : Rea
     input.length ≤ limits.input ∧ 8 * input.length ≤ limits.bits ∧ final.output.size ≤ limits.output ∧
     ∃ window chunks, WireWith wire input window chunks final ∧ 10 ≤ window ∧ window ≤ 24 ∧
       windowSize window ≤ limits.window ∧ chunks.length ≤ limits.blocks := by
-  unfold decodeWith at read
+  unfold decodeWith decodeWithState at read
   dsimp only at read
   split at read
   · contradiction

@@ -41,14 +41,14 @@ private theorem run_sound {header : CompressedHeader.Header} {block : Block} {li
       Source before after input used suffix := by
   induction fuel generalizing index initial final before after input with
   | zero =>
-    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at parsed
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith Execute.LiteralSwitch.Internal.runWithResult at parsed
     split at parsed
     · rename_i done
       cases parsed
       exact ⟨outFit, bitFit, [], input, [], .done done, by simp, ⟨rfl, rep, count, by simp⟩⟩
     · cases parsed
   | succ fuel ih =>
-    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at parsed
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith Execute.LiteralSwitch.Internal.runWithResult at parsed
     split at parsed
     · rename_i done
       cases parsed
@@ -97,9 +97,9 @@ private theorem run_command_error {header : CompressedHeader.Header} {block : Bl
       .error (.command command reason)) :
     BlockFailure header block limits origin command reason fuel index state before input := by
   induction fuel generalizing index state before input with
-  | zero => unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at parsed; split at parsed <;> cases parsed
+  | zero => unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith Execute.LiteralSwitch.Internal.runWithResult at parsed; split at parsed <;> cases parsed
   | succ fuel ih =>
-    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at parsed
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith Execute.LiteralSwitch.Internal.runWithResult at parsed
     split at parsed
     · cases parsed
     cases step : Execute.LiteralSwitch.read header block {limits with bits := remainingBits limits.bits origin before}

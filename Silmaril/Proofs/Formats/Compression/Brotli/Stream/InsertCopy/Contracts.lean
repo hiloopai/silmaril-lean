@@ -190,7 +190,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index failedBloc
   cases header with
   | terminal => cases read
   | metadata last length =>
-    unfold Stream.InsertCopy.Internal.readBody readBodyWith at read
+    unfold Stream.InsertCopy.Internal.readBody readBodyWith readBodyWithResult at read
     cases bytes : alignedBody limits length.size before with
     | error reason => simp only [bytes, Except.mapError, bind, Except.bind] at read; cases read
     | ok pair =>
@@ -198,7 +198,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index failedBloc
       simp only [bytes, Except.mapError, bind, Except.bind] at read
       cases read
   | raw length =>
-    unfold Stream.InsertCopy.Internal.readBody readBodyWith at read
+    unfold Stream.InsertCopy.Internal.readBody readBodyWith readBodyWithResult at read
     dsimp only at read
     split at read
     · cases read
@@ -209,7 +209,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index failedBloc
       simp only [bytes, Except.mapError, bind, Except.bind] at read
       cases read
   | compressed last length =>
-    unfold Stream.InsertCopy.Internal.readBody readBodyWith at read
+    unfold Stream.InsertCopy.Internal.readBody readBodyWith readBodyWithResult at read
     dsimp only at read
     split at read
     · cases read
@@ -249,7 +249,7 @@ private theorem readBlocks_error {limits : Stream.Limits} {window fuel index blo
   induction fuel generalizing index initial before input with
   | zero => cases read
   | succ fuel ih =>
-    unfold readBlocksWith at read
+    unfold readBlocksWith readBlocksWithState at read
     cases head : readHeader before with
     | error _ => simp only [head, Except.mapError, bind, Except.bind, Function.comp_apply] at read; cases read
     | ok pair =>
@@ -284,7 +284,7 @@ theorem decode_command_error {limits : Stream.Limits} {input : List UInt8} {bloc
     {reason : Execute.InsertCopy.Error}
     (read : Stream.InsertCopy.decode limits input = .error (.command block command reason)) :
     FailureWire limits input block command reason := by
-  unfold Stream.InsertCopy.decode decodeWith at read
+  unfold Stream.InsertCopy.decode decodeWith decodeWithState at read
   dsimp only at read
   split at read
   · cases read

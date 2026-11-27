@@ -1,0 +1,439 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "native": {
+    "reader-q7": {
+      "wire_sha256": "6a552bdbff1a5d0e76e4b71ab59c9121d7182142b96e0173f6be16823c2f4a11",
+      "output_sha256": "e717dac5202c6371a047a53770406e4a43b20d754a0f37e4694a5a3e7f5187fb",
+      "output_bytes": 6279,
+      "commands": 128,
+      "blocks": [
+        {
+          "kind": "compressed",
+          "last": 1,
+          "extent": 6279,
+          "tables": 24,
+          "beforeRing": [
+            4,
+            11,
+            15,
+            16
+          ],
+          "commands": 128,
+          "dictionary": [
+            [
+              190,
+              8,
+              27,
+              6,
+              8,
+              465
+            ],
+            [
+              171,
+              5,
+              0,
+              5,
+              19,
+              515
+            ],
+            [
+              258,
+              4,
+              0,
+              4,
+              34,
+              592
+            ],
+            [
+              149,
+              7,
+              12,
+              6,
+              40,
+              626
+            ],
+            [
+              140,
+              6,
+              0,
+              6,
+              47,
+              647
+            ],
+            [
+              140,
+              6,
+              0,
+              6,
+              54,
+              669
+            ]
+          ],
+          "switches": [],
+          "payload": 392,
+          "end": 2179,
+          "afterRing": [
+            633,
+            1462,
+            1461,
+            1460
+          ]
+        }
+      ]
+    },
+    "weather-q11": {
+      "wire_sha256": "ee37ebc5fa3e6d882fb57eee74bc328d37680785852af7c35a2bf4a7f4385383",
+      "output_sha256": "e63314f0a14f52da0bd1cc472ab14ceda56135f527c267a22edafa001a9daa3b",
+      "output_bytes": 624,
+      "commands": 10,
+      "blocks": [
+        {
+          "kind": "compressed",
+          "last": 1,
+          "extent": 624,
+          "tables": 24,
+          "beforeRing": [
+            4,
+            11,
+            15,
+            16
+          ],
+          "commands": 10,
+          "dictionary": [
+            [
+              163,
+              5,
+              0,
+              5,
+              4,
+              396
+            ],
+            [
+              131,
+              5,
+              2,
+              7,
+              9,
+              412
+            ],
+            [
+              162,
+              4,
+              0,
+              4,
+              20,
+              436
+            ],
+            [
+              151,
+              9,
+              0,
+              9,
+              26,
+              453
+            ],
+            [
+              192,
+              11,
+              10,
+              16,
+              49,
+              520
+            ],
+            [
+              134,
+              8,
+              1,
+              9,
+              65,
+              535
+            ],
+            [
+              225,
+              12,
+              5,
+              17,
+              78,
+              569
+            ],
+            [
+              133,
+              7,
+              0,
+              7,
+              95,
+              581
+            ]
+          ],
+          "switches": [],
+          "payload": 374,
+          "end": 608,
+          "afterRing": [
+            104,
+            45,
+            4,
+            11
+          ]
+        }
+      ]
+    }
+  },
+  "assembled": {
+    "wire_sha256": "78856e6a98af886eda91838a2e92573852ebbde8955137a3fd6f035ba4fef968",
+    "output_sha256": "97c09899db9e7b9e6897944875504c67834095453865fc11a1a8766013ecd8e1",
+    "output_bytes": 30,
+    "commands": 8,
+    "blocks": [
+      {
+        "kind": "compressed",
+        "last": 0,
+        "extent": 17,
+        "tables": 21,
+        "beforeRing": [
+          4,
+          11,
+          15,
+          16
+        ],
+        "commands": 5,
+        "dictionary": [],
+        "switches": [
+          [
+            2,
+            1,
+            0,
+            1,
+            1,
+            185,
+            186,
+            188
+          ],
+          [
+            2,
+            0,
+            1,
+            0,
+            1,
+            192,
+            193,
+            195
+          ]
+        ],
+        "payload": 176,
+        "end": 199,
+        "afterRing": [
+          3,
+          5,
+          2,
+          4
+        ]
+      },
+      {
+        "kind": "raw",
+        "last": 0,
+        "extent": 2,
+        "tables": 219,
+        "beforeRing": [
+          3,
+          5,
+          2,
+          4
+        ],
+        "commands": 0,
+        "dictionary": [],
+        "switches": [],
+        "end": 240,
+        "afterRing": [
+          3,
+          5,
+          2,
+          4
+        ]
+      },
+      {
+        "kind": "metadata",
+        "last": 0,
+        "extent": 3,
+        "tables": 254,
+        "beforeRing": [
+          3,
+          5,
+          2,
+          4
+        ],
+        "commands": 0,
+        "dictionary": [],
+        "switches": [],
+        "end": 280,
+        "afterRing": [
+          3,
+          5,
+          2,
+          4
+        ]
+      },
+      {
+        "kind": "compressed",
+        "last": 0,
+        "extent": 7,
+        "tables": 300,
+        "beforeRing": [
+          3,
+          5,
+          2,
+          4
+        ],
+        "commands": 2,
+        "dictionary": [
+          [
+            130,
+            4,
+            54,
+            0,
+            19,
+            385
+          ],
+          [
+            1,
+            4,
+            49,
+            7,
+            19,
+            402
+          ]
+        ],
+        "switches": [
+          [
+            2,
+            1,
+            0,
+            1,
+            1,
+            385,
+            386,
+            388
+          ]
+        ],
+        "payload": 371,
+        "end": 402,
+        "afterRing": [
+          3,
+          5,
+          2,
+          4
+        ]
+      },
+      {
+        "kind": "compressed",
+        "last": 1,
+        "extent": 4,
+        "tables": 422,
+        "beforeRing": [
+          3,
+          5,
+          2,
+          4
+        ],
+        "commands": 1,
+        "dictionary": [],
+        "switches": [],
+        "payload": 471,
+        "end": 471,
+        "afterRing": [
+          3,
+          5,
+          2,
+          4
+        ]
+      }
+    ],
+    "wire_hex": "000180280a00845042a9a0a1164010442051114941280b93180400047879960074616730004014050080080a4162bdc07241c400000088a0102020",
+    "output_hex": "4143414341434143434143414143414141787974696d696e67206e67206e",
+    "failures": {
+      "dictionary-slot": {
+        "block": 3,
+        "command": 0,
+        "stage": "fuel",
+        "cause": "",
+        "bit": 371
+      },
+      "zero-output-spends-slot": {
+        "block": 3,
+        "command": 1,
+        "stage": "fuel",
+        "cause": "",
+        "bit": 385
+      },
+      "global-slot": {
+        "block": 4,
+        "command": 0,
+        "stage": "fuel",
+        "cause": "",
+        "bit": 471
+      },
+      "late-truncation": {
+        "block": 3,
+        "command": 1,
+        "stage": "distance",
+        "cause": "Silmaril.Formats.Compression.Brotli.Distance.Error.truncatedExtra",
+        "bit": 388
+      },
+      "late-bit-cap": {
+        "block": 3,
+        "command": 1,
+        "stage": "distance",
+        "cause": "Silmaril.Formats.Compression.Brotli.Distance.Error.extraBitLimit",
+        "bit": 388
+      },
+      "block-cap": {
+        "block": 4,
+        "command": null,
+        "stage": "envelope",
+        "cause": "Silmaril.Formats.Compression.Brotli.Error.stepLimit",
+        "bit": 402
+      },
+      "output-cap": {
+        "block": 4,
+        "command": null,
+        "stage": "envelope",
+        "cause": "Silmaril.Formats.Compression.Brotli.Error.outputLimit",
+        "bit": 422
+      },
+      "bad-padding": {
+        "block": 4,
+        "command": null,
+        "stage": "envelope",
+        "cause": "Silmaril.Formats.Compression.Brotli.Error.nonzeroPadding",
+        "bit": 471
+      },
+      "trailing-byte": {
+        "block": 4,
+        "command": null,
+        "stage": "envelope",
+        "cause": "Silmaril.Formats.Compression.Brotli.Error.trailingInput",
+        "bit": 471
+      },
+      "padding-budget": {
+        "block": 4,
+        "command": null,
+        "stage": "envelope",
+        "cause": "bitLimit",
+        "bit": 471
+      },
+      "window-budget": {
+        "block": null,
+        "command": null,
+        "stage": "envelope",
+        "cause": "Silmaril.Formats.Compression.Brotli.Error.windowLimit",
+        "bit": 0
+      },
+      "input-budget": {
+        "block": null,
+        "command": null,
+        "stage": "envelope",
+        "cause": "Silmaril.Formats.Compression.Brotli.Error.inputLimit",
+        "bit": 0
+      }
+    }
+  }
+}

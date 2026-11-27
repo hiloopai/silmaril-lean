@@ -29,7 +29,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat}
   cases header with
   | terminal => cases read
   | metadata last length =>
-    unfold Stream.DistanceSwitch.Internal.readBody readBodyWith at read
+    unfold Stream.DistanceSwitch.Internal.readBody readBodyWith readBodyWithResult at read
     cases bytes : alignedBody limits length.size before with
     | error reason =>
       simp only [bytes, Except.mapError, bind, Except.bind] at read
@@ -39,7 +39,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat}
       obtain ⟨_, _⟩ := pair
       simp [bytes, Except.mapError, bind, Except.bind, pure, Except.pure] at read
   | raw length =>
-    unfold Stream.DistanceSwitch.Internal.readBody readBodyWith at read
+    unfold Stream.DistanceSwitch.Internal.readBody readBodyWith readBodyWithResult at read
     dsimp only at read
     split at read
     · rename_i cap
@@ -54,7 +54,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat}
       obtain ⟨_, _⟩ := pair
       simp [bytes, Except.mapError, bind, Except.bind, pure, Except.pure] at read
   | compressed last length =>
-    unfold Stream.DistanceSwitch.Internal.readBody readBodyWith at read
+    unfold Stream.DistanceSwitch.Internal.readBody readBodyWith readBodyWithResult at read
     dsimp only at read
     split at read
     · rename_i cap
@@ -95,7 +95,7 @@ private theorem readBlocks_error {limits : Stream.Limits} {window fuel index : N
   induction fuel generalizing index initial before input with
   | zero => cases read; exact .fuel
   | succ fuel ih =>
-    unfold readBlocksWith at read
+    unfold readBlocksWith readBlocksWithState at read
     cases head : readHeader before with
     | error reason =>
       simp only [head, Except.mapError, bind, Except.bind, Function.comp_apply] at read
@@ -141,7 +141,7 @@ private theorem readBlocks_error {limits : Stream.Limits} {window fuel index : N
 
 theorem decode_failure {limits : Stream.Limits} {input : List UInt8} {error : Stream.DistanceSwitch.Error}
     (read : Stream.DistanceSwitch.decode limits input = .error error) : FailureWire limits input error := by
-  unfold Stream.DistanceSwitch.decode decodeWith at read
+  unfold Stream.DistanceSwitch.decode decodeWith decodeWithState at read
   dsimp only at read
   split at read
   · rename_i cap

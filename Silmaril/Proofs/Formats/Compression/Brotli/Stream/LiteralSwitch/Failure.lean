@@ -37,9 +37,9 @@ private theorem run_not_initialOutput {header : CompressedHeader.Header} {block 
     (read : Execute.LiteralSwitch.Internal.run header block limits origin fuel index state before =
       .error (.initialOutput bit)) : False := by
   induction fuel generalizing index state before with
-  | zero => unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at read; split at read <;> cases read
+  | zero => unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith Execute.LiteralSwitch.Internal.runWithResult at read; split at read <;> cases read
   | succ fuel ih =>
-    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at read
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith Execute.LiteralSwitch.Internal.runWithResult at read
     split at read
     · cases read
     cases step : Execute.LiteralSwitch.read header block
@@ -58,12 +58,12 @@ private theorem run_fuel_offset {header : CompressedHeader.Header} {block : Exec
     Offset before.totalRead input bit := by
   induction fuel generalizing index state before input with
   | zero =>
-    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at read
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith Execute.LiteralSwitch.Internal.runWithResult at read
     split at read
     · cases read
     · cases read; exact Offset.here _ _
   | succ fuel ih =>
-    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith at read
+    unfold Execute.LiteralSwitch.Internal.run Execute.LiteralSwitch.Internal.runWith Execute.LiteralSwitch.Internal.runWithResult at read
     split at read
     · cases read
     cases step : Execute.LiteralSwitch.read header block
@@ -94,7 +94,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat}
   cases header with
   | terminal => cases read
   | metadata last length =>
-    unfold Stream.LiteralSwitch.Internal.readBody readBodyWith at read
+    unfold Stream.LiteralSwitch.Internal.readBody readBodyWith readBodyWithResult at read
     cases bytes : alignedBody limits length.size before with
     | error reason =>
       simp only [bytes, Except.mapError, bind, Except.bind, Except.error.injEq] at read
@@ -103,7 +103,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat}
       obtain ⟨_, _⟩ := pair
       simp [bytes, Except.mapError, bind, Except.bind, pure, Except.pure] at read
   | raw length =>
-    unfold Stream.LiteralSwitch.Internal.readBody readBodyWith at read
+    unfold Stream.LiteralSwitch.Internal.readBody readBodyWith readBodyWithResult at read
     dsimp only at read
     split at read
     · cases read; exact envelope _ rfl
@@ -115,7 +115,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat}
       obtain ⟨_, _⟩ := pair
       simp [bytes, Except.mapError, bind, Except.bind, pure, Except.pure] at read
   | compressed last length =>
-    unfold Stream.LiteralSwitch.Internal.readBody readBodyWith at read
+    unfold Stream.LiteralSwitch.Internal.readBody readBodyWith readBodyWithResult at read
     dsimp only at read
     split at read
     · cases read; exact envelope _ rfl
@@ -173,7 +173,7 @@ private theorem readBlocks_error {limits : Stream.Limits} {window fuel index : N
     cases read
     exact ⟨Offset.here _ _, by intro _ _ _ impossible; cases impossible⟩
   | succ fuel ih =>
-    unfold readBlocksWith at read
+    unfold readBlocksWith readBlocksWithState at read
     cases head : readHeader before with
     | error reason =>
       simp only [head, Except.mapError, bind, Except.bind, Function.comp_apply] at read
@@ -233,7 +233,7 @@ theorem decode_error {limits : Stream.Limits} {input : List UInt8} {error : Stre
           CommandFailureWire limits input block command reason := by
     subst error
     exact ⟨⟨[], bytesBits input, rfl, rfl⟩, by intro _ _ _ impossible; cases impossible⟩
-  unfold Stream.LiteralSwitch.decode decodeWith at read
+  unfold Stream.LiteralSwitch.decode decodeWith decodeWithState at read
   dsimp only at read
   split at read
   · cases read; exact envelope _ rfl

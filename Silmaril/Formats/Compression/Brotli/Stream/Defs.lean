@@ -258,19 +258,23 @@ abbrev ReadPayload (ε : Type) :=
 abbrev ReadBody (ε : Type) :=
   Limits → Nat → Nat → Header → Execute.State → LSBReader → Except ε (Execute.State × LSBReader)
 
-def readBodyWith {ε : Type} (onError : Error → ε) (compressed : ReadPayload ε) : ReadBody ε :=
+def readBodyWithResult {ε α : Type} (onError : Error → ε)
+    (complete : Execute.State → LSBReader → α)
+    (compressed : Limits → Nat → Nat → CompressedHeader.Header → Execute.Block → Execute.State → LSBReader →
+      Except ε α) :
+    Limits → Nat → Nat → Header → Execute.State → LSBReader → Except ε α :=
   fun limits window index header initial before => do
     let failure : Cause → ε := fun cause => onError ⟨before.totalRead, some index, none, cause⟩
     match header with
-    | .terminal => pure (initial, before)
+    | .terminal => pure (complete initial before)
     | .metadata _ length =>
       let (_, after) ← (alignedBody limits length.size before).mapError failure
-      pure (initial, after)
+      pure (complete initial after)
     | .raw length =>
       if limits.output < initial.output.size + length.size then .error (failure (.framing .outputLimit))
       else
         let (bytes, after) ← (alignedBody limits length.size before).mapError failure
-        pure ({ initial with output := initial.output ++ bytes.toArray }, after)
+        pure (complete { initial with output := initial.output ++ bytes.toArray } after)
     | .compressed _ length =>
       if limits.output < initial.output.size + length.size then .error (failure (.framing .outputLimit))
       else
@@ -278,6 +282,10 @@ def readBodyWith {ε : Type} (onError : Error → ε) (compressed : ReadPayload 
           ⟨limits.mapEntries, limits.trees, limits.bits - before.totalRead⟩ before).mapError
             (fun reason => failure (.header reason))
         compressed limits index before.totalRead parsed ⟨window, initial.output.size, length.size⟩ initial payload
+
+
+def readBodyWith {ε : Type} (onError : Error → ε) (compressed : ReadPayload ε) : ReadBody ε :=
+  readBodyWithResult onError Prod.mk compressed
 
 def readSinglePayload : ReadPayload Error :=
   fun limits index headerBit header block initial before =>
@@ -311,8 +319,11 @@ def finish (limits : Limits) (before : LSBReader) : Except Cause LSBReader := do
   withinBits limits aligned
   if aligned.input.isEmpty then .ok aligned else .error (.framing .trailingInput)
 
-def readBlocksWith {ε : Type} (onError : Error → ε) (body : ReadBody ε) (limits : Limits) (window : Nat) :
-    Nat → Nat → Execute.State → LSBReader → Except ε Execute.State
+abbrev ReadBodyState (ε σ : Type) :=
+  Limits → Nat → Nat → Header → σ → LSBReader → Except ε (σ × LSBReader)
+
+def readBlocksWithState {ε σ : Type} (onError : Error → ε) (body : ReadBodyState ε σ) (limits : Limits) (window : Nat) :
+    Nat → Nat → σ → LSBReader → Except ε σ
   | 0, index, _, before => .error (onError ⟨before.totalRead, some index, none, .framing .stepLimit⟩)
   | fuel + 1, index, initial, before => do
     let failure : Cause → ε := fun cause => onError ⟨before.totalRead, some index, none, cause⟩
@@ -322,21 +333,30 @@ def readBlocksWith {ε : Type} (onError : Error → ε) (body : ReadBody ε) (li
     if header.last then
       let _ ← (finish limits after).mapError (fun cause => onError ⟨after.totalRead, some index, none, cause⟩)
       return next
-    else readBlocksWith onError body limits window fuel (index + 1) next after
+    else readBlocksWithState onError body limits window fuel (index + 1) next after
+
+
+def readBlocksWith {ε : Type} (onError : Error → ε) (body : ReadBody ε) (limits : Limits) (window : Nat) :
+    Nat → Nat → Execute.State → LSBReader → Except ε Execute.State :=
+  readBlocksWithState onError body limits window
 
 def readBlocks (limits : Limits) (window : Nat) :
     Nat → Nat → Execute.State → LSBReader → Except Error Execute.State :=
   readBlocksWith id readBody limits window
 
-def decodeWith {ε : Type} (onError : Error → ε) (body : ReadBody ε)
-    (limits : Limits) (input : List UInt8) : Except ε Execute.State := do
+def decodeWithState {ε σ : Type} (onError : Error → ε) (body : ReadBodyState ε σ) (initial : σ)
+    (limits : Limits) (input : List UInt8) : Except ε σ := do
   let failure : Cause → ε := fun cause => onError ⟨0, none, none, cause⟩
   if limits.input < input.length then .error (failure (.framing .inputLimit))
   else
     let (window, reader) ← (readWindow (start input)).mapError (failure ∘ Cause.framing)
     (withinBits limits reader).mapError failure
     if limits.window < windowSize window then .error (failure (.framing .windowLimit))
-    else readBlocksWith onError body limits window limits.blocks 0 Execute.State.start reader
+    else readBlocksWithState onError body limits window limits.blocks 0 initial reader
+
+def decodeWith {ε : Type} (onError : Error → ε) (body : ReadBody ε)
+    (limits : Limits) (input : List UInt8) : Except ε Execute.State :=
+  decodeWithState onError body Execute.State.start limits input
 
 end Internal
 

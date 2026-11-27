@@ -94,6 +94,21 @@ theorem cursor_advance {before after : LSBReader} {input used suffix : List Bool
     (position : after.totalRead = before.totalRead + used.length) : Brotli.Internal.Cursor after suffix :=
   Proofs.Formats.Compression.Brotli.Stream.cursor_advance cursor split rep count position
 
+theorem alignedBody_sound {limits : Limits} {size : Nat} {before after : LSBReader}
+    {input : List Bool} {body : List UInt8} (cursor : Brotli.Internal.Cursor before input)
+    (read : alignedBody limits size before = .ok (body, after)) :
+    ∃ suffix, body.length = size ∧ input = (padding before.totalRead ++ bytesBits body) ++ suffix ∧
+      Brotli.Internal.Cursor after suffix ∧
+      after.totalRead = before.totalRead + (padding before.totalRead ++ bytesBits body).length ∧
+      after.totalRead ≤ limits.bits :=
+  Proofs.Formats.Compression.Brotli.Stream.alignedBody_sound cursor read
+
+theorem finish_sound {limits : Limits} {before after : LSBReader} {input : List Bool}
+    (cursor : Brotli.Internal.Cursor before input) (read : finish limits before = .ok after) :
+    input = padding before.totalRead ∧ after.totalRead = before.totalRead + input.length ∧
+      after.totalRead ≤ limits.bits :=
+  Proofs.Formats.Compression.Brotli.Stream.finish_sound cursor read
+
 theorem readBodyWith_sound {ε : Type} {onError : Error → ε} {compressed : ReadPayload ε}
     {wire : PayloadWire} (payloadSound : PayloadSound compressed wire) :
     BodySound (readBodyWith onError compressed) wire :=
