@@ -31,10 +31,11 @@ Page, Column = CHUNK["Page"], CHUNK["Column"]
 LEAN = CHUNK["LEAN"] + """\
 
 private def spans (file : Bytes) (group column : Nat)
-    (wanted : List (Option (Parquet.Page.DataV2 × Parquet.Page.V2Spans))) : IO Unit := do
+    (wanted : List (Option (Parquet.Page.DataV2 × Parquet.Page.V2Spans))) (limits : Limits := {}) :
+    IO Unit := do
   let source ← take (openFile {} file)
-  let binding ← take (bindChunk source.schema group column)
-  let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read {} binding)
+  let binding ← take (bindChunk source.schema group column limits)
+  let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read limits binding)
   let original := seen.pages.map fun page =>
     match page.frame.value.kind with
     | .dataV2 info => page.frame.v2Spans.map (fun regions => (info, regions))
@@ -129,7 +130,7 @@ def capture(wire, schema, rows, *, codec=0, decode_block=snappy_block):
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     for (group, index), metadata, start, stop in columns(wire):
         column_codec = metadata[4][1] if codec is None else codec
-        assert column_codec in (0, 1, 2, 6, 7) and metadata[4][1] == column_codec
+        assert column_codec in (0, 1, 2, 4, 6, 7) and metadata[4][1] == column_codec
         (_, path), scalar, steps, repeated = leaves[index]
         group_rows = parquet.read_row_group(group).to_pylist()
         expected = [event for row in group_rows

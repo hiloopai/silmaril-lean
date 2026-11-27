@@ -288,7 +288,7 @@ public def assembleRow (depth : Nat) (position : Position) (fields : List Field)
 def readColumn {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (limits : Chunk.Limits) (schema : Compiled schemaLimits snapshot) (group column : Nat) :
     Except Error Column := do
-  let binding ← (Chunk.bindChunk schema group column).mapError .binding
+  let binding ← (Chunk.bindChunk schema group column limits).mapError .binding
   let output ← (Chunk.read limits binding).mapError .chunk
   let address : Chunk.Address := ⟨group, column, binding.leaf.site.location.path⟩
   let rows ← partition (addressed address output)
@@ -339,7 +339,7 @@ def ColumnWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (result : Column) : Prop :=
   ∃ (binding : Chunk.Binding schema group column) (observed : Chunk.Observation)
     (rows : List (List Addressed)),
-    Chunk.bindChunk schema group column = .ok binding ∧
+    Chunk.bindChunk schema group column limits = .ok binding ∧
     Chunk.read limits binding = .ok observed ∧ Chunk.Wire limits binding observed ∧
     result.address = ⟨group, column, binding.leaf.site.location.path⟩ ∧
     PartitionWire (addressed result.address observed) rows ∧

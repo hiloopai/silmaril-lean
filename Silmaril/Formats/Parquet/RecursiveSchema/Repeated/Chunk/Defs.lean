@@ -3,6 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Defs
 public import Silmaril.Formats.Parquet.FlatColumn.Zstd.Defs
+public import Silmaril.Formats.Parquet.ScalarPage.BrotliRaw.Defs
 
 /-! Checked unindexed PLAIN V1/V2 chunks with bounded codecs, at most one
 repeated ancestor and independent bounds on slots and row starts. -/
@@ -22,6 +23,8 @@ structure Limits extends RecursiveSchema.Chunk.Limits where
   /-- Controller calls per reached GZIP member, independent of stored and raw bytes. -/
   gzipCalls : Nat := 65536
   zstd : FlatColumn.Zstd.CompressionLimits := ⟨8 * 1024 * 1024, 43690⟩
+  /-- Opt in to codec 4 with explicit raw-stream window and meta-block caps. -/
+  brotliRaw : Option ScalarPage.BrotliRaw.Limits := none
 
 /-- This profile uses neither offset indexes nor column indexes. Only V1
 can continue a row across pages. -/
@@ -38,6 +41,7 @@ inductive ColumnCodec where
   | uncompressed
   | snappy
   | gzip
+  | brotliRaw
   | zstd
   | lz4Raw
   deriving DecidableEq, Repr
@@ -46,6 +50,7 @@ def ColumnCodec.payload : ColumnCodec → Payload.Codec
   | .uncompressed => .uncompressed
   | .snappy => .snappy
   | .gzip => .gzip
+  | .brotliRaw => .brotli
   | .zstd => .zstd
   | .lz4Raw => .lz4Raw
 
@@ -56,6 +61,7 @@ def ColumnCodec.ofId : Int → Option ColumnCodec
   | 0 => some .uncompressed
   | 1 => some .snappy
   | 2 => some .gzip
+  | 4 => some .brotliRaw
   | 6 => some .zstd
   | 7 => some .lz4Raw
   | _ => none
@@ -127,7 +133,7 @@ private def check {ε : Type} (condition : Prop) [Decidable condition] (error : 
 /-- Bind the original positional chunk, with separate metadata counts for
 level entries and rows. Neither count is inferred from the other. -/
 public def bindChunk {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
-    (schema : Compiled schemaLimits snapshot) (group column : Nat) :
+    (schema : Compiled schemaLimits snapshot) (group column : Nat) (limits : Limits := {}) :
     Except BindError (Binding schema group column) := do
   let ⟨rowGroup, groupAt⟩ ← lookup (snapshot.groupAt group) (.group group)
   let ⟨leaf, leafAt⟩ ← lookup schema.leaves[column]? (.leaf group column)
@@ -138,6 +144,7 @@ public def bindChunk {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
     (metadata.pathInSchema = leaf.site.location.path ∧ metadata.physicalType = leaf.kind.physical)
     (fail .association)
   let ⟨codec, originalCodec⟩ ← lookup (ColumnCodec.ofId metadata.codec) (fail (.codec metadata.codec))
+  let _ ← check (codec ≠ .brotliRaw ∨ limits.brotliRaw.isSome) (fail (.codec metadata.codec))
   let encodings ← if admitted : snapshot.admitsPageLessRecursive rowGroup = true then
       pure (Sum.inl (PLift.up admitted))
     else do
@@ -195,6 +202,7 @@ inductive PageCause where
   | v2SignedExtent (declared expected : Nat)
   | payload (original : Payload.Error)
   | zstd (original : FlatColumn.Zstd.Error)
+  | brotli (original : ScalarPage.BrotliRaw.Error)
   | v2RowBoundary (slot repetition : Nat)
   | v2Rows (declared actual : Nat)
   | v2Nulls (declared actual : Nat)
@@ -334,15 +342,23 @@ structure DecodedWire (leaf : Leaf) (repetitions definitions : List Nat) (suffix
 
 def decodePayload (limits : Limits) (codec : ColumnCodec) (bounds : Payload.Bounds)
     (stored : Bytes) : Except PageCause Bytes :=
-  if codec = .zstd then
+  if codec = .brotliRaw then
+    match limits.brotliRaw with
+    | none => .error (.brotli (.codec codec.id))
+    | some profile =>
+      ((ScalarPage.BrotliRaw.decodePayload profile bounds stored.toList).mapError .brotli).map Bytes.ofList
+  else if codec = .zstd then
     ((FlatColumn.Zstd.decodePayload limits.zstd bounds codec.id stored.toList).mapError .zstd).map Bytes.ofList
   else ((Payload.decode bounds codec.id stored.toList).mapError .payload).map Bytes.ofList
 
-/-- The shared Zstd adapter certifies its checked frame profile. The other
-codecs keep their existing payload denotations. -/
+/-- The checked Brotli and Zstd adapters retain their own wire relations.
+The shared scalar codecs retain their payload denotations. -/
 def CodecWire (limits : Limits) (codec : ColumnCodec) (bounds : Payload.Bounds)
     (stored body : Bytes) : Prop :=
-  if codec = .zstd then FlatColumn.Zstd.PayloadWire limits.zstd bounds codec.id stored.toList body.toList
+  if codec = .brotliRaw then
+    ∃ profile, limits.brotliRaw = some profile ∧
+      ScalarPage.BrotliRaw.PayloadWire profile bounds stored.toList body.toList
+  else if codec = .zstd then FlatColumn.Zstd.PayloadWire limits.zstd bounds codec.id stored.toList body.toList
   else Payload.Decodes bounds.expectedSize codec.payload stored.toList body.toList
 
 def v1BodyBounds (limits : Limits) (frame : Page.Frame) : Payload.Bounds :=
@@ -357,7 +373,7 @@ def readV1Body (limits : Limits) (codec : ColumnCodec) (source : Bytes) (frame :
   let stored := Page.Checksum.payloadBytes source frame
   match codec with
   | .uncompressed => return stored
-  | .snappy | .gzip | .zstd | .lz4Raw => decodePayload limits codec (v1BodyBounds limits frame) stored
+  | .snappy | .gzip | .brotliRaw | .zstd | .lz4Raw => decodePayload limits codec (v1BodyBounds limits frame) stored
 
 structure V1BodyWire (limits : Limits) (codec : ColumnCodec) (source : Bytes) (frame : Page.Frame)
     (body : Bytes) : Prop where

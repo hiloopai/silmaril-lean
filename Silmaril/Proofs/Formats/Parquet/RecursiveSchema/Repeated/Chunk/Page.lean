@@ -5,6 +5,7 @@ import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Thms
 import Silmaril.Formats.Parquet.Page.Checksum.Thms
 import Silmaril.Formats.Parquet.Payload.Thms
 import Silmaril.Formats.Parquet.FlatColumn.Zstd.Thms
+import Silmaril.Formats.Parquet.ScalarPage.BrotliRaw.Thms
 import Silmaril.Formats.Parquet.FlatPage.Thms
 import Silmaril.Formats.Parquet.Hybrid.Thms
 import Silmaril.Formats.Parquet.Plain.Thms
@@ -121,29 +122,46 @@ public theorem decodePayload_wire {limits : Limits} {codec : ColumnCodec} {bound
       body.length = bounds.expectedSize ∧ body.length ≤ bounds.outputLimit := by
   unfold decodePayload at read
   split at read
-  · rename_i zstd
-    cases decoded : FlatColumn.Zstd.decodePayload limits.zstd bounds codec.id stored.toList with
-    | error => simp [decoded, Except.mapError, Except.map] at read
-    | ok bytes =>
-      simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
-      subst body
-      have witness := FlatColumn.Zstd.decodePayload_sound decoded
-      have sizes := witness
-      obtain ⟨inputSize, inputCap, outputSize, outputCap, _⟩ := sizes
-      simpa [CodecWire, zstd] using
-        And.intro witness (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
-  · rename_i other
-    cases decoded : Payload.decode bounds codec.id stored.toList with
-    | error => simp [decoded, Except.mapError, Except.map] at read
-    | ok bytes =>
-      simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
-      subst body
-      obtain ⟨selected, id, model, inputSize, inputCap, outputSize, outputCap⟩ := Payload.decode_sound decoded
-      have original : selected = codec.payload := by
-        simpa only [ColumnCodec.id, Payload.Codec.ofId_id, Option.some.injEq] using id.symm
-      subst selected
-      simpa [CodecWire, other] using
-        And.intro model (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
+  · rename_i brotli
+    cases config : limits.brotliRaw with
+    | none => simp [config] at read
+    | some profile =>
+      cases decoded : ScalarPage.BrotliRaw.decodePayload profile bounds stored.toList with
+      | error => simp [config, decoded, Except.mapError, Except.map] at read
+      | ok bytes =>
+        simp only [config, decoded, Except.mapError, Except.map, Except.ok.injEq] at read
+        subst body
+        have witness := ScalarPage.BrotliRaw.decodePayload_sound decoded
+        have sizes := witness
+        obtain ⟨inputSize, inputCap, outputSize, outputCap, _⟩ := sizes
+        refine ⟨?_, by simpa using inputSize, by simpa using inputCap,
+          by simpa using outputSize, by simpa using outputCap⟩
+        simpa [CodecWire, brotli, config] using witness
+  · rename_i notBrotli
+    split at read
+    · rename_i zstd
+      cases decoded : FlatColumn.Zstd.decodePayload limits.zstd bounds codec.id stored.toList with
+      | error => simp [decoded, Except.mapError, Except.map] at read
+      | ok bytes =>
+        simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
+        subst body
+        have witness := FlatColumn.Zstd.decodePayload_sound decoded
+        have sizes := witness
+        obtain ⟨inputSize, inputCap, outputSize, outputCap, _⟩ := sizes
+        simpa [CodecWire, notBrotli, zstd] using
+          And.intro witness (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
+    · rename_i other
+      cases decoded : Payload.decode bounds codec.id stored.toList with
+      | error => simp [decoded, Except.mapError, Except.map] at read
+      | ok bytes =>
+        simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
+        subst body
+        obtain ⟨selected, id, model, inputSize, inputCap, outputSize, outputCap⟩ := Payload.decode_sound decoded
+        have original : selected = codec.payload := by
+          simpa only [ColumnCodec.id, Payload.Codec.ofId_id, Option.some.injEq] using id.symm
+        subst selected
+        simpa [CodecWire, notBrotli, other] using
+          And.intro model (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
 
 public theorem readV1Body_wire {limits : Limits} {codec : ColumnCodec} {source : Bytes}
     {frame : Page.Frame} {body : Bytes}
