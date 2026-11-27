@@ -12,6 +12,12 @@ theorem decode_encode {limits : CsvLimits} {field : Descriptor} {values : Slots}
     (written : encode limits field values = .ok wire) : decode limits field wire = .ok values :=
   Proofs.Formats.Csv.Typed.Utf8.OpaqueIpc.decode_encode written
 
+/-- Successful imports of the same declared descriptor and wire agree
+under independent byte and row limits. -/
+theorem decode_agrees {left right : CsvLimits} {field : Descriptor} {wire : Csv.Bytes} {a b : Slots}
+    (readLeft : decode left field wire = .ok a) (readRight : decode right field wire = .ok b) : a = b :=
+  Proofs.Formats.Csv.Typed.Utf8.OpaqueIpc.decode_agrees readLeft readRight
+
 /-- A successful export comes from a complete checked source with this exact
 descriptor and the original ordered rows flattened across batches. -/
 theorem toCsv_observation {ipc : IpcLimits} {csv : CsvLimits} {layout : Layout} {input : KBytes}

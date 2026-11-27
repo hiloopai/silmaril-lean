@@ -1,0 +1,13 @@
+{
+  "empty-batch.parquet": "f33d84076308adb45f9666a917d94763531805742edbee4a4022e07201fba076",
+  "input/bad-header.csv": "7a2bd9eb4e4487f91dd1cc137c702ddaab3a49558e44626dce5ab9e569a41fb3",
+  "input/bad-hex.csv": "55ad6e7f9c5b136406622f6300dcaa9cc8771cc51e1bd3c6c7d9d9c3d8abdf40",
+  "input/malformed.csv": "f5e60b2e83999a68cd82f4f932c3ae96718897e89e18ca0f599932e60cd31f3d",
+  "input/odd-hex.csv": "00fa0c9b3ed4a82b7c688062afea609bebf3709a0886e175b1864efcd5af7fbf",
+  "input/required-empty.csv": "24526432f951ea86e61db71a2c7df058d690643d1792c6525c784823544d3c03",
+  "input/required-null.csv": "23bdbe2a00cbb8701659cbd8fdcf40750d3095af0d8376ba97b46a1f608be787",
+  "optional-v2.parquet": "1e205e88f2e3144bf64d194a8de10da87a12ca5c966d2f62035e85879bce0fcf",
+  "required-empty.parquet": "23e74defaa3297dc70899e7c51a9caccd4d87f3391e128f98ac4aa24f1c4a89d",
+  "required-v1.parquet": "9aa7fb2358049ea35e27e8859436fcefca8f6e1aac02755571f9060722e832ab",
+  "schema-only.parquet": "f33d84076308adb45f9666a917d94763531805742edbee4a4022e07201fba076"
+}

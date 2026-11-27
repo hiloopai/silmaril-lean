@@ -92,3 +92,36 @@ the CSV tokens and generates separate CSV inputs that Lean imports.
 lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.ToCsv.Checks
 python3.13 -B scripts/parquet-opaque-typed-csv-oracle/check.py --out /tmp/parquet-opaque-typed-csv
 ```
+
+### Typed hex CSV back to Parquet
+
+`Parquet.Plain.ByteArray.FromCsv.convert` accepts the out-of-band
+BinaryView descriptor and checked typed hex CSV. The descriptor
+supplies the exact leaf name and required or optional layout. Bounded
+CSV decoding validates the header, tags, hex, byte and row limits
+before the unannotated PLAIN V1 BYTE_ARRAY writer runs. Each successful
+file has one leaf at column zero and one framed row group at group zero,
+including for header-only CSV.
+
+`convert_readback` ties the exact checked footer and group zero to the
+CSV's original ordered slots. A present empty value and a null slot
+remain distinct. The error laws preserve the typed CSV refusal before
+any writer check, and the original writer error after CSV admission.
+
+`roundtrip` composes the original checked Parquet export and native
+import under their respective limits. The returned group contains the
+original selected slots flattened in footer order. The comparison is
+on the descriptor and rows. The output writer always uses one group.
+[Reverse bridge laws](../../Silmaril/Formats/Parquet/Plain/ByteArray/FromCsv/Thms.lean)
+
+The comparator reuses the four pinned forward sources and reads the
+actual Lean CSV from each. PyArrow and CPython with Thrift verify five
+Lean-produced files, including a standalone required header-only CSV,
+and compare names, nullability, ordered octets, and native page framing.
+[Comparator](../../scripts/parquet-byte-array-from-typed-csv-oracle/check.py) ·
+[Artifact pins](../../scripts/parquet-byte-array-from-typed-csv-oracle/sha256.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.FromCsv.Checks
+python3.13 -B scripts/parquet-byte-array-from-typed-csv-oracle/check.py --out /tmp/parquet-from-typed-csv
+```

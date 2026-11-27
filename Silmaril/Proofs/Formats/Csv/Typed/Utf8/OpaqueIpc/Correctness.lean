@@ -77,7 +77,7 @@ private theorem decode_spec {limits : CsvLimits} {field : Descriptor} {wire : Cs
     simp [decode, Nat.not_lt_of_ge byteBound, bounded, required, Except.mapError, Bind.bind, Except.bind,
       pure, Except.pure]
 
-private theorem decode_agrees {left right : CsvLimits} {field : Descriptor} {wire : Csv.Bytes}
+theorem decode_agrees {left right : CsvLimits} {field : Descriptor} {wire : Csv.Bytes}
     {a b : Slots} (readLeft : decode left field wire = .ok a) (readRight : decode right field wire = .ok b) :
     a = b := by
   obtain ⟨_, xs, leftRaw, _, rfl, _⟩ := decode_spec.mp readLeft
