@@ -16,7 +16,7 @@ theorem readGroup_snappy_agrees {limits : Limits} {leafLimits : Leaf.Limits} {bo
     (selected : Leaf.MixedCodec.V2.selectedCodec bound index = .ok Payload.Codec.snappy.id) :
     readGroup limits leafLimits bound index =
       (Leaf.Snappy.Dispatch.V2.readGroup limits.snappy leafLimits bound index).mapError .snappy := by
-  simp [readGroup, selected, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readGroupForCodec, selected, Except.mapError, Bind.bind, Except.bind]
 
 theorem readGroup_twoCodec_agrees {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound} {index : Nat}
     (other : Leaf.MixedCodec.V2.selectedCodec bound index ≠ .ok Payload.Codec.snappy.id) :
@@ -28,7 +28,7 @@ theorem readGroup_twoCodec_agrees {limits : Limits} {leafLimits : Leaf.Limits} {
     have different : codec ≠ Payload.Codec.snappy.id := by
       intro same
       exact other (same ▸ selected)
-    simp [readGroup, Leaf.MixedCodec.V2.readGroup, selected, different, Except.mapError, Bind.bind, Except.bind]
+    simp [readGroup, readGroupForCodec, Leaf.MixedCodec.V2.readGroup, selected, different, Except.mapError, Bind.bind, Except.bind]
 
 theorem readGroup_gzip_agrees {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound} {index : Nat}
     (selected : Leaf.MixedCodec.V2.selectedCodec bound index = .ok Payload.Codec.gzip.id) :

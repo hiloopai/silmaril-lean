@@ -46,14 +46,19 @@ def terminationOfTwoCodec : Arrow.Events.Termination V2.SourceError → Arrow.Ev
   | .readError cause => .readError (SourceError.ofTwoCodec cause)
   | .closeError cause => .closeError (SourceError.ofTwoCodec cause)
 
-/-- Read the selected original footer codec ID once, then invoke its strict dispatcher. -/
-def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
-    Except GroupError (Slots bound) := do
-  let codec ← (V2.selectedCodec bound index).mapError (.twoCodec ∘ .selection)
+/-- Invoke the strict dispatcher for an already selected original footer codec. -/
+def readGroupForCodec (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat)
+    (codec : Int) : Except GroupError (Slots bound) :=
   if codec = Payload.Codec.snappy.id then
     (Snappy.Dispatch.V2.readGroup limits.snappy leafLimits bound index).mapError .snappy
   else
     (V2.readGroupForCodec limits.twoCodec leafLimits bound index codec).mapError .twoCodec
+
+/-- Read the selected original footer codec ID once, then invoke its strict dispatcher. -/
+def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except GroupError (Slots bound) := do
+  let codec ← (V2.selectedCodec bound index).mapError (.twoCodec ∘ .selection)
+  readGroupForCodec limits leafLimits bound index codec
 
 def trace (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) :
     Arrow.Events.Trace (Events.schema bound) Events.Cell SourceError :=
