@@ -1,0 +1,604 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "literal": {
+    "wire_hex": "a000208a0210410010144a000000000000004000800000000000002a68a880c10392c0242086128c500088a200441000048512000000000000001000200000000000800a1a2a60f08024300988a10403",
+    "sha256": "f709f47e00132e6f09a4ff10b979cae47c80c499a9cde65e258e6b5e7e119402",
+    "plain_hex": "41c0c0c04341434343e04141c0c0c04341434343e041",
+    "blocks": [
+      [
+        0,
+        0,
+        0,
+        11,
+        21
+      ],
+      [
+        1,
+        0,
+        0,
+        11,
+        339
+      ]
+    ],
+    "ends": [
+      319,
+      637
+    ],
+    "switches": [
+      [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        2,
+        297,
+        298,
+        300
+      ],
+      [
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        301,
+        301,
+        303
+      ],
+      [
+        0,
+        2,
+        0,
+        0,
+        1,
+        0,
+        2,
+        304,
+        305,
+        307
+      ],
+      [
+        0,
+        2,
+        1,
+        0,
+        1,
+        0,
+        1,
+        309,
+        309,
+        311
+      ],
+      [
+        0,
+        3,
+        0,
+        0,
+        0,
+        1,
+        1,
+        311,
+        312,
+        314
+      ],
+      [
+        0,
+        3,
+        0,
+        1,
+        1,
+        0,
+        1,
+        315,
+        316,
+        318
+      ],
+      [
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        2,
+        615,
+        616,
+        618
+      ],
+      [
+        1,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        619,
+        619,
+        621
+      ],
+      [
+        1,
+        2,
+        0,
+        0,
+        1,
+        0,
+        2,
+        622,
+        623,
+        625
+      ],
+      [
+        1,
+        2,
+        1,
+        0,
+        1,
+        0,
+        1,
+        627,
+        627,
+        629
+      ],
+      [
+        1,
+        3,
+        0,
+        0,
+        0,
+        1,
+        1,
+        629,
+        630,
+        632
+      ],
+      [
+        1,
+        3,
+        0,
+        1,
+        1,
+        0,
+        1,
+        633,
+        634,
+        636
+      ]
+    ],
+    "ring": [
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  "mixed": {
+    "wire_hex": "100010787996007461675000104501882000080a2500000000000000200040000000000000153454c0e00149601210430906140044510022080082420900000000000000080010000000000040050d15307840129804c4508211030020200042808000",
+    "sha256": "9fd8e98da751d345dd1cbc0781b72b89f397f7fecdf73e6b6fbf23f9af44f1aa",
+    "plain_hex": "787941c0c0c04341434343e04141c0c0c04341434343e04141414141",
+    "blocks": [
+      [
+        0,
+        0,
+        1,
+        2,
+        21
+      ],
+      [
+        0,
+        1,
+        0,
+        3,
+        54
+      ],
+      [
+        0,
+        0,
+        0,
+        11,
+        100
+      ],
+      [
+        0,
+        0,
+        0,
+        11,
+        418
+      ],
+      [
+        1,
+        0,
+        0,
+        4,
+        736
+      ]
+    ],
+    "ends": [
+      40,
+      80,
+      398,
+      716,
+      786
+    ],
+    "switches": [
+      [
+        2,
+        1,
+        0,
+        1,
+        0,
+        1,
+        2,
+        376,
+        377,
+        379
+      ],
+      [
+        2,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        380,
+        380,
+        382
+      ],
+      [
+        2,
+        2,
+        0,
+        0,
+        1,
+        0,
+        2,
+        383,
+        384,
+        386
+      ],
+      [
+        2,
+        2,
+        1,
+        0,
+        1,
+        0,
+        1,
+        388,
+        388,
+        390
+      ],
+      [
+        2,
+        3,
+        0,
+        0,
+        0,
+        1,
+        1,
+        390,
+        391,
+        393
+      ],
+      [
+        2,
+        3,
+        0,
+        1,
+        1,
+        0,
+        1,
+        394,
+        395,
+        397
+      ],
+      [
+        3,
+        1,
+        0,
+        1,
+        0,
+        1,
+        2,
+        694,
+        695,
+        697
+      ],
+      [
+        3,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        698,
+        698,
+        700
+      ],
+      [
+        3,
+        2,
+        0,
+        0,
+        1,
+        0,
+        2,
+        701,
+        702,
+        704
+      ],
+      [
+        3,
+        2,
+        1,
+        0,
+        1,
+        0,
+        1,
+        706,
+        706,
+        708
+      ],
+      [
+        3,
+        3,
+        0,
+        0,
+        0,
+        1,
+        1,
+        708,
+        709,
+        711
+      ],
+      [
+        3,
+        3,
+        0,
+        1,
+        1,
+        0,
+        1,
+        712,
+        713,
+        715
+      ]
+    ],
+    "ring": [
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  "predecessor": {
+    "wire_hex": "300140241d200454905020120204c480899600746167d10020820020a08284428040242009",
+    "sha256": "37404560bdcd0937f30593be3e5dcde8c9c91f898af0579330802cc6dacd31b3",
+    "plain_hex": "41414142424242424242414141414141414242424242424241414142424242424242",
+    "blocks": [
+      [
+        0,
+        0,
+        0,
+        20,
+        21
+      ],
+      [
+        0,
+        1,
+        0,
+        3,
+        150
+      ],
+      [
+        1,
+        0,
+        0,
+        14,
+        196
+      ]
+    ],
+    "ends": [
+      136,
+      176,
+      294
+    ],
+    "switches": [
+      [
+        0,
+        2,
+        1,
+        1,
+        0,
+        1,
+        1,
+        119,
+        121,
+        123
+      ],
+      [
+        0,
+        3,
+        1,
+        0,
+        1,
+        0,
+        1,
+        123,
+        124,
+        126
+      ],
+      [
+        0,
+        4,
+        1,
+        3,
+        0,
+        1,
+        1,
+        127,
+        129,
+        131
+      ],
+      [
+        0,
+        5,
+        1,
+        1,
+        1,
+        0,
+        1,
+        131,
+        133,
+        135
+      ],
+      [
+        2,
+        1,
+        1,
+        0,
+        0,
+        1,
+        2,
+        288,
+        288,
+        290
+      ],
+      [
+        2,
+        3,
+        1,
+        0,
+        1,
+        0,
+        1,
+        292,
+        292,
+        294
+      ]
+    ],
+    "ring": [
+      1,
+      1,
+      1,
+      1
+    ]
+  },
+  "failures": {
+    "late-L-count-cap": {
+      "bit": 616,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.BlockTypes.Error.bitLimit",
+      "command": 0,
+      "kind": "literal-length",
+      "literal": 1
+    },
+    "late-I-count-cap": {
+      "bit": 619,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.BlockTypes.Error.bitLimit",
+      "command": 1,
+      "kind": "insertCopy-length",
+      "literal": null
+    },
+    "late-literal-truncation": {
+      "bit": 632,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Literal.Error.symbol\n  (Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.truncated)",
+      "command": 2,
+      "kind": "literal-code",
+      "literal": 0
+    },
+    "final-padding-cap": {
+      "bit": 637,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.bitLimit",
+      "command": null,
+      "kind": "envelope",
+      "literal": null
+    },
+    "nonzero-final-padding": {
+      "bit": 637,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.nonzeroPadding)",
+      "command": null,
+      "kind": "envelope",
+      "literal": null
+    },
+    "trailing-byte": {
+      "bit": 637,
+      "block": 1,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.trailingInput)",
+      "command": null,
+      "kind": "envelope",
+      "literal": null
+    },
+    "cumulative-output-cap": {
+      "bit": 736,
+      "block": 4,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.outputLimit)",
+      "command": null,
+      "kind": "envelope",
+      "literal": null
+    },
+    "block-cap": {
+      "bit": 716,
+      "block": 4,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.stepLimit)",
+      "command": null,
+      "kind": "envelope",
+      "literal": null
+    },
+    "cross-copy-header-cap": {
+      "bit": 736,
+      "block": 4,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.header\n  (Silmaril.Formats.Compression.Brotli.CompressedHeader.Error.tree\n    (Silmaril.Formats.Compression.Brotli.CompressedHeader.Group.distance)\n    0\n    (Silmaril.Formats.Compression.Brotli.Huffman.Description.Error.simple\n      (Silmaril.Formats.Compression.Brotli.Huffman.Simple.Error.bitLimit)))",
+      "command": null,
+      "kind": "envelope",
+      "literal": null
+    },
+    "input-cap": {
+      "bit": 0,
+      "block": null,
+      "cause": "Silmaril.Formats.Compression.Brotli.Stream.Cause.framing (Silmaril.Formats.Compression.Brotli.Error.inputLimit)",
+      "command": null,
+      "kind": "envelope",
+      "literal": null
+    }
+  },
+  "unsupported": {
+    "distance": {
+      "sha256": "b6f4cc28d89176693b920d0b1109ae3d91c128b40e18074aab1d88a61c5c7f3e",
+      "failure": {
+        "bit": 583,
+        "block": 0,
+        "cause": null,
+        "command": 0,
+        "kind": "distanceBlockTypes",
+        "literal": null
+      }
+    },
+    "dictionary": {
+      "sha256": "6a552bdbff1a5d0e76e4b71ab59c9121d7182142b96e0173f6be16823c2f4a11",
+      "failure": {
+        "bit": 448,
+        "block": 0,
+        "cause": [
+          28183,
+          8,
+          28174
+        ],
+        "command": 0,
+        "kind": "dictionary",
+        "literal": null
+      }
+    }
+  }
+}
