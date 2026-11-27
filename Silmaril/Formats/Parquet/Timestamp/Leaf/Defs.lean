@@ -5,6 +5,7 @@ public import Silmaril.Formats.Parquet.Page.Checksum.Defs
 public import Silmaril.Formats.Parquet.Timestamp.Page.Defs
 public import Silmaril.Formats.Parquet.DictionaryIndex.Defs
 public import Silmaril.Formats.Parquet.DeltaPage.Defs
+public import Silmaril.Formats.Parquet.ByteStreamSplitPage.Defs
 
 /-! # Checked selection of one flat INT64 TIMESTAMP column in a Parquet snapshot -/
 
@@ -35,11 +36,12 @@ inductive ChunkEncoding where
   | snappyLegacyDictionaryV1
   | snappyLegacyFallbackV1
   | deltaBinaryPacked
+  | byteStreamSplit
 
 @[expose] def ChunkEncoding.admitsCodec (encoding : ChunkEncoding) (limits : Limits) (code : Int) : Bool :=
   match encoding with
   | .plain => limits.admitsCodec code
-  | .deltaBinaryPacked => code == 0 || code == 1
+  | .deltaBinaryPacked | .byteStreamSplit => code == 0 || code == 1
   | .dictionary => code == 0
   | .snappyDictionary | .snappyLegacyDictionaryV1 | .snappyLegacyFallbackV1 => code == 1
   | .gzipPlainV2 | .gzipDictionaryV1 | .gzipDictionaryV2 => code == 2
@@ -57,6 +59,8 @@ def ChunkEncoding.admitsMetadata (encoding : ChunkEncoding) (metadata : Footer.C
         (rows == 0 || metadata.encodings.contains 0) && metadata.dictionaryPageOffset.isNone
     | .deltaBinaryPacked => metadata.encodings.all (fun id => id == 3 || id == 5) &&
         metadata.encodings.contains 5 && metadata.dictionaryPageOffset.isNone
+    | .byteStreamSplit => metadata.encodings.all (fun id => id == 3 || id == 9) &&
+        metadata.encodings.contains 9 && metadata.dictionaryPageOffset.isNone
     | .dictionary => dictionaryMetadata metadata &&
         metadata.totalCompressedSize == metadata.totalUncompressedSize
     | .snappyDictionary | .gzipDictionaryV1 | .gzipDictionaryV2 | .zstdDictionaryV2 => dictionaryMetadata metadata
@@ -86,6 +90,17 @@ theorem ChunkEncoding.deltaBinaryPacked_noDictionary {metadata : Footer.ColumnMe
     (admitted : ChunkEncoding.deltaBinaryPacked.admitsMetadata metadata rows = true) :
     metadata.dictionaryPageOffset = none := by
   cases h : metadata.dictionaryPageOffset <;> simp_all [ChunkEncoding.admitsMetadata]
+
+theorem ChunkEncoding.byteStreamSplit_noDictionary {metadata : Footer.ColumnMetadata} {rows : Int}
+    (admitted : ChunkEncoding.byteStreamSplit.admitsMetadata metadata rows = true) :
+    metadata.dictionaryPageOffset = none := by
+  cases h : metadata.dictionaryPageOffset <;> simp_all [ChunkEncoding.admitsMetadata]
+
+inductive ByteStreamSplitPageError where
+  | parameters (cause : Timestamp.Page.Error)
+  | decode (cause : ByteStreamSplitPage.Error)
+  | physicalKind
+  deriving DecidableEq, Repr
 
 inductive DeltaPageError where
   | parameters (cause : Timestamp.Page.Error)
@@ -140,6 +155,7 @@ inductive Error where
   | dictionaryMissingFallback
   | dictionaryPage (pageIndex headerOffset : Nat) (cause : DictionaryPageError)
   | deltaPage (pageIndex headerOffset : Nat) (cause : DeltaPageError)
+  | byteStreamSplitPage (pageIndex headerOffset : Nat) (cause : ByteStreamSplitPageError)
   deriving DecidableEq, Repr
 
 /-- The caller cannot substitute new bytes, a different annotation, or new levels. -/
