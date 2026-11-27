@@ -41,7 +41,7 @@ def footer(wire, thrift):
     return start, thrift["read_struct"](thrift["TCompactProtocol"](memory))
 
 
-def inspect(pa, pq, wire, batch, nullable, checksum, rows, support, prior):
+def inspect(pa, pq, wire, batch, nullable, checksum, rows, support, prior, *, dictionary_only=False):
     thrift, hybrid = support["THRIFT"], support["hybrid"]
     gzip_member, fingerprint, read_group = [prior[name] for name in ("gzip_member", "fingerprint", "read_group")]
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
@@ -76,7 +76,8 @@ def inspect(pa, pq, wire, batch, nullable, checksum, rows, support, prior):
         assert dictionary[0] == column.dictionary_page_offset
         assert dictionary[1][1][1] == 2
         assert [dictionary[1][7][1][field][1] for field in (1, 2)] == [len(entries), 0]
-        assert entries == list(dict.fromkeys(day for day in expected[:batch] if day is not None))
+        dictionary_rows = expected if dictionary_only else expected[:batch]
+        assert entries == list(dict.fromkeys(day for day in dictionary_rows if day is not None))
         assert pages[0][0] == column.data_page_offset == dictionary[2] + len(dictionary[3])
         cursor, observations = 0, []
         for frame in pages:
@@ -102,7 +103,9 @@ def inspect(pa, pq, wire, batch, nullable, checksum, rows, support, prior):
                 assert [word for word, in struct.iter_unpack("<i", values)] == present
             observations.append({**page, "tag": tag, "rows": count, "nulls": slots.count(None),
                                  "scalar_bytes": fingerprint(values)})
-        assert cursor == len(expected) and [page["tag"] for page in observations] == [8, 0, 0, 0]
+        tags = [page["tag"] for page in observations]
+        assert cursor == len(expected) and tags
+        assert tags == ([8] * len(tags) if dictionary_only else [8, 0, 0, 0])
         stop = dictionary[0] + column.total_compressed_size
         assert pages[-1][2] + len(pages[-1][3]) == stop
         checked.append({"span": [dictionary[0], stop], "dictionary": {**dict_obs, "signed_entries": entries},

@@ -132,6 +132,39 @@ private theorem expanded_bound {encoding : Int} {params : ScalarPage.Parameters}
   split_ifs at valid with tag extent compressed expanded
   exact Nat.le_of_not_gt expanded
 
+theorem prepareFor_frame {limits : ScalarPage.Limits} {source : Bytes} {frame : Page.Frame}
+    {header : Page.DataV1} {schema : FlatPage.LevelSchema} {prepared : ScalarPage.Prepared}
+    {status : Page.Checksum.Status} {encoding : Int} {params : ScalarPage.Parameters}
+    (parameters : params =
+      ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, schema, header.numValues,
+        Payload.Codec.gzip.id, header.encoding, .v1 header.definitionLevelEncoding header.repetitionLevelEncoding⟩)
+    (verified : Page.Checksum.verify limits.compressedBytes source frame = .ok status)
+    (prep : ScalarPage.prepareFor encoding params limits (Page.Checksum.payloadBytes source frame) =
+      .ok prepared) :
+    ∃ expanded layout sections, schema.layout? = some layout ∧
+      StoredMember source frame limits.compressedBytes limits.uncompressedBytes expanded ∧
+      FlatPage.split layout limits.levels.bytes (.v1 (Bytes.ofList expanded)) = .ok sections ∧
+      FlatPage.readMask layout header.numValues limits.levels sections.definitions = .ok prepared.mask ∧
+      prepared.scalars = sections.scalars := by
+  obtain ⟨layout, valid, wire⟩ := ScalarPage.prepareFor_sound prep
+  have selectedLayout : params.schema.layout? = some layout := by
+    unfold ScalarPage.validateFor at valid
+    dsimp only at valid
+    split_ifs at valid
+    split at valid
+    · cases valid
+      assumption
+    · contradiction
+  have cap := expanded_bound valid
+  simp only [parameters, ScalarPage.PreparedWire] at wire
+  simp only [parameters] at cap selectedLayout
+  obtain ⟨_, _, expanded, sections, exactBody, split, mask, scalars⟩ := wire
+  obtain ⟨_, size, codec, id, expansion⟩ := exactBody
+  change some Payload.Codec.gzip = some codec at id
+  cases Option.some.inj id
+  exact ⟨expanded, layout, sections, selectedLayout, storedMember verified expansion size (size.trans_le cap),
+    split, mask, scalars⟩
+
 private theorem dataMember {limits : Limits} {bound : Bound} {source : Bytes} {page : DataPage}
     {status : Page.Checksum.Status} {prepared : ScalarPage.Prepared} {encoding : Int}
     (planned : planData bound page.frame = .ok page)
@@ -144,19 +177,10 @@ private theorem dataMember {limits : Limits} {bound : Bound} {source : Bytes} {p
       FlatPage.readMask layout page.params.numValues limits.scalar.levels sections.definitions =
         .ok prepared.mask ∧
       prepared.scalars = sections.scalars := by
-  obtain ⟨_, header, _, _, params⟩ := planData_wire planned
-  obtain ⟨layout, valid, wire⟩ := ScalarPage.prepareFor_sound prep
-  have version : page.params.version = .v1 header.definitionLevelEncoding header.repetitionLevelEncoding := by
-    rw [params]
-  unfold ScalarPage.PreparedWire at wire
-  rw [version] at wire
-  obtain ⟨_, _, expanded, sections, exactBody, split, mask, scalars⟩ := wire
-  obtain ⟨_, size, codec, id, expansion⟩ := exactBody
-  rw [params] at id
-  change some Payload.Codec.gzip = some codec at id
-  cases Option.some.inj id
-  exact ⟨expanded, layout, sections, storedMember verified (by simpa [params] using expansion)
-    (by simpa [params] using size) (size.trans_le (expanded_bound valid)), split, mask, scalars⟩
+  obtain ⟨_, _, _, _, params⟩ := planData_wire planned
+  obtain ⟨expanded, layout, sections, _, member, split, mask, scalars⟩ :=
+    prepareFor_frame params verified prep
+  exact ⟨expanded, layout, sections, member, split, by simpa only [params] using mask, scalars⟩
 
 theorem decodePage_wire {limits : Limits} {bound : Bound} {source : Bytes} {entries : Array Int32}
     {page : DataPage} {ordinal : Nat} {slots : Slots}

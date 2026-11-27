@@ -63,6 +63,24 @@ theorem readEntries_wire {limits : Limits} {source : Bytes} {frame : Page.Frame}
       entries.length = header.numValues :=
   Proofs.Formats.Parquet.Date.Leaf.Fallback.Gzip.readEntries_wire read
 
+/-- Once the original CRC passes, V1 uses one whole GZIP member and the
+checked layout of the selected schema for either data encoding. -/
+theorem prepareFor_frame {limits : ScalarPage.Limits} {source : Bytes} {frame : Page.Frame}
+    {header : Page.DataV1} {schema : FlatPage.LevelSchema} {prepared : ScalarPage.Prepared}
+    {status : Page.Checksum.Status} {encoding : Int} {params : ScalarPage.Parameters}
+    (parameters : params =
+      ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, schema, header.numValues,
+        Payload.Codec.gzip.id, header.encoding, .v1 header.definitionLevelEncoding header.repetitionLevelEncoding⟩)
+    (verified : Page.Checksum.verify limits.compressedBytes source frame = .ok status)
+    (prep : ScalarPage.prepareFor encoding params limits (Page.Checksum.payloadBytes source frame) =
+      .ok prepared) :
+    ∃ expanded layout sections, schema.layout? = some layout ∧
+      StoredMember source frame limits.compressedBytes limits.uncompressedBytes expanded ∧
+      FlatPage.split layout limits.levels.bytes (.v1 (Bytes.ofList expanded)) = .ok sections ∧
+      FlatPage.readMask layout header.numValues limits.levels sections.definitions = .ok prepared.mask ∧
+      prepared.scalars = sections.scalars :=
+  Proofs.Formats.Parquet.Date.Leaf.Fallback.Gzip.prepareFor_frame parameters verified prep
+
 /-- Both data phases preserve the exact bounded GZIP payload, decoded mask,
 and ordered signed nullable slots. -/
 theorem decodePage_wire {limits : Limits} {bound : Bound} {source : Bytes} {entries : Array Int32}
