@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Formats.Arrow.MixedFlat.StreamWriter.Defs
 
-/-! Checked native V5 records for ordered INT32 and BinaryView fields. -/
+/-! Checked native V5 records for ordered INT32, BinaryView and Utf8View fields. -/
 
 @[expose] public section
 
@@ -11,18 +11,22 @@ namespace Silmaril.Formats.Arrow.MixedFlat.OrderedWriter
 inductive Column where
   | int32 (name : String) (nullable : Bool) (values : List (Option Int32))
   | binary (name : String) (nullable : Bool) (values : List (Option KBytes))
+  | utf8View (name : String) (nullable : Bool) (values : List (Option String))
 
 def Column.field : Column → Field
   | .int32 name nullable _ => ⟨name, nullable, .primitive .int32⟩
   | .binary name nullable _ => ⟨name, nullable, .view .binary⟩
+  | .utf8View name nullable _ => ⟨name, nullable, .view .utf8⟩
 
 def Column.observe : Column → Writer.ColumnObservation
   | .int32 _ _ values => .int32 (values.map (Option.map Arrow.Value.int32))
   | .binary _ _ values => .binaryView (values.map (Option.map KBytes.toList))
+  | .utf8View _ _ values => .utf8View values
 
 def Column.length : Column → Nat
   | .int32 _ _ values => values.length
   | .binary _ _ values => values.length
+  | .utf8View _ _ values => values.length
 
 structure BatchInput where
   rowCount : Nat
@@ -35,7 +39,7 @@ def BatchInput.observe (input : BatchInput) : StreamWriter.BatchObservation :=
 
 /-- The IPC budgets govern the number, order and repetition of these fields. -/
 def supported (fields : List Field) : Bool :=
-  fields.all (fun field => field.kind == .view .binary || field.kind == .primitive .int32)
+  fields.all (fun field => field.kind.isView || field.kind == .primitive .int32)
 
 inductive RecordError where
   | ipc (cause : Arrow.Error)
@@ -61,7 +65,7 @@ structure PhysicalColumn where
   count : Option Nat
   parts : List KBytes
 
-/-- Each BinaryView column starts with a fresh local buffer index space. -/
+/-- Each view column starts with a fresh local buffer index space. -/
 def Column.compile (limits : MixedFlat.Limits) (rows : Nat) (column : Column) (position : Nat) :
     Except RecordError PhysicalColumn := do
   if column.length ≠ rows then throw (.field position (.rowCount position rows column.length))
@@ -72,6 +76,10 @@ def Column.compile (limits : MixedFlat.Limits) (rows : Nat) (column : Column) (p
     return ⟨⟨native.length, native.nullCount⟩, none, native.emit⟩
   | .binary _ nullable values =>
     let view ← (BinaryView.Column.Writer.emitBinary limits.view nullable values).mapError
+      (fun cause => .field position (.view position cause))
+    return ⟨view.node, some view.buffers.payload.data.size, Writer.viewParts view.buffers⟩
+  | .utf8View _ nullable values =>
+    let view ← (BinaryView.Column.Writer.emitUtf8 limits.view nullable values).mapError
       (fun cause => .field position (.view position cause))
     return ⟨view.node, some view.buffers.payload.data.size, Writer.viewParts view.buffers⟩
 

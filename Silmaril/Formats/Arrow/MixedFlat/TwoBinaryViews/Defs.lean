@@ -43,7 +43,7 @@ end Wire
 /-- Two view ordinals, with an optional INT32 in any position. -/
 def supported (fields : List Field) : Bool :=
   fields.length ≤ 3 && fields.countP (·.kind == .view .binary) == 2 &&
-    OrderedWriter.supported fields
+    fields.all (fun field => field.kind == .view .binary || field.kind == .primitive .int32)
 
 def checkRecord (limits : MixedFlat.Limits) (rows : Nat) (fields : List Field) :
     Except RecordError Unit :=

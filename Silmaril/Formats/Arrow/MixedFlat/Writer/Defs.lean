@@ -54,6 +54,7 @@ def Input.parts (input : Input) (view : BinaryView.Column.Buffers) : List KBytes
 inductive ColumnObservation where
   | int32 (values : Arrow.Column)
   | binaryView (values : List (Option (List UInt8)))
+  | utf8View (values : List (Option String))
   deriving DecidableEq
 
 def Input.observe (input : Input) : List (Field × ColumnObservation) :=
@@ -66,7 +67,7 @@ def observeColumns (columns : List (Field × MixedFlat.Column)) :
     let values ← match column with
       | .primitive values => some (.int32 values)
       | .binaryView values => some (.binaryView (values.map (Option.map KBytes.toList)))
-      | .utf8View _ => none
+      | .utf8View values => some (.utf8View values)
     return (field, values)
 
 namespace Wire

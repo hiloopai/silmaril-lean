@@ -78,7 +78,7 @@ private theorem observe_cons (head : Field × Column) (tail : List (Field × Col
       (match head.2 with
       | .primitive values => some (Writer.ColumnObservation.int32 values)
       | .binaryView values => some (Writer.ColumnObservation.binaryView (values.map (Option.map KBytes.toList)))
-      | .utf8View _ => none).bind (fun value =>
+      | .utf8View values => some (Writer.ColumnObservation.utf8View values)).bind (fun value =>
         (Writer.observeColumns tail).bind (fun rest => some ((head.1, value) :: rest))) := by
   rcases head with ⟨field, column⟩
   cases column <;> simp [Writer.observeColumns, List.mapM_cons]

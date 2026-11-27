@@ -139,8 +139,8 @@ public def main (args : List String) : IO Unit := do
       | .ok wire => IO.FS.writeBinFile (directory / s!"{name}-{label}.arrows") wire.toByteArray
   let original ← load directory "original"
   let .error .unsupportedSchema :=
-    OrderedWriter.emit {} [⟨"other", true, .view .utf8⟩] [] |
-    throw (IO.userError "ordered writer must refuse Utf8View")
+    OrderedWriter.emit {} [⟨"other", true, .primitive .utf8⟩] [] |
+    throw (IO.userError "ordered writer must refuse classic Utf8")
   let fieldCap : Arrow.MixedFlat.Limits := { observation := { ipc := { fields := 4 } } }
   let .error (.budget (.limit .fields)) := convertNamed original [1, 0, 1, 0, 1] byOrdinal fieldCap |
     throw (IO.userError "projected field budget did not refuse a fifth field")

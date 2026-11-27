@@ -29,6 +29,26 @@ theorem compile_binary_count {limits : MixedFlat.Limits} {rows position : Nat} {
   obtain ⟨view, emitted, rfl, _⟩ := compile_binary_wire written
   exact congrArg some (BinaryView.Column.Writer.emitBinary_layout emitted).variadicCount
 
+/-- Utf8View reads back the original nullable strings from its own buffers. -/
+theorem compile_utf8_wire {limits : MixedFlat.Limits} {rows position : Nat} {name : String}
+    {nullable : Bool} {values : List (Option String)} {physical : PhysicalColumn}
+    (written : (OrderedWriter.Column.utf8View name nullable values).compile limits rows position = .ok physical) :
+    ∃ view, BinaryView.Column.Writer.emitUtf8 limits.view nullable values = .ok view ∧
+      physical = ⟨view.node, some view.buffers.payload.data.size, Writer.viewParts view.buffers⟩ ∧
+      BinaryView.Column.readUtf8 limits.view view.node nullable view.buffers = .ok values :=
+  Proofs.Formats.Arrow.MixedFlat.OrderedWriter.compile_utf8_wire written
+
+/-- The text count word uses encoded UTF-8 byte lengths, with an explicit
+zero when every present value fits inline. -/
+theorem compile_utf8_count {limits : MixedFlat.Limits} {rows position : Nat} {name : String}
+    {nullable : Bool} {values : List (Option String)} {physical : PhysicalColumn}
+    (written : (Column.utf8View name nullable values).compile limits rows position = .ok physical) :
+    physical.count = some (BinaryView.Column.Writer.dataCount
+      (BinaryView.Column.Writer.longBytes KBytes.len
+        (values.map (Option.map BinaryView.Column.Writer.utf8Bytes)))) := by
+  obtain ⟨view, emitted, rfl, _⟩ := compile_utf8_wire written
+  exact congrArg some (BinaryView.Column.Writer.emitUtf8_layout emitted).variadicCount
+
 /-- A checked record binds the exact input field order, an independent count
 and descriptor slice for each view, and the original packed buffer bytes. -/
 theorem record_wire {limits : MixedFlat.Limits} {input : BatchInput} (record : Record limits input) :

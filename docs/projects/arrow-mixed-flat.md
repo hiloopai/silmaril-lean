@@ -218,21 +218,34 @@ make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.StreamWriter.Example
 python3 -I scripts/arrow-mixed-flat/stream_writer_fixtures.py --out /tmp/arrow-mixed-flat-stream-writer
 ```
 
-### Ordered INT32 and BinaryView writer
+### Ordered INT32, BinaryView and Utf8View writer
 
-`MixedFlat.OrderedWriter.emit` accepts an ordered schema of INT32 and
-BinaryView fields under the existing IPC caps. Each BinaryView column
-owns its count word and local buffer indices. A column with no external
-payload contributes zero to the count vector, and an INT32 column
-contributes no word. The writer checks every record's declared schema,
-nodes, and ordered descriptor ranges before framing it. The existing
-mixed reader certifies all batches through exact EOS, including zero-row
-batches and positive row counts at width zero.
+`MixedFlat.OrderedWriter.emit` accepts an ordered schema of INT32,
+BinaryView and Utf8View fields under the existing IPC caps. The text
+constructor accepts nullable Lean strings, and the binary constructor
+accepts nullable octets. The checked schema requires the matching kind
+at each field position. Each view column owns its local buffer indices
+and contributes one count word, including zero for an inline-only or
+empty column. The mixed reader certifies the original ordered strings,
+octets and batch counts through exact EOS.
+
+`compile_utf8_wire` gives the exact nullable string readback from one
+view's own buffers. `compile_utf8_count` measures external payloads by
+encoded byte length. The PyArrow 26.0.1 comparison interleaves both
+view kinds with INT32 and checks `[4, 0, 3]` rows. The Lean output has
+view count vectors `[0, 1, 1, 0]`, `[0, 0, 0, 0]` and `[1, 0, 0, 1]`.
+The comparison includes nulls, empty values, composed and decomposed
+text, embedded NUL, and non-UTF8 BinaryView values.
 
 [Definitions](../../Silmaril/Formats/Arrow/MixedFlat/OrderedWriter/Defs.lean) ·
 [Laws](../../Silmaril/Formats/Arrow/MixedFlat/OrderedWriter/Thms.lean) ·
-[PyArrow comparison](parquet-int32-byte-array-legacy.md#native-ipc-after-logical-scan)
+[Mixed-view oracle and hashes](../../scripts/arrow-ordered-view-writer/check.py) ·
+[Legacy Parquet comparison](parquet-int32-byte-array-legacy.md#native-ipc-after-logical-scan)
 
+```sh
+lake build --wfail +Silmaril.Formats.Arrow.MixedFlat.OrderedWriter.Checks
+python3 scripts/arrow-ordered-view-writer/check.py "$(mktemp -d)"
+```
 
 ## Indexed files in a bounded carrier window
 

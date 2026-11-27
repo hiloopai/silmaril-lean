@@ -15,10 +15,10 @@ open Silmaril.Formats Silmaril.Formats.Arrow Silmaril.Formats.Arrow.MixedFlat
 open Silmaril.Formats.Arrow.MixedFlat.OrderedWriter
 
 private theorem view_wf {limits : BinaryView.Column.Limits} {nullable : Bool}
-    {values : List (Option KBytes)} {view : BinaryView.Column.Writer.Emitted}
-    (written : BinaryView.Column.Writer.emitBinary limits nullable values = .ok view) :
+    {view : BinaryView.Column.Writer.Emitted}
+    (fits : BinaryView.Column.BuffersFit limits view.node nullable view.buffers) :
     ∀ part ∈ MixedFlat.Writer.viewParts view.buffers, part.wf = true := by
-  have valid := (BinaryView.Column.Writer.emitBinary_layout written).fits.2.2.2.1
+  have valid := fits.2.2.2.1
   intro part member
   simp only [MixedFlat.Writer.viewParts, List.mem_cons] at member
   rcases member with rfl | rfl | member
@@ -52,7 +52,16 @@ private theorem column_wf {limits : MixedFlat.Limits} {rows position : Nat}
         simp [OrderedWriter.Column.compile, same, view, Except.mapError, Bind.bind, Except.bind,
           Pure.pure, Except.pure] at written
         subst physical
-        exact view_wf view
+        exact view_wf (BinaryView.Column.Writer.emitBinary_layout view).fits
+    | utf8View name nullable values =>
+      cases view : BinaryView.Column.Writer.emitUtf8 limits.view nullable values with
+      | error cause =>
+        simp [OrderedWriter.Column.compile, same, view, Except.mapError, Bind.bind, Except.bind] at written
+      | ok actual =>
+        simp [OrderedWriter.Column.compile, same, view, Except.mapError, Bind.bind, Except.bind,
+          Pure.pure, Except.pure] at written
+        subst physical
+        exact view_wf (BinaryView.Column.Writer.emitUtf8_layout view).fits
   · simp [OrderedWriter.Column.compile, same, Bind.bind, Except.bind, throw] at written
 
 theorem compile_binary_wire {limits : MixedFlat.Limits} {rows position : Nat} {name : String}
@@ -71,6 +80,23 @@ theorem compile_binary_wire {limits : MixedFlat.Limits} {rows position : Nat} {n
       simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, same, view,
         Except.mapError, Bind.bind, Except.bind, Pure.pure, Except.pure] at written
       exact ⟨actual, rfl, written.symm, BinaryView.Column.Writer.emitBinary_roundtrip view⟩
+  · simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, same, Bind.bind, Except.bind, throw] at written
+
+theorem compile_utf8_wire {limits : MixedFlat.Limits} {rows position : Nat} {name : String}
+    {nullable : Bool} {values : List (Option String)} {physical : PhysicalColumn}
+    (written : (OrderedWriter.Column.utf8View name nullable values).compile limits rows position = .ok physical) :
+    ∃ view, BinaryView.Column.Writer.emitUtf8 limits.view nullable values = .ok view ∧
+      physical = ⟨view.node, some view.buffers.payload.data.size, MixedFlat.Writer.viewParts view.buffers⟩ ∧
+      BinaryView.Column.readUtf8 limits.view view.node nullable view.buffers = .ok values := by
+  by_cases same : values.length = rows
+  · cases view : BinaryView.Column.Writer.emitUtf8 limits.view nullable values with
+    | error cause =>
+      simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, same, view,
+        Except.mapError, Bind.bind, Except.bind] at written
+    | ok actual =>
+      simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, same, view,
+        Except.mapError, Bind.bind, Except.bind, Pure.pure, Except.pure] at written
+      exact ⟨actual, rfl, written.symm, BinaryView.Column.Writer.emitUtf8_roundtrip view⟩
   · simp [OrderedWriter.Column.compile, OrderedWriter.Column.length, same, Bind.bind, Except.bind, throw] at written
 
 private theorem compiled_wf {limits : MixedFlat.Limits} {rows : Nat}
