@@ -37,11 +37,12 @@ inductive ChunkEncoding where
   | snappyLegacyFallbackV1
   | deltaBinaryPacked
   | byteStreamSplit
+  | scalarDispatch
 
 @[expose] def ChunkEncoding.admitsCodec (encoding : ChunkEncoding) (limits : Limits) (code : Int) : Bool :=
   match encoding with
   | .plain => limits.admitsCodec code
-  | .deltaBinaryPacked | .byteStreamSplit => code == 0 || code == 1
+  | .deltaBinaryPacked | .byteStreamSplit | .scalarDispatch => code == 0 || code == 1
   | .dictionary => code == 0
   | .snappyDictionary | .snappyLegacyDictionaryV1 | .snappyLegacyFallbackV1 => code == 1
   | .gzipPlainV2 | .gzipDictionaryV1 | .gzipDictionaryV2 => code == 2
@@ -61,6 +62,10 @@ def ChunkEncoding.admitsMetadata (encoding : ChunkEncoding) (metadata : Footer.C
         metadata.encodings.contains 5 && metadata.dictionaryPageOffset.isNone
     | .byteStreamSplit => metadata.encodings.all (fun id => id == 3 || id == 9) &&
         metadata.encodings.contains 9 && metadata.dictionaryPageOffset.isNone
+    | .scalarDispatch =>
+        metadata.encodings.all (fun id => id == 0 || id == 3 || id == 5 || id == 9) &&
+        (metadata.encodings.contains 0 || metadata.encodings.contains 5 || metadata.encodings.contains 9) &&
+        metadata.dictionaryPageOffset.isNone
     | .dictionary => dictionaryMetadata metadata &&
         metadata.totalCompressedSize == metadata.totalUncompressedSize
     | .snappyDictionary | .gzipDictionaryV1 | .gzipDictionaryV2 | .zstdDictionaryV2 => dictionaryMetadata metadata
@@ -70,6 +75,35 @@ def ChunkEncoding.admitsMetadata (encoding : ChunkEncoding) (metadata : Footer.C
     | .snappyLegacyFallbackV1 =>
         metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 2 &&
           metadata.encodings.contains 0 && metadata.encodings.all (fun id => id == 0 || id == 2 || id == 3 || id == 4)
+
+theorem ChunkEncoding.plain_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
+    ChunkEncoding.plain.admitsMetadata metadata rows =
+      (!metadata.indexPageOffset.isSome &&
+        (metadata.encodings.all (fun id => id == 0 || id == 3) &&
+          (rows == 0 || metadata.encodings.contains 0) && metadata.dictionaryPageOffset.isNone)) := by
+  rw [ChunkEncoding.admitsMetadata]
+
+theorem ChunkEncoding.delta_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
+    ChunkEncoding.deltaBinaryPacked.admitsMetadata metadata rows =
+      (!metadata.indexPageOffset.isSome &&
+        (metadata.encodings.all (fun id => id == 3 || id == 5) &&
+          metadata.encodings.contains 5 && metadata.dictionaryPageOffset.isNone)) := by
+  rw [ChunkEncoding.admitsMetadata]
+
+theorem ChunkEncoding.split_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
+    ChunkEncoding.byteStreamSplit.admitsMetadata metadata rows =
+      (!metadata.indexPageOffset.isSome &&
+        (metadata.encodings.all (fun id => id == 3 || id == 9) &&
+          metadata.encodings.contains 9 && metadata.dictionaryPageOffset.isNone)) := by
+  rw [ChunkEncoding.admitsMetadata]
+
+theorem ChunkEncoding.scalarDispatch_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
+    ChunkEncoding.scalarDispatch.admitsMetadata metadata rows =
+      (!metadata.indexPageOffset.isSome &&
+        (metadata.encodings.all (fun id => id == 0 || id == 3 || id == 5 || id == 9) &&
+          (metadata.encodings.contains 0 || metadata.encodings.contains 5 || metadata.encodings.contains 9) &&
+          metadata.dictionaryPageOffset.isNone)) := by
+  rw [ChunkEncoding.admitsMetadata]
 
 theorem ChunkEncoding.plain_noDictionary {metadata : Footer.ColumnMetadata} {rows : Int}
     (admitted : ChunkEncoding.plain.admitsMetadata metadata rows = true) :
@@ -100,6 +134,13 @@ inductive ByteStreamSplitPageError where
   | parameters (cause : Timestamp.Page.Error)
   | decode (cause : ByteStreamSplitPage.Error)
   | physicalKind
+  deriving DecidableEq, Repr
+
+inductive ScalarDispatchError where
+  | unsupportedPage
+  | unsupportedEncoding (tag : Int)
+  | undeclaredEncoding (tag : Int)
+  | plain (cause : Timestamp.Page.Error)
   deriving DecidableEq, Repr
 
 inductive DeltaPageError where
@@ -156,6 +197,7 @@ inductive Error where
   | dictionaryPage (pageIndex headerOffset : Nat) (cause : DictionaryPageError)
   | deltaPage (pageIndex headerOffset : Nat) (cause : DeltaPageError)
   | byteStreamSplitPage (pageIndex headerOffset : Nat) (cause : ByteStreamSplitPageError)
+  | scalarDispatchPage (pageIndex headerOffset : Nat) (cause : ScalarDispatchError)
   deriving DecidableEq, Repr
 
 /-- The caller cannot substitute new bytes, a different annotation, or new levels. -/
