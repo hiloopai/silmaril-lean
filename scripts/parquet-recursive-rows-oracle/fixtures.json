@@ -1,0 +1,79 @@
+{
+  "description": "Genuine recursive Parquet, labeled row-group and sibling controls, and native Lean IPC",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "deep": {
+      "bytes": 1865,
+      "sha256": "590011386218646cab289510d208bc86dcb3a8512666de2ad7be492aeffe1ab7"
+    },
+    "required_path": {
+      "bytes": 1016,
+      "sha256": "8d05a0e194d813e6bc1366c1bb489b2e00428a346944acb36d4598268970fdfe"
+    },
+    "schema_only": {
+      "bytes": 187,
+      "sha256": "a68862bc589fc54ba32589239fe6ba96815d6673121eb2c07451dfe4a35e1846"
+    },
+    "multipage": {
+      "bytes": 3887,
+      "sha256": "bff0c19d84f614fbe92ff0668f267da4c62cbcdee99513f7780f5db4e2c804e4"
+    },
+    "checksummed": {
+      "bytes": 4089,
+      "sha256": "393202c736d40d5237eb15d9f96ba82e60a62d6dfec3fb877cfa2539fba83f0f"
+    }
+  },
+  "labeled_parquet": {
+    "late_outer_disagreement": {
+      "bytes": 3887,
+      "sha256": "4fc1848efb5bd6198e46cb4b3eb2ec3ed5683c18ef38aed5fbf13fa778f5ae15"
+    },
+    "late_inner_disagreement": {
+      "bytes": 3887,
+      "sha256": "dc6cc998ce3b24ee0b74f3061cc2dbeeddf46accb85708d6aae125bfb1a6b683"
+    },
+    "explicit_empty": {
+      "bytes": 2284,
+      "sha256": "9d7f9125baf604a313d84b1293b257d383542d3c7684da87572425db039c6f0c"
+    },
+    "extra_original": {
+      "bytes": 3991,
+      "sha256": "d8b256ca7fd1c7da1a90d9c734bf7da2cf33806912025f29837f07b7e27c8118"
+    }
+  },
+  "lean_ipc": {
+    "deep": {
+      "bytes": 2248,
+      "sha256": "eed6a322996c9625caf50123074cc8cdb9d6cc2bf9301d57b0e32753cf157047"
+    },
+    "required_path": {
+      "bytes": 1480,
+      "sha256": "d10504dd261325af9854dd3a5b39b0b33b2da93bab627ed4cc3ccbb25f686234"
+    },
+    "schema_only": {
+      "bytes": 896,
+      "sha256": "e0e6e43fbf4e7ee40c61b195b0cd7c644696d06a08e5c7a4da0977571962d979"
+    },
+    "multipage": {
+      "bytes": 3832,
+      "sha256": "1212bb6c143f8ba961faf28da71a653b6fdd854f0305781c6f9450d0e5983f18"
+    },
+    "checksummed": {
+      "bytes": 3832,
+      "sha256": "1212bb6c143f8ba961faf28da71a653b6fdd854f0305781c6f9450d0e5983f18"
+    },
+    "explicit_empty": {
+      "bytes": 2728,
+      "sha256": "f3c586e4cd52083bbd642db6ab8c2c92185a7649d19cba5f85cfd1528bad8037"
+    }
+  }
+}
