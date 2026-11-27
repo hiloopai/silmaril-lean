@@ -169,7 +169,11 @@ jobs:
           args=()
           for target in $CHECK_TARGETS; do args+=(--build "$target"); done
           case " $CHECK_TARGETS " in *" wasm-opt "*) args+=(--out build/wasm-checks.json) ;; esac
-          hiloop-prove run "${args[@]}" -- make check CHECK_TARGETS="$CHECK_TARGETS"
+          args+=(-- make check "CHECK_TARGETS=$CHECK_TARGETS")
+          if [[ '${{ steps.targets.outputs.full-suite }}' == 'true' ]]; then
+            args+=(CHECK_JOBS=3)
+          fi
+          hiloop-prove run "${args[@]}"
       - name: Retain native check results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
