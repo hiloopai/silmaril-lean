@@ -219,6 +219,12 @@ public theorem readGroup_wire {checked : Checked} {index : Nat} {slots : List Li
       · contradiction
     · contradiction
 
+public theorem schema_exact (checked : Checked) :
+    (schema checked).width = 1 ∧
+      ∀ index : Fin (schema checked).width,
+        (schema checked).kind index = (checked.shape.outer.name, .nullableListOfNullableInt32) := by
+  simp [schema]
+
 public theorem batch_slots (checked : Checked) (slots : List ListPage.Row)
     (field : Fin (schema checked).width) :
     (AlignedColumns.ofRows (rows checked slots)).rowCount = slots.length ∧

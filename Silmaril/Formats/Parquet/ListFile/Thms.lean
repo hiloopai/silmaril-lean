@@ -33,6 +33,13 @@ theorem readGroup_wire {checked : Checked} {index : Nat} {slots : List ListPage.
     (h : checked.readGroup index = .ok slots) : GroupWire checked index slots :=
   Proofs.Formats.Parquet.ListFile.readGroup_wire h
 
+/-- The event schema carries the original LIST field name. -/
+theorem schema_exact (checked : Checked) :
+    (schema checked).width = 1 ∧
+      ∀ index : Fin (schema checked).width,
+        (schema checked).kind index = (checked.shape.outer.name, .nullableListOfNullableInt32) :=
+  Proofs.Formats.Parquet.ListFile.schema_exact checked
+
 /-- The Arrow batch carries all nullable lists and elements in their original order. -/
 theorem batch_slots (checked : Checked) (slots : List ListPage.Row)
     (field : Fin (schema checked).width) :

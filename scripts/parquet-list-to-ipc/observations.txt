@@ -1,0 +1,23 @@
+PyArrow 26.0.1
+nullable-int32-v1.parquet SHA-256 6feba7ce99b321ec7a0a14b6331a6041fce6cef1ea47edc487d2afd04ab0d1f6, footer @92, 2 groups
+  group 0: 5 rows, 8 slots, frames [(4, 48)], first repetitions [0]
+  group 1: 5 rows, 8 slots, frames [(48, 92)], first repetitions [0]
+  IPC SHA-256 2d79f9bd0a9db7f76aef3ae245d9d568bfba7ebd1fa509aa7325a68884521b8f, child totals [6, 6], EOS [752, 760)
+  IPC batches [[None, [], [None], [-7, None, 0], [9, None]], [[10, None], None, [], [None, -2147483648], [2147483647, None]]]
+authored-continuation-v1.parquet SHA-256 126fb7cf5bbe2ef6f8436757fc3f6c97644f6599a9c11a0d2a736d2ecc80c46e, footer @138, 1 groups
+  group 0: 3 rows, 6 slots, frames [(4, 35), (35, 66), (66, 102), (102, 138)], first repetitions [0, 0, 0, 1]
+  IPC SHA-256 90b5f72027012224e709a77060cecf6605fdcd696eecbd7e03309b506b824b11, child totals [4], EOS [464, 472)
+  IPC batches [[None, [], [11, None, 22, None]]]
+no-groups.parquet SHA-256 f0f39d330ebc7c36c44f1c7c6032ab57e52d67f1b39cf00dca1cfc691b9cae9b, footer @4, 0 groups
+  IPC SHA-256 b5b0c9dd4e17a1a2741d914a83f4e13db30bf8b984182d1b7356c3bbfe15eeb0, child totals [], EOS [208, 216)
+  IPC batches []
+empty-framed-group.parquet SHA-256 c2ee0d56c56d66e601acd53b7c200e8bee7ea6b141c12d852ae70d19c64239d5, footer @117, 3 groups
+  group 0: 5 rows, 8 slots, frames [(4, 48)], first repetitions [0]
+  group 1: 0 rows, 0 slots, frames [(48, 73)], first repetitions [None]
+  group 2: 5 rows, 8 slots, frames [(73, 117)], first repetitions [0]
+  IPC SHA-256 9810f982af7af52b3eb2aece778c3e468102cd85dedd29928f0d479a54f189fe, child totals [6, 0, 6], EOS [968, 976)
+  IPC batches [[None, [], [None], [-7, None, 0], [9, None]], [], [[10, None], None, [], [None, -2147483648], [2147483647, None]]]
+late-corruption.parquet SHA-256 6c91f4be62f757dd3a322c34ef514318f0d16a9c7fe7769498392ee27ce85a7b
+late group 1, frame 0 @48: continuationWithoutList; one retained batch and no IPC bytes
+unframed-empty.parquet SHA-256 486235fc8fffc68054697de9d84562b4a34354a2b11d6e33ffc0e8b58954cd02
+unframed empty chunk: pageInterval; no IPC bytes
