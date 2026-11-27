@@ -2,10 +2,12 @@ module
 
 import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Pruning.Thms
 import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Thms
+import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.ToIpc.Thms
 import Silmaril.Formats.Hive.Manifest.Thms
 import Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.Thms
 meta import Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.Defs
 meta import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Pruning.Defs
+meta import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.ToIpc.Defs
 
 namespace Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter
 
@@ -281,6 +283,66 @@ private def observesNamed (layout : Schema) (options : PartitionPath.Options) : 
 #print axioms Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.importSelected_observe
 #print axioms Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.emit_importSelected
 
+private def emptyGroupFile (layout : Schema) (path : String) : Option File := do
+  let output ← (MixedV1Writer.Multi.emit limits.writer (fileInput layout [0] [])).toOption
+  return ⟨path, [0], output.bytes⟩
+
+private def ipcSlots (layout : Schema) (options : PartitionPath.Options)
+    (keep : Scan.Predicate layout.keys.schema.toScan Value) (files : List File) :
+    Option (List (List (Option (List UInt8)))) := do
+  let wire ← (ToIpc.convert layout options limits {} {} keep files).toOption
+  let decoded ← (BinaryView.Stream.read {} {} wire).toOption
+  let ⟨⟨name, true, .binary⟩, batches⟩ := decoded | none
+  if name == layout.byteName then some (batches.map (List.map (Option.map KBytes.toList))) else none
+
+private def observesIpc (layout : Schema) (options : PartitionPath.Options) : Bool := Id.run do
+  let .ok [a, b, c] := make layout options | return false
+  let unreadable := {b with bytes := .empty}
+  return ipcSlots layout options (keepDay layout (fun _ => true)) [a, unreadable, c, a] ==
+    some [[some [255, 0], some []], [none], [some [121]], [some [255, 0], some []], [none]]
+
+#guard observesIpc dateFirst {} && observesIpc textFirst custom
+
+#guard Id.run do
+  let .ok (a :: _) := make dateFirst {} | return false
+  let some empty := emptyGroupFile dateFirst a.path | return false
+  return ipcSlots dateFirst {} (keepLeap dateFirst) [empty] == some [[]] &&
+    ipcSlots dateFirst {} (fun _ => none) [empty] == some []
+
+#guard Id.run do
+  let .ok (a :: rest) := make textFirst custom | return false
+  let some damaged := corruptSecond textFirst a | return false
+  let files := damaged :: rest
+  let keep := keepLeap textFirst
+  let .ok trace := readSelected textFirst custom limits (ToIpc.projection textFirst) keep files | return false
+  let .readError (expected@(.source path (.parquet (.groupFailure 1 _)))) := trace.termination | return false
+  match ToIpc.convert textFirst custom limits {fields := 0} {} keep files with
+  | .error (.source (.readError cause)) =>
+    return path == a.path && trace.batches.map (·.rowCount) == [2] && decide (cause = expected)
+  | _ => return false
+
+#guard Id.run do
+  let .ok (a :: rest) := make dateFirst {} | return false
+  let invalid := {a with path := "day=2024-02-30/label=bad/part-0.parquet"}
+  match ToIpc.convert dateFirst {} limits {fields := 0} {} (fun _ => none) (a :: invalid :: rest) with
+  | .error (.admission (.binding path (.conversion "day" (.invalidDate "2024-02-30")))) =>
+    return path == invalid.path
+  | _ => return false
+
+#guard Id.run do
+  let .ok files := make dateFirst {} | return false
+  let keep := keepLeap dateFirst
+  let .ok trace := readSelected dateFirst {} limits (ToIpc.projection dateFirst) keep files | return false
+  match ToIpc.convert dateFirst {} limits {fields := 0} {} keep files,
+      ToIpc.encodeTrace dateFirst {fields := 0} {} {trace with termination := .closed} with
+  | .error (.writer (.ipc (.limit .fields))), .error (.source .closed) => return true
+  | _, _ => return false
+
+#print axioms ToIpc.projection_kind
+#print axioms ToIpc.groups_rowCounts
+#print axioms ToIpc.convert_outcome
+#print axioms ToIpc.convert_readback
+
 private def tracedResolve (run : String) (files : List File) (path : String) : Except Unit Bytes :=
   dbg_trace s!"open\t{run}\t{path}"
   resolve files path
@@ -325,9 +387,33 @@ private def writeNamed (root : System.FilePath) (layout : Schema)
     throw (IO.userError "zero-column table has cells")
   IO.FS.writeFile (root / "db-zero-count.txt") s!"{zeroRows.length}\n"
 
-private def writeFixture (root : System.FilePath) (name : String) (layout : Schema)
-    (options : PartitionPath.Options) (pruning named : Bool) : IO Unit := do
-  let root := root / name
+private def writeIpc (root emptyRoot : System.FilePath) (layout : Schema)
+    (options : PartitionPath.Options) (files : List File) : IO Unit := do
+  let .ok wire := ToIpc.convert layout options limits {} {}
+    (keepDay layout (fun _ => true)) (files ++ files.take 1) |
+    throw (IO.userError "selected BinaryView export failed")
+  IO.FS.writeBinFile (root / "selected.arrow") wire.toByteArray
+  let .ok noneKept := ToIpc.convert layout options limits {} {} (fun _ => none) files |
+    throw (IO.userError "empty selection BinaryView export failed")
+  IO.FS.writeBinFile (root / "none-kept.arrow") noneKept.toByteArray
+  let some first := files.head? | throw (IO.userError "missing empty-group fixture path")
+  let some empty := emptyGroupFile layout first.path | throw (IO.userError "empty Parquet group emission failed")
+  let emptyPath := emptyRoot / empty.path
+  if let some parent := emptyPath.parent then IO.FS.createDirAll parent
+  IO.FS.writeBinFile emptyPath empty.bytes.data
+  let .ok emptyWire := ToIpc.convert layout options limits {} {} (keepLeap layout) [empty] |
+    throw (IO.userError "empty group BinaryView export failed")
+  IO.FS.writeBinFile (emptyRoot / "selected.arrow") emptyWire.toByteArray
+
+private inductive FixtureMode where
+  | base
+  | pruning
+  | named
+  | ipc
+
+private def writeFixture (base : System.FilePath) (name : String) (layout : Schema)
+    (options : PartitionPath.Options) (mode : FixtureMode) : IO Unit := do
+  let root := base / name
   let .ok files := make layout options | throw (IO.userError "paired Hive emission failed")
   let .ok trace := readManifest layout options limits files | throw (IO.userError "paired Hive ingress failed")
   let .eos := trace.termination | throw (IO.userError "paired Hive read did not reach EOS")
@@ -339,17 +425,23 @@ private def writeFixture (root : System.FilePath) (name : String) (layout : Sche
   let batches := trace.batches.flatMap fun batch =>
     toString batch.rowCount :: batch.toRows.map (fun row => String.intercalate "\t" (observed layout.toScan row))
   IO.FS.writeFile (root / "batches.tsv") (String.intercalate "\n" batches ++ "\n")
-  if pruning then writePruning root name layout options files
-  if named then writeNamed root layout options files
+  match mode with
+  | .base => pure ()
+  | .pruning => writePruning root name layout options files
+  | .named =>
+    writePruning root name layout options files
+    writeNamed root layout options files
+  | .ipc => writeIpc root (base / (name ++ "-empty")) layout options files
 
 public def runWriterChecks (args : List String) : IO Unit := do
-  let (root, pruning, named) ← match args with
-    | [root] => pure (System.FilePath.mk root, false, false)
-    | ["pruning", root] => pure (System.FilePath.mk root, true, false)
-    | ["named", root] => pure (System.FilePath.mk root, true, true)
-    | _ => throw (IO.userError "usage: Checks.lean [pruning|named] <fixture-root>")
-  writeFixture root "date-first" dateFirst {} pruning named
-  writeFixture root "text-first" textFirst custom pruning named
+  let (root, mode) ← match args with
+    | [root] => pure (System.FilePath.mk root, FixtureMode.base)
+    | ["pruning", root] => pure (System.FilePath.mk root, .pruning)
+    | ["named", root] => pure (System.FilePath.mk root, .named)
+    | ["ipc", root] => pure (System.FilePath.mk root, .ipc)
+    | _ => throw (IO.userError "usage: Checks.lean [pruning|named|ipc] <fixture-root>")
+  writeFixture root "date-first" dateFirst {} mode
+  writeFixture root "text-first" textFirst custom mode
 
 end Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter
 

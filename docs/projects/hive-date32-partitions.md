@@ -345,3 +345,36 @@ Generate the named fixture with
 `lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Checks.lean named "$tmp" > "$tmp/opens.log" 2>&1`.
 Use the pinned PyArrow command above with
 `python -I /repo/scripts/hive-date-utf8-writer-oracle/Oracle.py /out /out/opens.log --named`.
+
+## Selected opaque payload to native BinaryView IPC
+
+[`ToIpc.convert`](../../Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/ToIpc/Defs.lean)
+projects the physical nullable BYTE_ARRAY leaf of the paired scan to one
+nullable Arrow BinaryView field under its declared name. The Parquet read
+still checks both physical leaves of each reached group under the existing
+paired reader limits. The IPC profile has a fixed one-column projection.
+Physical INT32, virtual DATE and UTF-8 keys, mixed projections and
+zero-width projections are outside this entry point.
+
+All path declarations are checked before selection. Only SQL true opens
+a file. Typed declaration failures and reached source outcomes are
+returned ahead of writer admission. The adapter materializes the selected
+batches and invokes the existing BinaryView writer after source EOS.
+The writer applies its configured IPC and BinaryView limits. File
+paths and group ordinals stay in the source semantics.
+
+The [readback law](../../Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/ToIpc/Thms.lean)
+recovers the exact field and nullable octets through IPC EOS, with one
+record per retained group in order, including zero-row groups. A
+descriptor-only stream represents a selection with no groups. A
+present empty value remains distinct from null.
+
+Generate genuine Parquet and IPC fixtures with
+`lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Checks.lean ipc "$tmp"`.
+Use the pinned PyArrow command above with
+`python -I /repo/scripts/hive-date-utf8-writer-oracle/Oracle.py /out --ipc`.
+The comparator independently selects footer groups from both native
+partition orders, including a repeated occurrence, then compares the
+IPC schema, batch boundaries, raw slots and EOS. It compares a genuine
+zero-row Parquet group and an empty selection separately and checks the
+SHA-256 of each generated IPC stream.

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Check native paired Parquet, selected groups and the optional named import."""
+"""Check native paired Parquet, selected groups, named import and BinaryView IPC."""
 
 import argparse
+from hashlib import sha256
 from pathlib import Path
 
 import pyarrow as pa
@@ -14,6 +15,11 @@ CUSTOM_MARKER = "null/=%"
 DATE = ("day", pa.date32())
 TEXT = ("label", pa.string())
 PHYSICAL = [("n", pa.int32()), ("blob", pa.binary())]
+IPC_SHA256 = {
+    "selected": "e04c619b69d52e7984afd696e14a8798f30f02188249091020d6c842b35d65c4",
+    "none-kept": "8370b07d9ed8a8cab381d7e3957533b8e41f32a515f4b0113ccb803c11ab7e78",
+    "empty-group": "4ab98ff8d0e2fd0bbb82a046a5d9fb29beea225e16b9dfaa6c4edf9a201e68b9",
+}
 EXPECTED = [
     (19782, "café/blue", [[(-7, b"\xff\x00"), (None, b"")], [(11, None)]]),
     (None, "", [[(0, b"x"), (None, None)]]),
@@ -48,7 +54,38 @@ def native_batches(path):
     return [[next(lines).split("\t") for _ in range(int(size))] for size in lines]
 
 
-def check_profile(root, marker, virtual, declared, opens=None, named=False):
+def check_binary_view(path, expected, case):
+    wire = path.read_bytes()
+    assert sha256(wire).hexdigest() == IPC_SHA256[case]
+    source = pa.BufferReader(wire)
+    with pa.ipc.open_stream(source) as reader:
+        assert reader.schema.equals(pa.schema([pa.field("blob", pa.binary_view(), nullable=True)]))
+        assert [batch.column(0).to_pylist() for batch in reader] == expected
+        assert source.tell() == len(wire)
+    assert wire.endswith(b"\xff\xff\xff\xff\x00\x00\x00\x00")
+
+
+def check_ipc(root, dataset, paths, declared):
+    retained = list(dataset.get_fragments(filter=ds.field("day").is_valid()))
+    assert [fragment.path for fragment in retained] == [paths[0], paths[2]]
+    expected = []
+    # The supplied manifest repeats the first occurrence at the end.
+    for fragment in retained + retained[:1]:
+        with pq.ParquetFile(fragment.path) as file:
+            for ordinal in range(file.num_row_groups):
+                group = file.read_row_group(ordinal, columns=["blob"], use_threads=False)
+                expected.append(group["blob"].to_pylist())
+    check_binary_view(root / "selected.arrow", expected, "selected")
+    check_binary_view(root / "none-kept.arrow", [], "none-kept")
+
+    empty_root = root.with_name(root.name + "-empty")
+    with pq.ParquetFile(empty_root / declared[0]) as file:
+        assert file.num_row_groups == 1 and file.metadata.row_group(0).num_rows == 0
+        slots = file.read_row_group(0, columns=["blob"], use_threads=False)["blob"].to_pylist()
+    check_binary_view(empty_root / "selected.arrow", [slots], "empty-group")
+
+
+def check_profile(root, marker, virtual, declared, opens=None, named=False, ipc=False):
     assert (root / "inventory.txt").read_text().splitlines() == declared
     assert sorted(path.relative_to(root).as_posix() for path in root.rglob("*.parquet")) == sorted(declared)
     paths = [str(root / path) for path in declared]
@@ -78,6 +115,8 @@ def check_profile(root, marker, virtual, declared, opens=None, named=False):
             batches.append([list(map(wire_cell, (number, payload, *(values[name] for name, _ in virtual))))
                             for number, payload in group])
     assert batches == native_batches(root / "batches.tsv")
+    if ipc:
+        check_ipc(root, dataset, paths, declared)
     if opens is not None:
         keep = ds.field("day") == pa.scalar(19782, pa.date32())
         chosen = list(dataset.get_fragments(filter=keep))
@@ -109,6 +148,7 @@ def main():
     parser.add_argument("root", type=Path)
     parser.add_argument("resolver_log", type=Path, nargs="?")
     parser.add_argument("--named", action="store_true")
+    parser.add_argument("--ipc", action="store_true")
     args = parser.parse_args()
     if args.named and args.resolver_log is None:
         parser.error("--named requires the resolver log")
@@ -121,13 +161,15 @@ def main():
                 _, run, literal = line.split("\t")
                 opens.setdefault(run, []).append(literal)
         assert set(opens) == {name + mode for name in PROFILES for mode in ("-strict", "-pruned")}
-    groups = sum(check_profile(root / name, *profile, opens=opens, named=args.named)
+    groups = sum(check_profile(root / name, *profile, opens=opens, named=args.named, ipc=args.ipc)
                  for name, profile in PROFILES.items())
     print(f"PyArrow matched both partition orders, six native Parquet files and {groups} row groups.")
     if opens is not None:
         print("PyArrow matched projected retained groups. Lean resolver traces show three strict and one pruned open per order.")
     if args.named:
         print("PyArrow selected groups matched the imported labels, ordered rows and zero-column cardinality.")
+    if args.ipc:
+        print("PyArrow matched BinaryView fields and octets, repeated groups, empty groups and exact EOS.")
 
 
 if __name__ == "__main__":
