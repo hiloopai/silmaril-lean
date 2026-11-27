@@ -1,0 +1,89 @@
+{
+  "description": "Original recursive Parquet, genuine multi-page and checksum inputs, and labeled chunk edits",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "deep": {
+      "bytes": 1865,
+      "sha256": "590011386218646cab289510d208bc86dcb3a8512666de2ad7be492aeffe1ab7"
+    },
+    "required_path": {
+      "bytes": 1016,
+      "sha256": "8d05a0e194d813e6bc1366c1bb489b2e00428a346944acb36d4598268970fdfe"
+    },
+    "schema_only": {
+      "bytes": 187,
+      "sha256": "a68862bc589fc54ba32589239fe6ba96815d6673121eb2c07451dfe4a35e1846"
+    },
+    "multipage": {
+      "bytes": 3887,
+      "sha256": "bff0c19d84f614fbe92ff0668f267da4c62cbcdee99513f7780f5db4e2c804e4"
+    },
+    "checksummed": {
+      "bytes": 4089,
+      "sha256": "393202c736d40d5237eb15d9f96ba82e60a62d6dfec3fb877cfa2539fba83f0f"
+    },
+    "v2": {
+      "bytes": 1885,
+      "sha256": "f502f1848411876c62b57ab807595aec8a9080dc4ad5510f241f41a599a8367e"
+    }
+  },
+  "labeled_edits": {
+    "late_level": {
+      "bytes": 3887,
+      "sha256": "99cbb80409cff376f1b9016d18216019001ed525f5f6b9b6ff532bb0339bc5e0"
+    },
+    "late_short_words": {
+      "bytes": 3887,
+      "sha256": "f240594735fa8f1528e8d52b5d5c8e54d28bee4ddfb591923fb445d1b2556c81"
+    },
+    "late_extra_word": {
+      "bytes": 3887,
+      "sha256": "fa247b86fd47cf3c1faf6f217a617abf4bf6b5cdaad85beeec654b3263242373"
+    },
+    "late_crc": {
+      "bytes": 4089,
+      "sha256": "29d7e43a0e1f77e60a393056ef9a34bb12f40a4fc4cb8a3e3f6619d935fe06c6"
+    },
+    "late_page_size": {
+      "bytes": 3887,
+      "sha256": "934b1d11fe2753c2056aa9aeeacadaa69e57b116db65e7da51fa07b4643ba2ff"
+    },
+    "late_encoding": {
+      "bytes": 3887,
+      "sha256": "9c3f1c980522b044ace83168aad4fec588d2ba66bdc31d27b7d579acfd25a565"
+    },
+    "late_definition_extent": {
+      "bytes": 3887,
+      "sha256": "eff9c70940644083b3b3f19c638c95d7fc05cb46b7b135c253294b106293bfe5"
+    },
+    "late_trailing_levels": {
+      "bytes": 3887,
+      "sha256": "6292f868ca14cedde862d61bc87fe569ea1d11324610759b9195f6cc8752019d"
+    },
+    "chunk_size": {
+      "bytes": 3887,
+      "sha256": "716ed909e60160b286ffe8e09e0d6722aed25b873bad17e78f77d71be2c3dae6"
+    },
+    "late_payload_bounds": {
+      "bytes": 3887,
+      "sha256": "0ecebf47648aedded66a01f13cd57d2a0e96b236a60889d702bc220bf1cb132b"
+    },
+    "row_deficit": {
+      "bytes": 3887,
+      "sha256": "b681beeda0e927c93075e43240566faae6b3ae4831e20b0b85442059e70240b1"
+    },
+    "late_row_overrun": {
+      "bytes": 3887,
+      "sha256": "82475f8ee1a6c667021df0e20d2f1bae328847d516666bbd5cd169f37513669c"
+    }
+  }
+}
