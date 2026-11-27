@@ -4,6 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Thms
 import Silmaril.Formats.Parquet.Page.Checksum.Thms
 import Silmaril.Formats.Parquet.Payload.Thms
+import Silmaril.Formats.Parquet.FlatColumn.Zstd.Thms
 import Silmaril.Formats.Parquet.FlatPage.Thms
 import Silmaril.Formats.Parquet.Hybrid.Thms
 import Silmaril.Formats.Parquet.Plain.Thms
@@ -113,22 +114,36 @@ private theorem checked_extent {maxBytes : Nat} {source : Bytes} {frame : Page.F
   | absent => exact let h := Page.Checksum.verify_absent_iff.mp checked; ⟨h.1, h.2.1⟩
   | valid crc => exact let h := Page.Checksum.verify_valid_iff.mp checked; ⟨h.1, h.2.1⟩
 
-public theorem decodePayload_wire {codec : ColumnCodec} {bounds : Payload.Bounds} {stored body : Bytes}
-    (read : decodePayload codec bounds stored = .ok body) :
-    Payload.Decodes bounds.expectedSize codec.payload stored.toList body.toList ∧
+public theorem decodePayload_wire {limits : Limits} {codec : ColumnCodec} {bounds : Payload.Bounds}
+    {stored body : Bytes} (read : decodePayload limits codec bounds stored = .ok body) :
+    CodecWire limits codec bounds stored body ∧
       stored.length = bounds.compressedSize ∧ stored.length ≤ bounds.compressedLimit ∧
       body.length = bounds.expectedSize ∧ body.length ≤ bounds.outputLimit := by
   unfold decodePayload at read
-  cases decoded : Payload.decode bounds codec.id stored.toList with
-  | error => simp [decoded, Except.mapError, Except.map] at read
-  | ok bytes =>
-    simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
-    subst body
-    obtain ⟨selected, id, model, inputSize, inputCap, outputSize, outputCap⟩ := Payload.decode_sound decoded
-    have original : selected = codec.payload := by
-      simpa only [ColumnCodec.id, Payload.Codec.ofId_id, Option.some.injEq] using id.symm
-    subst selected
-    simpa using And.intro model (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
+  split at read
+  · rename_i zstd
+    cases decoded : FlatColumn.Zstd.decodePayload limits.zstd bounds codec.id stored.toList with
+    | error => simp [decoded, Except.mapError, Except.map] at read
+    | ok bytes =>
+      simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
+      subst body
+      have witness := FlatColumn.Zstd.decodePayload_sound decoded
+      have sizes := witness
+      obtain ⟨inputSize, inputCap, outputSize, outputCap, _⟩ := sizes
+      simpa [CodecWire, zstd] using
+        And.intro witness (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
+  · rename_i other
+    cases decoded : Payload.decode bounds codec.id stored.toList with
+    | error => simp [decoded, Except.mapError, Except.map] at read
+    | ok bytes =>
+      simp only [decoded, Except.mapError, Except.map, Except.ok.injEq] at read
+      subst body
+      obtain ⟨selected, id, model, inputSize, inputCap, outputSize, outputCap⟩ := Payload.decode_sound decoded
+      have original : selected = codec.payload := by
+        simpa only [ColumnCodec.id, Payload.Codec.ofId_id, Option.some.injEq] using id.symm
+      subst selected
+      simpa [CodecWire, other] using
+        And.intro model (And.intro inputSize (And.intro inputCap (And.intro outputSize outputCap)))
 
 public theorem readV1Body_wire {limits : Limits} {codec : ColumnCodec} {source : Bytes}
     {frame : Page.Frame} {body : Bytes}
@@ -145,7 +160,7 @@ public theorem readV1Body_wire {limits : Limits} {codec : ColumnCodec} {source :
   cases codec
   case uncompressed =>
     cases Except.ok.inj read
-    exact ⟨storedSize.trans (sizes rfl).symm, storedSize.symm ▸ cap, .uncompressed _, by simp⟩
+    exact ⟨storedSize.trans (sizes rfl).symm, storedSize.symm ▸ cap, Payload.Decodes.uncompressed _, by simp⟩
   all_goals
     obtain ⟨model, _, _, bodySize, bodyCap⟩ := decodePayload_wire read
     exact ⟨bodySize, bodyCap, model, fun _ => read⟩

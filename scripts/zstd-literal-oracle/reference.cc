@@ -35,6 +35,15 @@ int main(int argc, char** argv) {
       size = ZSTD_compress2(context, &output[0], output.size(), input.data(), input.size());
     }
     ZSTD_freeCCtx(context);
+  } else if (mode == "frame-info") {
+    ZSTD_frameHeader header;
+    const size_t status = ZSTD_getFrameHeader(&header, input.data(), input.size());
+    if (status != 0 || header.frameType != ZSTD_frame) return 3;
+    size = ZSTD_findFrameCompressedSize(input.data(), input.size());
+    if (ZSTD_isError(size)) return 3;
+    std::cout << size << ' ' << header.headerSize << ' ' << header.windowSize << ' '
+              << header.frameContentSize << ' ' << header.dictID << ' ' << header.checksumFlag;
+    return std::cout ? 0 : 1;
   } else if (mode == "first-block") {
     const size_t at = ZSTD_frameHeaderSize(input.data(), input.size());
     if (ZSTD_isError(at) || at + 3 > input.size()) return 2;
