@@ -7,6 +7,7 @@ meta import Lean.Data.Json
 
 open Lean Silmaril Silmaril.Relational Silmaril.Formats
 open Silmaril.Formats.Parquet.FlatProjection
+open Silmaril.Formats.Parquet.FlatProjection.Composition
 open Silmaril.Formats.Parquet.FlatProjection.Composition.Ipc
 
 private def readWire (directory : System.FilePath) (name : String) : IO KBytes := do
@@ -73,9 +74,25 @@ public def main (args : List String) : IO Unit := do
         ⟨2, by omega⟩, ⟨3, by omega⟩, ⟨0, by omega⟩])
     else throw (IO.userError "unexpected source width")
   let empty : Scan.Projection wide.schema := Scan.Projection.ofArray #[]
-  unless tableJson ⟨projection.schema, projection.project wide.rows⟩ == tableJson repeated &&
-      tableJson ⟨empty.schema, empty.project wide.rows⟩ == tableJson zero do
-    throw (IO.userError "typed row projection and projected IPC disagree")
+  let input := Bytes.mk (← IO.FS.readBinFile (directory / "empty-middle.parquet"))
+  for (selection, expectedOrdinals, pinned) in [(projection, [1, 0, 1, 2, 3], repeated), (empty, [], zero)] do
+    let some composed := composeOrdinals [3, 0, 1, 2] (Rows.positions selection)
+      | throw (IO.userError "typed Scan positions could not be composed")
+    unless composed == expectedOrdinals do
+      throw (IO.userError "wrong composed physical ordinals")
+    let sourceLimits : Limits :=
+      { maxFields := composed.length, maxFileRows := 18, column := { maxFileBytes := input.length } }
+    let ipcLimits : Arrow.MixedFlat.Limits := { observation := {
+      ipc := { fields := composed.length, batches := 3 }, totalRows := 18,
+      totalCells := composed.length * 18 } }
+    let .ok wire := convert sourceLimits ipcLimits input composed
+      | throw (IO.userError "the composed physical projection did not emit IPC")
+    let some direct := Rows.readRows ipcLimits wire
+      | throw (IO.userError "the composed physical projection did not materialize")
+    let staged : Rows.Table := ⟨selection.schema, selection.project wide.rows⟩
+    unless tableJson staged == tableJson direct && tableJson direct == tableJson pinned do
+      throw (IO.userError "staged Scan projection and composed physical IPC disagree")
+  IO.println "Staged and composed IPC tables agree under separate exact caps for repeats and zero width."
 
   let schemaOnly ← loadTable directory "pyarrow-schema-only"
   let withEmpty ← loadTable directory "pyarrow-one-empty"

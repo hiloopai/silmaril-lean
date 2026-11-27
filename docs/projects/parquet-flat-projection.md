@@ -158,6 +158,16 @@ row counts. The oracle compares both paths on the pinned five-leaf
 producer, framed empty group, and schema-only source.
 [Direct agreement laws][direct-agreement-laws]
 
+`ToScan.convert_compose_rows` connects one positional Scan projection on
+the original materialized IPC table to conversion at the composed
+physical ordinals. The theorem assumes valid ordinal composition, a
+common checked column policy, and successful original and direct
+conversions under their respective source and IPC limits. The original
+Scan width is the number of original ordinals. Its typed projection
+encodes the exact requested position list, including repeats and width
+zero. The materialization oracle compares both paths under exact caps
+on the pinned file with an empty middle group.
+
 ```sh
 lake build --wfail +Silmaril.Formats.Parquet.FlatProjection.Checks
 python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-flat-projection

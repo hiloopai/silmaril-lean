@@ -7,6 +7,7 @@ public section
 
 namespace Silmaril.Formats.Parquet.FlatProjection.ToScan
 
+open Silmaril.Relational
 open FlatProjection.Composition
 open FlatProjection.Composition.Ipc
 open Arrow.MixedFlat
@@ -42,5 +43,22 @@ theorem convert_rows {parquet : FlatProjection.Limits} {ipc : Arrow.MixedFlat.Li
       readEvents ipc wire = some (observeGroups checked batches) ∧
       Rows.readRows ipc wire = some (Rows.materialize (observeGroups checked batches) (observeGroups_aligned read)) :=
   Proofs.Formats.Parquet.FlatProjection.ToScan.convert_rows written
+
+/-- Under the shared column policy and separately successful conversions,
+composed physical ordinals yield the same ordered table as materializing
+the original IPC and applying the corresponding typed positional projection.
+Successful ordinal composition admits every requested position. -/
+theorem convert_compose_rows {wideLimits directLimits : FlatProjection.Limits}
+    {wideIpc directIpc : Arrow.MixedFlat.Limits} {input : Bytes}
+    {ordinals positions composed : List Nat} {wideWire directWire : KBytes}
+    (same : SameColumnPolicy wideLimits directLimits)
+    (composedOk : composeOrdinals ordinals positions = some composed)
+    (wideWritten : convert wideLimits wideIpc input ordinals = .ok wideWire)
+    (directWritten : convert directLimits directIpc input composed = .ok directWire) :
+    ∃ (wide : Rows.Table) (projection : Scan.Projection wide.schema),
+      Rows.readRows wideIpc wideWire = some wide ∧
+      wide.schema.width = ordinals.length ∧ Rows.positions projection = positions ∧
+      Rows.readRows directIpc directWire = some ⟨projection.schema, projection.project wide.rows⟩ :=
+  Proofs.Formats.Parquet.FlatProjection.ToScan.convert_compose_rows same composedOk wideWritten directWritten
 
 end Silmaril.Formats.Parquet.FlatProjection.ToScan

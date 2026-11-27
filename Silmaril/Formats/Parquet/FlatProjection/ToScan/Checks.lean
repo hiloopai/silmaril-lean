@@ -11,3 +11,4 @@ open Silmaril.Formats.Parquet.FlatProjection.ToScan
 #print axioms observeGroups_exact
 #print axioms emitted_events
 #print axioms convert_rows
+#print axioms convert_compose_rows
