@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Check the literal Hive inventory and genuine native paired Parquet output."""
+"""Check native paired Parquet, selected groups and the optional named import."""
 
-import sys
+import argparse
 from pathlib import Path
 
 import pyarrow as pa
@@ -48,7 +48,7 @@ def native_batches(path):
     return [[next(lines).split("\t") for _ in range(int(size))] for size in lines]
 
 
-def check_profile(root, marker, virtual, declared, opens=None):
+def check_profile(root, marker, virtual, declared, opens=None, named=False):
     assert (root / "inventory.txt").read_text().splitlines() == declared
     assert sorted(path.relative_to(root).as_posix() for path in root.rglob("*.parquet")) == sorted(declared)
     paths = [str(root / path) for path in declared]
@@ -61,6 +61,10 @@ def check_profile(root, marker, virtual, declared, opens=None):
     for path, fragment, (day, label, groups) in zip(paths, fragments, EXPECTED, strict=True):
         with pq.ParquetFile(path) as file:
             assert file.schema_arrow.equals(pa.schema(PHYSICAL))
+            for i in range(len(PHYSICAL)):
+                column = file.schema.column(i)
+                assert column.max_definition_level == 1
+                assert column.max_repetition_level == 0
             assert file.num_row_groups == len(groups)
             for ordinal, group in enumerate(groups):
                 physical = file.read_row_group(ordinal, use_threads=False)
@@ -91,24 +95,39 @@ def check_profile(root, marker, virtual, declared, opens=None):
                 expected.append([list(map(wire_cell, (row[i] for i in positions)))
                                  for row in zip(*columns, strict=True)])
         assert expected == native_batches(root / "pruned.tsv")
+        if named:
+            header, *rows = (root / "db.tsv").read_text().splitlines()
+            assert header.split("\t") == [dataset.schema.names[i] for i in positions]
+            assert [row.split("\t") for row in rows] == [row for batch in expected for row in batch]
+            assert int((root / "db-zero-count.txt").read_text()) == sum(map(len, expected))
     return len(batches)
 
 
 def main():
     assert pa.__version__ == "26.0.1"
-    root = Path(sys.argv[1]).resolve()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("root", type=Path)
+    parser.add_argument("resolver_log", type=Path, nargs="?")
+    parser.add_argument("--named", action="store_true")
+    args = parser.parse_args()
+    if args.named and args.resolver_log is None:
+        parser.error("--named requires the resolver log")
+    root = args.root.resolve()
     opens = None
-    if len(sys.argv) == 3:
+    if args.resolver_log is not None:
         opens = {}
-        for line in Path(sys.argv[2]).read_text().splitlines():
+        for line in args.resolver_log.read_text().splitlines():
             if line.startswith("open\t"):
                 _, run, literal = line.split("\t")
                 opens.setdefault(run, []).append(literal)
         assert set(opens) == {name + mode for name in PROFILES for mode in ("-strict", "-pruned")}
-    groups = sum(check_profile(root / name, *profile, opens=opens) for name, profile in PROFILES.items())
+    groups = sum(check_profile(root / name, *profile, opens=opens, named=args.named)
+                 for name, profile in PROFILES.items())
     print(f"PyArrow matched both partition orders, six native Parquet files and {groups} row groups.")
     if opens is not None:
         print("PyArrow matched projected retained groups. Lean resolver traces show three strict and one pruned open per order.")
+    if args.named:
+        print("PyArrow selected groups matched the imported labels, ordered rows and zero-column cardinality.")
 
 
 if __name__ == "__main__":

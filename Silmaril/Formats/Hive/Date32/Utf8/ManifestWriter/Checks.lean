@@ -3,6 +3,8 @@ module
 import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Pruning.Thms
 import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Thms
 import Silmaril.Formats.Hive.Manifest.Thms
+import Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.Thms
+meta import Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.Defs
 meta import Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter.Pruning.Defs
 
 namespace Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter
@@ -10,6 +12,7 @@ namespace Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter
 open Silmaril.Relational Silmaril.Formats.Parquet Silmaril.Formats.Arrow
 open Int32ByteArrayGroup.File (Kind Value)
 open Silmaril.Formats.Relational.NamedTable (Packed)
+open Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8 (importSelected importResult)
 
 private def schema (order : Order) : Schema := ⟨"n", "blob", ⟨"day", "label", order⟩⟩
 private def dateFirst := schema .dateFirst
@@ -192,6 +195,73 @@ private def corruptSecond (layout : Schema) (file : File) : Option File := do
   | .error (.binding path (.conversion "day" (.invalidDate "2024-02-30"))) => return path == invalid.path
   | _ => return false
 
+private def tableObservation (db : Packed String String Value) (name : String) :
+    Option (List String × List (List String)) :=
+  (Scan.observePacked db name).map fun table =>
+    (List.ofFn fun i => (table.schema.kind i).1, table.rows.map (observed table.schema))
+
+private def observesNamed (layout : Schema) (options : PartitionPath.Options) : Bool := Id.run do
+  let .ok files := make layout options | return false
+  let projection := project layout
+  let keep := keepLeap layout
+  let before := dbOf layout input
+  let .ok trace := readSelected layout options limits projection keep files | return false
+  let .ok after := importSelected before "selected" layout options limits projection keep files | return false
+  return tableObservation after "selected" == some
+    (List.ofFn fun i => (projection.schema.kind i).1, trace.rows.map (observed projection.schema)) &&
+    tableObservation after "source" == tableObservation before "source" && (after "absent").isNone
+
+#guard observesNamed dateFirst {} && observesNamed textFirst custom
+
+#guard Id.run do
+  let .ok files := make dateFirst {} | return false
+  let projection : Scan.Projection dateFirst.toScan := Scan.Projection.ofArray #[]
+  let before := dbOf dateFirst input
+  let .ok after := importSelected before "zero" dateFirst {} limits projection (keepLeap dateFirst) files | return false
+  return tableObservation after "zero" == some ([], [[], [], []]) &&
+    tableObservation after "source" == tableObservation before "source"
+
+#guard Id.run do
+  let .ok files := make textFirst custom | return false
+  let projection := project textFirst
+  let .ok after := importSelected (dbOf textFirst input) "empty" textFirst custom limits projection
+    (fun _ => none) files | return false
+  return tableObservation after "empty" == some (["day", "n", "label", "day"], [])
+
+#guard Id.run do
+  let .ok (a :: rest) := make dateFirst {} | return false
+  let invalid := {a with path := "day=2024-02-30/label=bad/part-0.parquet"}
+  let before := dbOf dateFirst input
+  let files := a :: invalid :: rest
+  match importSelected before "selected" dateFirst {} limits (project dateFirst) (fun _ => none) files,
+      importSelected before "source" dateFirst {} limits (project dateFirst) (fun _ => none) files with
+  | .error (.openError (.admission (.binding path (.conversion "day" (.invalidDate "2024-02-30"))))),
+    .error .nameConflict => return path == invalid.path
+  | _, _ => return false
+
+-- The completed first group of a failing retained file cannot install a table.
+#guard Id.run do
+  let .ok (a :: rest) := make textFirst custom | return false
+  let some damaged := corruptSecond textFirst a | return false
+  let files := damaged :: rest
+  let projection := project textFirst
+  let keep := keepLeap textFirst
+  let .ok trace := readSelected textFirst custom limits projection keep files | return false
+  let .readError (expected@(.source path (.parquet (.groupFailure 1 _)))) := trace.termination | return false
+  match importSelected (dbOf textFirst input) "selected" textFirst custom limits projection keep files with
+  | .error (.readError (.runtime cause)) =>
+    return path == a.path && trace.batches.map (·.rowCount) == [2] && decide (cause = expected)
+  | _ => return false
+
+#guard Id.run do
+  let .ok (a :: rest) := make dateFirst {} | return false
+  let projection := project dateFirst
+  let .ok trace := readSelected dateFirst {} limits projection (keepLeap dateFirst) (a :: rest) | return false
+  let closed := {trace with termination := .closed}
+  match importResult (dbOf dateFirst input) "selected" (.ok closed) with
+  | .error .closed => return trace.rows.length == 3
+  | _ => return false
+
 #print axioms namedRows_of_observe
 #print axioms fileInput_rows
 #print axioms FileMatches.cutBounds
@@ -205,6 +275,11 @@ private def corruptSecond (layout : Schema) (file : File) : Option File := do
 #print axioms readSelected_eq_postfilter
 #print axioms emit_readSelected
 #print axioms scanSelectedPaths_first_retained_error
+
+#print axioms Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.importResult_outcome
+#print axioms Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.importSelected_ok_iff
+#print axioms Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.importSelected_observe
+#print axioms Silmaril.Formats.Relational.NamedTable.FromHiveDateUtf8.emit_importSelected
 
 private def tracedResolve (run : String) (files : List File) (path : String) : Except Unit Bytes :=
   dbg_trace s!"open\t{run}\t{path}"
@@ -229,8 +304,29 @@ private def writePruning (root : System.FilePath) (name : String) (layout : Sche
     toString batch.rowCount :: batch.toRows.map (fun row => String.intercalate "\t" (observed projection.schema row))
   IO.FS.writeFile (root / "pruned.tsv") (String.intercalate "\n" batches ++ "\n")
 
+private def writeNamed (root : System.FilePath) (layout : Schema)
+    (options : PartitionPath.Options) (files : List File) : IO Unit := do
+  let before := dbOf layout input
+  let keep := keepLeap layout
+  let .ok after := importSelected before "selected" layout options limits (project layout) keep files |
+    throw (IO.userError "native named import failed")
+  let some (labels, rows) := tableObservation after "selected" |
+    throw (IO.userError "named import did not install the selected table")
+  unless tableObservation after "source" == tableObservation before "source" do
+    throw (IO.userError "named import changed a different table")
+  let lines := String.intercalate "\t" labels :: rows.map (String.intercalate "\t")
+  IO.FS.writeFile (root / "db.tsv") (String.intercalate "\n" lines ++ "\n")
+  let zero : Scan.Projection layout.toScan := Scan.Projection.ofArray #[]
+  let .ok afterZero := importSelected before "zero" layout options limits zero keep files |
+    throw (IO.userError "zero-column named import failed")
+  let some (zeroLabels, zeroRows) := tableObservation afterZero "zero" |
+    throw (IO.userError "zero-column named import did not install a table")
+  unless zeroLabels.isEmpty && zeroRows.all List.isEmpty do
+    throw (IO.userError "zero-column table has cells")
+  IO.FS.writeFile (root / "db-zero-count.txt") s!"{zeroRows.length}\n"
+
 private def writeFixture (root : System.FilePath) (name : String) (layout : Schema)
-    (options : PartitionPath.Options) (pruning : Bool) : IO Unit := do
+    (options : PartitionPath.Options) (pruning named : Bool) : IO Unit := do
   let root := root / name
   let .ok files := make layout options | throw (IO.userError "paired Hive emission failed")
   let .ok trace := readManifest layout options limits files | throw (IO.userError "paired Hive ingress failed")
@@ -244,14 +340,16 @@ private def writeFixture (root : System.FilePath) (name : String) (layout : Sche
     toString batch.rowCount :: batch.toRows.map (fun row => String.intercalate "\t" (observed layout.toScan row))
   IO.FS.writeFile (root / "batches.tsv") (String.intercalate "\n" batches ++ "\n")
   if pruning then writePruning root name layout options files
+  if named then writeNamed root layout options files
 
 public def runWriterChecks (args : List String) : IO Unit := do
-  let (root, pruning) ← match args with
-    | [root] => pure (System.FilePath.mk root, false)
-    | ["pruning", root] => pure (System.FilePath.mk root, true)
-    | _ => throw (IO.userError "usage: Checks.lean [pruning] <fixture-root>")
-  writeFixture root "date-first" dateFirst {} pruning
-  writeFixture root "text-first" textFirst custom pruning
+  let (root, pruning, named) ← match args with
+    | [root] => pure (System.FilePath.mk root, false, false)
+    | ["pruning", root] => pure (System.FilePath.mk root, true, false)
+    | ["named", root] => pure (System.FilePath.mk root, true, true)
+    | _ => throw (IO.userError "usage: Checks.lean [pruning|named] <fixture-root>")
+  writeFixture root "date-first" dateFirst {} pruning named
+  writeFixture root "text-first" textFirst custom pruning named
 
 end Silmaril.Formats.Hive.Date32.Utf8.ManifestWriter
 

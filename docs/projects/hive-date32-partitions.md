@@ -315,3 +315,33 @@ Generate the fixture and resolver trace with
 `lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Checks.lean pruning "$tmp" > "$tmp/opens.log" 2>&1`.
 Use the pinned PyArrow command above with
 `python -I /repo/scripts/hive-date-utf8-writer-oracle/Oracle.py /out /out/opens.log`.
+
+## Atomic named-table import of selected rows
+
+[`FromHiveDateUtf8.importSelected`](../../Silmaril/Formats/Relational/NamedTable/FromHiveDateUtf8/Defs.lean)
+installs an in-memory typed table at a vacant name only after the
+selected scan reaches EOS. The existing named-table importer gives
+name conflicts precedence in the result. Admission errors carry their
+typed declaration cause, and reached read errors carry the original file
+and group cause. A failed or closed trace returns an error without an
+updated database.
+
+The [public laws](../../Silmaril/Formats/Relational/NamedTable/FromHiveDateUtf8/Thms.lean)
+preserve every other table and give the exact projected schema and
+ordered rows, including repeated positions and one empty row per
+selected record for zero columns. For certified writer output the
+reference is the filtered, projected original rows grouped by
+first-seen directory and stable within each directory.
+
+The import materializes the selected rows and inherits the paired
+reader's configured limits. The nullable INT32 and opaque BYTE_ARRAY
+leaves have maximum definition level 1 and repetition level 0. The
+virtual DATE is an epoch-day value and UTF-8 is stored as bytes in the
+typed rows. The comparator reads the original Parquet groups with
+PyArrow and checks the installed labels, cells and zero-column
+cardinality for both partition declaration orders.
+
+Generate the named fixture with
+`lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Checks.lean named "$tmp" > "$tmp/opens.log" 2>&1`.
+Use the pinned PyArrow command above with
+`python -I /repo/scripts/hive-date-utf8-writer-oracle/Oracle.py /out /out/opens.log --named`.
