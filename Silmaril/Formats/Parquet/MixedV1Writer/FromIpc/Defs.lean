@@ -72,12 +72,17 @@ def prepareOrdered (source : MixedIpc.Prepared) : Except PlanError Multi.Input :
 def prepare (source : MixedIpc.Prepared) : Except PlanError Multi.Input :=
   if source.descriptor.viewFirst then .error .fieldOrder else prepareOrdered source
 
+/-- Plan and emit a nonempty record list from a checked IPC observation. -/
+def emitOrderedPrepared (sink : Multi.Limits) (observed : MixedIpc.Prepared) :
+    Except Error Multi.Encoded := do
+  let plan ← (prepareOrdered observed).mapError .plan
+  (Multi.emitOrdered (physicalOrder observed.descriptor) sink plan).mapError .sink
+
 /-- Exhaust native IPC and emit the two Parquet leaves in descriptor order. -/
 def convertOrdered (source : MixedIpc.Limits) (sink : Multi.Limits) (input : KBytes) :
     Except Error Multi.Encoded := do
   let observed ← (MixedIpc.read source input).mapError .source
-  let plan ← (prepareOrdered observed).mapError .plan
-  (Multi.emitOrdered (physicalOrder observed.descriptor) sink plan).mapError .sink
+  emitOrderedPrepared sink observed
 
 /-- Finish exact native IPC exhaustion before planning or invoking the sink.
 Only a complete, checked Parquet file is returned. -/

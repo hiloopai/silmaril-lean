@@ -1,4 +1,4 @@
-"""Exercise both ordered schema-only conversions and the one-empty-batch control."""
+"""Compare both ordered IPC adapters at zero, one empty, and alternating batch counts."""
 
 import argparse
 from hashlib import sha256
@@ -33,6 +33,16 @@ PINS = {
     "byte-first-empty.arrows": "a77f0cd32a450a0d87d7099872d0f3c5c8f33f6f1639e8cfb5a68bb22f72b34f",
     "byte-first-empty.parquet": "d6e41f0ce9992a6d80ce72085667d1bc85e38c7045c12fd3f766e68766699597",
     "byte-first-empty-returned.arrows": "69e2f0d9437ba88f091882b07ead54fdecd1f16253d18c5ebcaaa3ed0d96a6d4",
+    "int-first-alternating.arrows": "ce2f0585bb130e2eb33c5ac85d29c5056591ac0ce43d3f893787e9f45168c102",
+    "int-first-alternating.parquet": "35ba8ca5ae6486332005d05cbd6441d65329e048e6962754db608e99a6e043b2",
+    "int-first-alternating-returned.arrows": "8be566370b0204a76bf59f94466c0cbc4c1ad4dfc3ba89dbf1261be8444ea194",
+    "int-first-alternating-late-body.arrows": "1d7bb019de6f58b2ffb92ea12e28c945a903895ace5a843ef9cfff51e548c030",
+    "int-first-alternating-late-eos.arrows": "0ea3375dccaacc18f845f4316e5a586ffb31e0d4478e936acea9ab6ebabd096c",
+    "byte-first-alternating.arrows": "98db48383ac9dc8fdcd34bb42f3edede3764a10a4e40f8292f393b23eef538e0",
+    "byte-first-alternating.parquet": "74b3a2664cd641de0387c74b5fb7a3ac5c33a38d32c7ec56cba04c2b9a7a348f",
+    "byte-first-alternating-returned.arrows": "25f6ab88a555c3ea8b3665155e048f25aad0f210f1b05dc2ce5336075e734f53",
+    "byte-first-alternating-late-body.arrows": "0f0952aab87b175fae6985ecb4c252fd53f728a01fd5754b768b9166c2bdf9ef",
+    "byte-first-alternating-late-eos.arrows": "6f1b206c5e80cf49d95f2e1de6abd14f6bdcafa15a3de78ae5ba0099a941bb91",
 }
 
 
@@ -51,6 +61,33 @@ def produce(out, schemas):
         with pq.ParquetWriter(out / f"{name}-pyarrow.parquet", parquet_schema(schema),
                               compression=None, use_dictionary=False, store_schema=False):
             pass
+
+
+def alternating_schema(schema):
+    return pa.schema([field.with_nullable(True) for field in schema])
+
+
+def produce_alternating(out, schemas):
+    stream = run_path(str(ROOT / "scripts/arrow-mixed-named-oracle/check.py"))["stream"]
+    records = [
+        ([], []),
+        ([-2**31, None], [None, b""]),
+        ([], []),
+        ([2**31 - 1], [b"\xff\x00abcdefghijklmno\x80"]),
+        ([], []),
+    ]
+    for name, schema in schemas.items():
+        ordered = records if name == "int-first" else [pair[::-1] for pair in records]
+        wire = stream(alternating_schema(schema), ordered)
+        fixture = name + "-alternating"
+        (out / f"{fixture}.arrows").write_bytes(wire)
+        with pa.BufferReader(wire) as carrier:
+            reader = pa.ipc.MessageReader.open_stream(carrier)
+            for _ in range(5):  # Schema and records 0 through 3.
+                reader.read_next_message()
+            body_end = carrier.tell()
+        (out / f"{fixture}-late-body.arrows").write_bytes(wire[:body_end - 1])
+        (out / f"{fixture}-late-eos.arrows").write_bytes(wire[:-8])
 
 
 def check_zero_groups(wire, schema, thrift, physical_order):
@@ -83,6 +120,7 @@ def check_ipc(path, schema, sizes, messages):
         for batch in batches:
             batch.validate(full=True)
         assert wire.endswith(bytes.fromhex("ffffffff00000000")) and carrier.tell() == len(wire)
+        return [[column.to_pylist() for column in batch.columns] for batch in batches]
 
 
 def main():
@@ -97,6 +135,7 @@ def main():
         "byte-first": pa.schema([pa.field("raw", pa.binary_view(), False), pa.field("count", pa.int32(), True)]),
     }
     produce(out, schemas)
+    produce_alternating(out, schemas)
     subprocess.run(
         [os.environ.get("LAKE", "lake"), "env", "lean", "-DautoImplicit=false",
          "-DwarningAsError=true", "--run", str(HERE / "RoundTrip.lean"), str(out)],
@@ -126,12 +165,26 @@ def main():
         parquet["check_wire_groups"](thrift, file.read_bytes(), fields, [[[], []]], physical_order)
         parquet["check_arrow_groups"](file.read_bytes(), fields, [[[], []]], physical_order)
         fixtures.extend((empty, file, output))
+    for name, schema in schemas.items():
+        physical_order = (1, 6) if name == "int-first" else (6, 1)
+        schema = alternating_schema(schema)
+        fixture = name + "-alternating"
+        source = out / f"{fixture}.arrows"
+        file = out / f"{fixture}.parquet"
+        output = out / f"{fixture}-returned.arrows"
+        counts = [0, 2, 0, 1, 0]
+        groups = check_ipc(source, schema, counts, messages)
+        assert check_ipc(output, schema, counts, messages) == groups
+        fields = [(field.name, field.nullable) for field in schema]
+        parquet["check_wire_groups"](thrift, file.read_bytes(), fields, groups, physical_order)
+        parquet["check_arrow_groups"](file.read_bytes(), fields, groups, physical_order)
+        fixtures.extend((source, file, output, out / f"{fixture}-late-body.arrows", out / f"{fixture}-late-eos.arrows"))
     assert {path.name for path in fixtures} == PINS.keys()
     for path in fixtures:
         digest = sha256(path.read_bytes()).hexdigest()
         print(f"{digest}  {path.name}")
         assert digest == PINS[path.name], f"{path.name}: fixture hash changed"
-    print("PyArrow and Thrift verified both field orders across six Parquet files and exact IPC EOS.")
+    print("PyArrow and Thrift verified both field orders across eight Parquet files and exact IPC EOS.")
 
 
 if __name__ == "__main__":

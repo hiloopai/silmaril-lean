@@ -124,10 +124,10 @@ theorem convertOrdered_ok_iff {source : MixedIpc.Limits} {sink : Multi.Limits} {
   | error cause => simp [convertOrdered, decoded, Except.mapError, Bind.bind, Except.bind]
   | ok observed =>
     cases planned : prepareOrdered observed with
-    | error cause => simp [convertOrdered, decoded, planned, Except.mapError, Bind.bind, Except.bind]
+    | error cause => simp [convertOrdered, emitOrderedPrepared, decoded, planned, Except.mapError, Bind.bind, Except.bind]
     | ok plan =>
       cases emitted : Multi.emitOrdered (physicalOrder observed.descriptor) sink plan <;>
-        simp [convertOrdered, decoded, planned, emitted, Except.mapError, Bind.bind, Except.bind]
+        simp [convertOrdered, emitOrderedPrepared, decoded, planned, emitted, Except.mapError, Bind.bind, Except.bind]
 
 theorem convert_ok_iff {source : MixedIpc.Limits} {sink : Multi.Limits} {input : KBytes}
     {output : Multi.Encoded} :

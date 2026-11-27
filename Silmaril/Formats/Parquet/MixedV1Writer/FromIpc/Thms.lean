@@ -95,6 +95,6 @@ theorem convertOrdered_schema_only {source : MixedIpc.Limits} {sink : Multi.Limi
     {observed : MixedIpc.Prepared} (read : MixedIpc.read source input = .ok observed)
     (empty : observed.batches = []) :
     convertOrdered source sink input = .error (.plan .noBatches) := by
-  simp [convertOrdered, read, prepareOrdered, empty, Except.mapError, Bind.bind, Except.bind]
+  simp [convertOrdered, emitOrderedPrepared, read, prepareOrdered, empty, Except.mapError, Bind.bind, Except.bind]
 
 end Silmaril.Formats.Parquet.MixedV1Writer.FromIpc
