@@ -34,25 +34,6 @@ structure Observed where
   field : Field
   values : Column
 
-/-- Read a signed offset at its word index. Preserve the negative word in the
-error and check the data bound before any slicing. -/
-def readOffset (buffers : Buffers) (index : Nat) : Except Error Nat := do
-  let some word := buffers.offsets.readLE (4 * index) 4 | throw (.offsetMissing index)
-  if word ≥ 2^31 then .error (.offsetNegative index word)
-  else if word > buffers.data.len then .error (.offsetOutsideData index word buffers.data.len)
-  else .ok word
-
-/-- Even a null slot must have a valid adjacent offset pair. A valid slot
-with equal offsets returns present zero-length bytes. -/
-def readSlot (buffers : Buffers) (index : Nat) : Except Error (Option KBytes) := do
-  let lo ← readOffset buffers index
-  let hi ← readOffset buffers (index + 1)
-  if hi < lo then .error (.offsetDescending (index + 1) lo hi)
-  else
-    match Body.validAt buffers.validity index with
-    | none => .error (.ipc (.malformed .validityBitmap))
-    | some valid => .ok (if valid then some (buffers.data.slice lo (hi - lo)) else none)
-
 def checkColumn (limits : Limits) (nullable : Bool) (node : FieldNode) (buffers : Buffers) :
     Except Error Unit := do
   if !buffers.validity.wf || !buffers.offsets.wf || !buffers.data.wf then
@@ -65,15 +46,72 @@ def checkColumn (limits : Limits) (nullable : Bool) (node : FieldNode) (buffers 
   if ¬ Body.BitmapExtent buffers.validity node.length then
     throw (.ipc (.malformed .validityBitmap))
 
+namespace Offsets
+
+/-- The two offset widths used by flat opaque binary fields. -/
+inductive Width where
+  | i32
+  | i64
+
+def Width.bytes : Width → Nat
+  | .i32 => 4
+  | .i64 => 8
+
+def Width.signedLimit : Width → Nat
+  | .i32 => 2^31
+  | .i64 => 2^63
+
+/-- Read a signed offset at its word index. Preserve the negative word in the
+error and check the data bound before any slicing. -/
+def readOffset (width : Width) (buffers : Buffers) (index : Nat) : Except Error Nat := do
+  let some word := buffers.offsets.readLE (width.bytes * index) width.bytes | throw (.offsetMissing index)
+  if word ≥ width.signedLimit then .error (.offsetNegative index word)
+  else if word > buffers.data.len then .error (.offsetOutsideData index word buffers.data.len)
+  else .ok word
+
+/-- Even a null slot must have a valid adjacent offset pair. A valid slot
+with equal offsets returns present zero-length bytes. -/
+def readSlot (width : Width) (buffers : Buffers) (index : Nat) : Except Error (Option KBytes) := do
+  let lo ← readOffset width buffers index
+  let hi ← readOffset width buffers (index + 1)
+  if hi < lo then .error (.offsetDescending (index + 1) lo hi)
+  else
+    match Body.validAt buffers.validity index with
+    | none => .error (.ipc (.malformed .validityBitmap))
+    | some valid => .ok (if valid then some (buffers.data.slice lo (hi - lo)) else none)
+
 /-- Validate offset zero even for zero rows. Nonzero initial offsets and
 trailing bytes are admitted as long as all logical windows fit. -/
-def readColumn (limits : Limits) (nullable : Bool) (node : FieldNode) (buffers : Buffers) :
+def readColumn (width : Width) (limits : Limits) (nullable : Bool) (node : FieldNode) (buffers : Buffers) :
     Except Error Column := do
   checkColumn limits nullable node buffers
-  let _ ← readOffset buffers 0
-  let values ← (List.range node.length).mapM (readSlot buffers)
+  let _ ← readOffset width buffers 0
+  let values ← (List.range node.length).mapM (readSlot width buffers)
   if values.countP Option.isNone ≠ node.nullCount then .error (.ipc (.malformed .validityBitmap))
   else .ok values
+
+def OffsetWire (width : Width) (buffers : Buffers) (index offset : Nat) : Prop :=
+  buffers.offsets.readLE (width.bytes * index) width.bytes = some offset ∧ offset < width.signedLimit ∧ offset ≤ buffers.data.len
+
+def SlotWire (width : Width) (buffers : Buffers) (index : Nat) (value : Option KBytes) : Prop :=
+  ∃ lo hi valid, OffsetWire width buffers index lo ∧ OffsetWire width buffers (index + 1) hi ∧
+    lo ≤ hi ∧ Body.validAt buffers.validity index = some valid ∧
+    value = (if valid then some (buffers.data.slice lo (hi - lo)) else none)
+
+def ColumnWire (width : Width) (node : FieldNode) (buffers : Buffers) (values : Column) : Prop :=
+  (∃ initial, OffsetWire width buffers 0 initial) ∧
+    List.Forall₂ (SlotWire width buffers) (List.range node.length) values ∧
+    values.countP Option.isNone = node.nullCount
+
+end Offsets
+
+def readOffset := Offsets.readOffset .i32
+def readSlot := Offsets.readSlot .i32
+def readColumn := Offsets.readColumn .i32
+
+def OffsetWire := Offsets.OffsetWire .i32
+def SlotWire := Offsets.SlotWire .i32
+def ColumnWire := Offsets.ColumnWire .i32
 
 /-- One node and three aligned, ordered, in-bounds descriptors in validity,
 offsets, data order. Check all three before slicing the body. -/
@@ -102,19 +140,6 @@ def readBatch (limits : Limits) (schemaMetadata recordMetadata body : KBytes) :
   else
     let (node, buffers) ← bindBody limits batch body
     return ⟨field, ← readColumn limits field.nullable node buffers⟩
-
-def OffsetWire (buffers : Buffers) (index offset : Nat) : Prop :=
-  buffers.offsets.readLE (4 * index) 4 = some offset ∧ offset < 2^31 ∧ offset ≤ buffers.data.len
-
-def SlotWire (buffers : Buffers) (index : Nat) (value : Option KBytes) : Prop :=
-  ∃ lo hi valid, OffsetWire buffers index lo ∧ OffsetWire buffers (index + 1) hi ∧
-    lo ≤ hi ∧ Body.validAt buffers.validity index = some valid ∧
-    value = (if valid then some (buffers.data.slice lo (hi - lo)) else none)
-
-def ColumnWire (node : FieldNode) (buffers : Buffers) (values : Column) : Prop :=
-  (∃ initial, OffsetWire buffers 0 initial) ∧
-    List.Forall₂ (SlotWire buffers) (List.range node.length) values ∧
-    values.countP Option.isNone = node.nullCount
 
 def BodyWire (batch : RecordBatch) (body : KBytes) (node : FieldNode) (buffers : Buffers) : Prop :=
   batch.nodes = [node] ∧ node.length = batch.rowCount ∧

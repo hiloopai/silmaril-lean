@@ -101,6 +101,16 @@ inductive SchemaError where
 
 end Binary
 
+namespace LargeBinary
+
+/-- A flat LargeBinary field (Schema.fbs union tag 19). -/
+structure Field where
+  name : String
+  nullable : Bool
+  deriving DecidableEq, Repr
+
+end LargeBinary
+
 namespace ListInt32
 
 /-- The admitted nested field is a nullable List with one nullable signed
@@ -510,10 +520,8 @@ private def viewFieldKind (tag : Nat) (payload : Table) :
   tableShape payload 0
   return kind
 
-/-- Admit one plain Binary field from bodyless little-endian V5 Schema metadata.
-This profile is independent of the primitive and mixed Schema readers. -/
-public def Binary.readSchema (limits : Limits) (bytes : KBytes) :
-    Except Binary.SchemaError Binary.Field := do
+private def singleBinarySchema {Field : Type} (limits : Limits) (bytes : KBytes)
+    (typeTag : Nat) (makeField : String → Bool → Field) : Except Binary.SchemaError Field := do
   let (tag, payload, bodyLength) ← (messageParts limits bytes).mapError .metadata
   if tag ≠ 1 then throw (.metadata (.unsupported (.messageKind tag)))
   if bodyLength ≠ 0 then throw (.metadata (.malformed .bodyLength))
@@ -521,11 +529,21 @@ public def Binary.readSchema (limits : Limits) (bytes : KBytes) :
     (fun endian => if endian = 0 then .ok () else .error (.unsupported (.endianness endian)))
     (fun pos => fieldWith bytes pos
       (fun kind payload => do
-        if kind ≠ 4 then throw (.unsupported (.fieldType kind))
+        if kind ≠ typeTag then throw (.unsupported (.fieldType kind))
         tableShape payload 0)
-      (fun name nullable () => Binary.Field.mk name nullable))).mapError .metadata
+      (fun name nullable () => makeField name nullable))).mapError .metadata
   let [field] := fields | throw (.fieldCount fields.length)
   return field
+
+/-- Admit one plain Binary field from bodyless little-endian V5 Schema metadata. -/
+public def Binary.readSchema (limits : Limits) (bytes : KBytes) :
+    Except Binary.SchemaError Binary.Field :=
+  singleBinarySchema limits bytes 4 Binary.Field.mk
+
+/-- Admit one LargeBinary field from bodyless little-endian V5 Schema metadata. -/
+public def LargeBinary.readSchema (limits : Limits) (bytes : KBytes) :
+    Except Binary.SchemaError LargeBinary.Field :=
+  singleBinarySchema limits bytes 19 LargeBinary.Field.mk
 
 /-- Read the bodyless little-endian V5 Schema of a standalone one-field
 view batch. Its kind is independent of legacy and other Schema readers. -/

@@ -7,9 +7,27 @@ public section
 
 namespace Silmaril.Formats.Arrow.Binary
 
+namespace Offsets
+
+theorem readColumn_sound {width : Width} {limits : Limits} {nullable : Bool}
+    {node : FieldNode} {buffers : Buffers} {values : Column}
+    (read : readColumn width limits nullable node buffers = .ok values) :
+    checkColumn limits nullable node buffers = .ok () ∧ ColumnWire width node buffers values :=
+  Proofs.Formats.Arrow.Binary.Offsets.readColumn_sound read
+
+theorem slot_octets {width : Width} {buffers : Buffers} {index : Nat} {value : Option KBytes}
+    (dataWf : buffers.data.wf = true) (wire : SlotWire width buffers index value) :
+    ∃ lo hi valid, OffsetWire width buffers index lo ∧ OffsetWire width buffers (index + 1) hi ∧
+      lo ≤ hi ∧ Body.validAt buffers.validity index = some valid ∧
+      value.map KBytes.toList =
+        if valid then some ((buffers.data.toList.drop lo).take (hi - lo)) else none :=
+  Proofs.Formats.Arrow.Binary.Offsets.slot_octets dataWf wire
+
+end Offsets
+
 theorem readOffset_sound {buffers : Buffers} {index offset : Nat}
     (read : readOffset buffers index = .ok offset) : OffsetWire buffers index offset :=
-  Proofs.Formats.Arrow.Binary.readOffset_sound read
+  Proofs.Formats.Arrow.Binary.Offsets.readOffset_sound read
 
 theorem readSlot_sound {buffers : Buffers} {index : Nat} {value : Option KBytes}
     (read : readSlot buffers index = .ok value) : SlotWire buffers index value :=
