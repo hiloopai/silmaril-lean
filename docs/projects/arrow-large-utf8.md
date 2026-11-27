@@ -80,3 +80,39 @@ input, a schema-only stream and a stream with one explicit empty batch.
 lake build --wfail Silmaril.Formats.Arrow.LargeUtf8.StreamWriter.Examples Silmaril.Formats.Arrow.LargeUtf8.StreamWriter.Axioms
 python scripts/arrow-large-utf8/stream_writer_oracle.py /tmp/arrow-large-utf8-writer
 ```
+
+## Events source and sink
+
+Import `Silmaril.Formats.Arrow.LargeUtf8.Stream.Events.Defs` for the
+standard `Arrow.Events.BatchReader` and the modern sink. The reader
+opens the schema once, retains the original immutable carrier and
+decodes each next frame in order. `readAll` pulls far enough to check
+exact EOS or the first error. An explicit empty batch consumes a pull
+and remains in the trace. An open error has no trace. A late read
+error retains the completed batches and carries the original record
+ordinal, absolute offset and typed cause, including the slot for
+invalid UTF-8.
+
+The sink consumes a complete one-field trace ending in EOS. It
+materializes a modern V5 stream with the checked LargeUtf8 writer.
+`emit_events` proves exact event equality on readback, including the
+field, nullable strings and batch partitions. `transcode_exact`
+also ties the native input and output to their own checked original
+ranges through EOS. `transcode_late_error` preserves the ordered
+completed prefix and original error in the refusal returned by the sink.
+
+`emit_rechunk` compares two successful emissions at the same schema
+whose input rows agree. `emit_scan_rechunk` carries that row equivalence
+through logical filtering and positional projection, including width
+zero. The exact trace for each emission retains its own partition.
+The projected rows are observations of decoded events.
+
+The event oracle pins genuine PyArrow input for both framing profiles
+and their schema-only companions. It opens the resulting Lean streams
+with PyArrow 26.0.1 and checks the descriptor, ordered nullable strings,
+explicit empty batch, i64 UTF-8 offsets and exact modern EOS.
+
+```sh
+lake build --wfail Silmaril.Formats.Arrow.LargeUtf8.Stream.Events.Examples Silmaril.Formats.Arrow.LargeUtf8.Stream.Events.Axioms
+python scripts/arrow-large-utf8/events_oracle.py /tmp/arrow-large-utf8-events
+```
