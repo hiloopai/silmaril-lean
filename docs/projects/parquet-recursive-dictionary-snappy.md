@@ -6,7 +6,7 @@ column codec selects a bounded payload reader for the original
 leading PLAIN dictionary and later data pages. Each column uses
 only its own ordered dictionary. V1 and V2 data headers select
 RLE_DICTIONARY or PLAIN fallback per page.
-[Parquet dictionary encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md#dictionary-encoding-plain_dictionary--2-and-rle_dictionary--8)
+[LZ4_RAW support matrix](parquet-recursive-dictionary-lz4-raw.md) · [Parquet dictionary encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md#dictionary-encoding-plain_dictionary--2-and-rle_dictionary--8)
 
 A Snappy dictionary uses one raw block for the whole body. The
 reader checks stored CRC and the stored and decoded byte limits,

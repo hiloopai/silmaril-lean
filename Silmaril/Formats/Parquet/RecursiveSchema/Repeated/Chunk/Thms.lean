@@ -107,6 +107,20 @@ theorem decodeDataPage_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf
     DataPageWire limits codec leaf source frame start remaining rowCeiling decoded :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDataPage_wire read
 
+/-- A dictionary codec selects the same original column codec as the full
+table, for every codec admitted in the dictionary-first profile. -/
+theorem DictionaryCodec.column_ofId {id : Int} {codec : DictionaryCodec}
+    (read : DictionaryCodec.ofId id = some codec) : ColumnCodec.ofId id = some codec.column := by
+  unfold DictionaryCodec.ofId at read
+  split at read <;> simp_all [ColumnCodec.ofId, DictionaryCodec.column] <;> cases read <;> rfl
+
+theorem PrefixWire.matchesBinding {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat} {binding : Binding schema group column}
+    {limits : Limits} {span : Footer.Span} {dictionary : Dictionary}
+    (wire : PrefixWire limits (carrierOf binding span) binding.chunk.metadata dictionary) :
+    dictionary.codec.column = binding.codec :=
+  Option.some.inj ((DictionaryCodec.column_ofId wire.codec).symm.trans binding.originalCodec)
+
 /-- The ordered entries come from exact signed words in the original
 checksum-checked dictionary frame. -/
 theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}

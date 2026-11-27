@@ -25,13 +25,13 @@ I64 = TType.I64
 
 LEAN = V1["LEAN"] + """\
 
-private def rawPayloads (file : Bytes) (group column : Nat) (dict : Bytes)
+private def rawPayloads (file : Bytes) (group column : Nat) (codec : DictionaryCodec) (dict : Bytes)
     (data : List Bytes) (storedBytes rawBytes : Nat) : IO Unit := do
   let source ← take (openFile {} file)
   let binding ← take (bindChunk source.schema group column)
   let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read {} binding)
   let some original := seen.dictionary | throw (IO.userError "expected leading dictionary")
-  unless original.codec = .snappy ∧ binding.codec = .snappy ∧
+  unless original.codec = codec ∧ binding.codec = codec.column ∧ binding.chunk.metadata.codec = codec.column.id ∧
       (← take (readV1Body {} binding.codec file original.frame)) = dict do
     throw (IO.userError "decoded original dictionary differs")
   let mut bodies := []
@@ -95,6 +95,15 @@ def snappy(stored, extent):
     return bytes(output)
 
 
+def snappy_block(codec, stored, extent):
+    assert codec == 1
+    return snappy(stored, extent)
+
+
+def snappy_encode(raw):
+    return SNAPPY.compress(raw).to_pybytes()
+
+
 def write(schema, groups, **options):
     """Leave the codec and dictionary selection at the PyArrow defaults."""
     sink = pa.BufferOutputStream()
@@ -138,33 +147,33 @@ def replace_page(wire, key, ordinal, edit):
     return repack(wire, chunks)
 
 
-def frame_bytes(header, body):
+def frame_bytes(header, body, *, decode=snappy):
     if header[1][1] != 3:
-        return snappy(body, header[2][1])
+        return decode(body, header[2][1])
     info = header[8][1]
     levels = info[5][1] + info[6][1]
     suffix = body[levels:]
     expected = header[2][1] - levels
     if info.get(7, (None, True))[1]:
-        return snappy(suffix, expected)
+        return decode(suffix, expected)
     assert len(suffix) == expected
     return suffix
 
 
-def author_continuation(scratch):
+def author_continuation(scratch, *, compress=snappy_encode, codec=1):
     fixtures, schema, groups = FALLBACK["split_row"](scratch)
     wire = fixtures["continued_into_plain"]
     chunks = raw_chunks(wire)
     for key, frames in chunks.items():
-        chunks[key] = [encode(header, SNAPPY.compress(body).to_pybytes(), len(body))
+        chunks[key] = [encode(header, compress(body), len(body))
                        for header, body in map(header_body, frames)]
     footer = MIXED["metadata"](wire)
-    THRIFT["column_metadata"](footer, 0, 0)[4] = I32, 1
+    THRIFT["column_metadata"](footer, 0, 0)[4] = I32, codec
     return repack(wire, chunks, footer), schema, groups
 
 
-def raw_bypass(header, body):
-    raw = frame_bytes(header, body)
+def raw_bypass(header, body, *, decode=snappy):
+    raw = frame_bytes(header, body, decode=decode)
     assert header[1][1] == 3 and header[8][1][7][1]
     info = header[8][1]
     levels = info[5][1] + info[6][1]
@@ -172,14 +181,14 @@ def raw_bypass(header, body):
     return encode(header, body[:levels] + raw, levels + len(raw))
 
 
-def append_index_byte(header, body):
-    raw = frame_bytes(header, body) + b"\0"
+def append_index_byte(header, body, *, decode=snappy, compress=snappy_encode):
+    raw = frame_bytes(header, body, decode=decode) + b"\0"
     if header[1][1] == 0:
-        return encode(header, SNAPPY.compress(raw).to_pybytes(), len(raw))
+        return encode(header, compress(raw), len(raw))
     info = header[8][1]
     levels = info[5][1] + info[6][1]
     assert info[7][1]
-    return encode(header, body[:levels] + SNAPPY.compress(raw).to_pybytes(), levels + len(raw))
+    return encode(header, body[:levels] + compress(raw), levels + len(raw))
 
 
 def verify(scratch):
@@ -265,7 +274,7 @@ def verify(scratch):
         wire = files[label]
         capture[label] = {}
         chunks = raw_chunks(wire)
-        for column, dictionary, traces, spans in V1["inspect"](wire, declarations, rows, decode_snappy=snappy):
+        for column, dictionary, traces, spans in V1["inspect"](wire, declarations, rows, decode_block=snappy_block):
             assert dictionary is not None
             capture[label][column.group, column.index] = column
             code.append(CHUNK["check_term"](column, label))
@@ -285,7 +294,7 @@ def verify(scratch):
                     v2_plain_compressed += int(flag and info[4][1] == 0)
             terms = [f"(Bytes.ofList {list(body)})" for body in raw]
             code.append(f'  rawPayloads (← load folder "{label}") {column.group} {column.index} '
-                        f'{terms[0]} {lst(terms[1:])} {column.stop - column.start} {raw_total}')
+                        f'.snappy {terms[0]} {lst(terms[1:])} {column.stop - column.start} {raw_total}')
         fields, batches, counts = BRIDGE["observed"](wire)
         assert counts == [len(group) for group in rows]
         bridge.append(f'  emit folder "{label}" (← load folder "{label}") {fields} {batches}')

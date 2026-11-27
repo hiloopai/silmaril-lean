@@ -143,7 +143,7 @@ def sections_v2(info, body, max_rep, max_def):
     return reps, defs, body[suffix_at:]
 
 
-def inspect(wire, schema, groups, *, decode_snappy=None):
+def inspect(wire, schema, groups, *, decode_block=None):
     """Inspect raw frames independent of Lean, then compare the signed trace with PyArrow."""
     _, leaves = SCHEMA["describe"](wire, schema, [row for group in groups for row in group])
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
@@ -155,7 +155,7 @@ def inspect(wire, schema, groups, *, decode_snappy=None):
         expected = [slot for row in groups[group] for slot in
                     CHUNK["from_arrow"](row[path[0]], schema.field(path[0]), path[1:])]
         codec = metadata[4][1]
-        assert codec == 0 or (codec == 1 and decode_snappy is not None)
+        assert codec == 0 or (codec in (1, 7) and decode_block is not None)
         assert metadata[7][1] == stop - start
         slot, row, live, raw_total = 0, 0, False, 0
         dictionary, traces, pages, spans = None, [], [], []
@@ -172,7 +172,7 @@ def inspect(wire, schema, groups, *, decode_snappy=None):
                 assert ordinal == 0 and at == metadata[11][1] and end == metadata[9][1]
                 assert metadata[2][1][1] == [0, 3, 8]
                 info = header[7][1]
-                raw = decode_snappy(body, raw_size) if codec == 1 else body
+                raw = decode_block(codec, body, raw_size) if codec else body
                 assert len(raw) == raw_size
                 entries = [word for word, in struct.iter_unpack(code, raw)]
                 assert info[1][1] == len(entries) and info[2][1] == 0
@@ -184,7 +184,7 @@ def inspect(wire, schema, groups, *, decode_snappy=None):
                 encoding = info[2][1]
                 assert [info[i][1] for i in (3, 4)] == [3, 3]
                 count = info[1][1]
-                raw = decode_snappy(body, raw_size) if codec == 1 else body
+                raw = decode_block(codec, body, raw_size) if codec else body
                 assert len(raw) == raw_size
                 reps, defs, _, suffix = section_suffix(raw, max_rep, max_def, count)
                 spans.append("none")
@@ -196,8 +196,8 @@ def inspect(wire, schema, groups, *, decode_snappy=None):
                 reps, defs, suffix = sections_v2(info, body, max_rep, max_def)
                 rep_end, def_end = payload + info[6][1], end - len(suffix)
                 suffix_size = raw_size - info[5][1] - info[6][1]
-                if codec == 1 and info.get(7, (None, True))[1]:
-                    suffix = decode_snappy(suffix, suffix_size)
+                if codec and info.get(7, (None, True))[1]:
+                    suffix = decode_block(codec, suffix, suffix_size)
                 assert len(suffix) == suffix_size
                 spans.append(f"(some ({V2['schema_term'](info)}, ⟨⟨{payload}, {rep_end}⟩, "
                              f"⟨{rep_end}, {def_end}⟩, ⟨{def_end}, {end}⟩⟩))")
