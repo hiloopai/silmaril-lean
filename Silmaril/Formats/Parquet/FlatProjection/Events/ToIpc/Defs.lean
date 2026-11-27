@@ -36,7 +36,7 @@ def fields (schema : Schema) : List Field :=
 def batchInput {schema : Schema} (batch : Scan.Columns schema Cell) : Batch :=
   ⟨batch.rowCount, List.ofFn fun i => column (schema.kind i).2 (batch.values i)⟩
 
-def observation {schema : Schema} (trace : Arrow.Events.Trace schema Cell Events.Error) : Stream :=
+def observation {schema : Schema} {ε : Type*} (trace : Arrow.Events.Trace schema Cell ε) : Stream :=
   ⟨fields schema, trace.batches.map batchInput⟩
 
 /-- Observe the terminal source result before any IPC writer admission. -/
