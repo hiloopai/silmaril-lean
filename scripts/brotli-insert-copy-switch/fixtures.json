@@ -1,0 +1,197 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "provenance": "independently assembled RFC 7932 streams, output and counters observed in libbrotli",
+  "fixtures": {
+    "four-forms": {
+      "wire_hex": "620240241d200454905020120204c48089",
+      "sha256": "e37827f99264214e633c9b4b4a918c3204ac7c260a71b3c3c84d44bfdf642feb",
+      "plain_hex": "4141414242424242424241414141414141424242",
+      "commands": [
+        [
+          117,
+          118,
+          0,
+          1,
+          1,
+          136,
+          3
+        ],
+        [
+          118,
+          119,
+          0,
+          1,
+          0,
+          136,
+          6
+        ],
+        [
+          119,
+          123,
+          1,
+          0,
+          0,
+          2,
+          10
+        ],
+        [
+          123,
+          127,
+          0,
+          1,
+          0,
+          136,
+          13
+        ],
+        [
+          127,
+          131,
+          1,
+          0,
+          0,
+          2,
+          17
+        ],
+        [
+          131,
+          136,
+          0,
+          1,
+          0,
+          136,
+          20
+        ]
+      ],
+      "switches": [
+        [
+          1,
+          0,
+          1,
+          1,
+          119,
+          121,
+          123
+        ],
+        [
+          0,
+          1,
+          0,
+          1,
+          123,
+          124,
+          126
+        ],
+        [
+          3,
+          0,
+          1,
+          1,
+          127,
+          129,
+          131
+        ],
+        [
+          1,
+          1,
+          0,
+          1,
+          131,
+          133,
+          135
+        ]
+      ]
+    },
+    "singleton-previous": {
+      "wire_hex": "a20140040140400509052221404044",
+      "sha256": "bbb6d9c267c34786494a9eda5b262163de84e6cc6b13ee5a6e6496474bdec0a9",
+      "plain_hex": "4141414141414141414141424242",
+      "commands": [
+        [
+          113,
+          114,
+          0,
+          1,
+          0,
+          136,
+          3
+        ],
+        [
+          114,
+          116,
+          1,
+          0,
+          1,
+          2,
+          7
+        ],
+        [
+          116,
+          116,
+          1,
+          0,
+          0,
+          2,
+          11
+        ],
+        [
+          116,
+          119,
+          0,
+          1,
+          0,
+          136,
+          14
+        ]
+      ],
+      "switches": [
+        [
+          0,
+          0,
+          1,
+          2,
+          114,
+          114,
+          116
+        ],
+        [
+          0,
+          1,
+          0,
+          1,
+          116,
+          116,
+          118
+        ]
+      ]
+    }
+  },
+  "failures": {
+    "type-cap": {
+      "passed": 2,
+      "bit": 119,
+      "category": "Silmaril.Formats.Compression.Brotli.BlockTypes.Switch.Category.insertCopy",
+      "cause": "Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.bitLimit",
+      "stage": "type"
+    },
+    "count-cap": {
+      "passed": 2,
+      "bit": 121,
+      "category": "Silmaril.Formats.Compression.Brotli.BlockTypes.Switch.Category.insertCopy",
+      "cause": "Silmaril.Formats.Compression.Brotli.BlockTypes.Error.bitLimit",
+      "stage": "length"
+    },
+    "truncated-type": {
+      "passed": 4,
+      "bit": 127,
+      "category": "Silmaril.Formats.Compression.Brotli.BlockTypes.Switch.Category.insertCopy",
+      "cause": "Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.truncated",
+      "stage": "type"
+    },
+    "output-cap": {
+      "passed": 5,
+      "bit": 135,
+      "cause": "Silmaril.Formats.Compression.Brotli.Execute.Error.outputLimit",
+      "stage": "execute"
+    }
+  }
+}

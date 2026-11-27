@@ -35,6 +35,14 @@ def countCodes : List (Nat × Nat) :=
 
 def countCode (code : Nat) : Option (Nat × Nat) := countCodes[code]?
 
+/-- A block count symbol and its little-endian extra field. The same
+    encoding is used by initial counts and payload switches. -/
+inductive LengthWire (table : Table) : List Bool → Nat → Prop where
+  | fields {symbol code size base width extra : Nat} :
+      table.codeFor symbol = some (code, size) → size ≤ 15 →
+      countCode symbol = some (base, width) → extra < 2 ^ width →
+      LengthWire table (msbBits code size ++ natBits extra width) (base + extra)
+
 inductive Control where
   | single
   | multiple (types : Nat) (typeTable countTable : Table) (initialCount : Nat)
@@ -126,6 +134,11 @@ end Internal
 def readCount (bitLimit : Nat) (before : LSBReader) : Except Error (Nat × LSBReader) := do
   let (count, after) ← Internal.readCount ⟨before, bitLimit⟩
   pure (count, after.reader)
+
+/-- Read a block run length using the previously decoded count tree. -/
+def readLength (table : Table) (bitLimit : Nat) (before : LSBReader) : Except Error (Nat × LSBReader) := do
+  let (length, after) ← Internal.readInitial table ⟨before, bitLimit⟩
+  pure (length, after.reader)
 
 /-- Read literal, insert-and-copy, then distance controls under one
     budget. No block switching or command execution is performed here. -/

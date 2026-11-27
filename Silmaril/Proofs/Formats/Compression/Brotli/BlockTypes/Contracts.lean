@@ -154,6 +154,34 @@ private theorem initial_sound {before after : Cursor} {table : Table} {value : N
     exact ⟨symbol, code, size, base, width, extra, suffix, rfl, codeWire, bound, assigned, fits,
       first.trans second⟩
 
+theorem readLength_sound {table : Table} {bitLimit length : Nat} {before after : LSBReader}
+    {input : List Bool} (rep : before.Rep input) (count : before.count < 8)
+    (read : readLength table bitLimit before = .ok (length, after)) :
+    ∃ used suffix, LengthWire table used length ∧ input = used ++ suffix ∧ after.Rep suffix ∧
+      after.count < 8 ∧ after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit := by
+  unfold readLength at read
+  obtain ⟨⟨length, stop⟩, decoded, done⟩ := bind_ok read
+  cases done
+  obtain ⟨_, _, _, _, _, _, suffix, rfl, assigned, width, entry, extra, advance⟩ :=
+    initial_sound rep count decoded
+  have budget := advance.budget
+  dsimp at budget
+  exact ⟨_, suffix, .fields assigned width entry extra, advance.split, advance.rep, advance.count, advance.offset,
+    by omega⟩
+
+private theorem length_bounds {base width extra : Nat} {symbol : Nat}
+    (entry : countCode symbol = some (base, width)) (extraBound : extra < 2 ^ width) :
+    1 ≤ base + extra ∧ base + extra ≤ 16793840 := by
+  have all : countCodes.all (fun row => 1 ≤ row.1 ∧ row.1 + 2 ^ row.2 ≤ 16793841) = true := by decide
+  have bound := List.all_eq_true.mp all (base, width) (List.mem_of_getElem? entry)
+  have bounds : 1 ≤ base ∧ base + 2 ^ width ≤ 16793841 := of_decide_eq_true bound
+  obtain ⟨lower, upper⟩ := bounds
+  omega
+
+theorem LengthWire.bounds {table : Table} {bits : List Bool} {length : Nat}
+    (wire : LengthWire table bits length) : 1 ≤ length ∧ length ≤ 16793840 := by
+  cases wire with | fields _ _ entry extra => exact length_bounds entry extra
+
 theorem CountWire.bits_of_one {bits : List Bool} {types : Nat}
     (wire : CountWire bits types) (one : types = 1) : bits = [false] := by
   cases wire with
@@ -216,12 +244,7 @@ theorem ControlWire.bounds {bits : List Bool} {control : Control} (wire : Contro
   | single => decide
   | @multiple types base width symbol code size extra typeTable countTable countBits typeBits tableBits
       multi countWire _ _ _ _ entry extraBound =>
-    have all : countCodes.all (fun row => 1 ≤ row.1 ∧ row.1 + 2 ^ row.2 ≤ 16793841) = true := by decide
-    have bound := List.all_eq_true.mp all (base, width) (List.mem_of_getElem? entry)
-    have bounds : 1 ≤ base ∧ base + 2 ^ width ≤ 16793841 := of_decide_eq_true bound
-    obtain ⟨lo, hi⟩ := bounds
     have ⟨lower, upper, _⟩ := CountWire.bounds countWire
-    change 1 ≤ types ∧ types ≤ 256 ∧ 1 ≤ base + extra ∧ base + extra ≤ 16793840
-    exact ⟨lower, upper, by omega, by omega⟩
+    exact ⟨lower, upper, length_bounds entry extraBound⟩
 
 end Silmaril.Proofs.Formats.Compression.Brotli.BlockTypes

@@ -23,6 +23,18 @@ theorem readCount_sound {bitLimit types : Nat} {before after : LSBReader} {input
       after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit :=
   Proofs.Formats.Compression.Brotli.BlockTypes.readCount_sound rep count read
 
+theorem LengthWire.bounds {table : Huffman.Description.Table} {bits : List Bool} {length : Nat}
+    (wire : LengthWire table bits length) : 1 ≤ length ∧ length ≤ 16793840 :=
+  Proofs.Formats.Compression.Brotli.BlockTypes.LengthWire.bounds wire
+
+/-- The same exact count reader serves both initial runs and switches. -/
+theorem readLength_sound {table : Huffman.Description.Table} {bitLimit length : Nat} {before after : LSBReader}
+    {input : List Bool} (rep : before.Rep input) (count : before.count < 8)
+    (read : readLength table bitLimit before = .ok (length, after)) :
+    ∃ used suffix, LengthWire table used length ∧ input = used ++ suffix ∧ after.Rep suffix ∧
+      after.count < 8 ∧ after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit :=
+  Proofs.Formats.Compression.Brotli.BlockTypes.readLength_sound rep count read
+
 /-- Section 6 bounds the finite count for a multi-type initial block. -/
 theorem ControlWire.bounds {bits : List Bool} {control : Control} (wire : ControlWire bits control) :
     1 ≤ control.typeCount ∧ control.typeCount ≤ 256 ∧
