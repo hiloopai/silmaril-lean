@@ -1,0 +1,18 @@
+{
+  "native_utc": "673a62f0bebb8c9de24867167fbdefa2ab87a458424e8af011c939192b289f70",
+  "assembled_utc": "9c74951b7f30af6005d6d9650f62beb0658dec3d4dfafdb13802ed2f1d39b1df",
+  "plain_utc_producer": "150224a86642787ae3c858dc10e0010eab14fef2ada0c99fe94a0417490061c7",
+  "native_local": "deebb8d65b5588c7edbe6f445887327ba8c0dcac14fea88d53545d0d995cfd73",
+  "assembled_local": "1c9ebf9bbad6f7a4f71403621a6f628e1ad7dba0bc1f35cd7724e4cc2808959d",
+  "plain_local_producer": "70e0ec3dbfa0ec87fb7acef012d8f73f843ad0c2c0906553636ebaf60da3a0c4",
+  "bad_plain_outer": "107f0fb6068ec6952d69b2c1a389a494e3428c948fd1223132e70ff8dc193f21",
+  "bad_plain_inner": "9225706f07555c91494264ccfc15ac48d9a8d21540e51e462341966740963f42",
+  "bad_fallback_inner": "2d328ca9d88cb6cac810451eab437b0bb3731bd4ab599fc9c4927e73cb3db098",
+  "bad_reference_outer": "b85a19a4b5dc909bed447dd79ad9a8e2a22137b852c5c25632dee62aaa7b16fd",
+  "bad_dictionary_inner": "85425c4db040b14f443a356e5bdc2404aa215ab7754a5558c7fd35fa8d6ef85d",
+  "two_bad_groups": "e59fbd87aa13050c52a2bb1f8d1cbc64b876867d6607b196838ca765d209fd7b",
+  "bad_fallback_reentry": "aeda7d6eadf590394f4ac376f136c02aa7be85c94a5d160b0ffc64348c6d7ca9",
+  "bad_tag_before_reentry": "e36c148b9805787b8e89e92da0943427a9da8c17328907317a77c4bdb1ebb253",
+  "plain_v1": "7c8e509f2f0c6170d6c4c11f444b14ab27aa27b4024c583df78379166a3e8191",
+  "snappy": "c69ad7951f80ec2b8a975ef4918b5e4021839489b9f86801632e1284428585ed"
+}

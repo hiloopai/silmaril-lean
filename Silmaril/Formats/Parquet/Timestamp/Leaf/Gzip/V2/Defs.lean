@@ -1,0 +1,58 @@
+module
+
+public import Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.V2.Defs
+
+/-! Strict PLAIN GZIP V2 TIMESTAMP reading on one checked leaf. -/
+
+@[expose] public section
+
+namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Gzip.V2
+
+abbrev Limits := Dictionary.Gzip.Limits
+
+structure CheckedGroup where
+  chunk : Leaf.Chunk
+  frames : List Parquet.Page.Frame
+
+/-- Bound the original selected chunk and its declared slot total before decoding. -/
+def checkGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except Leaf.Error CheckedGroup := do
+  let chunk ← selectChunkWith .gzipPlainV2 leafLimits bound index
+  if limits.dictionary.maxChunkBytes < chunk.span.stop - chunk.span.start then throw .chunkByteLimit
+  let frames ← (Parquet.Page.readChunk leafLimits.framing bound.snapshot.bytes chunk.span).mapError .framing
+  let expected := chunk.group.numRows.toNat
+  let actual := (frames.map Internal.pageSlots).sum
+  if actual ≠ expected then throw (.rowCount expected actual)
+  return ⟨chunk, frames⟩
+
+def decodePage (limits : ScalarPage.Limits) (bound : Bound) (frame : Parquet.Page.Frame)
+    (ordinal : Nat) : Except Leaf.Error (List (Option Int64)) := do
+  let _ ← (Parquet.Page.Checksum.verify limits.compressedBytes bound.snapshot.bytes frame).mapError
+    (.pageChecksum ordinal frame.header.start)
+  let page ← (Dictionary.Gzip.V2.planDataWith (· == 0) bound frame).mapError
+    (Dictionary.atFrame ordinal frame)
+  (ScalarPage.decode .int64 page.params limits (Internal.body bound frame)).mapError
+    (.page ordinal ∘ .scalar)
+
+def PageWire (limits : ScalarPage.Limits) (bound : Bound) (frame : Parquet.Page.Frame)
+    (slots : List (Option Int64)) : Prop :=
+  ∃ page status,
+    Dictionary.Gzip.V2.planDataWith (· == 0) bound frame = .ok page ∧ page.frame = frame ∧
+    Parquet.Page.Checksum.verify limits.compressedBytes bound.snapshot.bytes frame = .ok status ∧
+    ScalarPage.decode .int64 page.params limits (Internal.body bound frame) = .ok slots ∧
+    slots.length = Internal.pageSlots frame
+
+def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except Leaf.Error (Slots bound) := do
+  let group ← checkGroup limits leafLimits bound index
+  let slots ← group.frames.zipIdx.mapM fun (frame, ordinal) =>
+    decodePage (limits.withFuel leafLimits).page bound frame ordinal
+  return slots.flatten.map (Option.map bound.binding.descriptor.decode)
+
+/-- Opt into the standalone modern PLAIN V2 GZIP profile. -/
+def convert (limits : Limits) (inputLimits : Events.ToIpc.Limits) (outputLimits : Arrow.ObservationLimits)
+    (input : Bytes) (ordinal : Nat) : Except Events.ToIpc.Error KBytes :=
+  Events.ToIpc.convertGroups .modernOnly inputLimits outputLimits input ordinal
+    (readGroup limits inputLimits.leaf)
+
+end Silmaril.Formats.Parquet.Timestamp.Leaf.Gzip.V2

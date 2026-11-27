@@ -26,6 +26,7 @@ inductive ChunkEncoding where
   | plain
   | dictionary
   | snappyDictionary
+  | gzipPlainV2
   | gzipDictionaryV1
   | gzipDictionaryV2
   | snappyLegacyDictionaryV1
@@ -36,7 +37,7 @@ inductive ChunkEncoding where
   | .plain => limits.admitsCodec code
   | .dictionary => code == 0
   | .snappyDictionary | .snappyLegacyDictionaryV1 | .snappyLegacyFallbackV1 => code == 1
-  | .gzipDictionaryV1 | .gzipDictionaryV2 => code == 2
+  | .gzipPlainV2 | .gzipDictionaryV1 | .gzipDictionaryV2 => code == 2
 
 private def dictionaryMetadata (metadata : Footer.ColumnMetadata) : Bool :=
   metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 8 &&
@@ -46,7 +47,7 @@ def ChunkEncoding.admitsMetadata (encoding : ChunkEncoding) (metadata : Footer.C
     (rows : Int) : Bool :=
   !metadata.indexPageOffset.isSome &&
     match encoding with
-    | .plain => metadata.encodings.all (fun id => id == 0 || id == 3) &&
+    | .plain | .gzipPlainV2 => metadata.encodings.all (fun id => id == 0 || id == 3) &&
         (rows == 0 || metadata.encodings.contains 0) && metadata.dictionaryPageOffset.isNone
     | .dictionary => dictionaryMetadata metadata &&
         metadata.totalCompressedSize == metadata.totalUncompressedSize
@@ -57,6 +58,11 @@ def ChunkEncoding.admitsMetadata (encoding : ChunkEncoding) (metadata : Footer.C
     | .snappyLegacyFallbackV1 =>
         metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 2 &&
           metadata.encodings.contains 0 && metadata.encodings.all (fun id => id == 0 || id == 2 || id == 3 || id == 4)
+
+theorem ChunkEncoding.gzipPlainV2_noDictionary {metadata : Footer.ColumnMetadata} {rows : Int}
+    (admitted : ChunkEncoding.gzipPlainV2.admitsMetadata metadata rows = true) :
+    metadata.dictionaryPageOffset = none := by
+  cases h : metadata.dictionaryPageOffset <;> simp_all [ChunkEncoding.admitsMetadata]
 
 inductive DictionaryPageError where
   | expectedDictionary
@@ -92,6 +98,7 @@ inductive Error where
   | chunkCodec (code : Int)
   | chunkEncoding
   | chunkBounds
+  | chunkByteLimit
   | chunkOverlap
   | framing (cause : Parquet.Page.Error)
   | rowCount (expected actual : Nat)
