@@ -1,0 +1,12 @@
+PyArrow 26.0.1
+mixed.parquet, SHA-256 9164e134225d3e156420c2c32284955f256d42b01a85c4258f35371bfa4c68bb, footer [151, 386), rows 8
+  group 0 frames [4, 73), body @21, 5 rows, 8 slots
+  reps [0, 0, 0, 0, 1, 1, 0, 1], defs [0, 1, 2, 3, 2, 3, 3, 2], PLAIN [-7, 0, 9], rows [None, [], [None], [-7, None, 0], [9, None]]
+  group 1 frames [73, 98), body @90, 0 rows, 0 slots
+  reps [], defs [], PLAIN [], rows []
+  group 2 frames [98, 151), body @115, 3 rows, 5 slots
+  reps [0, 1, 1, 0, 0], defs [3, 2, 3, 0, 1], PLAIN [-2147483648, 2147483647], rows [[-2147483648, None, 2147483647], None, []]
+schema-only.parquet, SHA-256 2023a450fc86597258dad7255f9b86081ccdbdf7df4462135f635bb7c2f5e9be, footer [4, 72), rows 0
+empty-group.parquet, SHA-256 ba931621b5e61c667bb9c527d6b3b0efe61b3ad684764302c482903a525e9fa4, footer [29, 151), rows 0
+  group 0 frames [4, 29), body @21, 0 rows, 0 slots
+  reps [], defs [], PLAIN [], rows []
