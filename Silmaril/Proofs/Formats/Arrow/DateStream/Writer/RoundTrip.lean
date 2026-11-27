@@ -22,7 +22,7 @@ theorem schemaMetadata_size (name : String) (nullable : Bool) :
     (Internal.schemaMetadata name nullable).len = Internal.schemaSize name := by
   have nameSize : name.toByteArray.data.toList.length = name.utf8ByteSize := rfl
   simp only [Internal.schemaMetadata, Internal.schemaSize, messagePrefix, schemaPayloadOf,
-    fieldOffsets, fieldFragment, Internal.dayType, pad, words, longs,
+    fieldOffsets, fieldFragment, date32FieldBytes, pad, words, longs,
     Arrow.Writer.emitWords_length, append_length, zeros_length, List.length_cons, List.length_nil,
     List.foldr_cons, List.foldr_nil, List.length_map, nameSize]
   have fragment : 4 * 7 + (4 * 5 + (4 * 1 + (1 * name.utf8ByteSize + 1))) =
