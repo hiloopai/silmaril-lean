@@ -24,17 +24,17 @@ inductive Error where
 def observation (name : String) (nullable : Bool) (batches : List Column) : DateStream.Stream :=
   ⟨⟨name, nullable, .day⟩, batches.map (List.map (Option.map Date32.toCivil))⟩
 
-namespace Internal
-
 open MetadataWriter.Wire
 
 /-- DateUnit's IDL default is MILLISECOND. The vtable entry at offset
 four makes the zero-valued DAY enum explicit in the DATE table. -/
-def dayType : KBytes :=
-  words [halfwords 6 8, halfwords 4 0, 8, 0, 0]
+def date32FieldBytes (name : String) (nullable : Bool) : KBytes :=
+  fieldFragment name nullable 8 (words [halfwords 6 8, halfwords 4 0, 8, 0, 0])
+
+namespace Internal
 
 def schemaMetadata (name : String) (nullable : Bool) : KBytes :=
-  messagePrefix 1 56 0 ++ schemaPayloadOf [fieldFragment name nullable 8 dayType]
+  messagePrefix 1 56 0 ++ schemaPayloadOf [date32FieldBytes name nullable]
 
 /-- The size depends on the UTF-8 byte length, including the field's NUL and padding. -/
 def schemaSize (name : String) : Nat :=

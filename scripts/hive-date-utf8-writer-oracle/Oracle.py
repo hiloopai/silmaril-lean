@@ -85,7 +85,44 @@ def check_ipc(root, dataset, paths, declared):
     check_binary_view(empty_root / "selected.arrow", [slots], "empty-group")
 
 
-def check_profile(root, marker, virtual, declared, opens=None, named=False, ipc=False):
+def typed_slots(table, virtual):
+    return [table[name].cast(pa.int32()).to_pylist() if name == "day" else table[name].to_pylist()
+            for name, _ in virtual]
+
+
+def check_typed_stream(path, virtual, expected):
+    wire = path.read_bytes()
+    source = pa.BufferReader(wire)
+    with pa.ipc.open_stream(source) as reader:
+        assert reader.schema.equals(pa.schema(virtual))
+        assert [typed_slots(batch, virtual) for batch in reader] == expected
+        assert source.tell() == len(wire)
+    assert wire.endswith(b"\xff\xff\xff\xff\x00\x00\x00\x00")
+
+
+def check_typed_ipc(root, dataset, paths, declared, virtual):
+    day = ds.field("day")
+    epoch = pa.scalar(0, pa.date32())
+    nonnegative_or_null = list(dataset.get_fragments(filter=day.is_null() | (day >= epoch)))
+    negative = list(dataset.get_fragments(filter=day < epoch))
+    assert [fragment.path for fragment in nonnegative_or_null] == paths[:2]
+    assert [fragment.path for fragment in negative] == paths[2:]
+
+    def groups(fragments):
+        return [typed_slots(group.to_table(schema=dataset.schema, use_threads=False), virtual)
+                for fragment in fragments for group in fragment.split_by_row_group()]
+
+    check_typed_stream(root / "typed-selected.arrow", virtual, groups(nonnegative_or_null + nonnegative_or_null[:1]))
+    check_typed_stream(root / "typed-year-zero.arrow", virtual, groups(negative))
+    check_typed_stream(root / "typed-none-kept.arrow", virtual, [])
+    empty_root = root.with_name(root.name + "-empty")
+    with pq.ParquetFile(empty_root / declared[0]) as file:
+        assert file.num_row_groups == 1
+        assert file.read_row_group(0, use_threads=False).num_rows == 0
+    check_typed_stream(empty_root / "typed-selected.arrow", virtual, [[[], []]])
+
+
+def check_profile(root, marker, virtual, declared, opens=None, named=False, ipc=False, typed_ipc=False):
     assert (root / "inventory.txt").read_text().splitlines() == declared
     assert sorted(path.relative_to(root).as_posix() for path in root.rglob("*.parquet")) == sorted(declared)
     paths = [str(root / path) for path in declared]
@@ -117,6 +154,8 @@ def check_profile(root, marker, virtual, declared, opens=None, named=False, ipc=
     assert batches == native_batches(root / "batches.tsv")
     if ipc:
         check_ipc(root, dataset, paths, declared)
+    if typed_ipc:
+        check_typed_ipc(root, dataset, paths, declared, virtual)
     if opens is not None:
         keep = ds.field("day") == pa.scalar(19782, pa.date32())
         chosen = list(dataset.get_fragments(filter=keep))
@@ -149,10 +188,15 @@ def main():
     parser.add_argument("resolver_log", type=Path, nargs="?")
     parser.add_argument("--named", action="store_true")
     parser.add_argument("--ipc", action="store_true")
+    parser.add_argument("--typed-ipc", action="store_true")
     args = parser.parse_args()
     if args.named and args.resolver_log is None:
         parser.error("--named requires the resolver log")
     root = args.root.resolve()
+    if args.typed_ipc:
+        for line in Path(__file__).with_name("TypedIpc.sha256").read_text().splitlines():
+            digest, path = line.split("  ", 1)
+            assert sha256((root / path).read_bytes()).hexdigest() == digest
     opens = None
     if args.resolver_log is not None:
         opens = {}
@@ -161,7 +205,8 @@ def main():
                 _, run, literal = line.split("\t")
                 opens.setdefault(run, []).append(literal)
         assert set(opens) == {name + mode for name in PROFILES for mode in ("-strict", "-pruned")}
-    groups = sum(check_profile(root / name, *profile, opens=opens, named=args.named, ipc=args.ipc)
+    groups = sum(check_profile(root / name, *profile, opens=opens, named=args.named, ipc=args.ipc,
+                               typed_ipc=args.typed_ipc)
                  for name, profile in PROFILES.items())
     print(f"PyArrow matched both partition orders, six native Parquet files and {groups} row groups.")
     if opens is not None:
@@ -170,6 +215,8 @@ def main():
         print("PyArrow selected groups matched the imported labels, ordered rows and zero-column cardinality.")
     if args.ipc:
         print("PyArrow matched BinaryView fields and octets, repeated groups, empty groups and exact EOS.")
+    if args.typed_ipc:
+        print("PyArrow matched Date32 and string schemas, virtual slots, repeated groups, empty groups and exact EOS.")
 
 
 if __name__ == "__main__":

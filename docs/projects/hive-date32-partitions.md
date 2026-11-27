@@ -378,3 +378,39 @@ partition orders, including a repeated occurrence, then compares the
 IPC schema, batch boundaries, raw slots and EOS. It compares a genuine
 zero-row Parquet group and an empty selection separately and checks the
 SHA-256 of each generated IPC stream.
+
+## Selected virtual keys to native Date32 and UTF-8 IPC
+
+[`ToTypedIpc.convert`](../../Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/ToTypedIpc/Defs.lean)
+exports the two virtual keys as a nullable Arrow Date32 field and a
+nullable plain UTF-8 string field in declaration order. It uses the
+shared [Date32 and UTF-8 stream profile](../../Silmaril/Formats/Arrow/DateUtf8Stream/Defs.lean).
+The schema uses the native DATE DAY tag and the plain UTF-8 tag. Records
+reuse the existing signed four-byte and UTF-8 offset buffers. The DATE
+slots remain signed epoch days, and the UTF-8 slots decode to strings
+with the same bytes. Empty strings and nulls remain distinct.
+
+The paired Parquet source checks both leaves of each retained group.
+All path declarations are admitted before pruning. Typed admission
+and reached source failures precede any sink admission, and only
+source EOS allows export. The adapter materializes the selected batches.
+The sink uses the existing Arrow IPC frame, row and cell limits. This entry
+point exports exactly the virtual pair. The separate opaque BinaryView
+entry point handles its own physical projection.
+
+The [readback law](../../Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/ToTypedIpc/Thms.lean)
+matches the complete typed schema and every batch through IPC EOS.
+It preserves manifest occurrence and group order, including repeats
+and explicit zero-row batches. An empty selection emits a schema and
+EOS with zero record batches.
+
+Generate the fixture with
+`lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/ManifestWriter/Checks.lean typed-ipc "$tmp"`.
+Use the pinned PyArrow command above with
+`python -I /repo/scripts/hive-date-utf8-writer-oracle/Oracle.py /out --typed-ipc`.
+The comparator independently selects actual Parquet footer groups
+in both partition declaration orders and compares Date32 days and
+string slots against the native IPC and checks the generated stream
+hashes. The fixtures include a pre-epoch
+date, escaped UTF-8, null and empty keys, repeated occurrences, an
+empty selection and a genuine zero-row group.
