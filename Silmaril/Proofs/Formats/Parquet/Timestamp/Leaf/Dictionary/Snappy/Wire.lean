@@ -80,22 +80,30 @@ theorem readEntries_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Li
   | dataV1 _ | dataV2 _ | skipped _ =>
     simp [readEntries, kind] at read
 
-theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
-    (planned : planData bound frame = .ok page) :
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
     page.frame = frame ∧
       Timestamp.Page.parameters bound.binding.leaf bound.levels Payload.Codec.snappy.id frame.value =
-        .ok page.params ∧ page.params.encoding = 8 := by
+        .ok page.params ∧ admits page.params.encoding = true := by
   cases kind : frame.value.kind with
-  | dictionary _ => simp [planData, kind, Bind.bind, Except.bind] at planned
+  | dictionary _ => simp [planDataWith, kind, Bind.bind, Except.bind] at planned
   | dataV1 _ | dataV2 _ | skipped _ =>
-    simp only [planData, kind, Bind.bind, Except.bind] at planned
+    simp only [planDataWith, kind, Bind.bind, Except.bind] at planned
     cases params : Timestamp.Page.parameters bound.binding.leaf bound.levels Payload.Codec.snappy.id frame.value with
     | error e => simp [params, Except.mapError] at planned
     | ok value =>
       simp only [params, Except.mapError] at planned
       split_ifs at planned with tag
       cases Except.ok.inj planned
-      exact ⟨rfl, rfl, Decidable.not_not.mp tag⟩
+      exact ⟨rfl, rfl, by simpa using tag⟩
+
+theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planData bound frame = .ok page) :
+    page.frame = frame ∧
+      Timestamp.Page.parameters bound.binding.leaf bound.levels Payload.Codec.snappy.id frame.value =
+        .ok page.params ∧ page.params.encoding = 8 := by
+  obtain ⟨same, params, tag⟩ := planDataWith_wire (admits := (· == 8)) planned
+  exact ⟨same, params, by simpa using tag⟩
 
 theorem checkGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {index : Nat} {checked : CheckedChunk} (accepted : checkGroup limits leafLimits bound index = .ok checked) :
@@ -126,6 +134,15 @@ theorem decodePage_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Lim
   obtain ⟨status, verified, decoded⟩ := bind_ok read
   exact ⟨status, mapError_ok verified, mapError_ok decoded⟩
 
+theorem expanded_bound {encoding : Int} {params : ScalarPage.Parameters}
+    {limits : ScalarPage.Limits} {source : Bytes} {layout : FlatPage.Layout}
+    (checked : ScalarPage.validateFor encoding params limits source = .ok layout) :
+    params.sizes.uncompressed ≤ limits.uncompressedBytes := by
+  unfold ScalarPage.validateFor at checked
+  dsimp only at checked
+  split_ifs at checked with tag extent compressed expanded
+  exact Nat.le_of_not_gt expanded
+
 theorem data_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : List Int64} {page : DataPage} {slots : List (Option Int64)}
     (read : DataWire limits leafLimits bound entries.toArray page slots) :
@@ -141,12 +158,8 @@ theorem data_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits
   obtain ⟨layout, prepared, width, runs, indices, checked, wire, suffix, hybrid, mask, selected⟩ :=
     Leaf.Dictionary.data_decodes (limits := limits) (leafLimits := leafLimits) (bound := bound)
       (entries := entries) (page := page) decoded
-  have cap : page.params.sizes.uncompressed ≤ leafLimits.page.uncompressedBytes := by
-    unfold ScalarPage.validateFor at checked
-    dsimp only at checked
-    split_ifs at checked with encoding extent compressed expanded
-    exact Nat.le_of_not_gt expanded
-  exact ⟨status, layout, prepared, width, runs, indices, verified, cap, wire, suffix, hybrid, mask, selected⟩
+  exact ⟨status, layout, prepared, width, runs, indices, verified, expanded_bound checked,
+    wire, suffix, hybrid, mask, selected⟩
 
 theorem readGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {index : Nat} {slots : Slots bound} (read : readGroup limits leafLimits bound index = .ok slots) :

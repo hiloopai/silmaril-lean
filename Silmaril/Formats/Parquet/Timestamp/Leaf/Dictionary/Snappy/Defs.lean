@@ -29,13 +29,17 @@ def readEntries (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound :
     (Leaf.Internal.body bound frame).toList).mapError .payload
   (Plain.decodeInt64 header.numValues (Bytes.ofList body)).mapError .entries
 
-def planData (bound : Bound) (frame : Parquet.Page.Frame) :
+def planDataWith (admits : Int → Bool) (bound : Bound) (frame : Parquet.Page.Frame) :
     Except DictionaryPageError DataPage := do
   if let .dictionary _ := frame.value.kind then throw .misplacedDictionary
   let params ← (Timestamp.Page.parameters bound.binding.leaf bound.levels
     Payload.Codec.snappy.id frame.value).mapError .parameters
-  if params.encoding ≠ 8 then throw (.encoding params.encoding)
+  if !admits params.encoding then throw (.encoding params.encoding)
   return ⟨frame, params⟩
+
+def planData (bound : Bound) (frame : Parquet.Page.Frame) :
+    Except DictionaryPageError DataPage :=
+  planDataWith (· == 8) bound frame
 
 /-- Reuse the checked chunk and require one bounded dictionary and only
 RLE_DICTIONARY data pages under the Snappy codec. -/
@@ -44,12 +48,17 @@ def checkGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : 
   Dictionary.checkGroupUsing .snappyDictionary limits leafLimits bound index
     (planData bound) (fun _ => .ok ()) (readEntries limits leafLimits bound)
 
+/-- Verify the stored extent and any CRC with the original indexed context. -/
+def verifyData (leafLimits : Leaf.Limits) (bound : Bound) (page : DataPage) (ordinal : Nat) :
+    Except Leaf.Error Parquet.Page.Checksum.Status :=
+  (Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame).mapError
+    (atFrame ordinal page.frame ∘ .checksumFailure)
+
 /-- Verify the original stored data payload before the shared decoder splits
 V2 levels from the value suffix or decompresses the whole V1 body. -/
 def decodePage (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
     (entries : Array Int64) (page : DataPage) (ordinal : Nat) : Except Leaf.Error (List (Option Int64)) := do
-  let _ ← (Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame).mapError
-    (atFrame ordinal page.frame ∘ .checksumFailure)
+  let _ ← verifyData leafLimits bound page ordinal
   Dictionary.decodePage limits leafLimits bound entries page ordinal
 
 /-- The same original frame supplies the checked stored body and index decoder. -/

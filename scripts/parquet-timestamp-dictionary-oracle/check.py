@@ -25,11 +25,14 @@ GROUPS = [[MIN, None, -1, MIN, MAX, -1], [0, -7, None, 0, 8, None], [-2, None, -
 EOS = struct.pack("<II", 0xFFFFFFFF, 0)
 
 
-def produce(unit, zone, page_version, *, codec="NONE", fallback=False, groups=None, checksum=False):
+def produce(unit, zone, page_version, *, codec="NONE", fallback=False, groups=None,
+            checksum=False, fallback_batch_size=4):
     tick_type = pa.timestamp(unit, zone)
     schema = pa.schema([pa.field("decoy", pa.int32(), nullable=False), pa.field("ticks", tick_type)])
     sink = pa.BufferOutputStream()
-    fallback_options = dict(dictionary_pagesize_limit=8, write_batch_size=4, data_page_size=24) if fallback else {}
+    fallback_options = {}
+    if fallback:
+        fallback_options = dict(dictionary_pagesize_limit=8, write_batch_size=fallback_batch_size, data_page_size=24)
     with pq.ParquetWriter(sink, schema, version="2.6", data_page_version=page_version, compression=codec,
                           use_dictionary=["ticks"], write_statistics=False, store_schema=False, write_page_checksum=checksum,
                           **fallback_options) as writer:

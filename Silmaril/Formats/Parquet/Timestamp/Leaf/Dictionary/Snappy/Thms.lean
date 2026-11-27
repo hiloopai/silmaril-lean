@@ -44,6 +44,14 @@ theorem readEntries_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Li
       entries.length = header.numValues :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.readEntries_wire read
 
+/-- Admitted codec-1 header parameters stay tied to their original frame. -/
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧
+      Timestamp.Page.parameters bound.binding.leaf bound.levels Payload.Codec.snappy.id frame.value =
+        .ok page.params ∧ admits page.params.encoding = true :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.planDataWith_wire planned
+
 /-- The original data header supplies its Snappy scalar parameters and
 RLE_DICTIONARY tag. -/
 theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
@@ -77,6 +85,13 @@ theorem decodePage_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Lim
     (read : decodePage limits leafLimits bound entries page ordinal = .ok slots) :
     DataWire limits leafLimits bound entries page slots :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.decodePage_wire read
+
+/-- Scalar admission bounds the advertised expanded size. -/
+theorem expanded_bound {encoding : Int} {params : ScalarPage.Parameters}
+    {limits : ScalarPage.Limits} {source : Bytes} {layout : FlatPage.Layout}
+    (checked : ScalarPage.validateFor encoding params limits source = .ok layout) :
+    params.sizes.uncompressed ≤ limits.uncompressedBytes :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.expanded_bound checked
 
 /-- The checked V1/V2 preparation supplies the exact expanded or raw index
 slice, its mask and the same dictionary lookups within the output budget. -/
@@ -138,7 +153,7 @@ theorem decodePage_checksum_error {limits : Dictionary.Limits} {leafLimits : Lea
       .error cause) :
     decodePage limits leafLimits bound entries page ordinal =
       .error (.dictionaryPage ordinal page.frame.header.start (.checksumFailure cause)) := by
-  simp [decodePage, failed, Except.mapError, Bind.bind, Except.bind, atFrame]
+  simp [decodePage, verifyData, failed, Except.mapError, Bind.bind, Except.bind, atFrame]
 
 /-- The event trace observes the same checked group reads in footer order. -/
 theorem readBound_reference (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) :
