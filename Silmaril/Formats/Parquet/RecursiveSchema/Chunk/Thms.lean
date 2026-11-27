@@ -8,6 +8,10 @@ import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Chunk.Chain
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Chunk
 
+theorem admitPage_wire {frame : Page.Frame} {remaining : Nat} {info : Page.DataV1}
+    (read : admitPage frame remaining = .ok info) : HeaderWire frame remaining info :=
+  Proofs.Formats.Parquet.RecursiveSchema.Chunk.admit_wire read
+
 theorem definitions_wire {leaf : Leaf} {limits : Hybrid.Limits} {count : Nat} {body : Bytes}
     {definitions : Definitions} (read : readDefinitions leaf limits count body = .ok definitions) :
     DefinitionWire leaf limits count body definitions ∧ definitions.levels.length = count :=

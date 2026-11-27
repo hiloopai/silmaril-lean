@@ -1,0 +1,73 @@
+{
+  "description": "Genuine PyArrow repeated Parquet chunks and labeled continuation, counts and CRC controls",
+  "fixture_license": "MIT",
+  "producer_pins": "../parquet-recursive-schema-oracle/fixtures.json",
+  "genuine_parquet": {
+    "nested": {
+      "bytes": 1495,
+      "sha256": "a838e2ad095b346a2d18b96f40b788564fa79a9b81020aa04ecabb299385a4c7"
+    },
+    "mixed_required": {
+      "bytes": 779,
+      "sha256": "bc074c45d4e52712803af88ed70afa0dc70499fcec6b78968d9e690326211e43"
+    },
+    "multipage_crc": {
+      "bytes": 3435,
+      "sha256": "b19436ce39ef074eeabbd906b3fc68e8041edd3fe6fa4f3028c53b51f4f75d17"
+    },
+    "native": {
+      "bytes": 596,
+      "sha256": "02b7a057948a054af205ce6f2881c31e3ce59cb9ca04ef4c4aeb30d7379132e5"
+    },
+    "indexed": {
+      "bytes": 625,
+      "sha256": "631ea40a4632f36d5266654c484f8fdfdb2d13cc1bce6aba91f09369628cbaa4"
+    }
+  },
+  "labeled_edits": {
+    "authored_continuation": {
+      "bytes": 596,
+      "sha256": "126fb7cf5bbe2ef6f8436757fc3f6c97644f6599a9c11a0d2a736d2ecc80c46e"
+    },
+    "first_continuation": {
+      "bytes": 596,
+      "sha256": "27fbf90326496c0ca18e6e61d5b5195797b7b5b74e7af339715cc82a6843da7a"
+    },
+    "after_empty": {
+      "bytes": 596,
+      "sha256": "4676fdd105702b59d5fed586a5a427249a06eb3aa2be668311112c7f524d8eba"
+    },
+    "wrong_row_total": {
+      "bytes": 596,
+      "sha256": "74ccf00f51de028774d504579ad3c79071dca5261c186512842e7b8bab2ef569"
+    },
+    "wrong_slot_total": {
+      "bytes": 596,
+      "sha256": "85abd9715a010088ed0b6cf874000d3e8c7149f2f7cd96375a19ef466df61683"
+    },
+    "too_few_slots": {
+      "bytes": 596,
+      "sha256": "e1712ae4665e81f55d5067ec0e0b1bd0e37d89cb55c639624be08aa0ad25b03b"
+    },
+    "too_few_rows": {
+      "bytes": 596,
+      "sha256": "e416c588d2e652b478180435b1f794b32bbaf03792873862ae5e7f433125fe13"
+    },
+    "short_words": {
+      "bytes": 596,
+      "sha256": "41d1eaa2e31940f143b3b30a7f33b6665cb45b0eeded9e3247d71162151e3b28"
+    },
+    "extra_word": {
+      "bytes": 596,
+      "sha256": "e8768985ec7999bd9a9343100bbfb1c919f1cd3eb5d51ea28cf67802b6e603fa"
+    },
+    "repetition_extent": {
+      "bytes": 596,
+      "sha256": "9e3da00827a70627c6edce7d784cb50aa1044ddc64dc7a757855f7026916a81e"
+    },
+    "bad_crc": {
+      "bytes": 3435,
+      "sha256": "666d8334884538c034061a12317424ea0fbf4b98872164aabb60ca09344967f6"
+    }
+  }
+}
