@@ -88,4 +88,34 @@ def rejectsRecord (limits : Incremental.Limits) (good damaged : KBytes)
     stopsAs limits expected ordinal error (singleBytes damaged) &&
     stopsAs limits expected ordinal error (uneven damaged range)
 
+-- FlatBuffer locations in the known-good producer metadata. These helpers
+-- only locate fixture edits; the production parser independently checks them.
+private def vtableEntry (metadata : KBytes) (table slot : Nat) : Option Nat := do
+  let delta ← metadata.readLE table 4
+  let vtable := if delta < 2^31 then table - delta else table + (2^32 - delta)
+  let entry := vtable + 4 + slot * 2
+  let width ← metadata.readLE vtable 2
+  if entry + 2 > vtable + width then none else some entry
+
+private def referenceAt (metadata : KBytes) (table slot : Nat) : Option Nat := do
+  let entry ← vtableEntry metadata table slot
+  let field ← metadata.readLE entry 2
+  if field = 0 then none
+  else do
+    let position := table + field
+    let offset ← metadata.readLE position 4
+    return position + offset
+
+private def recordTable (metadata : KBytes) : Option Nat := do
+  let root ← metadata.readLE 0 4
+  referenceAt metadata root 2
+
+def recordVectorAt (metadata : KBytes) (slot : Nat) : Option Nat := do
+  let batch ← recordTable metadata
+  referenceAt metadata batch slot
+
+def recordVtableEntry (metadata : KBytes) (slot : Nat) : Option Nat := do
+  let batch ← recordTable metadata
+  vtableEntry metadata batch slot
+
 end Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Fixtures

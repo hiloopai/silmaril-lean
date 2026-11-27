@@ -796,3 +796,42 @@ aggregate data-buffer precedence cases.
 make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.NodeCount.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.NodeCount.Axioms'
 python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Shared RecordBatch metadata parser rejection
+
+`Incremental.Failure.RecordMetadata` generalizes the node-count laws
+to any `MixedFlat.MetadataError` actually returned by the shared parser
+for a completely framed record. The existing `NodeCount` API specializes
+that result.
+
+`decode_metadata_error_iff` identifies the ordering at the typed decoder.
+A batch slot must be available, then the common metadata parser must
+return the cause. This includes its own per-record count limits. A
+metadata rejection wins over subsequent running row, cell and incremental
+aggregate data-buffer checks at that record. Incremental framing can
+still stop before typed metadata. An incremental-only budget can also
+stop an earlier record. Later body layout, field decoding and unrelated
+terminal failures are outside the theorem.
+
+The wire witness keeps the original envelope, metadata slice and
+checked body range. The immutable pull and eager readers preserve the
+exact indexed cause. The pull trace contains every complete preceding
+batch, including explicit empty batches, and the replay retains absolute
+ranges. Schedules which reach a shared metadata rejection on the same
+octets and limits give identical complete traces and prefix ranges.
+Successful finish under those conditions is impossible.
+
+Synthetic edits to the pinned PyArrow stream shorten the descriptor
+vector, omit the variadic-count section, make a field-node length
+negative, and exceed the shared per-record count limit. The node-length
+case concerns the signed metadata field. Geometry that survives metadata
+parsing and fails layout binding belongs to a later error class. Each
+control compares one-byte and uneven schedules with immutable readback.
+[Definitions](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/RecordMetadata/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/RecordMetadata/Thms.lean) ·
+[Lean guards](../../Silmaril/Formats/Arrow/MixedFlat/Stream/Incremental/Failure/RecordMetadata/Examples.lean)
+
+```sh
+make check CHECK_TARGETS='+Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.RecordMetadata.Examples +Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.RecordMetadata.Axioms'
+python3 -I scripts/arrow-mixed-flat/stream_fixtures.py
+```

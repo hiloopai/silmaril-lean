@@ -16,27 +16,9 @@ namespace Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.NodeCount
 
 open Failure.Fixtures
 
--- Locate the node vector's length word in the known-good fixture metadata.
--- The vtable displacement is signed because FlatBuffers can share vtables.
-private def referenceAt (metadata : KBytes) (table slot : Nat) : Option Nat := do
-  let delta ← metadata.readLE table 4
-  let vtable := if delta < 2^31 then table - delta else table + (2^32 - delta)
-  let entry := vtable + 4 + slot * 2
-  let width ← metadata.readLE vtable 2
-  if entry + 2 > vtable + width then none
-  else do
-    let field ← metadata.readLE entry 2
-    if field = 0 then none
-    else do
-      let position := table + field
-      let offset ← metadata.readLE position 4
-      return position + offset
-
 private def shortenNodes (wire : KBytes) (range : Stream.BatchRange) (expected : Nat) : Option KBytes := do
   let metadata := range.metadataSlice wire
-  let root ← metadata.readLE 0 4
-  let batch ← referenceAt metadata root 2
-  let nodes ← referenceAt metadata batch 1
+  let nodes ← recordVectorAt metadata 1
   if expected = 0 || metadata.readLE nodes 4 != some expected then none
   else return wire.write (range.offset + 8 + nodes) 4 (expected - 1)
 

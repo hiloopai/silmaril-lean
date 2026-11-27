@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.Defs
+public import Silmaril.Formats.Arrow.MixedFlat.Stream.Incremental.Failure.RecordMetadata.Defs
 
 /-! Field-node count rejection after complete RecordBatch framing. -/
 
@@ -43,6 +43,11 @@ structure Run (limits : Incremental.Limits) (wire : KBytes) where
     RecordSteps wire.len (wire.read 0 wire.len) fields opened batches final ∧
     Arrow.Framing.Incremental.Window (Portable.reference wire) final.position chunk ∧
     feed final chunk = .error (feedError ordinal offset expected actual)
+
+/-- The node-count schedule is a shared metadata parser rejection. -/
+def Run.toMetadata {limits : Incremental.Limits} {wire : KBytes} (run : Run limits wire) :
+    RecordMetadata.Run limits wire :=
+  ⟨run.fields, run.batches, run.ordinal, run.offset, .nodeCount run.expected run.actual, run.ran⟩
 
 def Run.ranges {limits : Incremental.Limits} {wire : KBytes} (run : Run limits wire) :
     List Stream.BatchRange :=
