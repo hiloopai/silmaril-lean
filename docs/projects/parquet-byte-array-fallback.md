@@ -695,3 +695,42 @@ Native V1 and dictionary-only inputs exercise profile refusal.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Zstd.Fallback.V2.Checks
 python3 scripts/parquet-zstd-v2-fallback-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in Zstandard V2 three-way BinaryView dispatch
+
+`ByteArrayFallback.Zstd.Dispatch.V2.convert` reads one selected flat
+optional unannotated BYTE_ARRAY leaf. For each codec-6 chunk, the
+checked binder supplies one original frame list. A chunk without a
+leading dictionary selects the strict PLAIN reader. A leading
+dictionary with a recorded PLAIN V2 data tag selects strict fallback.
+The remaining dictionary-backed chunks select the strict dictionary
+reader. The selected reader receives the same frames and validates the
+complete schedule with its existing CRC, level, suffix and byte limits.
+
+`readGroup_agrees` gives equality with the chosen strict result,
+including errors. The error lift preserves the group, column, page,
+header offset and cause, and tags a decoder-specific cause with its
+profile. `readGroup_unframed_agrees` covers failures before framing.
+The checked `readAll` source retains every completed footer group and
+its original first error or EOS. Native BinaryView conversion publishes
+after source EOS and preserves the descriptor, opaque octets and
+footer group boundaries.
+
+The oracle replays the pinned PyArrow 26.0.1 PLAIN-only, dictionary-only
+and fallback producers. An assembled file copies complete row-group
+spans and relocates their Thrift footer offsets. The oracle compares
+every selected and unselected chunk byte-for-byte against its parent,
+checks the original tags, flags and CRCs, and reads the assembled slot
+batches independently with PyArrow. Labeled assembled controls cover
+CRC failures in two profiles, first failure with both corruptions, and
+an illegal dictionary revival. The native single-profile comparisons
+also match the strict readers' emitted IPC byte-for-byte.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Zstd/Dispatch/V2/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Zstd/Dispatch/V2/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-zstd-v2-dispatch-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Zstd.Dispatch.V2.Checks
+python3 scripts/parquet-zstd-v2-dispatch-binary-view-oracle/check.py "$(mktemp -d)"
+```

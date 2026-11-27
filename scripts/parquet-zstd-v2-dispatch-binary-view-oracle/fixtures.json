@@ -1,0 +1,14 @@
+{
+  "assembled-bad-dictionary-crc.parquet": "14e3f524aefe9a0f5dd355d49d369289da4542a6c19139edabc094b6dcd2520f",
+  "assembled-bad-plain-crc.parquet": "d52b184e468738b33fcb66b535810cb3b574e66004c0783fdb08b5fac561f9a1",
+  "assembled-double-crc.parquet": "af11f58083fa9c9ce7a7ab2ab2102b3241d35fb6d9404df10e786b8b480e3e6a",
+  "assembled-mixed.arrows": "905248cec7e67efb254c9dcf83944af54c6f241c0449ed97c214089a5844e939",
+  "assembled-mixed.parquet": "23d971217f537a4ca92c88a20e2249fe72f29b0d1ced4f7392353f000ad8ca2a",
+  "assembled-revival.parquet": "9a2380920dbafc6ea681567c38c216d21495d198b68d687d9fea308a697eea74",
+  "native-dictionary.arrows": "f862ff5888a4682ead431dd6f57e9109c870a7d5cdffaf89827b7141e153e813",
+  "native-dictionary.parquet": "2a575b4375bfb5a495a3df2152cada19435fa61bd2e87cb90c71d2b58c56ac3c",
+  "native-fallback.arrows": "84046c04da3c86f576b4b02749255cbbd0ab14755cde81c564244cdb0b357584",
+  "native-fallback.parquet": "59f549d4a9f13b6c7894c7c0fa26cf13e13cdac868db5378428154a0fffa46fa",
+  "native-plain.arrows": "bc3bc6142a24cefd8a4611504ac9ec77c12512026651b069b75da4002ded0ed6",
+  "native-plain.parquet": "4bf43cb2201857176a76fa9255584981c515383e83220b26f03cef85296b6078"
+}
