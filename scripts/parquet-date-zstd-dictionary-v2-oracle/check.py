@@ -36,7 +36,7 @@ def produce(pa, pq, batch, nullable, checksum, groups, *, page_version="2.0", di
         return sink.getvalue().to_pybytes()
 
 
-def inspect(pa, pq, wire, settings, prior, support, flat, fallback, extent):
+def inspect(pa, pq, wire, settings, prior, support, flat, fallback, extent, *, reference_pages=None):
     batch, nullable, checksum, groups = settings
     thrift, hybrid = support["THRIFT"], support["hybrid"]
     kind = thrift["TType"]
@@ -85,7 +85,8 @@ def inspect(pa, pq, wire, settings, prior, support, flat, fallback, extent):
         expanded, shape = decode_frame(dictionary[3], dictionary[1][2][1])
         entries = [word for word, in struct.iter_unpack("<i", expanded)]
         assert [dictionary[1][7][1][key][1] for key in (1, 2)] == [len(entries), 0]
-        assert entries == list(dict.fromkeys(day for day in expected if day is not None))
+        dictionary_rows = expected if reference_pages is None else expected[:reference_pages * batch]
+        assert entries == list(dict.fromkeys(day for day in dictionary_rows if day is not None))
         dict_observation.update({"expanded": fingerprint(expanded), "zstd_frame": shape, "signed_entries": entries})
 
         cursor, pages = 0, []
@@ -96,7 +97,7 @@ def inspect(pa, pq, wire, settings, prior, support, flat, fallback, extent):
             count, nulls, rows, tag, definitions, repetitions, flag = [info[key][1] for key in range(1, 8)]
             slots = expected[cursor:cursor + count]
             cursor += count
-            assert (count, nulls, rows, tag, repetitions) == (batch, slots.count(None), batch, 8, 0)
+            assert (count, nulls, rows, repetitions) == (batch, slots.count(None), batch, 0)
             assert len(slots) == count and definitions <= min(header[2][1], header[3][1])
             levels, suffix = stored[:definitions], stored[definitions:]
             if nullable:
@@ -110,15 +111,31 @@ def inspect(pa, pq, wire, settings, prior, support, flat, fallback, extent):
                 assert header[2][1] == header[3][1]
                 prepared, shape = suffix, None
             assert len(prepared) == scalar_size
-            width, runs = prepared[0], prepared[1:]
-            indices = hybrid(runs, width, count - nulls)
-            assert all(i < len(entries) for i in indices)
-            assert [entries[i] for i in indices] == [day for day in slots if day is not None]
-            pages.append({**stored_observation(frame), "num_values": count, "num_nulls": nulls,
-                          "raw_levels": fingerprint(levels), "is_compressed": flag, "stored_suffix": fingerprint(suffix),
-                          "index_stream": fingerprint(prepared), "zstd_frame": shape, "index_width": width,
-                          "ordered_indices": fingerprint(bytes(indices))})
-        assert cursor == len(expected) and len(pages) == 3
+            page = {**stored_observation(frame), "num_values": count, "num_nulls": nulls,
+                    "raw_levels": fingerprint(levels), "is_compressed": flag, "stored_suffix": fingerprint(suffix),
+                    "zstd_frame": shape}
+            present = [day for day in slots if day is not None]
+            if tag == 8:
+                width, runs = prepared[0], prepared[1:]
+                indices = hybrid(runs, width, count - nulls)
+                assert all(i < len(entries) for i in indices)
+                assert [entries[i] for i in indices] == present
+                page.update({"index_stream": fingerprint(prepared), "index_width": width,
+                             "ordered_indices": fingerprint(bytes(indices))})
+            else:
+                assert reference_pages is not None and tag == 0
+                assert [word for word, in struct.iter_unpack("<i", prepared)] == present
+                page["plain_values"] = fingerprint(prepared)
+            if reference_pages is not None:
+                page["tag"] = tag
+            pages.append(page)
+        assert cursor == len(expected)
+        if reference_pages is None:
+            assert len(pages) == 3
+        else:
+            tags = [page["tag"] for page in pages]
+            assert 0 < reference_pages < len(tags)
+            assert tags == [8] * reference_pages + [0] * (len(tags) - reference_pages)
         assert frames[-1][2] + len(frames[-1][3]) == stop
         all_pages = [dict_observation, *pages]
         observations.append({"span": [begin, stop], "expanded_total": sum(p["declared_expanded_size"] for p in all_pages),

@@ -1,0 +1,926 @@
+{
+  "cpython": "3.13.5",
+  "pyarrow": "26.0.1",
+  "pyarrow_wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+  "thrift": "0.25.0",
+  "thrift_wheel_sha256": "aa0cfa1db4d2129114d9548c4fc7e85680013aa442692377606b6305d236a1c0",
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "frame_extent_libzstd": "1.5.7",
+  "producer_compression_level": 3,
+  "producer": {
+    "write_batch_size": 128,
+    "data_page_size": 24,
+    "row_seed": 2429
+  },
+  "cases": {
+    "nullable_crc_two_reference_pages": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "0b46faa6ba185ed8085f0b2e0a4bca96e24eb7005707f650c907fb6352ac42de"
+      },
+      "field": "日付",
+      "ordinal": 1,
+      "nullable": true,
+      "stored_crc": true,
+      "dictionary_pagesize_limit": 12,
+      "reference_pages_per_group": 2,
+      "groups": [
+        {
+          "span": [
+            2734,
+            3552
+          ],
+          "expanded_total": 1341,
+          "dictionary": {
+            "frame": 2734,
+            "stored_start": 2754,
+            "parquet_crc": 920711221,
+            "declared_expanded_size": 12,
+            "stored": {
+              "bytes": 21,
+              "sha256": "d0205265b71286e7af6337bb1d516506562e9815722c75fb7d625b36b085279b"
+            },
+            "expanded": {
+              "bytes": 12,
+              "sha256": "9d3e05645aa8a09906b8f8ef2a62a65eed5f20845d96c7efa75d1f1fb5ce3a23"
+            },
+            "zstd_frame": {
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            "signed_entries": [
+              -2147483648,
+              2147483647,
+              -11
+            ]
+          },
+          "data": [
+            {
+              "frame": 2775,
+              "stored_start": 2807,
+              "parquet_crc": 3225273849,
+              "declared_expanded_size": 31,
+              "stored": {
+                "bytes": 31,
+                "sha256": "51c836cd370b86b180fbe0899f8472e2eb43b82bba72e8c7a7f3812a4f959efe"
+              },
+              "num_values": 128,
+              "num_nulls": 32,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "91343dc3069cbd6d8cf51f13e03a2a8110019a5ac8e0f8338c700d457e903a38"
+              },
+              "is_compressed": false,
+              "stored_suffix": {
+                "bytes": 14,
+                "sha256": "5376faefdc6e14c0fe0010e69e4e0bb12503aedd60cef62232877377e71f1a06"
+              },
+              "zstd_frame": null,
+              "index_stream": {
+                "bytes": 14,
+                "sha256": "5376faefdc6e14c0fe0010e69e4e0bb12503aedd60cef62232877377e71f1a06"
+              },
+              "index_width": 1,
+              "ordered_indices": {
+                "bytes": 96,
+                "sha256": "4ab824cd72990777c129164c101f19dc336e040966f5c4d4e4952818efa9bbd0"
+              },
+              "tag": 8
+            },
+            {
+              "frame": 2838,
+              "stored_start": 2870,
+              "parquet_crc": 1131389101,
+              "declared_expanded_size": 43,
+              "stored": {
+                "bytes": 37,
+                "sha256": "5baefe15313cc542ae8021e2cd224ed8ce6af5537c880df84463ea903e0e190f"
+              },
+              "num_values": 128,
+              "num_nulls": 32,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "9c34ae48c82ecdd625db15dc05aeff61c81c44febdf9c86c319f43dc14193352"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 20,
+                "sha256": "a7b29bbaaa5af4acbe25583d56aa132d46327412f5e6835d8276acb74572c1ff"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "index_stream": {
+                "bytes": 26,
+                "sha256": "5a761d4a96af38dc7ad253d57490166c206b6af2a1ee8235dfa7c5e824bf3dd1"
+              },
+              "index_width": 2,
+              "ordered_indices": {
+                "bytes": 96,
+                "sha256": "d3905034741ca4987ff4d911d765435bdf63bd91370a3bb54bb5d725f67c0b86"
+              },
+              "tag": 8
+            },
+            {
+              "frame": 2907,
+              "stored_start": 2940,
+              "parquet_crc": 3339251529,
+              "declared_expanded_size": 401,
+              "stored": {
+                "bytes": 50,
+                "sha256": "f10def2a5fefa9aef812aee9840e5f240a5259f57b6bcd6c7778c22f643e9033"
+              },
+              "num_values": 128,
+              "num_nulls": 32,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "91343dc3069cbd6d8cf51f13e03a2a8110019a5ac8e0f8338c700d457e903a38"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 33,
+                "sha256": "f28c56c97a0162d82cf0b9676bb9aa31d514ac73266c0934324c8c124ca9195a"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 384,
+                "sha256": "b5872183596fb4e01ec0f4365986dc8dbfc5ea4d11c58202e492c1aa7bdb395b"
+              },
+              "tag": 0
+            },
+            {
+              "frame": 2990,
+              "stored_start": 3024,
+              "parquet_crc": 657304591,
+              "declared_expanded_size": 453,
+              "stored": {
+                "bytes": 453,
+                "sha256": "a09cdffd040f75b767a7bcef82cc986281da56de41dc2166254cb95933311407"
+              },
+              "num_values": 128,
+              "num_nulls": 19,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "ca5759dc86487477c243eeaa38c16b622907bd56cc22a4cc7d14be233d665058"
+              },
+              "is_compressed": false,
+              "stored_suffix": {
+                "bytes": 436,
+                "sha256": "4bd39b935763f0cce59adc71a78ebdd1b897f6fd707954cb427c1357d35e252b"
+              },
+              "zstd_frame": null,
+              "plain_values": {
+                "bytes": 436,
+                "sha256": "4bd39b935763f0cce59adc71a78ebdd1b897f6fd707954cb427c1357d35e252b"
+              },
+              "tag": 0
+            },
+            {
+              "frame": 3477,
+              "stored_start": 3510,
+              "parquet_crc": 2916892709,
+              "declared_expanded_size": 401,
+              "stored": {
+                "bytes": 42,
+                "sha256": "fead4e7e64d29e1972a68485f3790d46f44605eb4c09599edd8549e6c93163c8"
+              },
+              "num_values": 128,
+              "num_nulls": 32,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "d210077caf48f656d1819474b8b958fa1de20601acb2f8c0817d63b743e7c579"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 25,
+                "sha256": "3b3451c0d9b855ad5160078370d8bc5fd2fd900b88e755c6c5388e1ab5157550"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 384,
+                "sha256": "989fc25a5c180f7373d60461ae33ebfd356010bfbe160160621586716a57154c"
+              },
+              "tag": 0
+            }
+          ]
+        },
+        {
+          "span": [
+            6282,
+            7504
+          ],
+          "expanded_total": 1393,
+          "dictionary": {
+            "frame": 6282,
+            "stored_start": 6302,
+            "parquet_crc": 155469774,
+            "declared_expanded_size": 12,
+            "stored": {
+              "bytes": 21,
+              "sha256": "04658a91007e309caae7d88b246ddfcafc982e4004df0bfb33272ff658c5df5d"
+            },
+            "expanded": {
+              "bytes": 12,
+              "sha256": "6c1a5c6c6b359f642cd3dab02cff61156bb76d48a946509f410fe514f3e67253"
+            },
+            "zstd_frame": {
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            "signed_entries": [
+              -2147483648,
+              2147483647,
+              -17
+            ]
+          },
+          "data": [
+            {
+              "frame": 6323,
+              "stored_start": 6355,
+              "parquet_crc": 3225273849,
+              "declared_expanded_size": 31,
+              "stored": {
+                "bytes": 31,
+                "sha256": "51c836cd370b86b180fbe0899f8472e2eb43b82bba72e8c7a7f3812a4f959efe"
+              },
+              "num_values": 128,
+              "num_nulls": 32,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "91343dc3069cbd6d8cf51f13e03a2a8110019a5ac8e0f8338c700d457e903a38"
+              },
+              "is_compressed": false,
+              "stored_suffix": {
+                "bytes": 14,
+                "sha256": "5376faefdc6e14c0fe0010e69e4e0bb12503aedd60cef62232877377e71f1a06"
+              },
+              "zstd_frame": null,
+              "index_stream": {
+                "bytes": 14,
+                "sha256": "5376faefdc6e14c0fe0010e69e4e0bb12503aedd60cef62232877377e71f1a06"
+              },
+              "index_width": 1,
+              "ordered_indices": {
+                "bytes": 96,
+                "sha256": "4ab824cd72990777c129164c101f19dc336e040966f5c4d4e4952818efa9bbd0"
+              },
+              "tag": 8
+            },
+            {
+              "frame": 6386,
+              "stored_start": 6418,
+              "parquet_crc": 472796179,
+              "declared_expanded_size": 43,
+              "stored": {
+                "bytes": 37,
+                "sha256": "0342dc9b2a1666ece7778154605056cc56458e686e3cfadca81294e11c7923b6"
+              },
+              "num_values": 128,
+              "num_nulls": 32,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "6befb291c1b64a9a8b958dec0f4732b173421912e284f16d51913474eda9363e"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 20,
+                "sha256": "1aebff4084b2337008a60f1f4c969efac8d5154ae55298eafa6bba10a56077dd"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "index_stream": {
+                "bytes": 26,
+                "sha256": "5a17d70ee240d832cad241126c2419d6136cddd5004fd68a6889ef32ad2dc864"
+              },
+              "index_width": 2,
+              "ordered_indices": {
+                "bytes": 96,
+                "sha256": "111fd179be46575fcef6db934b1bc7b89cc5f79883336c38a95763a6d34ddd87"
+              },
+              "tag": 8
+            },
+            {
+              "frame": 6455,
+              "stored_start": 6489,
+              "parquet_crc": 357338419,
+              "declared_expanded_size": 453,
+              "stored": {
+                "bytes": 453,
+                "sha256": "735ca7469106cf03716f474d3fe25046e92f8a40e4ac39bc00f2ce3f507c6a9a"
+              },
+              "num_values": 128,
+              "num_nulls": 19,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "ca5759dc86487477c243eeaa38c16b622907bd56cc22a4cc7d14be233d665058"
+              },
+              "is_compressed": false,
+              "stored_suffix": {
+                "bytes": 436,
+                "sha256": "6119a3f072e144d87236a8e8869c547233e68f9fa1dc1a6e8f0dfcd30a72d783"
+              },
+              "zstd_frame": null,
+              "plain_values": {
+                "bytes": 436,
+                "sha256": "6119a3f072e144d87236a8e8869c547233e68f9fa1dc1a6e8f0dfcd30a72d783"
+              },
+              "tag": 0
+            },
+            {
+              "frame": 6942,
+              "stored_start": 6975,
+              "parquet_crc": 3301215492,
+              "declared_expanded_size": 401,
+              "stored": {
+                "bytes": 42,
+                "sha256": "1ab74556269aafa92db0dc88fd101a87874c7499d0b31c7905011b0da2ed9b9e"
+              },
+              "num_values": 128,
+              "num_nulls": 32,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "d210077caf48f656d1819474b8b958fa1de20601acb2f8c0817d63b743e7c579"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 25,
+                "sha256": "af161701d4257f85eda7f164f32d2d983f2bfb5c56231d49004c8e7a4cfb50e8"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 384,
+                "sha256": "52ce5c5c18e9aa1de44982ff4eed5759ccd0b58db7f057cfedc497b830ea3d10"
+              },
+              "tag": 0
+            },
+            {
+              "frame": 7017,
+              "stored_start": 7051,
+              "parquet_crc": 2947067138,
+              "declared_expanded_size": 453,
+              "stored": {
+                "bytes": 453,
+                "sha256": "5ce223c0d122467e44fe964bd46191ecc6bd4347b64c0923c9d980a94d2d7a77"
+              },
+              "num_values": 128,
+              "num_nulls": 19,
+              "raw_levels": {
+                "bytes": 17,
+                "sha256": "ca5759dc86487477c243eeaa38c16b622907bd56cc22a4cc7d14be233d665058"
+              },
+              "is_compressed": false,
+              "stored_suffix": {
+                "bytes": 436,
+                "sha256": "233a7a59ab338a501747470459ff550965fd0d2b9799c404581bd87dc81a1d1b"
+              },
+              "zstd_frame": null,
+              "plain_values": {
+                "bytes": 436,
+                "sha256": "233a7a59ab338a501747470459ff550965fd0d2b9799c404581bd87dc81a1d1b"
+              },
+              "tag": 0
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 5752,
+        "sha256": "59f4ae569007ae3e46203ce367e0cfac46b9520701b000a2b9b3f78135423595"
+      }
+    },
+    "required_no_crc_one_reference_page": {
+      "parquet": {
+        "bytes": 6624,
+        "sha256": "508af3a3f932fb82add1269c632d165777aebdaac43f5f82825be450fe8eaabd"
+      },
+      "field": "日付",
+      "ordinal": 1,
+      "nullable": false,
+      "stored_crc": false,
+      "dictionary_pagesize_limit": 8,
+      "reference_pages_per_group": 1,
+      "groups": [
+        {
+          "span": [
+            2164,
+            2922
+          ],
+          "expanded_total": 1586,
+          "dictionary": {
+            "frame": 2164,
+            "stored_start": 2178,
+            "parquet_crc": null,
+            "declared_expanded_size": 16,
+            "stored": {
+              "bytes": 25,
+              "sha256": "1f09293a532cc3b7b971b99799f5eea8c2d3f1b15c37c02695d90d7549cf2ab6"
+            },
+            "expanded": {
+              "bytes": 16,
+              "sha256": "c3aedaed209354327abe03b738444d84bc5826326ac95df853ac921993ff00db"
+            },
+            "zstd_frame": {
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            "signed_entries": [
+              -2147483648,
+              0,
+              -11,
+              2147483647
+            ]
+          },
+          "data": [
+            {
+              "frame": 2203,
+              "stored_start": 2229,
+              "parquet_crc": null,
+              "declared_expanded_size": 34,
+              "stored": {
+                "bytes": 19,
+                "sha256": "5f8ed6ae82d819aa6b973bb2cdb11722e56d8445678400c1f36e6b5b472e93d9"
+              },
+              "num_values": 128,
+              "num_nulls": 0,
+              "raw_levels": {
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 19,
+                "sha256": "5f8ed6ae82d819aa6b973bb2cdb11722e56d8445678400c1f36e6b5b472e93d9"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "index_stream": {
+                "bytes": 34,
+                "sha256": "1984b9b31b6e625db5b9227ea7b1327bcb61f993c3953923143bdde1f0c3b342"
+              },
+              "index_width": 2,
+              "ordered_indices": {
+                "bytes": 128,
+                "sha256": "9326c6f243e714a260fa1d92eef5343a34adfc3ac7c7d9862bb8d51f2c161941"
+              },
+              "tag": 8
+            },
+            {
+              "frame": 2248,
+              "stored_start": 2275,
+              "parquet_crc": null,
+              "declared_expanded_size": 512,
+              "stored": {
+                "bytes": 37,
+                "sha256": "8d4146972cbb567d0e67ddb810894ceabc7e2929955189628f71498b4260aaeb"
+              },
+              "num_values": 128,
+              "num_nulls": 0,
+              "raw_levels": {
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 37,
+                "sha256": "8d4146972cbb567d0e67ddb810894ceabc7e2929955189628f71498b4260aaeb"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 512,
+                "sha256": "636d4df4410eed4735b6f60d4bf08053a0b32629f3cc395eb52cafe2133116db"
+              },
+              "tag": 0
+            },
+            {
+              "frame": 2312,
+              "stored_start": 2340,
+              "parquet_crc": null,
+              "declared_expanded_size": 512,
+              "stored": {
+                "bytes": 493,
+                "sha256": "06e555f32b4e1815db63e638310f972ba93e17080d2976456de0e98db320c416"
+              },
+              "num_values": 128,
+              "num_nulls": 0,
+              "raw_levels": {
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 493,
+                "sha256": "06e555f32b4e1815db63e638310f972ba93e17080d2976456de0e98db320c416"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 512,
+                "sha256": "ed86920b5bd117b75633cde2daec439da01d3536450170ca2c0abb98a8813278"
+              },
+              "tag": 0
+            },
+            {
+              "frame": 2833,
+              "stored_start": 2860,
+              "parquet_crc": null,
+              "declared_expanded_size": 512,
+              "stored": {
+                "bytes": 62,
+                "sha256": "546102ebfa2ae51705afad129edd924a14d2fafa8257c8bc735e0821a62bfcac"
+              },
+              "num_values": 128,
+              "num_nulls": 0,
+              "raw_levels": {
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 62,
+                "sha256": "546102ebfa2ae51705afad129edd924a14d2fafa8257c8bc735e0821a62bfcac"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 512,
+                "sha256": "c3407c7eeb436a4a38c9f61f0d23697a0c1111aee0925947ed93188068c841c7"
+              },
+              "tag": 0
+            }
+          ]
+        },
+        {
+          "span": [
+            5082,
+            6268
+          ],
+          "expanded_total": 1586,
+          "dictionary": {
+            "frame": 5082,
+            "stored_start": 5096,
+            "parquet_crc": null,
+            "declared_expanded_size": 16,
+            "stored": {
+              "bytes": 25,
+              "sha256": "c7e1ff0fcfb9e1a56b48390ce81b6f82ed579438ef47f26d69e0d8556d99c965"
+            },
+            "expanded": {
+              "bytes": 16,
+              "sha256": "d5bc16b119e864f43c908662735173d0ad192b537cfbacc7d599d178e5248200"
+            },
+            "zstd_frame": {
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            "signed_entries": [
+              -17,
+              2147483647,
+              0,
+              -2147483648
+            ]
+          },
+          "data": [
+            {
+              "frame": 5121,
+              "stored_start": 5147,
+              "parquet_crc": null,
+              "declared_expanded_size": 34,
+              "stored": {
+                "bytes": 19,
+                "sha256": "9f8095cfcc488b9a77f89401d4f0768ad7fb7e4d307ee590d07825d26082dd5a"
+              },
+              "num_values": 128,
+              "num_nulls": 0,
+              "raw_levels": {
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 19,
+                "sha256": "9f8095cfcc488b9a77f89401d4f0768ad7fb7e4d307ee590d07825d26082dd5a"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "index_stream": {
+                "bytes": 34,
+                "sha256": "e960c9120fdf8ce1bb647f3914d61b7aa2de2700fb6ed315241feba1958824bd"
+              },
+              "index_width": 2,
+              "ordered_indices": {
+                "bytes": 128,
+                "sha256": "276701acd506e7be76da0529851ed4758eff73dd68bc488a74684be46bb93e02"
+              },
+              "tag": 8
+            },
+            {
+              "frame": 5166,
+              "stored_start": 5194,
+              "parquet_crc": null,
+              "declared_expanded_size": 512,
+              "stored": {
+                "bytes": 493,
+                "sha256": "0a79e0c592e62f2552a1a77f6a46a1958ab6808b0db4d6831cdc7ad84697511a"
+              },
+              "num_values": 128,
+              "num_nulls": 0,
+              "raw_levels": {
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 493,
+                "sha256": "0a79e0c592e62f2552a1a77f6a46a1958ab6808b0db4d6831cdc7ad84697511a"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 512,
+                "sha256": "74625ecbcb28d5f4248ba98b2cdf0ad22f8a9718594056ae929c301ddca83568"
+              },
+              "tag": 0
+            },
+            {
+              "frame": 5687,
+              "stored_start": 5714,
+              "parquet_crc": null,
+              "declared_expanded_size": 512,
+              "stored": {
+                "bytes": 33,
+                "sha256": "6ddf973c4ce8fb0bc9433844d2992dfc377562472b06d441b4de3c268f1b9f0f"
+              },
+              "num_values": 128,
+              "num_nulls": 0,
+              "raw_levels": {
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 33,
+                "sha256": "6ddf973c4ce8fb0bc9433844d2992dfc377562472b06d441b4de3c268f1b9f0f"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 512,
+                "sha256": "7fcba93e3a1dd3e8ab19f3a9b82abd3855cdf7c4223e985b0427c1b0eb0647a1"
+              },
+              "tag": 0
+            },
+            {
+              "frame": 5747,
+              "stored_start": 5775,
+              "parquet_crc": null,
+              "declared_expanded_size": 512,
+              "stored": {
+                "bytes": 493,
+                "sha256": "cc1d13eef99dd6ba18ef2a3986e8904745b3c0e581f1d41607202d669b625765"
+              },
+              "num_values": 128,
+              "num_nulls": 0,
+              "raw_levels": {
+                "bytes": 0,
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+              },
+              "is_compressed": true,
+              "stored_suffix": {
+                "bytes": 493,
+                "sha256": "cc1d13eef99dd6ba18ef2a3986e8904745b3c0e581f1d41607202d669b625765"
+              },
+              "zstd_frame": {
+                "first_block_kind": 2,
+                "first_literal_kind": 0,
+                "dictionary_field_bytes": 0,
+                "checksum_flag": false
+              },
+              "plain_values": {
+                "bytes": 512,
+                "sha256": "9999876bd5052c91c728a657e74c7323a79267baef3c8936e300bff67b83b010"
+              },
+              "tag": 0
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 4696,
+        "sha256": "09c59baa83b5e8274ba98ff7f76bf1b69abbb71d180661c14136c2c91824e6f1"
+      }
+    }
+  },
+  "controls": {
+    "malformed_dictionary_stored_crc": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "8d2e341af9a6fbffb6ecc0b3920f2aaeb07f2fc215ac9508742e3dd1a0c91f9e"
+      },
+      "group": 1,
+      "cause": "(.dictionary (.dictionary 6282 (.checksum (.mismatch 155469774 2526987344))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_raw_reference_levels_stored_crc": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "41bb6abc763466ea2eecee8acca5ce0b1fdf11abcc29495802e1f16668bce75d"
+      },
+      "group": 1,
+      "cause": "(.dictionary (.chunk (.page 1 6323 (.checksum (.mismatch 3225273849 3470404904)))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_zstd_reference_levels_stored_crc": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "8e5d00077147363211383c49948b187c02aa2751ff3c8a81afbb5840d5667dec"
+      },
+      "group": 1,
+      "cause": "(.dictionary (.chunk (.page 2 6386 (.checksum (.mismatch 472796179 2631817996)))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_raw_plain_levels_stored_crc": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "c7783912e3bb196ccf6c47c11a7759b3109da514bfb64b41ed70c82dbcbf4688"
+      },
+      "group": 1,
+      "cause": "(.plain (.checksum 3 6455 (.mismatch 357338419 453619599)))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_zstd_plain_levels_stored_crc": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "e6076bae0754b8ef5d1ca418327b9d2cf36012546839577f997649e697ca03bf"
+      },
+      "group": 1,
+      "cause": "(.plain (.checksum 4 6942 (.mismatch 3301215492 1711081962)))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_reference_magic_valid_crc": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "f0f789cd6e544a271363fa486939116087a9303f65ebc80e1e0d8aa95d4671be"
+      },
+      "group": 1,
+      "cause": "(.dictionary (.preparation 2 6386 (.frame (.frame .badMagic))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }",
+      "recomputed_parquet_crc": 3893653409
+    },
+    "malformed_plain_magic_valid_crc": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "09c4d5a46713516722eae988250b788c2a9081bafaa0916fe7bfff2208c83515"
+      },
+      "group": 1,
+      "cause": "(.plain (.decode 4 6942 (.frame (.frame .badMagic))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }",
+      "recomputed_parquet_crc": 1164481119
+    },
+    "malformed_raw_plain_flag_true": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "315f7143e77564bcd898cb0335245a36a909f9844d2abe666cfde09775e9cc66"
+      },
+      "group": 1,
+      "cause": "(.plain (.decode 3 6455 (.frame (.frame .badMagic))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_plain_before_references": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "01993458986db43a1a37488e46b5ec6bfb47265f2dcff041ff8dc30a2d839849"
+      },
+      "group": 1,
+      "cause": "(.sequence (.prefixEncoding 1 6323 0))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_dictionary_reentry": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "22701ec49873fde669e723cc83512004963fc7a7dd49766b3706e297087cb893"
+      },
+      "group": 1,
+      "cause": "(.sequence (.suffixEncoding 4 6942 8))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_reentry_before_later_bad_header": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "444491d6f21c7bba3faa514b84a764a1331c0ef4845b80f28f208f3f9b406de1"
+      },
+      "group": 1,
+      "cause": "(.sequence (.suffixEncoding 4 6942 8))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "genuine_late_dictionary_only": {
+      "parquet": {
+        "bytes": 5754,
+        "sha256": "32f08146646d45a5a08c4034f0910465ce09f0468e9c231f7f710674b74bf8cb"
+      },
+      "group": 1,
+      "cause": "(.sequence .missingPlain)",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "genuine_v1_fallback": {
+      "parquet": {
+        "bytes": 7740,
+        "sha256": "9e87ede8e9c671f3532bd828b7e026b326ec2b3079e5a207ce4249e0aba01495"
+      },
+      "group": 0,
+      "cause": "(.header 1 2745 .expectedV2)",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "low_index_cap": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "0b46faa6ba185ed8085f0b2e0a4bca96e24eb7005707f650c907fb6352ac42de"
+      },
+      "group": 0,
+      "cause": "(.dictionary (.chunk (.page 1 2775 (.references .indexByteLimit))))",
+      "source_limits": "{ indices := ⟨1048576, 0⟩ }",
+      "output_limits": "{}"
+    },
+    "low_expanded_chunk_cap": {
+      "parquet": {
+        "bytes": 7880,
+        "sha256": "0b46faa6ba185ed8085f0b2e0a4bca96e24eb7005707f650c907fb6352ac42de"
+      },
+      "group": 0,
+      "cause": "(.dictionary (.chunk .expandedChunkLimit))",
+      "source_limits": "{ maxExpandedChunkBytes := 1340 }",
+      "output_limits": "{}"
+    }
+  }
+}
