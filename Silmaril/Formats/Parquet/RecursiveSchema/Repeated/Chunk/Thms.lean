@@ -4,6 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Page
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.V2
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Chain
+import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Dictionary
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
 
@@ -106,6 +107,28 @@ theorem decodeDataPage_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf
     DataPageWire limits codec leaf source frame start remaining rowCeiling decoded :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDataPage_wire read
 
+/-- The ordered entries come from exact signed words in the original
+checksum-checked dictionary frame. -/
+theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {dictionary : Dictionary}
+    (read : readDictionary limits leaf source frame = .ok dictionary) :
+    dictionary.frame = frame ∧ DictionaryWire limits leaf source dictionary :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readDictionary_wire read
+
+/-- Every present slot follows the exact original padded Hybrid stream and
+selects an in-range word from this chunk's dictionary in original order. -/
+theorem decodeDictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
+    DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDictionaryPage_wire read
+
+theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
+    {metadata : Footer.ColumnMetadata} {encoding : FramedEncoding metadata}
+    {dictionary : Option Dictionary} (read : readPrefix limits carrier metadata encoding = .ok dictionary) :
+    PrefixAdmission limits carrier metadata dictionary :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readPrefix_wire read
+
 /-- The strict lower-level walk covers the supplied carrier span and
 attains its exact counts, including when writing before footer construction. -/
 theorem walk_empty_prefix_wire {limits : Limits} {carrier : Carrier} {budget : Nat}
@@ -124,8 +147,8 @@ theorem ChainWire.originalFrames {limits : Limits} {carrier : Carrier} {start st
 theorem ChainWire.counts {limits : Limits} {carrier : Carrier} {start stop : Cursor}
     {pages : List ObservedPage} (wire : ChainWire limits carrier start stop pages) :
     start.page + pages.length = stop.page ∧
-    start.state.slot + (Observation.mk pages).levels.length = stop.state.slot ∧
-    start.state.rows + (Observation.mk pages).levels.countP LevelSlot.startsRow = stop.state.rows :=
+    start.state.slot + (Observation.mk pages none).levels.length = stop.state.slot ∧
+    start.state.rows + (Observation.mk pages none).levels.countP LevelSlot.startsRow = stop.state.rows :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.chain_counts wire
 
 /-- Starting with no live list, successful decoding walks consecutive

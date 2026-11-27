@@ -28,10 +28,10 @@ private theorem from_mapError {α ε δ : Type} {first : Except ε α} {wrap : �
   | error => simp [Except.mapError] at read
   | ok => simpa only [Except.mapError, Except.ok.injEq] using read
 
-public theorem admit_with_wire {requireEqualSizes : Bool} {frame : Page.Frame} {remaining : Nat}
-    {info : Page.DataV1} (read : admitPageWith requireEqualSizes frame remaining = .ok info) :
+public theorem admit_with_wire {requireEqualSizes : Bool} {frame : Page.Frame} {remaining : Nat} {encoding : Int}
+    {info : Page.DataV1} (read : admitPageWith requireEqualSizes frame remaining encoding = .ok info) :
     frame.value.kind = .dataV1 info ∧
-      (info.encoding = 0 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
+      (info.encoding = encoding ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
       info.numValues ≤ remaining ∧
       (requireEqualSizes = true → frame.value.uncompressedSize = frame.value.compressedSize) := by
   cases source : frame.value.kind <;> simp only [admitPageWith, source] at read <;> try contradiction

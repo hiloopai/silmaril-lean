@@ -1,0 +1,101 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "native": {
+      "bytes": 4421,
+      "sha256": "8f8b0765107a61509259b5c932e0adfbc7eeed04e8f3b883de7db38f099956bb"
+    },
+    "mixed": {
+      "bytes": 3361,
+      "sha256": "8f577d7ab8c8427775e4b632e18c9395e8944ea94fb0dfec7da680ffba1e1c54"
+    },
+    "v2": {
+      "bytes": 4386,
+      "sha256": "abb6a6f002e133999e32fe16051538d6746bc883e897e1c27b5fa849db145583"
+    },
+    "compressed": {
+      "bytes": 4525,
+      "sha256": "2487fb998958a70f38eaa01ecec609ea0fbda7d5a0e85d05bcdc8e0ba51b1950"
+    }
+  },
+  "labeled_edits": {
+    "missing_page": {
+      "bytes": 4387,
+      "sha256": "1968de6ba4877b675d25834f811f9066092648ad515939ed3b3cf5739038a030"
+    },
+    "missing_offset": {
+      "bytes": 4384,
+      "sha256": "84b01061010b0f79d06b96a80bfb41043292db9fe047b55d43f029c86a8fef8b"
+    },
+    "second_dictionary": {
+      "bytes": 4467,
+      "sha256": "a8c29fae4e51fb6a9c41cf992ba810a13a92fa89710aa3e75dab1cdb2870c175"
+    },
+    "dictionary_after_data": {
+      "bytes": 4427,
+      "sha256": "f22277aed1d6842bc67c619fd9ace2583b5e8421124bab56274a2676efea391e"
+    },
+    "legacy_page": {
+      "bytes": 4427,
+      "sha256": "2a129877e21d6716d1bad250d1c3a218e2ad29e6ead0ecc63a2b9e80568e7ba0"
+    },
+    "plain_fallback": {
+      "bytes": 4427,
+      "sha256": "68d8351e64bccedd60b8c2b6c67cf82028f043d160d99c0a780f6e48fa887bb5"
+    },
+    "index_out_of_range": {
+      "bytes": 4433,
+      "sha256": "7747b58c555b331bea3969c4c748cc52c81e24d87795edfe3e2eef453c77352e"
+    },
+    "index_trailing": {
+      "bytes": 4428,
+      "sha256": "afcc59693855b38e0af92e655109b26321bd602f20dad181badf0e9720726083"
+    },
+    "index_width_missing": {
+      "bytes": 4423,
+      "sha256": "d14b83385a82c449ebb3c4de8b8b7b9fe3b30ded669983e086c6754e74c783d8"
+    },
+    "index_short": {
+      "bytes": 4426,
+      "sha256": "ed82b012e47d5bcf2ab16425a620e1ff83e4e8a8b3da2de1bf64793ba995d893"
+    },
+    "dictionary_short": {
+      "bytes": 4426,
+      "sha256": "23c5e979c7b4c94e80b8c83ca473f3de5422979c8b71a6d61befa878585377c6"
+    },
+    "dictionary_crc": {
+      "bytes": 4427,
+      "sha256": "c6d7f52c459c60546b29d93cfdcc0896aacad1287abdae03b68c12908748ff76"
+    },
+    "wrong_data_offset": {
+      "bytes": 4421,
+      "sha256": "dc94615f78a3667996b6d3d1a75aae1c50629963d6e4631cf3795d412fe97e2b"
+    },
+    "footer_total": {
+      "bytes": 4421,
+      "sha256": "f88f9cecda643accdd4a56460e80ab09736e2f9baa58c971f9cc99e9ba0828c8"
+    },
+    "continuation": {
+      "bytes": 643,
+      "sha256": "8d2c119c859daff288c086c9806173106ff428cbb65083806114ebf7c1fad758"
+    }
+  },
+  "lean_ipc": {
+    "native": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "mixed": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "continuation": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    }
+  }
+}

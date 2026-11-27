@@ -5,12 +5,36 @@ import Silmaril.Formats.Parquet.Page.Thms
 import Silmaril.Formats.Parquet.Snapshot.Thms
 import Silmaril.Formats.Parquet.Footer.PageLessRecursive.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.V2
+import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Dictionary
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk
 
 open Silmaril.Formats.Parquet
 open Silmaril.Formats.Parquet.RecursiveSchema.Repeated (Compiled)
 open Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
+
+private theorem decodeFramedPage_wire {limits : Limits} {carrier : Carrier} {frame : Page.Frame}
+    {start : State} {decoded : DecodedPage}
+    (read : decodeFramedPage limits carrier frame start = .ok decoded) :
+    FramedPageWire limits carrier frame start decoded := by
+  unfold decodeFramedPage at read
+  split at read
+  · contradiction
+  · cases dictionary : carrier.dictionary with
+    | none =>
+      simpa only [FramedPageWire, dictionary] using decodeDataPage_wire (by simpa only [dictionary] using read)
+    | some entries =>
+      simpa only [FramedPageWire, dictionary] using
+        decodeDictionaryPage_wire (by simpa only [dictionary] using read)
+
+private theorem framedPage_counts {limits : Limits} {carrier : Carrier} {frame : Page.Frame}
+    {start : State} {decoded : DecodedPage}
+    (wire : FramedPageWire limits carrier frame start decoded) :
+    start.slot + decoded.levels.length = decoded.after.slot ∧
+      start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
+  cases dictionary : carrier.dictionary with
+  | none => exact dataPage_counts (by simpa only [FramedPageWire, dictionary] using wire)
+  | some entries => exact dictionaryPage_counts (by simpa only [FramedPageWire, dictionary] using wire)
 
 private def WalkResult (limits : Limits) (carrier : Carrier) (cursor : Cursor)
     (budget : Nat) (reversed pages : List ObservedPage) : Prop :=
@@ -47,8 +71,7 @@ private theorem walk_wire {limits : Limits} {carrier : Carrier} {budget : Nat}
       cases parsed : Page.readPage limits.framing carrier.bytes carrier.span cursor.byte with
       | error reason => simp [parsed, Except.mapError, bind, Except.bind] at read
       | ok frame =>
-        cases decoded : decodeDataPage limits carrier.codec carrier.leaf carrier.bytes frame cursor.state
-            (carrier.slots - cursor.state.slot) carrier.rows with
+        cases decoded : decodeFramedPage limits carrier frame cursor.state with
         | error reason => simp [parsed, decoded, Except.mapError, bind, Except.bind] at read
         | ok output =>
           simp only [parsed, decoded, Except.mapError, bind, Except.bind] at read
@@ -56,7 +79,7 @@ private theorem walk_wire {limits : Limits} {carrier : Carrier} {budget : Nat}
           obtain ⟨stop, tail, pages, cap, byte, slots, rows, chain⟩ :=
             ih (reversed := page :: reversed) read
           refine ⟨stop, page :: tail, ?_, by simpa using Nat.succ_le_succ cap,
-            byte, slots, rows, .more parsed rfl (decodeDataPage_wire decoded) chain⟩
+            byte, slots, rows, .more parsed rfl (decodeFramedPage_wire decoded) chain⟩
           simpa [List.reverse_cons, List.append_assoc] using pages
 
 public theorem walk_empty_prefix_wire {limits : Limits} {carrier : Carrier}
@@ -80,22 +103,59 @@ public theorem chain_frames {limits : Limits} {carrier : Carrier} {start stop : 
 public theorem chain_counts {limits : Limits} {carrier : Carrier} {start stop : Cursor}
     {pages : List ObservedPage} (wire : ChainWire limits carrier start stop pages) :
     start.page + pages.length = stop.page ∧
-    start.state.slot + (Observation.mk pages).levels.length = stop.state.slot ∧
-    start.state.rows + (Observation.mk pages).levels.countP LevelSlot.startsRow = stop.state.rows := by
+    start.state.slot + (Observation.mk pages none).levels.length = stop.state.slot ∧
+    start.state.rows + (Observation.mk pages none).levels.countP LevelSlot.startsRow = stop.state.rows := by
   induction wire with
   | nil => simp [Observation.levels]
   | @more start stop first rest _ _ bound _ ih =>
-    obtain ⟨slots, rows⟩ := dataPage_counts bound
+    obtain ⟨slots, rows⟩ := framedPage_counts bound
     obtain ⟨pageIndex, slotIndex, rowIndex⟩ := ih
     simp only [Cursor.advance, Observation.levels] at pageIndex slotIndex rowIndex
     simp only [Observation.levels, List.length_cons, List.flatMap_cons, List.length_append, List.countP_append]
     omega
 
+public theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
+    {metadata : Footer.ColumnMetadata} {encoding : FramedEncoding metadata}
+    {dictionary : Option Dictionary} (read : readPrefix limits carrier metadata encoding = .ok dictionary) :
+    PrefixAdmission limits carrier metadata dictionary := by
+  cases encoding with
+  | plain _ offset =>
+    cases Except.ok.inj read
+    exact offset
+  | dictionary _ codec =>
+    unfold readPrefix at read
+    dsimp only at read
+    split at read
+    · rename_i offset offsetEq
+      split at read
+      · contradiction
+      · rename_i origin
+        split at read
+        · contradiction
+        · rename_i cap
+          cases parsed : Page.readPage limits.framing carrier.bytes carrier.span (initial carrier).byte with
+          | error => simp [parsed, Except.mapError, bind, Except.bind] at read
+          | ok frame =>
+            simp only [parsed, Except.mapError, bind, Except.bind] at read
+            cases decoded : readDictionary limits carrier.leaf carrier.bytes frame with
+            | error => simp [decoded] at read
+            | ok dict =>
+              simp only [decoded] at read
+              split at read
+              · contradiction
+              · rename_i dataOffset
+                cases Except.ok.inj read
+                obtain ⟨rfl, words⟩ := readDictionary_wire decoded
+                refine ⟨codec, ?_, by omega, by omega, by omega, parsed, words⟩
+                rw [offsetEq, Classical.not_not.mp origin]
+                rfl
+    · contradiction
+
 private theorem readFramed_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
     {limits : Limits} {binding : Binding schema group column} {output : Observation}
-    {span : Footer.Span}
-    (accepted : readFramed limits binding span = .ok output) : FramedWire limits binding span output := by
+    {span : Footer.Span} {encoding : FramedEncoding binding.chunk.metadata}
+    (accepted : readFramed limits binding span encoding = .ok output) : FramedWire limits binding span output := by
   unfold readFramed at accepted
   dsimp only at accepted
   split at accepted
@@ -112,23 +172,47 @@ private theorem readFramed_wire {schemaLimits : Snapshot.Limits} {snapshot : Sna
         · rename_i rows
           split at accepted
           · contradiction
-          · cases walked : walk limits (carrierOf binding span) limits.framing.maxPages
-                (initial (carrierOf binding span)) [] with
-            | error reason => simp [walked, Bind.bind, Except.bind] at accepted
-            | ok pages =>
-              simp only [walked, Bind.bind, Except.bind] at accepted
-              split at accepted
-              · contradiction
-              rename_i uncompressed
-              cases Except.ok.inj accepted
-              obtain ⟨stop, cap, byteEnd, slotEnd, rowEnd, chain⟩ := walk_empty_prefix_wire walked
-              obtain ⟨_, slotsExact, rowsExact⟩ := chain_counts chain
-              have frames := chain_frames chain
-              exact ⟨Classical.not_not.mp within, Nat.le_of_not_gt bytes, Nat.le_of_not_gt slots,
-                Nat.le_of_not_gt rows, cap, Classical.not_not.mp uncompressed,
-                ⟨stop, byteEnd, slotEnd, rowEnd, chain⟩, byteEnd ▸ frames,
-                by simpa [initial, carrierOf] using slotsExact.trans slotEnd,
-                by simpa [initial, carrierOf] using rowsExact.trans rowEnd⟩
+          · let carrier := carrierOf binding span
+            cases prepared : readPrefix limits carrier binding.chunk.metadata encoding with
+            | error reason => simp [carrier, prepared, Bind.bind, Except.bind] at accepted
+            | ok dictionary =>
+              simp only [← show carrier = carrierOf binding span from rfl, prepared,
+                Bind.bind, Except.bind] at accepted
+              let start := prefixCursor carrier dictionary
+              cases walked : walk limits (carrierOf binding span dictionary)
+                  (limits.framing.maxPages - start.page) start [] with
+              | error reason => simp [start, walked] at accepted
+              | ok pages =>
+                simp only [← show start = prefixCursor carrier dictionary from rfl, walked] at accepted
+                split at accepted
+                · contradiction
+                rename_i uncompressed
+                cases Except.ok.inj accepted
+                obtain ⟨stop, cap, byteEnd, slotEnd, rowEnd, chain⟩ := walk_empty_prefix_wire walked
+                obtain ⟨_, slotsExact, rowsExact⟩ := chain_counts chain
+                have frames := chain_frames chain
+                have leading := readPrefix_wire prepared
+                refine ⟨Classical.not_not.mp within, Nat.le_of_not_gt bytes, Nat.le_of_not_gt slots,
+                  Nat.le_of_not_gt rows, ?_, leading, Classical.not_not.mp uncompressed,
+                  ⟨stop, byteEnd, slotEnd, rowEnd, chain⟩, ?_, ?_, ?_⟩
+                · cases dictionary with
+                  | none => simpa [Observation.frames, start, prefixCursor, initial] using cap
+                  | some dict =>
+                    have positive := (show PrefixWire limits carrier binding.chunk.metadata dict from leading).cap
+                    simp only [Observation.frames, Option.toList_some, List.map_cons, List.map_nil,
+                      List.length_append, List.length_cons, List.length_nil, List.length_map]
+                    have cap' : pages.length ≤ limits.framing.maxPages - 1 := by
+                      simpa [start, prefixCursor, afterDictionary] using cap
+                    omega
+                · cases dictionary with
+                  | none => exact byteEnd ▸ frames
+                  | some dict =>
+                    have original : PrefixWire limits carrier binding.chunk.metadata dict := leading
+                    exact .cons (Page.readPage_within original.frame).1 (byteEnd ▸ frames)
+                · cases dictionary <;> simpa [Observation.levels, start, prefixCursor, initial,
+                    afterDictionary, carrierOf] using slotsExact.trans slotEnd
+                · cases dictionary <;> simpa [Observation.levels, start, prefixCursor, initial,
+                    afterDictionary, carrierOf] using rowsExact.trans rowEnd
 
 public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
@@ -158,6 +242,6 @@ public theorem noSpan_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
     output.pages = [] ∧ Page.columnSpan snapshot.footer.start binding.chunk.metadata = none := by
   cases storage : binding.storage with
   | framed span encodings original => simp [Binding.span?, storage] at empty
-  | pageless admitted => simpa only [storage] using wire.storage
+  | pageless admitted => exact (show _ ∧ _ ∧ _ by simpa only [storage] using wire.storage).2
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk

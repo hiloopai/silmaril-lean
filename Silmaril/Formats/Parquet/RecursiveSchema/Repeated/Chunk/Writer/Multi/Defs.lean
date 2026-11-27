@@ -82,7 +82,7 @@ def serialize (limits : Limits) (input : Input) : Except Error Packed :=
 
 def carrier (input : Input) (wire : Bytes) : Carrier :=
   ⟨wire, ⟨0, wire.length⟩, input.leaf, ⟨input.group, input.column, input.leaf.site.location.path⟩,
-    input.slots, input.rows, .uncompressed⟩
+    input.slots, input.rows, .uncompressed, none⟩
 
 def frameAt (offset : Nat) (piece : Writer.Output) : Page.Frame :=
   let payload := offset + piece.page.headerBytes.length
@@ -124,7 +124,7 @@ def certify (limits : Limits) (input : Input) (packed : Packed) : Except Error O
   let source := carrier input wire
   let pages ← (walk limits source limits.framing.maxPages initial []).mapError .readback
   if agrees input packed.stop initial input.pages packed.pieces pages then
-    .ok ⟨wire, ⟨pages⟩, packed.stop.state⟩
+    .ok ⟨wire, ⟨pages, none⟩, packed.stop.state⟩
   else .error .readbackMismatch
 
 /-- Pack one bounded leaf chunk and certify it with the existing strict

@@ -8,10 +8,10 @@ import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Chunk.Chain
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Chunk
 
-theorem admitPageWith_wire {requireEqualSizes : Bool} {frame : Page.Frame} {remaining : Nat}
-    {info : Page.DataV1} (read : admitPageWith requireEqualSizes frame remaining = .ok info) :
+theorem admitPageWith_wire {requireEqualSizes : Bool} {frame : Page.Frame} {remaining : Nat} {encoding : Int}
+    {info : Page.DataV1} (read : admitPageWith requireEqualSizes frame remaining encoding = .ok info) :
     frame.value.kind = .dataV1 info ∧
-      (info.encoding = 0 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
+      (info.encoding = encoding ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
       info.numValues ≤ remaining ∧
       (requireEqualSizes = true → frame.value.uncompressedSize = frame.value.compressedSize) :=
   Proofs.Formats.Parquet.RecursiveSchema.Chunk.admit_with_wire read

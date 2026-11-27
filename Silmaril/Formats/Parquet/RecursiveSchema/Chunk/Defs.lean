@@ -121,12 +121,13 @@ def fill (states : List Presence) (words : List Word) (reversed : List Slot) :
   | .value :: rest, word :: words => fill rest words (.value word :: reversed)
   | _, _ => .error .wordCount
 
-/-- Share the PLAIN V1 header checks. Identity callers also require equal
+/-- Share the V1 header checks for a specified value encoding. Identity callers also require equal
 stored and raw sizes before they read the body. -/
-def admitPageWith (requireEqualSizes : Bool) (frame : Page.Frame) (remaining : Nat) : Except Cause Page.DataV1 :=
+def admitPageWith (requireEqualSizes : Bool) (frame : Page.Frame) (remaining : Nat)
+    (encoding : Int := 0) : Except Cause Page.DataV1 :=
   match frame.value.kind with
   | .dataV1 info =>
-    if ¬ (info.encoding = 0 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3)
+    if ¬ (info.encoding = encoding ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3)
       then .error (.encoding info.encoding info.definitionLevelEncoding info.repetitionLevelEncoding)
     else if requireEqualSizes = true ∧ frame.value.uncompressedSize ≠ frame.value.compressedSize
       then .error (.pageSizes frame.value.uncompressedSize frame.value.compressedSize)
