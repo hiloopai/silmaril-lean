@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Formats.Parquet.Date.Leaf.Gzip.Defs
+public import Silmaril.Formats.Compression.Checksum.CRC32Spec
 
 /-! Opt-in selected GZIP PLAIN DATE data page V2. -/
 
@@ -65,5 +66,35 @@ def toIpc (input : Snapshot.Limits) (limits : Limits) (output : Arrow.Observatio
     (ordinal : Nat) (bytes : Bytes) : Except IpcError KBytes := do
   let bound ← (openLeaf input bytes ordinal).mapError (.source ∘ .openFailure)
   Events.emitWith output bound .source .closed .writer (trace limits bound)
+
+/-- Physical V2 preparation shared by PLAIN values and dictionary references.
+The original frame supplies raw levels and exactly one flag-selected suffix. -/
+structure PreparedFrame (limits : ScalarPage.Limits) (source : Bytes) (frame : Page.Frame)
+    (header : Page.DataV2) (schema : FlatPage.LevelSchema) (prepared : ScalarPage.Prepared) : Prop where
+  kind : frame.value.kind = .dataV2 header
+  slice : source.slice? frame.payload.start (some frame.payload.stop) =
+    some (Page.Checksum.payloadBytes source frame)
+  storedSize : (Page.Checksum.payloadBytes source frame).length = frame.value.compressedSize
+  storedBound : (Page.Checksum.payloadBytes source frame).length ≤ limits.compressedBytes
+  expandedBound : frame.value.uncompressedSize ≤ limits.uncompressedBytes
+  checksum : ∃ status : Page.Checksum.Status, match status with
+    | .absent => frame.value.crc = none
+    | .valid crc => frame.value.crc = some crc ∧
+        Compression.crc32Spec (Page.Checksum.payloadBytes source frame).toList = crc
+  rows : header.numRows = header.numValues
+  nulls : header.numNulls ≤ header.numValues
+  repetition : header.repetitionBytes = 0
+  definitionStoredBound : header.definitionBytes ≤ frame.value.compressedSize
+  definitionExpandedBound : header.definitionBytes ≤ frame.value.uncompressedSize
+  levels : ∃ layout definitions encoded, schema.layout? = some layout ∧
+    definitions.length = header.definitionBytes ∧
+    (Page.Checksum.payloadBytes source frame).toList = definitions.toList ++ encoded ∧
+    encoded.length = frame.value.compressedSize - header.definitionBytes ∧
+    prepared.scalars.length = frame.value.uncompressedSize - header.definitionBytes ∧
+    (if header.isCompressed then Compression.Gzip.decoder encoded = some (prepared.scalars.toList, [])
+      else encoded = prepared.scalars.toList) ∧
+    FlatPage.readMask layout header.numValues limits.levels definitions = .ok prepared.mask
+  maskLength : prepared.mask.length = header.numValues
+  present : prepared.mask.count true + header.numNulls = header.numValues
 
 end Silmaril.Formats.Parquet.Date.Leaf.Gzip.V2

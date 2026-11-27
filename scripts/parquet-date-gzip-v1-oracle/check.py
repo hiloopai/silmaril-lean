@@ -137,7 +137,7 @@ def damaged_outer(wire, frame):
     return wire[:start] + edited + wire[start + len(stored):], (offset, declared, computed)
 
 
-def damaged_member_crc(wire, frame, thrift):
+def damaged_member_crc(wire, frame, thrift, *, level_bytes=0):
     offset, header, start, stored = frame
     # Corrupt the RFC 1952 trailer and keep a correct outer page CRC.
     kind = thrift["TType"]
@@ -151,7 +151,7 @@ def damaged_member_crc(wire, frame, thrift):
     else:
         raise AssertionError("The edited CRC changed the Compact header extent")
     try:
-        gzip_member(edited)
+        gzip_member(edited[level_bytes:])
     except zlib.error:
         pass
     else:

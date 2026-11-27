@@ -163,7 +163,7 @@ theorem decodePage_wire {limits : Limits} {bound : Bound} {source : Bytes} {entr
     (planned : planData bound page.frame = .ok page)
     (decoded : decodePage limits source entries page ordinal = .ok slots) :
     PageWire limits source entries page slots := by
-  unfold decodePage at decoded
+  unfold decodePage decodePageWith at decoded
   obtain ⟨status, verified, decoded⟩ := bind_ok decoded
   have crc := Date.Leaf.Dictionary.Snappy.verifyData_wire (mapError_ok verified)
   by_cases plain : page.params.encoding = 0
@@ -193,7 +193,7 @@ theorem readGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {slots : 
         (fun page => planData bound page.frame = .ok page) ∧ Date.Leaf.Fallback.Ordered checked.data ∧
       List.Forall₂ (PageWire limits bound.snapshot.bytes checked.entries.toArray) checked.data pages ∧
       slots = pages.flatten ∧ slots.length = checked.selection.group.numRows.toNat := by
-  unfold Date.Leaf.Fallback.Gzip.readGroup at read
+  unfold Date.Leaf.Fallback.Gzip.readGroup readGroupWith at read
   obtain ⟨checked, planned, read⟩ := bind_ok read
   obtain ⟨pages, decoded, read⟩ := bind_ok read
   obtain ⟨wire, phases⟩ := checkGroup_wire planned
@@ -232,6 +232,6 @@ theorem readGroup_firstPageError {limits : Limits} {bound : Bound} {index ordina
       decodePage limits bound.snapshot.bytes checked.entries.toArray item i) = .ok prefixSlots)
     (failed : decodePage limits bound.snapshot.bytes checked.entries.toArray page ordinal = .error cause) :
     Date.Leaf.Fallback.Gzip.readGroup limits bound index = .error cause := by
-  simp [Date.Leaf.Fallback.Gzip.readGroup, admitted, split, earlier, failed, Bind.bind, Except.bind]
+  simp [Date.Leaf.Fallback.Gzip.readGroup, readGroupWith, admitted, split, earlier, failed, Bind.bind, Except.bind]
 
 end Silmaril.Proofs.Formats.Parquet.Date.Leaf.Fallback.Gzip

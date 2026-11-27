@@ -36,6 +36,22 @@ theorem decodePage_wire {limits : Limits} {source : Bytes} {page : DataPage} {or
     PageWire limits source page slots :=
   Proofs.Formats.Parquet.Date.Leaf.Gzip.V2.decodePage_wire read
 
+/-- Any admitted V2 encoding shares the original checksummed level prefix
+and the exact flag-selected suffix. -/
+theorem prepareFor_frame {limits : ScalarPage.Limits} {source : Bytes} {frame : Page.Frame}
+    {header : Page.DataV2} {schema : FlatPage.LevelSchema} {prepared : ScalarPage.Prepared}
+    {status : Page.Checksum.Status} {encoding : Int} {params : ScalarPage.Parameters}
+    (kind : frame.value.kind = .dataV2 header)
+    (parameters : params =
+      ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, schema, header.numValues,
+        Payload.Codec.gzip.id, header.encoding, .v2 header.numNulls header.numRows
+          header.repetitionBytes header.definitionBytes (some header.isCompressed)⟩)
+    (crcCheck : Page.Checksum.verify limits.compressedBytes source frame = .ok status)
+    (prep : ScalarPage.prepareFor encoding params limits (Page.Checksum.payloadBytes source frame) =
+      .ok prepared) :
+    PreparedFrame limits source frame header schema prepared :=
+  Proofs.Formats.Parquet.Date.Leaf.Gzip.V2.prepareFor_frame kind parameters crcCheck prep
+
 /-- The original raw level prefix supplies the mask. Only the suffix has a codec,
 with one exact GZIP member or the exact original PLAIN bytes. -/
 theorem pageWire_exact {limits : Limits} {bound : Bound} {source : Bytes}

@@ -139,7 +139,7 @@ theorem decodePage_checksum_error {limits : Limits} {source : Bytes} {entries : 
     (failed : Page.Checksum.verify limits.scalar.compressedBytes source page.frame = .error cause) :
     decodePage limits source entries page ordinal = .error (.chunk (.page ordinal page.frame.header.start
       (.checksum cause))) := by
-  simp [decodePage, Date.Leaf.Dictionary.Snappy.verifyData, Date.Leaf.Dictionary.Snappy.atFrame,
+  simp [decodePage, decodePageWith, Date.Leaf.Dictionary.Snappy.verifyData, Date.Leaf.Dictionary.Snappy.atFrame,
     failed, Except.mapError, Bind.bind, Except.bind]
 
 end Silmaril.Formats.Parquet.Date.Leaf.Fallback.Gzip

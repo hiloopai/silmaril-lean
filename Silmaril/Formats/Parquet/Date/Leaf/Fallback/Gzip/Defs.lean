@@ -65,26 +65,36 @@ def planPages (bound : Bound) (frames : List Page.Frame) : Except GroupError (Li
 def checkGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError CheckedGroup :=
   Dictionary.Snappy.checkGroupWithCodec .gzip .chunk (readEntries limits) (planPages bound) limits.toDictionaryLimits bound index
 
-/-- Check the original stored CRC before passing the whole V1 body to the
-decoder selected by the admitted encoding. Both decoders use the GZIP codec
-from the plan. -/
-def decodePage (limits : Limits) (source : Bytes) (entries : Array Int32)
-    (page : DataPage) (ordinal : Nat) : Except GroupError Slots := do
-  let _ ← (Dictionary.Snappy.verifyData limits.toDictionaryLimits source page ordinal).mapError .chunk
+/-- Verify the original stored body before dispatching to either scalar
+decoder. The admitted parameters determine the page version and codec. -/
+def decodePageWith {ε : Type} (chunkError : Dictionary.Snappy.GroupError → ε)
+    (plainError : Nat → Nat → ScalarPage.Error → ε)
+    (limits : Limits) (source : Bytes) (entries : Array Int32)
+    (page : DataPage) (ordinal : Nat) : Except ε Slots := do
+  let _ ← (Dictionary.Snappy.verifyData limits.toDictionaryLimits source page ordinal).mapError chunkError
   let stored := Page.Checksum.payloadBytes source page.frame
   if page.params.encoding = 0 then
     (ScalarPage.decode .int32 page.params limits.scalar stored).mapError
-      (.plain ordinal page.frame.header.start)
+      (plainError ordinal page.frame.header.start)
   else
     (DictionaryIndex.decode entries page.params limits.scalar limits.indices stored).mapError
-      (.chunk ∘ Dictionary.Snappy.atFrame ordinal page.frame ∘ .references)
+      (chunkError ∘ Dictionary.Snappy.atFrame ordinal page.frame ∘ .references)
 
-def readGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError Slots := do
-  let checked ← checkGroup limits bound index
+def decodePage (limits : Limits) (source : Bytes) (entries : Array Int32)
+    (page : DataPage) (ordinal : Nat) : Except GroupError Slots :=
+  decodePageWith .chunk .plain limits source entries page ordinal
+
+def readGroupWith {ε : Type} (check : Nat → Except ε CheckedGroup)
+    (decode : Bytes → Array Int32 → DataPage → Nat → Except ε Slots)
+    (bound : Bound) (index : Nat) : Except ε Slots := do
+  let checked ← check index
   let entries := checked.entries.toArray
   let pages ← (checked.data.zipIdx 1).mapM fun (page, ordinal) =>
-    decodePage limits bound.snapshot.bytes entries page ordinal
+    decode bound.snapshot.bytes entries page ordinal
   return pages.flatten
+
+def readGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError Slots :=
+  readGroupWith (checkGroup limits bound) (decodePage limits) bound index
 
 def trace (limits : Limits) (bound : Bound) :
     Arrow.Events.Trace (Events.schema bound) Date.Events.Cell Error :=

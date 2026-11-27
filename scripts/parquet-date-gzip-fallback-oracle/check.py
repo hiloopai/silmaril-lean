@@ -120,7 +120,7 @@ def edit_encoding(wire, frame, tag, thrift):
     return wire[:offset] + edited + wire[payload:]
 
 
-def append_member(wire, last, thrift):
+def append_member(wire, last, thrift, *, level_bytes=0):
     """Add a second empty member to the final page and update all stored extents."""
     offset, header, payload, stored = last
     start, meta = footer(wire, thrift)
@@ -129,7 +129,7 @@ def append_member(wire, last, thrift):
     extra = compressor.flush()
     edited = stored + extra
     check = zlib.decompressobj(wbits=31)
-    assert check.decompress(edited) == zlib.decompress(stored, wbits=31)
+    assert check.decompress(edited[level_bytes:]) == zlib.decompress(stored[level_bytes:], wbits=31)
     assert check.eof and check.unused_data == extra and zlib.decompress(extra, wbits=31) == b""
     crc = zlib.crc32(edited)
     types = thrift["TType"]

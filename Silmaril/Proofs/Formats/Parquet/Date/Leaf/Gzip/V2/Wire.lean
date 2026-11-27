@@ -61,6 +61,64 @@ theorem decodePage_wire {limits : Limits} {source : Bytes} {page : DataPage} {or
     PageWire limits source page slots :=
   Date.Leaf.Gzip.decodePage_wire (mapError_ok read)
 
+theorem prepareFor_frame {limits : ScalarPage.Limits} {source : Bytes} {frame : Page.Frame}
+    {header : Page.DataV2} {schema : FlatPage.LevelSchema} {prepared : ScalarPage.Prepared}
+    {status : Page.Checksum.Status} {encoding : Int} {params : ScalarPage.Parameters}
+    (kind : frame.value.kind = .dataV2 header)
+    (parameters : params =
+      ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, schema, header.numValues,
+        Payload.Codec.gzip.id, header.encoding, .v2 header.numNulls header.numRows
+          header.repetitionBytes header.definitionBytes (some header.isCompressed)⟩)
+    (crcCheck : Page.Checksum.verify limits.compressedBytes source frame = .ok status)
+    (prep : ScalarPage.prepareFor encoding params limits (Page.Checksum.payloadBytes source frame) =
+      .ok prepared) :
+    PreparedFrame limits source frame header schema prepared := by
+  obtain ⟨slice, storedSize, storedBound, crc⟩ := Date.Leaf.Gzip.stored_exact crcCheck
+  obtain ⟨layout, valid, body⟩ := ScalarPage.prepareFor_sound prep
+  have counts := ScalarPage.preparedFor_counts prep
+  have expandedBound : params.sizes.uncompressed ≤ limits.uncompressedBytes := by
+    unfold ScalarPage.validateFor at valid
+    dsimp only at valid
+    split_ifs at valid with tag extent compressed expanded
+    exact Nat.le_of_not_gt expanded
+  have selectedLayout : params.schema.layout? = some layout := by
+    unfold ScalarPage.validateFor at valid
+    dsimp only at valid
+    split_ifs at valid
+    split at valid
+    · cases valid
+      assumption
+    · contradiction
+  simp only [parameters, ScalarPage.PreparedWire] at body
+  simp only [parameters] at counts expandedBound selectedLayout
+  obtain ⟨nulls, rows, repetition, definitionStoredBound, definitionExpandedBound, _,
+    definitions, encoded, length, split, levels, _, payload⟩ := body
+  obtain ⟨encodedSize, expandedSize, codec, selected, expansion⟩ := payload
+  have suffix : if header.isCompressed then
+        Compression.Gzip.decoder encoded = some (prepared.scalars.toList, [])
+      else encoded = prepared.scalars.toList := by
+    cases flag : header.isCompressed with
+    | false =>
+      have codecIs : Payload.Codec.uncompressed = codec := by
+        apply Option.some.inj
+        simpa [ScalarPage.v2Codec, flag, Payload.Codec.ofId_id] using selected
+      subst codec
+      cases expansion
+      simp
+    | true =>
+      have codecIs : Payload.Codec.gzip = codec := by
+        apply Option.some.inj
+        simpa [ScalarPage.v2Codec, flag, Payload.Codec.ofId_id] using selected
+      subst codec
+      cases expansion with
+      | gzip complete => simpa using complete
+  refine ⟨kind, slice, storedSize, storedBound, expandedBound, ⟨status, by cases status <;> exact crc⟩,
+    rows, nulls, repetition, definitionStoredBound, definitionExpandedBound,
+    ⟨layout, definitions, encoded, selectedLayout, length, split, encodedSize,
+      by simpa using expandedSize, suffix, levels⟩, counts.1, ?_⟩
+  have present := counts.2
+  omega
+
 theorem pageWire_exact {limits : Limits} {bound : Bound} {source : Bytes}
     {page : DataPage} {ordinal : Nat} {slots : Slots}
     (planned : planData bound page.frame ordinal = .ok page) (read : PageWire limits source page slots) :
@@ -87,38 +145,19 @@ theorem pageWire_exact {limits : Limits} {bound : Bound} {source : Bytes}
       (slots.filterMap id).length + header.numNulls = header.numValues := by
   obtain ⟨_, header, kind, tag, params⟩ := planData_wire planned
   obtain ⟨status, crcCheck, decoded⟩ := read
-  obtain ⟨slice, storedSize, storedCap, crc⟩ := Date.Leaf.Gzip.stored_exact crcCheck
   obtain ⟨prepared, words, prep, plain, mask, ordered, _, _⟩ := ScalarPage.decode_sound decoded
-  obtain ⟨layout, valid, body⟩ := ScalarPage.prepare_sound prep
-  have sizes := Date.Leaf.Gzip.expanded_bound valid
+  have body := prepareFor_frame kind params crcCheck prep
+  obtain ⟨originalStatus, crc⟩ := body.checksum
+  obtain ⟨layout, definitions, encoded, _, length, split, encodedSize, expandedSize, suffix, levels⟩ :=
+    body.levels
   have counts := ScalarPage.decode_counts decoded
-  simp only [params, ScalarPage.PreparedWire] at body
-  simp only [params] at counts sizes
-  obtain ⟨nulls, rows, repetition, _, _, _, definitions, encoded, length, split, levels, _, payload⟩ := body
-  obtain ⟨encodedSize, expandedSize, codec, selected, expansion⟩ := payload
-  have suffix : if header.isCompressed then
-        Compression.Gzip.decoder encoded = some (prepared.scalars.toList, [])
-      else encoded = prepared.scalars.toList := by
-    cases flag : header.isCompressed with
-    | false =>
-      have codecIs : Payload.Codec.uncompressed = codec := by
-        apply Option.some.inj
-        simpa [ScalarPage.v2Codec, flag, Payload.Codec.ofId_id] using selected
-      subst codec
-      cases expansion
-      simp
-    | true =>
-      have codecIs : Payload.Codec.gzip = codec := by
-        apply Option.some.inj
-        simpa [ScalarPage.v2Codec, flag, Payload.Codec.ofId_id] using selected
-      subst codec
-      cases expansion with
-      | gzip complete => simpa using complete
-  refine ⟨status, header, layout, definitions, encoded, prepared, words, kind, tag,
-    slice, storedSize, storedCap, sizes, by cases status <;> exact crc,
-    repetition, length, split, encodedSize, by simpa using expandedSize,
-    suffix, levels, plain, mask, ordered, counts.1, rows, ?_⟩
+  simp only [params] at counts
+  refine ⟨originalStatus, header, layout, definitions, encoded, prepared, words, kind, tag,
+    body.slice, body.storedSize, body.storedBound, body.expandedBound, crc,
+    body.repetition, length, split, encodedSize, expandedSize, suffix, levels, plain, mask, ordered,
+    counts.1, body.rows, ?_⟩
   have present := counts.2
+  have nulls := body.nulls
   omega
 
 theorem readGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {slots : Slots}
