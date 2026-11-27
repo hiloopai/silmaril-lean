@@ -51,6 +51,35 @@ theorem readGroup_wire {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bou
     GroupWire limits leafLimits bound index slots :=
   Proofs.Formats.Parquet.Timestamp.Leaf.MixedCodec.V2.readGroup_wire read
 
+/-- The shared collector retains exactly the groups preceding a typed failure. -/
+theorem traceUsing_first_error {ε δ : Type} {bound : Bound} {read : Nat → Except ε (Slots bound)}
+    {tag : Nat → ε → δ} {before after : List Nat} {index : Nat} {groups : List (Slots bound)} {cause : ε}
+    (split : List.range bound.snapshot.groupCount = before ++ index :: after)
+    (earlier : before.mapM read = .ok groups) (failed : read index = .error cause) :
+    traceUsing bound read tag =
+      ⟨groups.map (AlignedColumns.ofRows ∘ Leaf.Events.rows bound), .readError (tag index cause)⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.MixedCodec.V2.traceUsing_first_error split earlier failed
+
+/-- Source EOS witnesses every completed group in footer order. -/
+theorem traceUsing_eos {ε δ : Type} {bound : Bound} {read : Nat → Except ε (Slots bound)} {tag : Nat → ε → δ}
+    (ended : (traceUsing bound read tag).termination = .eos) :
+    ∃ groups, (List.range bound.snapshot.groupCount).mapM read = .ok groups ∧
+      traceUsing bound read tag = ⟨groups.map (AlignedColumns.ofRows ∘ Leaf.Events.rows bound), .eos⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.MixedCodec.V2.traceUsing_eos ended
+
+/-- Native IPC recovers the selected binding and ordered signed nullable ticks. -/
+theorem emitUsing_readback {ε δ : Type} {bound : Bound} {output : Arrow.ObservationLimits}
+    {events : Arrow.Events.Trace (Leaf.Events.schema bound) Leaf.Events.Cell ε}
+    {sourceError : ε → δ} {closed : δ} {writerError : Arrow.TimestampStream.Writer.Error → δ}
+    {groups : List (Slots bound)} {wire : KBytes}
+    (complete : events = ⟨groups.map (AlignedColumns.ofRows ∘ Leaf.Events.rows bound), .eos⟩)
+    (written : emitUsing output bound events sourceError closed writerError = .ok wire) :
+    ∃ result, Arrow.TimestampStream.read output.ipc wire = .ok result ∧
+      result.binding = Leaf.Events.ToIpc.selectedBinding bound ∧
+      result.batches.map Arrow.TimestampBatch.Writer.tickCounts =
+        groups.map (List.map (Option.map Ticks.ticks)) :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.MixedCodec.V2.emitUsing_readback complete written
+
 /-- The first failed group retains exactly the earlier complete event batches. -/
 theorem trace_first_error {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {before after : List Nat} {index : Nat} {groups : List (Slots bound)} {cause : GroupError}

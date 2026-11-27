@@ -1,0 +1,16 @@
+{
+  "assembled_three_utc": "ec695d5d0668524d75ced68faab00c161c5cfd356ad30b6d38612f087dc4acae",
+  "prior_utc": "a0ad35d7c3cfa62246d35203e3a79639d0665cbe6bbcb180384e6a15d5a7ca13",
+  "snappy_native_utc": "8f032b6d052ab56c6848f8c5660db5276068c7324e785c12af15998e6e18c208",
+  "assembled_three_local": "a5e0d78165428be637295366e7b943edecd80b389c161121b81690e4cea47e8c",
+  "prior_local": "faa654c45e6128bba9517f1ee597c5baecfb85dba4874a340139ee60faf2d580",
+  "snappy_native_local": "f1094bd2c21b2e872512e11c288543a4cdde88702c6f52bb301f32f9aeba3caf",
+  "prior_bad_gzip_crc": "12a2ad4ee68dbbdd32eab842b677afde6ab63afee9aee86342829bfea5d4568a",
+  "prior_bad_zstd_crc": "a85188101a3a63adec26afcccdf1abeed38887172dfd74c6feb6669e3d31c1d6",
+  "mutated_snappy_crc": "8eb424f05811923deef233245bb590fe022730414c6de40a4dca8d42e897e96c",
+  "mutated_gzip_crc": "2a10b60490a183219cd0c375217ba8ef32819374b5234727bd5173fa12863f8b",
+  "mutated_zstd_crc": "043a6be06178b8e52705b9d491b13795024a5939232cff1e0d0e7e4f1890f95c",
+  "mutated_competing_crc": "534d454f729a9b0c22960c8a072ad1270a2ffaec17fda8692ea2fe8d4fe05db2",
+  "assembled_late_snappy_v1": "d8afffa1500b36bb3be332eb4c17922f693cf35011a4f06c54d743f5135eb6d3",
+  "prior_unsupported": "3f3d141266f588a1e8f970edc810ece334b5d9c6455593323554ed88e5d3f0a1"
+}

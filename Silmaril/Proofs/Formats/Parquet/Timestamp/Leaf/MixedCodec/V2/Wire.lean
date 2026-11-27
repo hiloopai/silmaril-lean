@@ -29,19 +29,19 @@ theorem readGroup_unsupported_codec {limits : Limits} {leafLimits : Leaf.Limits}
     {index : Nat} {codec : Int} (selected : selectedCodec bound index = .ok codec)
     (gzip : codec ≠ Payload.Codec.gzip.id) (zstd : codec ≠ Payload.Codec.zstd.id) :
     readGroup limits leafLimits bound index = .error (.unsupportedCodec codec) := by
-  simp [readGroup, selected, gzip, zstd, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readGroupForCodec, selected, gzip, zstd, Except.mapError, Bind.bind, Except.bind]
 
 theorem readGroup_gzip_agrees {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound} {index : Nat}
     (selected : selectedCodec bound index = .ok Payload.Codec.gzip.id) :
     readGroup limits leafLimits bound index =
       (Leaf.Gzip.Dispatch.V2.readGroup limits.gzip leafLimits bound index).mapError .gzip := by
-  simp [readGroup, selected, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readGroupForCodec, selected, Except.mapError, Bind.bind, Except.bind]
 
 theorem readGroup_zstd_agrees {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound} {index : Nat}
     (selected : selectedCodec bound index = .ok Payload.Codec.zstd.id) :
     readGroup limits leafLimits bound index =
       (Leaf.Zstd.Dispatch.V2.readGroup limits.zstd leafLimits bound index).mapError .zstd := by
-  simp [readGroup, selected, Payload.Codec.id, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readGroupForCodec, selected, Payload.Codec.id, Except.mapError, Bind.bind, Except.bind]
 
 theorem readGroup_wire {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {index : Nat} {slots : Slots bound} (read : readGroup limits leafLimits bound index = .ok slots) :

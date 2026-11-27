@@ -40,11 +40,9 @@ def selectedCodec (bound : Bound) (index : Nat) : Except Leaf.Error Int := do
   let some column := group.columns[columnIndex]? | throw (.chunkIndex columnIndex)
   return column.metadata.codec
 
-/-- Route by the selected column's original footer codec. Only that dispatcher
-checks and decodes the original chunk. -/
-def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
-    Except GroupError (Slots bound) := do
-  let codec ← (selectedCodec bound index).mapError .selection
+/-- Decode a selected group after its original footer codec has been read. -/
+def readGroupForCodec (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat)
+    (codec : Int) : Except GroupError (Slots bound) :=
   if codec = Payload.Codec.gzip.id then
     (Gzip.Dispatch.V2.readGroup limits.gzip leafLimits bound index).mapError .gzip
   else if codec = Payload.Codec.zstd.id then
@@ -52,26 +50,48 @@ def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (inde
   else
     .error (.unsupportedCodec codec)
 
+/-- Route by the selected column's original footer codec. Only that dispatcher
+checks and decodes the original chunk. -/
+def readGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
+    Except GroupError (Slots bound) := do
+  let codec ← (selectedCodec bound index).mapError .selection
+  readGroupForCodec limits leafLimits bound index codec
+
+def rowsAtUsing {ε δ : Type} (bound : Bound) (read : Nat → Except ε (Slots bound)) (tag : Nat → ε → δ)
+    (index : Nat) : Except δ (Reader.RowGroup (Events.schema bound) Events.Cell) :=
+  ((read index).map (Events.rows bound)).mapError (tag index)
+
 def rowsAt (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
     Except SourceError (Reader.RowGroup (Events.schema bound) Events.Cell) :=
-  ((readGroup limits leafLimits bound index).map (Events.rows bound)).mapError (.groupFailure index)
+  rowsAtUsing bound (readGroup limits leafLimits bound) .groupFailure index
+
+/-- Collect one batch per original group up to source EOS or the first typed error. -/
+def traceUsing {ε δ : Type} (bound : Bound) (read : Nat → Except ε (Slots bound)) (tag : Nat → ε → δ) :
+    Arrow.Events.Trace (Events.schema bound) Events.Cell δ :=
+  let groups := Reader.denoteGroups (rowsAtUsing bound read tag) (List.range bound.snapshot.groupCount)
+  ⟨groups.1.map AlignedColumns.ofRows, groups.2⟩
 
 def trace (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound) :
     Arrow.Events.Trace (Events.schema bound) Events.Cell SourceError :=
-  let groups := Reader.denoteGroups (rowsAt limits leafLimits bound) (List.range bound.snapshot.groupCount)
-  ⟨groups.1.map AlignedColumns.ofRows, groups.2⟩
+  traceUsing bound (readGroup limits leafLimits bound) .groupFailure
+
+/-- Only an EOS trace from the bound leaf can reach IPC writer admission. -/
+def emitUsing {ε δ : Type} (output : Arrow.ObservationLimits) (bound : Bound)
+    (events : Arrow.Events.Trace (Events.schema bound) Events.Cell ε)
+    (sourceError : ε → δ) (closed : δ) (writerError : Arrow.TimestampStream.Writer.Error → δ) :
+    Except δ KBytes :=
+  match events.termination with
+  | .readError cause | .closeError cause => .error (sourceError cause)
+  | .closed => .error closed
+  | .eos =>
+    let batches := events.batches.map fun batch => batch.values ⟨0, Nat.zero_lt_one⟩
+    (Arrow.TimestampStream.Writer.emit output (Events.ToIpc.selectedBinding bound) batches).mapError writerError
 
 /-- Read the checked modern leaf through source EOS before admitting the native IPC writer. -/
 def convert (limits : Limits) (inputLimits : Events.ToIpc.Limits) (output : Arrow.ObservationLimits)
     (input : Bytes) (ordinal : Nat) : Except Error KBytes := do
   let bound ← (Events.ToIpc.openBound inputLimits input ordinal).mapError .openFailure
-  let events := trace limits inputLimits.leaf bound
-  match events.termination with
-  | .readError cause | .closeError cause => .error (.source cause)
-  | .closed => .error .closed
-  | .eos =>
-    let batches := events.batches.map fun batch => batch.values ⟨0, Nat.zero_lt_one⟩
-    (Arrow.TimestampStream.Writer.emit output (Events.ToIpc.selectedBinding bound) batches).mapError .writer
+  emitUsing output bound (trace limits inputLimits.leaf bound) .source .closed .writer
 
 /-- A completed route retains the strict codec witness on the same bound leaf. -/
 inductive GroupWire (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound)
