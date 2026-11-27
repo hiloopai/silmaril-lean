@@ -8,6 +8,16 @@ public section
 
 namespace Silmaril.Formats.Arrow.Binary.StreamWriter
 
+theorem Wire.schemaProfile_extent (profile : Profile) (name : String) (nullable : Bool) :
+    (schemaProfile profile name nullable).len = schemaSizeFor name :=
+  Proofs.Formats.Arrow.Binary.StreamWriter.schemaProfile_extent profile name nullable
+
+theorem serializeProfile_exact {profile : Profile} {limits : Limits}
+    {name : String} {nullable : Bool} {batches : List Binary.Column} {wire : KBytes}
+    (written : serializeProfile profile limits name nullable batches = .ok wire) :
+    SerializedProfileWire profile limits name nullable batches wire :=
+  Proofs.Formats.Arrow.Binary.StreamWriter.serializeProfile_exact written
+
 theorem Wire.schemaFor_extent (width : Binary.Offsets.Width) (name : String) (nullable : Bool) :
     (schemaFor width name nullable).len = schemaSizeFor name :=
   Proofs.Formats.Arrow.Binary.StreamWriter.schemaFor_extent width name nullable

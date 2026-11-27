@@ -10,16 +10,36 @@ public import Silmaril.Formats.Arrow.StreamWriter.Defs
 
 namespace Silmaril.Formats.Arrow.Binary.StreamWriter
 
+/-- The flat offset types with identical field fragments and different tags
+or offset widths. -/
+inductive Profile where
+  | binary
+  | largeBinary
+  | largeUtf8
+
+def Profile.ofWidth : Binary.Offsets.Width → Profile
+  | .i32 => .binary
+  | .i64 => .largeBinary
+
+def Profile.width : Profile → Binary.Offsets.Width
+  | .binary => .i32
+  | .largeBinary | .largeUtf8 => .i64
+
+def Profile.tag : Profile → Nat
+  | .binary => 4
+  | .largeBinary => 19
+  | .largeUtf8 => 20
+
 namespace Wire
 
 open MetadataWriter.Wire
 
-def schemaFor (width : Binary.Offsets.Width) (name : String) (nullable : Bool) : KBytes :=
-  let tag := match width with
-    | .i32 => 4
-    | .i64 => 19
+def schemaProfile (profile : Profile) (name : String) (nullable : Bool) : KBytes :=
   let emptyType := words [halfwords 4 4, 0, 8, 0, 0]
-  messagePrefix 1 56 0 ++ schemaPayloadOf [fieldFragment name nullable tag emptyType]
+  messagePrefix 1 56 0 ++ schemaPayloadOf [fieldFragment name nullable profile.tag emptyType]
+
+def schemaFor (width : Binary.Offsets.Width) (name : String) (nullable : Bool) : KBytes :=
+  schemaProfile (.ofWidth width) name nullable
 
 def schema (field : Binary.Field) : KBytes := schemaFor .i32 field.name field.nullable
 
@@ -57,10 +77,10 @@ def bodySizeFor (width : Binary.Offsets.Width) (rows bytes : Nat) : Nat :=
 
 def bodySize := bodySizeFor .i32
 
-/-- Check the input before allocating body buffers. The terminal data offset
-bounds every signed offset in the batch. -/
-def checkRecordFor (width : Binary.Offsets.Width) (limits : Limits) (nullable : Bool)
-    (values : Binary.Column) :
+/-- Check the input before allocating body buffers. Compute the byte count
+only after checking rows and nullability. -/
+def checkRecordSize {α : Type} (width : Binary.Offsets.Width) (limits : Limits)
+    (nullable : Bool) (values : List (Option α)) (countBytes : List (Option α) → Nat) :
     Except RecordError FieldNode :=
   let rows := values.length
   if rows > limits.rows then .error (.ipc (.limit .rows))
@@ -68,14 +88,19 @@ def checkRecordFor (width : Binary.Offsets.Width) (limits : Limits) (nullable : 
     let nulls := values.countP Option.isNone
     if !nullable && nulls != 0 then .error .nullInRequired
     else
-      let bytes := dataSize values
+      let bytes := countBytes values
       if bytes ≥ width.signedLimit then .error (.signedOffsetExtent bytes)
       else
         let paddedBytes := bodySizeFor width rows bytes
         if paddedBytes > limits.bodyBytes then .error (.ipc (.limit .bodyBytes))
         else if rows ≥ 2^63 ∨ paddedBytes ≥ 2^63 then .error (.ipc (.malformed .batchLayout))
-        else if values.all (fun value => (value.map KBytes.wf).getD true) then .ok ⟨rows, nulls⟩
-        else .error (.ipc (.malformed .source))
+        else .ok ⟨rows, nulls⟩
+
+def checkRecordFor (width : Binary.Offsets.Width) (limits : Limits) (nullable : Bool)
+    (values : Binary.Column) : Except RecordError FieldNode := do
+  let node ← checkRecordSize width limits nullable values dataSize
+  if values.all (fun value => (value.map KBytes.wf).getD true) then .ok node
+  else .error (.ipc (.malformed .source))
 
 def checkRecord := checkRecordFor .i32
 
@@ -105,17 +130,23 @@ def emitRecord (limits : Limits) (field : Binary.Field) (values : Binary.Column)
     Except RecordError KBytes :=
   emitRecordFor .i32 limits field.nullable values
 
+def checkStreamHeader (limits : Limits) (name : String) (batchCount : Nat) : Except Error Envelope :=
+  if limits.fields = 0 then .error (.ipc (.limit .fields))
+  else if batchCount > limits.batches then .error (.ipc (.limit .batches))
+  else (Arrow.readPrefix limits 0xffffffff (Wire.schemaSizeFor name)).mapError .ipc
+
+def serializeProfile (profile : Profile) (limits : Limits) (name : String)
+    (nullable : Bool) (batches : List Binary.Column) : Except Error KBytes := do
+  let _ ← checkStreamHeader limits name batches.length
+  let records ← batches.zipIdx.mapM fun (values, ordinal) =>
+    (emitRecordFor profile.width limits nullable values).mapError (.record ordinal)
+  let schema := Arrow.StreamWriter.envelopeBytes (Wire.schemaSizeFor name) ++
+    Wire.schemaProfile profile name nullable
+  return schema ++ (BinaryView.Column.Writer.join records ++ Arrow.StreamWriter.eos)
+
 def serializeFor (width : Binary.Offsets.Width) (limits : Limits) (name : String)
     (nullable : Bool) (batches : List Binary.Column) : Except Error KBytes :=
-  if limits.fields = 0 then .error (.ipc (.limit .fields))
-  else if batches.length > limits.batches then .error (.ipc (.limit .batches))
-  else do
-    let size := Wire.schemaSizeFor name
-    let _ ← (Arrow.readPrefix limits 0xffffffff size).mapError .ipc
-    let records ← batches.zipIdx.mapM fun (values, ordinal) =>
-      (emitRecordFor width limits nullable values).mapError (.record ordinal)
-    let schema := Arrow.StreamWriter.envelopeBytes size ++ Wire.schemaFor width name nullable
-    return schema ++ (BinaryView.Column.Writer.join records ++ Arrow.StreamWriter.eos)
+  serializeProfile (.ofWidth width) limits name nullable batches
 
 def serialize (limits : Limits) (field : Binary.Field) (batches : List Binary.Column) :
     Except Error KBytes :=
@@ -160,6 +191,14 @@ def RecordWire (width : Binary.Offsets.Width) (limits : Limits) (values : Binary
     Arrow.readMessage limits (wire.slice 8 size) = .ok message ∧
     ∃ body, Arrow.readBody limits wire (8 + size) message.bodyLength = .ok body ∧
       body.toList = packed.2.toList
+
+def SerializedProfileWire (profile : Profile) (limits : Limits) (name : String)
+    (nullable : Bool) (batches : List Binary.Column) (wire : KBytes) : Prop :=
+  StreamBounds profile.width limits name batches ∧ ∃ records,
+    List.Forall₂ (RecordWire profile.width limits) batches records ∧
+    wire = (Arrow.StreamWriter.envelopeBytes (Wire.schemaSizeFor name) ++
+      Wire.schemaProfile profile name nullable) ++
+      (BinaryView.Column.Writer.join records ++ Arrow.StreamWriter.eos)
 
 def SerializedWire (width : Binary.Offsets.Width) (limits : Limits) (name : String)
     (nullable : Bool) (batches : List Binary.Column) (wire : KBytes) : Prop :=

@@ -18,10 +18,10 @@ private theorem appendLen (first second : KBytes) :
 
 private theorem zerosLen (size : Nat) : (KBytes.zeros size).len = size := rfl
 
-theorem schemaFor_extent (width : Binary.Offsets.Width) (name : String) (nullable : Bool) :
-    (Wire.schemaFor width name nullable).len = Wire.schemaSizeFor name := by
+theorem schemaProfile_extent (profile : Profile) (name : String) (nullable : Bool) :
+    (Wire.schemaProfile profile name nullable).len = Wire.schemaSizeFor name := by
   have nameSize : name.toByteArray.data.toList.length = name.utf8ByteSize := rfl
-  simp only [Wire.schemaFor, Wire.schemaSizeFor, messagePrefix, schemaPayloadOf, fieldOffsets, fieldFragment,
+  simp only [Wire.schemaProfile, Wire.schemaSizeFor, messagePrefix, schemaPayloadOf, fieldOffsets, fieldFragment,
     pad, words, longs, Writer.emitWords_length, appendLen, zerosLen, List.length_cons,
     List.length_nil, List.foldr_cons, List.foldr_nil, List.length_map, nameSize]
   have fragment : 4 * 7 + (4 * 5 + (4 * 1 + (1 * name.utf8ByteSize + 1))) =
@@ -30,6 +30,10 @@ theorem schemaFor_extent (width : Binary.Offsets.Width) (name : String) (nullabl
   change 48 + (24 + (0 + (53 + name.utf8ByteSize +
     Writer.padding (53 + name.utf8ByteSize) + 0))) = _
   omega
+
+theorem schemaFor_extent (width : Binary.Offsets.Width) (name : String) (nullable : Bool) :
+    (Wire.schemaFor width name nullable).len = Wire.schemaSizeFor name :=
+  schemaProfile_extent (.ofWidth width) name nullable
 
 theorem schema_extent (field : Binary.Field) : (Wire.schema field).len = Wire.schemaSize field :=
   schemaFor_extent .i32 field.name field.nullable

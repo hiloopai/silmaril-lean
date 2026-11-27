@@ -21,23 +21,23 @@ private theorem checkRecord_exact {width : Binary.Offsets.Width} {limits : Limit
     node = ⟨values.length, values.countP Option.isNone⟩ ∧ RecordBounds width limits values ∧
       ∀ piece ∈ values.filterMap id, piece.wf = true := by
   by_cases rows : values.length > limits.rows
-  · simp [checkRecordFor, rows] at checked
+  · simp [checkRecordFor, checkRecordSize, Bind.bind, Except.bind, rows] at checked
   by_cases nulls : (!nullable && values.countP Option.isNone != 0) = true
-  · simp [checkRecordFor, rows, nulls] at checked
+  · simp [checkRecordFor, checkRecordSize, Bind.bind, Except.bind, rows, nulls] at checked
   by_cases offsets : dataSize values ≥ width.signedLimit
-  · simp [checkRecordFor, rows, nulls, offsets] at checked
+  · simp [checkRecordFor, checkRecordSize, Bind.bind, Except.bind, rows, nulls, offsets] at checked
   by_cases body : bodySizeFor width values.length (dataSize values) > limits.bodyBytes
-  · simp [checkRecordFor, rows, nulls, offsets, body] at checked
+  · simp [checkRecordFor, checkRecordSize, Bind.bind, Except.bind, rows, nulls, offsets, body] at checked
   by_cases size : values.length ≥ 2^63 ∨ bodySizeFor width values.length (dataSize values) ≥ 2^63
-  · simp [checkRecordFor, rows, nulls, offsets, body, size] at checked
+  · simp [checkRecordFor, checkRecordSize, Bind.bind, Except.bind, rows, nulls, offsets, body, size] at checked
   by_cases wf : (values.all (fun value => (value.map KBytes.wf).getD true)) = true
   · have exactNode : node = ⟨values.length, values.countP Option.isNone⟩ := by
-      simpa [checkRecordFor, rows, nulls, offsets, body, size, wf, Pure.pure, Except.pure] using checked.symm
+      simpa [checkRecordFor, checkRecordSize, Bind.bind, Except.bind, rows, nulls, offsets, body, size, wf, Pure.pure, Except.pure] using checked.symm
     refine ⟨exactNode, ⟨Nat.le_of_not_gt rows, Nat.lt_of_not_ge offsets, Nat.le_of_not_gt body⟩, ?_⟩
     intro piece mem
     obtain ⟨value, occurs, rfl⟩ := List.mem_filterMap.mp mem
     exact (List.all_eq_true.mp wf) _ occurs
-  · simp [checkRecordFor, rows, nulls, offsets, body, size, wf] at checked
+  · simp [checkRecordFor, checkRecordSize, Bind.bind, Except.bind, rows, nulls, offsets, body, size, wf] at checked
 
 private theorem dataSize_prefix (values : Binary.Column) (start : Nat) :
     values.foldl (fun offset value => offset + valueSize value) start = start + dataSize values := by
@@ -147,23 +147,23 @@ private theorem prefix_metadata_bound {limits : Limits} {name : String} {envelop
     split at admitted <;> contradiction
   · omega
 
-theorem serializeFor_exact {width : Binary.Offsets.Width} {limits : Limits}
+theorem serializeProfile_exact {profile : Profile} {limits : Limits}
     {name : String} {nullable : Bool} {batches : List Binary.Column} {wire : KBytes}
-    (written : serializeFor width limits name nullable batches = .ok wire) :
-    SerializedWire width limits name nullable batches wire := by
+    (written : serializeProfile profile limits name nullable batches = .ok wire) :
+    SerializedProfileWire profile limits name nullable batches wire := by
   by_cases fields : limits.fields = 0
-  · simp [serializeFor, fields] at written
+  · simp [serializeProfile, checkStreamHeader, fields, Bind.bind, Except.bind] at written
   by_cases count : batches.length > limits.batches
-  · simp [serializeFor, fields, count] at written
+  · simp [serializeProfile, checkStreamHeader, fields, count, Bind.bind, Except.bind] at written
   cases admitted : readPrefix limits 0xffffffff (Wire.schemaSizeFor name) with
   | error cause =>
-    simp [serializeFor, fields, count, admitted, Bind.bind, Except.bind, Except.mapError] at written
+    simp [serializeProfile, checkStreamHeader, fields, count, admitted, Bind.bind, Except.bind, Except.mapError] at written
   | ok envelope =>
     let write := fun (pair : Binary.Column × Nat) =>
-      (emitRecordFor width limits nullable pair.1).mapError (Error.record pair.2)
+      (emitRecordFor profile.width limits nullable pair.1).mapError (Error.record pair.2)
     have header : (readPrefix limits 0xffffffff (Wire.schemaSizeFor name)).mapError Error.ipc =
         .ok envelope := by rw [admitted]; rfl
-    simp only [serializeFor, fields, count, ite_false, header, Bind.bind, Except.bind,
+    simp only [serializeProfile, checkStreamHeader, fields, count, ite_false, header, Bind.bind, Except.bind,
       Pure.pure, Except.pure] at written
     cases serialized : batches.zipIdx.mapM write with
     | error cause =>
@@ -177,16 +177,16 @@ theorem serializeFor_exact {width : Binary.Offsets.Width} {limits : Limits}
       rw [frames] at written
       cases written
       have pairs : List.Forall₂ (fun (pair : Binary.Column × Nat) frame =>
-          RecordWire width limits pair.1 frame) batches.zipIdx records := by
+          RecordWire profile.width limits pair.1 frame) batches.zipIdx records := by
         apply (List.mapM_eq_ok_iff_forall₂.mp serialized).imp
         intro pair frame emitted
-        cases frameEq : emitRecordFor width limits nullable pair.1 with
+        cases frameEq : emitRecordFor profile.width limits nullable pair.1 with
         | error cause => simp [write, frameEq, Except.mapError] at emitted
         | ok bytes =>
           simp [write, frameEq, Except.mapError] at emitted
           subst bytes
           exact emitRecordFor_exact frameEq
-      have ordered : List.Forall₂ (RecordWire width limits) batches records :=
+      have ordered : List.Forall₂ (RecordWire profile.width limits) batches records :=
         List.zipIdx_map_fst 0 batches ▸ List.forall₂_map_left_iff.mpr pairs
       refine ⟨⟨Nat.pos_of_ne_zero fields, prefix_metadata_bound admitted, Nat.le_of_not_gt count, ?_⟩,
         records, ordered, rfl⟩
@@ -194,5 +194,11 @@ theorem serializeFor_exact {width : Binary.Offsets.Width} {limits : Limits}
       obtain ⟨i, within, rfl⟩ := List.mem_iff_getElem.mp occurs
       have withinFrames : i < records.length := ordered.length_eq ▸ within
       exact (ordered.get within withinFrames).1
+
+theorem serializeFor_exact {width : Binary.Offsets.Width} {limits : Limits}
+    {name : String} {nullable : Bool} {batches : List Binary.Column} {wire : KBytes}
+    (written : serializeFor width limits name nullable batches = .ok wire) :
+    SerializedWire width limits name nullable batches wire := by
+  cases width <;> exact serializeProfile_exact written
 
 end Silmaril.Proofs.Formats.Arrow.Binary.StreamWriter

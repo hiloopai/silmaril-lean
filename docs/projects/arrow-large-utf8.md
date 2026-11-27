@@ -47,3 +47,36 @@ the observation unchanged.
 python scripts/arrow-large-utf8/stream_fixture.py
 lake build --wfail Silmaril.Formats.Arrow.LargeUtf8.Stream.Examples Silmaril.Formats.Arrow.LargeUtf8.Stream.Axioms
 ```
+
+## Canonical modern writer
+
+Import `Silmaril.Formats.Arrow.LargeUtf8.StreamWriter.Defs` and call
+`LargeUtf8.StreamWriter.emit limits field batches`. The input declares one
+flat LargeUtf8 field and a list of nullable string columns, one per batch.
+The writer uses Schema.fbs tag 20 and modern V5 continuation framing. Before
+encoding the string bytes, it checks the schema metadata extent and field and
+batch counts, then checks each record's rows, nullability, signed i64 offset
+extent, padded body size and metadata extent. Body, row and metadata limits
+apply per message at the corresponding scope. The batch count applies to
+the whole stream.
+
+The three buffers hold the validity bitmap, signed little-endian i64 byte
+prefix sums and concatenated UTF-8. Null and present empty slots repeat the
+current offset, with their validity bits distinguishing them. A zero-row
+record has the initial offset word. Empty input emits the schema and EOS
+with no record. The writer materializes the admitted stream and certifies it
+with the complete modern reader. `LargeUtf8.StreamWriter.emit_readback`
+preserves the exact field, nullable strings and ordered batch boundaries,
+including original readback windows through EOS and a canonical wire
+witness for the encoded buffers.
+
+The pinned writer oracle independently opens four Lean-generated streams
+with PyArrow 26.0.1. It checks the exact descriptor, ordered rows, byte
+prefix sums, payload and validity buffers, record envelopes and EOS. Its
+SHA-256 checks pin nullable multibyte input with an empty batch, required
+input, a schema-only stream and a stream with one explicit empty batch.
+
+```sh
+lake build --wfail Silmaril.Formats.Arrow.LargeUtf8.StreamWriter.Examples Silmaril.Formats.Arrow.LargeUtf8.StreamWriter.Axioms
+python scripts/arrow-large-utf8/stream_writer_oracle.py /tmp/arrow-large-utf8-writer
+```
