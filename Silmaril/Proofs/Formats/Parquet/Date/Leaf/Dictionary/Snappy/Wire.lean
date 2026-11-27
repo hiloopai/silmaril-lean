@@ -181,6 +181,48 @@ theorem checkGroupWithCodec_wire {ε : Type} {codec : Payload.Codec} {wrap : Gro
       · simpa [CheckedGroup.frames, order] using (Page.readChunk_chain originalFrames).2.2
       · simpa [Option.map_map, Function.comp_def, ← not_not.mp dataOffset] using offset
 
+private theorem except_throw {α ε : Type} (cause : ε) :
+    (throw cause : Except ε α) = .error cause := rfl
+
+private theorem mapError_value {α ε δ : Type} (lift : ε → δ) (value : α) :
+    (Except.ok value).mapError lift = .ok value := rfl
+
+private theorem mapError_cause {α ε δ : Type} (lift : ε → δ) (cause : ε) :
+    (Except.error (α := α) cause).mapError lift = .error (lift cause) := rfl
+
+private theorem mapError_ite {α ε δ : Type} (lift : ε → δ) (test : Prop) [Decidable test]
+    (yes no : Except ε α) :
+    (if test then yes else no).mapError lift = if test then yes.mapError lift else no.mapError lift :=
+  apply_ite (Except.mapError lift) test yes no
+
+theorem checkGroupWithCodec_agrees {ε δ : Type} {limits : Limits} {bound : Bound} {index : Nat}
+    {codec : Payload.Codec} {selection : Date.Leaf.Chunk} {dictionary : Page.Frame} {frames : List Page.Frame}
+    {readDictionary : Bytes → Page.Frame → Except PageError (List Int32)}
+    {wrap : GroupError → ε} {otherWrap : GroupError → δ} {lift : ε → δ}
+    {plan : List Page.Frame → Except ε (List DataPage)}
+    {otherPlan : List Page.Frame → Except δ (List DataPage)}
+    (selected : selectChunk bound index = .ok selection)
+    (framed : Page.readChunk limits.page bound.snapshot.bytes selection.span = .ok (dictionary :: frames))
+    (wrap_eq : ∀ cause, lift (wrap cause) = otherWrap cause)
+    (plan_eq : otherPlan frames = (plan frames).mapError lift) :
+    checkGroupWithCodec codec otherWrap readDictionary otherPlan limits bound index =
+      (checkGroupWithCodec codec wrap readDictionary plan limits bound index).mapError lift := by
+  unfold checkGroupWithCodec
+  cases frames with
+  | nil =>
+    simp only [selected, framed, mapError_value, Bind.bind, Except.bind,
+      mapError_ite, except_throw, mapError_cause, wrap_eq]
+  | cons first rest =>
+    simp only [selected, framed, mapError_value, Bind.bind, Except.bind,
+      mapError_ite, mapError_cause, wrap_eq]
+    rw [plan_eq]
+    cases plan (first :: rest) with
+    | error => simp only [mapError_cause]
+    | ok =>
+      cases readDictionary bound.snapshot.bytes dictionary <;>
+        simp only [mapError_value, mapError_cause, Function.comp_apply, mapError_ite, wrap_eq,
+          Pure.pure, Except.pure]
+
 theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
     {plan : List Page.Frame → Except ε (List DataPage)} {admits : Int → Bool}
     {valid : List DataPage → Prop} {limits : Limits} {bound : Bound} {index : Nat}

@@ -85,7 +85,8 @@ def main():
              "required_no_crc": (128, False, False, rows(128, False))}
     files = {label: fallback["produce"](pa, pq, *settings, page_version="2.0", dictionary_limit=dictionary_limit)
              for label, settings in cases.items()}
-    checked = {label: v2["inspect"](pa, pq, files[label], settings, support, prior, fallback, dictionary_only=True)
+    checked = {label: v2["inspect"](pa, pq, files[label], settings, support, prior, fallback,
+                                         dictionary_groups=range(len(settings[-1])))
                for label, settings in cases.items()}
     for label, expected_flag in (("nullable_raw", False), ("nullable_gzip", True), ("required_no_crc", True)):
         assert {p["is_compressed"] for group in checked[label][0] for p in group["data"]} == {expected_flag}

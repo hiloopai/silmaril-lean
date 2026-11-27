@@ -90,6 +90,26 @@ theorem decodePage_wire {limits : Limits} {bound : Bound} {source : Bytes} {entr
     PageWire limits source entries page slots :=
   Proofs.Formats.Parquet.Date.Leaf.Fallback.Gzip.decodePage_wire planned decoded
 
+/-- Reference pages use the shared checked decoder with the supplied error wrapper. -/
+theorem decodePageWith_reference_agrees {ε : Type} {limits : Limits} {source : Bytes} {entries : Array Int32}
+    {page : DataPage} {ordinal : Nat} (wrap : Date.Leaf.Dictionary.Snappy.GroupError → ε)
+    (plainError : Nat → Nat → ScalarPage.Error → ε) (reference : page.params.encoding = 8) :
+    decodePageWith wrap plainError limits source entries page ordinal =
+      (Date.Leaf.Dictionary.Snappy.decodePage limits.toDictionaryLimits source entries page ordinal).mapError wrap :=
+  Proofs.Formats.Parquet.Date.Leaf.Fallback.Gzip.decodePageWith_reference_agrees wrap plainError reference
+
+/-- Equal checked group plans and corresponding page reads preserve the group result and first error. -/
+theorem readGroupWith_agrees {ε δ : Type} {bound : Bound} {index : Nat} {lift : ε → δ}
+    {check : Nat → Except ε CheckedGroup} {otherCheck : Nat → Except δ CheckedGroup}
+    {decode : Bytes → Array Int32 → DataPage → Nat → Except ε Slots}
+    {otherDecode : Bytes → Array Int32 → DataPage → Nat → Except δ Slots}
+    (checked : otherCheck index = (check index).mapError lift)
+    (pageReads : ∀ {group}, check index = .ok group → ∀ {page}, page ∈ group.data → ∀ ordinal,
+      otherDecode bound.snapshot.bytes group.entries.toArray page ordinal =
+        (decode bound.snapshot.bytes group.entries.toArray page ordinal).mapError lift) :
+    readGroupWith otherCheck otherDecode bound index = (readGroupWith check decode bound index).mapError lift :=
+  Proofs.Formats.Parquet.Date.Leaf.Fallback.Gzip.readGroupWith_agrees checked pageReads
+
 /-- The admitted frames account for every ordered slot at the declared row count. -/
 theorem readGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {slots : Slots}
     (read : readGroup limits bound index = .ok slots) :

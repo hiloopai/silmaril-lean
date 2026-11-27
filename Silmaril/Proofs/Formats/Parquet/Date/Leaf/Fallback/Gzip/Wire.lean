@@ -210,6 +210,60 @@ theorem decodePage_wire {limits : Limits} {bound : Bound} {source : Bytes} {entr
     exact ⟨(DictionaryIndex.decode_counts read).1, expanded, layout, sections, prepared, member, split,
       levels, scalars, mask, .inl ⟨references, width, bytes, indices, octets, maxWidth, wire, ordered⟩⟩
 
+private theorem mapM_errors {α β ε δ : Type} {items : List α} {left : α → Except δ β}
+    {right : α → Except ε β} {lift : ε → δ}
+    (one : ∀ item ∈ items, left item = (right item).mapError lift) :
+    items.mapM left = (items.mapM right).mapError lift := by
+  induction items with
+  | nil => rfl
+  | cons first rest ih =>
+    have head := one first (List.mem_cons_self ..)
+    have tail := ih fun item member => one item (List.mem_cons_of_mem first member)
+    cases read : right first with
+    | error => simp [List.mapM_cons, head, read, Except.mapError, Bind.bind, Except.bind]
+    | ok value =>
+      simp only [List.mapM_cons, head, read, Except.mapError, Bind.bind, Except.bind]
+      rw [tail]
+      cases rest.mapM right <;> rfl
+
+theorem decodePageWith_reference_agrees {ε : Type} {limits : Limits} {source : Bytes} {entries : Array Int32}
+    {page : DataPage} {ordinal : Nat} (wrap : Date.Leaf.Dictionary.Snappy.GroupError → ε)
+    (plainError : Nat → Nat → ScalarPage.Error → ε) (reference : page.params.encoding = 8) :
+    decodePageWith wrap plainError limits source entries page ordinal =
+      (Date.Leaf.Dictionary.Snappy.decodePage limits.toDictionaryLimits source entries page ordinal).mapError wrap := by
+  unfold decodePageWith Date.Leaf.Dictionary.Snappy.decodePage
+  cases Date.Leaf.Dictionary.Snappy.verifyData limits.toDictionaryLimits source page ordinal
+  · simp [Except.mapError, Bind.bind, Except.bind]
+  · cases read : DictionaryIndex.decode entries page.params limits.scalar limits.indices
+        (Page.Checksum.payloadBytes source page.frame) <;>
+      simp [read, reference, Except.mapError, Bind.bind, Except.bind]
+
+theorem readGroupWith_agrees {ε δ : Type} {bound : Bound} {index : Nat} {lift : ε → δ}
+    {check : Nat → Except ε CheckedGroup} {otherCheck : Nat → Except δ CheckedGroup}
+    {decode : Bytes → Array Int32 → DataPage → Nat → Except ε Slots}
+    {otherDecode : Bytes → Array Int32 → DataPage → Nat → Except δ Slots}
+    (checked : otherCheck index = (check index).mapError lift)
+    (pageReads : ∀ {group}, check index = .ok group → ∀ {page}, page ∈ group.data → ∀ ordinal,
+      otherDecode bound.snapshot.bytes group.entries.toArray page ordinal =
+        (decode bound.snapshot.bytes group.entries.toArray page ordinal).mapError lift) :
+    readGroupWith otherCheck otherDecode bound index = (readGroupWith check decode bound index).mapError lift := by
+  unfold readGroupWith
+  rw [checked]
+  cases accepted : check index with
+  | error => rfl
+  | ok group =>
+    have reads : (group.data.zipIdx 1).mapM (fun (page, i) =>
+          otherDecode bound.snapshot.bytes group.entries.toArray page i) =
+        ((group.data.zipIdx 1).mapM (fun (page, i) =>
+          decode bound.snapshot.bytes group.entries.toArray page i)).mapError lift :=
+      mapM_errors (fun item member => pageReads accepted (page := item.1) (by
+        rw [← List.zipIdx_map_fst 1 group.data]
+        exact List.mem_map_of_mem member) item.2)
+    simp only [Except.mapError, Bind.bind, Except.bind]
+    rw [reads]
+    cases (group.data.zipIdx 1).mapM (fun (page, i) =>
+      decode bound.snapshot.bytes group.entries.toArray page i) <;> rfl
+
 theorem readGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {slots : Slots}
     (read : Date.Leaf.Fallback.Gzip.readGroup limits bound index = .ok slots) :
     ∃ checked pages, checkGroup limits bound index = .ok checked ∧

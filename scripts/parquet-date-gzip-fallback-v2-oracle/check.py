@@ -19,7 +19,7 @@ TESTS = ROOT / "Silmaril/Formats/Parquet/Date/Leaf/Fallback/Gzip/V2/Tests.lean"
 NAME, ORDINAL = "日付", 1
 
 
-def inspect(pa, pq, wire, settings, support, prior, fallback, *, dictionary_only=False):
+def inspect(pa, pq, wire, settings, support, prior, fallback, *, dictionary_groups=()):
     batch, nullable, checksum, rows = settings
     thrift, hybrid = support["THRIFT"], support["hybrid"]
     gzip_member, fingerprint, read_group = [prior[key] for key in ("gzip_member", "fingerprint", "read_group")]
@@ -54,6 +54,7 @@ def inspect(pa, pq, wire, settings, support, prior, fallback, *, dictionary_only
         assert dict_obs["declared_expanded_size"] == len(expanded)
         entries = [word for word, in struct.iter_unpack("<i", expanded)]
         assert [dictionary[1][7][1][i][1] for i in (1, 2)] == [len(entries), 0]
+        dictionary_only = index in dictionary_groups
         dictionary_rows = expected if dictionary_only else expected[:batch]
         assert entries == list(dict.fromkeys(day for day in dictionary_rows if day is not None))
         assert dictionary[2] + len(dictionary[3]) == pages[0][0] == column.data_page_offset

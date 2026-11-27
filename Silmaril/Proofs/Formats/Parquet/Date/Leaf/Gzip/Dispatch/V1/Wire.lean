@@ -66,60 +66,26 @@ theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked
   have offset := wire.dataOffset
   simp [empty] at offset
 
-private theorem except_throw {α ε : Type} (cause : ε) :
-    (throw cause : Except ε α) = .error cause := rfl
-
-private theorem mapError_value {α ε δ : Type} (lift : ε → δ) (value : α) :
-    (Except.ok value).mapError lift = .ok value := rfl
-
-private theorem mapError_cause {α ε δ : Type} (lift : ε → δ) (cause : ε) :
-    (Except.error (α := α) cause).mapError lift = .error (lift cause) := rfl
-
-private theorem mapError_ite {α ε δ : Type} (lift : ε → δ) (test : Prop) [Decidable test]
-    (yes no : Except ε α) :
-    (if test then yes else no).mapError lift = if test then yes.mapError lift else no.mapError lift :=
-  apply_ite (Except.mapError lift) test yes no
-
-private theorem checkGroupWith_agrees {ε : Type} {limits : Limits} {bound : Bound} {index : Nat}
-    {frames : List Page.Frame} (original : FramedGroup limits bound index frames)
-    (wrap : Date.Leaf.Dictionary.Snappy.GroupError → ε) (lift : ε → GroupError)
-    (oldPlan : List Page.Frame → Except ε (List DataPage))
-    (wrap_eq : ∀ cause, lift (wrap cause) = .chunk cause)
-    (plan_eq : planPages bound frames = (oldPlan frames).mapError lift) :
-    checkGroup limits bound index =
-      (Date.Leaf.Dictionary.Snappy.checkGroupWithCodec .gzip wrap
-        (Date.Leaf.Fallback.Gzip.readEntries limits) oldPlan limits.toDictionaryLimits bound index).mapError lift := by
-  obtain ⟨_, dictionary, selected, framed⟩ := original
-  unfold checkGroup Date.Leaf.Dictionary.Snappy.checkGroupWithCodec
-  cases frames with
-  | nil =>
-    simp only [selected, framed, mapError_value, Bind.bind, Except.bind,
-      mapError_ite, except_throw, mapError_cause, wrap_eq]
-  | cons first rest =>
-    simp only [selected, framed, mapError_value, Bind.bind, Except.bind,
-      mapError_ite, mapError_cause, wrap_eq]
-    rw [plan_eq]
-    cases oldPlan (first :: rest) with
-    | error => simp only [mapError_cause]
-    | ok =>
-      cases Date.Leaf.Fallback.Gzip.readEntries limits bound.snapshot.bytes dictionary <;>
-        simp only [mapError_value, mapError_cause, Function.comp_apply, mapError_ite, wrap_eq,
-          Pure.pure, Except.pure]
-
 theorem checkGroup_dictionary_agrees {limits : Limits} {bound : Bound} {index : Nat}
     {frames : List Page.Frame} (original : FramedGroup limits bound index frames)
     (chosen : profile frames = .dictionary) :
     checkGroup limits bound index =
       (Date.Leaf.Dictionary.Gzip.V1.checkGroup limits bound index).mapError dictionaryError := by
-  exact checkGroupWith_agrees original .chunk dictionaryError (Date.Leaf.Dictionary.Gzip.V1.planPages bound)
-    (fun _ => rfl) (by simp [planPages, chosen])
+  obtain ⟨_, _, selected, framed⟩ := original
+  exact Date.Leaf.Dictionary.Snappy.checkGroupWithCodec_agrees
+    (plan := Date.Leaf.Dictionary.Gzip.V1.planPages bound) (otherPlan := planPages bound)
+    selected framed (fun _ => rfl) (by simp [planPages, chosen])
 
 theorem checkGroup_fallback_agrees {limits : Limits} {bound : Bound} {index : Nat}
     {frames : List Page.Frame} (original : FramedGroup limits bound index frames)
     (chosen : profile frames = .fallback) :
     checkGroup limits bound index = Date.Leaf.Fallback.Gzip.checkGroup limits bound index := by
-  have same := checkGroupWith_agrees original Date.Leaf.Fallback.Gzip.GroupError.chunk id
-    (Date.Leaf.Fallback.Gzip.planPages bound) (fun _ => rfl) (by
+  obtain ⟨_, _, selected, framed⟩ := original
+  have same := Date.Leaf.Dictionary.Snappy.checkGroupWithCodec_agrees
+    (wrap := Date.Leaf.Fallback.Gzip.GroupError.chunk) (otherWrap := .chunk) (lift := id)
+    (plan := Date.Leaf.Fallback.Gzip.planPages bound) (otherPlan := planPages bound)
+    (codec := .gzip) (readDictionary := Date.Leaf.Fallback.Gzip.readEntries limits)
+    selected framed (fun _ => rfl) (by
       rw [planPages, chosen]
       cases Date.Leaf.Fallback.Gzip.planPages bound frames <;> rfl)
   change checkGroup limits bound index = (Date.Leaf.Fallback.Gzip.checkGroup limits bound index).mapError id at same
@@ -129,56 +95,18 @@ private theorem dictionary_decode_agrees {limits : Limits} {source : Bytes} {ent
     {page : DataPage} {ordinal : Nat} (reference : page.params.encoding = 8) :
     Date.Leaf.Fallback.Gzip.decodePage limits source entries page ordinal =
       (Date.Leaf.Dictionary.Gzip.V1.decodePage limits source entries page ordinal).mapError dictionaryError := by
-  unfold Date.Leaf.Fallback.Gzip.decodePage Date.Leaf.Fallback.Gzip.decodePageWith
-    Date.Leaf.Dictionary.Gzip.V1.decodePage Date.Leaf.Dictionary.Snappy.decodePage
-  cases Date.Leaf.Dictionary.Snappy.verifyData limits.toDictionaryLimits source page ordinal
-  · simp [Except.mapError, Bind.bind, Except.bind, dictionaryError]
-  · cases read : DictionaryIndex.decode entries page.params limits.scalar limits.indices
-        (Page.Checksum.payloadBytes source page.frame) <;>
-      simp [read, reference, Except.mapError, Bind.bind, Except.bind, dictionaryError]
-
-private theorem mapM_errors {α β ε δ : Type} {items : List α} {left : α → Except δ β}
-    {right : α → Except ε β} {lift : ε → δ}
-    (one : ∀ item ∈ items, left item = (right item).mapError lift) :
-    items.mapM left = (items.mapM right).mapError lift := by
-  induction items with
-  | nil => rfl
-  | cons first rest ih =>
-    have head := one first (List.mem_cons_self ..)
-    have tail := ih fun item member => one item (List.mem_cons_of_mem first member)
-    cases read : right first with
-    | error => simp [List.mapM_cons, head, read, Except.mapError, Bind.bind, Except.bind]
-    | ok value =>
-      simp only [List.mapM_cons, head, read, Except.mapError, Bind.bind, Except.bind]
-      rw [tail]
-      cases rest.mapM right <;> rfl
+  unfold Date.Leaf.Fallback.Gzip.decodePage Date.Leaf.Dictionary.Gzip.V1.decodePage
+  rw [Date.Leaf.Fallback.Gzip.decodePageWith_reference_agrees _ _ reference]
+  cases Date.Leaf.Dictionary.Snappy.decodePage limits.toDictionaryLimits source entries page ordinal <;> rfl
 
 theorem readGroup_dictionary_agrees {limits : Limits} {bound : Bound} {index : Nat}
     {frames : List Page.Frame} (original : FramedGroup limits bound index frames)
     (chosen : profile frames = .dictionary) :
     readGroup limits bound index =
       (Date.Leaf.Dictionary.Gzip.V1.readGroup limits bound index).mapError dictionaryError := by
-  have checked := checkGroup_dictionary_agrees original chosen
-  unfold Date.Leaf.Gzip.Dispatch.V1.readGroup Date.Leaf.Dictionary.Gzip.V1.readGroup
-    Date.Leaf.Fallback.Gzip.readGroupWith
-  rw [checked]
-  cases accepted : Date.Leaf.Dictionary.Gzip.V1.checkGroup limits bound index with
-  | error => rfl
-  | ok group =>
-    have tags := (Date.Leaf.Dictionary.Gzip.V1.checkGroup_wire accepted).2.2
-    have reads :
-        (group.data.zipIdx 1).mapM (fun (page, ordinal) =>
-          Date.Leaf.Fallback.Gzip.decodePage limits bound.snapshot.bytes group.entries.toArray page ordinal) =
-        ((group.data.zipIdx 1).mapM (fun (page, ordinal) =>
-          Date.Leaf.Dictionary.Gzip.V1.decodePage limits bound.snapshot.bytes group.entries.toArray page ordinal)
-        ).mapError dictionaryError :=
-      mapM_errors (fun item member => dictionary_decode_agrees (tags item.1 (by
-        rw [← List.zipIdx_map_fst 1 group.data]
-        exact List.mem_map_of_mem member)))
-    simp only [Except.mapError, Bind.bind, Except.bind]
-    rw [reads]
-    cases (group.data.zipIdx 1).mapM (fun (page, ordinal) =>
-      Date.Leaf.Dictionary.Gzip.V1.decodePage limits bound.snapshot.bytes group.entries.toArray page ordinal) <;> rfl
+  refine Date.Leaf.Fallback.Gzip.readGroupWith_agrees (checkGroup_dictionary_agrees original chosen) ?_
+  intro group accepted page member ordinal
+  exact dictionary_decode_agrees ((Date.Leaf.Dictionary.Gzip.V1.checkGroup_wire accepted).2.2 page member)
 
 theorem readGroup_fallback_agrees {limits : Limits} {bound : Bound} {index : Nat}
     {frames : List Page.Frame} (original : FramedGroup limits bound index frames)
