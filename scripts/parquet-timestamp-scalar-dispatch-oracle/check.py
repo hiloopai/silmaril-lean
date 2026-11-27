@@ -24,6 +24,10 @@ OPEN, READ, HYBRID, VERIFY_IPC, THRIFT, MIXED, FRAMES, GZIP, BAD, CRC, produce =
                            "GZIP", "BAD", "CRC", "produce"))
 ASSEMBLE_GROUPS = DELTA["ASSEMBLE"]
 TAGS = {"plain": (0, "PLAIN"), "delta": (5, "DELTA_BINARY_PACKED"), "split": (9, "BYTE_STREAM_SPLIT")}
+BASE_CODECS = {
+    0: lambda stored, _: stored,
+    1: lambda stored, size: pa.Codec("snappy").decompress(stored, size).to_pybytes(),
+}
 
 
 def metadata(wire, group=0):
@@ -54,7 +58,7 @@ def read_scalars(tag, body, present):
     return [int.from_bytes(body[index::present], "little", signed=True) for index in range(present)]
 
 
-def inspect(wire, field, groups, expected_tags):
+def inspect(wire, field, groups, expected_tags, codecs=BASE_CODECS):
     parquet = OPEN(wire)
     assert parquet.num_row_groups == len(groups) and parquet.schema_arrow.field(1).equals(field)
     captures = []
@@ -66,7 +70,7 @@ def inspect(wire, field, groups, expected_tags):
         assert annotation[1] == (TType.BOOL, field.type.tz == "UTC")
         assert annotation[2][1] == {{"us": 2, "ns": 3}[field.type.unit]: (TType.STRUCT, {})}
         codec = column[4][1]
-        assert codec in (0, 1) and column[1][1] == 2 and column[5][1] == len(expected)
+        assert codec in codecs and column[1][1] == 2 and column[5][1] == len(expected)
         assert THRIFT["list_field"](column, 3) == [b"ticks"] and not (set(column) & {10, 11})
         start, stop = MIXED["column_extent"](column)
         native_column = parquet.metadata.row_group(index).column(1)
@@ -86,8 +90,7 @@ def inspect(wire, field, groups, expected_tags):
                 info = header[5][1]
                 count = info[1][1]
                 assert info[3][1] == info[4][1] == 3
-                body = (pa.Codec("snappy").decompress(stored, header[2][1]).to_pybytes()
-                        if codec == 1 else stored)
+                body = codecs[codec](stored, header[2][1])
                 assert len(body) == header[2][1]
                 value_start = 4 + struct.unpack_from("<I", body)[0] if field.nullable else 0
                 levels = body[4:value_start] if field.nullable else b""
@@ -100,8 +103,7 @@ def inspect(wire, field, groups, expected_tags):
                 levels, suffix = stored[:level_bytes], stored[level_bytes:]
                 expanded = header[2][1] - level_bytes
                 flag = info.get(7, (TType.BOOL, True))[1]
-                values = (pa.Codec("snappy").decompress(suffix, expanded).to_pybytes()
-                          if codec == 1 and flag else suffix)
+                values = codecs[codec if flag else 0](suffix, expanded)
                 assert len(values) == expanded and expected[cursor:cursor + count].count(None) == nulls
             slots = expected[cursor:cursor + count]
             cursor += count
@@ -202,7 +204,7 @@ def fixtures():
     wires["mutated_footer_tag"] = footer_tags(wire, 2, [0, 3, 5, 9, 7])
     assert chunk_bytes(wires["mutated_undeclared_split"], 2) == chunk_bytes(wire, 2)
     assert chunk_bytes(wires["mutated_footer_tag"], 2) == chunk_bytes(wire, 2)
-    wires["native_unsupported_codec"] = produce(utc, rows, "2.0", "GZIP", checksum=True, encoding="PLAIN")
+    wires["native_unsupported_codec"] = produce(utc, rows, "2.0", "BROTLI", checksum=True, encoding="PLAIN")
     wires["native_dictionary"] = DELTA["ORACLE"]["produce"](utc, rows, checksum=True, dictionary=True)
     return wires, cases, [*crc, split[0]]
 

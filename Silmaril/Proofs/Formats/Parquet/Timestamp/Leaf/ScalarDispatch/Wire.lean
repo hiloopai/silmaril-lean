@@ -3,14 +3,24 @@ module
 public import Silmaril.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.Defs
 public import Silmaril.Formats.Parquet.Timestamp.Leaf.Uncompressed.V2.Defs
 public import Silmaril.Formats.Parquet.Timestamp.Leaf.SnappyV2.Defs
+public import Silmaril.Formats.Parquet.Timestamp.Leaf.Gzip.V2.Defs
+public import Silmaril.Formats.Parquet.Timestamp.Leaf.Zstd.V2.Defs
 public import Silmaril.Formats.Compression.Checksum.CRC32Spec
 import Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.Thms
 import Silmaril.Formats.Parquet.Timestamp.Leaf.ByteStreamSplit.Thms
 import Silmaril.Formats.Parquet.Timestamp.Leaf.Delta.Thms
 import Silmaril.Formats.Parquet.ScalarPage.Thms
+import Silmaril.Formats.Parquet.FlatColumn.Zstd.Thms
+import Silmaril.Formats.Parquet.DeltaBinaryPacked.Thms
+import Silmaril.Formats.Parquet.ByteStreamSplit.Thms
+import Silmaril.Formats.Parquet.FlatPage.Thms
+import Silmaril.Formats.Parquet.Plain.Thms
 import Silmaril.Formats.Parquet.Page.Checksum.Thms
 import Silmaril.Formats.Parquet.Timestamp.Leaf.Uncompressed.V2.Thms
 import Silmaril.Formats.Parquet.Timestamp.Leaf.SnappyV2.Thms
+import Silmaril.Formats.Parquet.Timestamp.Leaf.Gzip.V2.Thms
+import Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.V2.Thms
+import Silmaril.Formats.Parquet.Timestamp.Leaf.Zstd.V2.Thms
 import Silmaril.Formats.Parquet.Timestamp.Page.Thms
 import Silmaril.Formats.Parquet.Page.Thms
 import Silmaril.Formats.Parquet.Footer.Thms
@@ -80,7 +90,8 @@ theorem checkGroup_wire {limits : Leaf.Limits} {bound : Bound} {index : Nat}
     Leaf.selectChunkWith .scalarDispatch limits bound index = .ok group.chunk ∧
       bound.snapshot.groupAt index = some group.chunk.group ∧
       group.chunk.group.columns[bound.ordinal - 1]? = some group.chunk.column ∧
-      (group.chunk.column.metadata.codec = 0 ∨ group.chunk.column.metadata.codec = 1) ∧
+      (group.chunk.column.metadata.codec = 0 ∨ group.chunk.column.metadata.codec = 1 ∨
+        group.chunk.column.metadata.codec = 2 ∨ group.chunk.column.metadata.codec = 6) ∧
       group.chunk.column.metadata.dictionaryPageOffset = none ∧
       (group.chunk.span.start : Int) = group.chunk.column.metadata.dataPageOffset ∧
       (group.chunk.span.stop : Int) =
@@ -99,9 +110,18 @@ theorem checkGroup_wire {limits : Leaf.Limits} {bound : Bound} {index : Nat}
     have noDict := (scalarDispatch_metadata.mp metadata).2.1
     have offset := Footer.checkDataSpan_some_iff.mp (by
       simpa [Parquet.Page.columnSpan, noDict] using span)
-    exact ⟨selected, original, column, by simpa [Leaf.ChunkEncoding.admitsCodec] using codec,
+    exact ⟨selected, original, column, by simpa [Leaf.ChunkEncoding.admitsCodec, or_assoc] using codec,
       noDict, offset.1, offset.2.1, wire, (Parquet.Page.readChunk_chain wire).2.2, rows⟩
   · simp [rows, Bind.bind, Except.bind] at checked
+
+theorem checkGroup_encodings {limits : Leaf.Limits} {bound : Bound} {index : Nat}
+    {group : CheckedGroup} (checked : checkGroup limits bound index = .ok group) :
+    let metadata := group.chunk.column.metadata
+    metadata.indexPageOffset = none ∧ metadata.dictionaryPageOffset = none ∧
+      (∀ tag ∈ metadata.encodings, tag = 0 ∨ tag = 3 ∨ tag = 5 ∨ tag = 9) ∧
+      (0 ∈ metadata.encodings ∨ 5 ∈ metadata.encodings ∨ 9 ∈ metadata.encodings) := by
+  have selected := (checkGroup_wire checked).1
+  exact scalarDispatch_metadata.mp (Leaf.selectChunkWith_sound selected).2.2.2.2.2.2.1
 
 private theorem parameter_tag {bound : Bound} {frame : Parquet.Page.Frame} {codec : Int}
     {params : ScalarPage.Parameters}
@@ -143,6 +163,63 @@ private theorem decodePlain_wire {limits : ScalarPage.Limits}
     status, params, layout, prepared, words, mapError_ok verified, slice, size, cap,
     by cases status <;> exact crc, parsed, tag, valid, exactLayout, present, mask, values⟩
 
+private theorem decodeZstdValues_wire {scalars : Limits} {encoding : Encoding}
+    {prepared : ScalarPage.Prepared} {frame : Parquet.Page.Frame} {ordinal : Nat} {values : List Int64}
+    (read : decodeZstdValues scalars encoding prepared frame ordinal = .ok values) :
+    ZstdValuesWire scalars encoding prepared values := by
+  cases encoding with
+  | plain =>
+    have read := mapError_ok read
+    have words := Plain.decodeFixedWidth_ok_iff.mp read
+    obtain ⟨_, bytes, _, count, _, ordered⟩ := words
+    exact ⟨by rw [ordered, List.length_map, count], read⟩
+  | delta =>
+    have read := mapError_ok read
+    obtain ⟨stream, bytes, wire, valid, reconstructed, count⟩ := DeltaBinaryPacked.decode_sound read
+    exact ⟨count, stream, bytes, wire, valid, reconstructed⟩
+  | split =>
+    have read := mapError_ok read
+    obtain ⟨words, admitted, lanes, ordered, count⟩ := Parquet.ByteStreamSplit.decode_sound read
+    exact ⟨count, words, admitted, lanes, ordered⟩
+
+private theorem zstd_mask_length {limits : FlatColumn.Zstd.Limits} {params : ScalarPage.Parameters}
+    {layout : FlatPage.Layout} {stored : Bytes} {prepared : ScalarPage.Prepared}
+    (wire : FlatColumn.Zstd.PreparedWire limits params layout stored prepared) :
+    prepared.mask.length = params.numValues := by
+  cases version : params.version with
+  | v1 _ _ =>
+    simp only [FlatColumn.Zstd.PreparedWire, version] at wire
+    obtain ⟨_, _, _, _, _, _, mask, _⟩ := wire
+    exact FlatPage.readMask_length mask
+  | v2 _ _ _ _ _ =>
+    simp only [FlatColumn.Zstd.PreparedWire, version] at wire
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, mask, _, _⟩ := wire
+    exact FlatPage.readMask_length mask
+
+theorem decodeZstd_wire {scalars : Limits} {limits : ScalarPage.Limits} {bound : Bound}
+    {encoding : Encoding} {frame : Parquet.Page.Frame} {ordinal : Nat} {slots : List (Option Int64)}
+    (read : decodeZstd scalars limits bound encoding frame ordinal = .ok slots) :
+    slots.length = Leaf.Internal.pageSlots frame ∧ ZstdWire scalars limits bound encoding frame slots := by
+  unfold decodeZstd at read
+  obtain ⟨status, verified, read⟩ := bind_ok read
+  obtain ⟨params, admitted, read⟩ := bind_ok read
+  obtain ⟨prepared, prep, read⟩ := bind_ok read
+  obtain ⟨values, decoded, restored⟩ := bind_ok read
+  have parsed := mapError_ok admitted
+  obtain ⟨_, layout, valid, _, _, expanded, exactLayout⟩ := FlatColumn.Zstd.prepareFor_sound (mapError_ok prep)
+  obtain ⟨mask, ordered⟩ := FlatPage.reconstruct_ok_iff.mp (mapError_ok restored)
+  obtain ⟨slice, size, cap, crc⟩ := Leaf.Dictionary.Snappy.stored_verified (mapError_ok verified)
+  have tag : params.encoding = encoding.tag := by
+    by_contra wrong
+    simp [ScalarPage.validateFor, wrong] at valid
+  have counts := congrArg List.length mask
+  rw [List.length_map, zstd_mask_length exactLayout, (parameter_tag parsed).2] at counts
+  have expandedFits : frame.value.uncompressedSize ≤ limits.uncompressedBytes := by
+    simpa only [(Timestamp.Page.parameters_sound parsed).2.2.2.1, Limits.zstdPage] using expanded
+  exact ⟨counts, status, params, layout, prepared, values, mapError_ok verified,
+    slice, size, cap, expandedFits, by cases status <;> exact crc, parsed, tag, valid, exactLayout,
+    decodeZstdValues_wire decoded, mask, ordered⟩
+
 theorem decodePage_wire {scalars : Limits} {limits : ScalarPage.Limits}
     {bound : Bound} {codec : Int} {declared : List Int} {frame : Parquet.Page.Frame} {ordinal : Nat}
     {slots : List (Option Int64)} (read : decodePage scalars limits bound codec declared frame ordinal = .ok slots) :
@@ -150,18 +227,23 @@ theorem decodePage_wire {scalars : Limits} {limits : ScalarPage.Limits}
   unfold decodePage at read
   obtain ⟨encoding, chosen, read⟩ := bind_ok read
   have ⟨tag, advertised⟩ := route_ok_iff.mp chosen
+  by_cases zstd : codec = 6
+  · simp only [decodeSelected, ite_eq_left zstd] at read
+    obtain ⟨count, wire⟩ := decodeZstd_wire read
+    exact ⟨count, encoding, tag, advertised, by simp only [ite_eq_left zstd]; exact wire⟩
+  simp only [decodeSelected, ite_eq_right zstd] at read
   cases encoding with
   | plain =>
     have ⟨count, wire⟩ := decodePlain_wire read
-    exact ⟨count, .plain, tag, advertised, wire⟩
+    exact ⟨count, .plain, tag, advertised, by simpa only [ite_eq_right zstd] using wire⟩
   | delta =>
     have wire := Leaf.Delta.decodePage_wire read
     have ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, count, _⟩ := wire
-    exact ⟨count, .delta, tag, advertised, wire⟩
+    exact ⟨count, .delta, tag, advertised, by simpa only [ite_eq_right zstd] using wire⟩
   | split =>
     have wire := Leaf.ByteStreamSplit.decodePage_wire read
     have ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, count, _⟩ := wire
-    exact ⟨count, .split, tag, advertised, wire⟩
+    exact ⟨count, .split, tag, advertised, by simpa only [ite_eq_right zstd] using wire⟩
 
 theorem readGroup_wire {scalars : Limits} {limits : Leaf.Limits} {bound : Bound} {index : Nat} {slots : Slots bound}
     (read : readGroup scalars limits bound index = .ok slots) :
@@ -204,6 +286,28 @@ theorem readGroup_first_page_error {scalars : Limits} {limits : Leaf.Limits} {bo
     readGroup scalars limits bound index = .error cause := by
   simp [readGroup, checked, split, earlier, failed, Bind.bind, Except.bind]
 
+private theorem codec_iff {limits : Leaf.Limits} {codec : Int} :
+    Leaf.ChunkEncoding.scalarDispatch.admitsCodec limits codec = true ↔
+      codec = 0 ∨ codec = 1 ∨ codec = 2 ∨ codec = 6 := by
+  simp [Leaf.ChunkEncoding.admitsCodec, or_assoc]
+
+private theorem checkGroup_of_selection {limits : Leaf.Limits} {bound : Bound} {index : Nat}
+    {mode : Leaf.ChunkEncoding} {chunk : Leaf.Chunk} {frames : List Parquet.Page.Frame}
+    (picked : Leaf.selectChunkWith mode limits bound index = .ok chunk)
+    (allowed : Leaf.ChunkEncoding.scalarDispatch.admitsCodec limits chunk.column.metadata.codec = true)
+    (admitted : Leaf.ChunkEncoding.scalarDispatch.admitsMetadata chunk.column.metadata chunk.group.numRows = true)
+    (framed : Parquet.Page.readChunk limits.framing bound.snapshot.bytes chunk.span = .ok frames)
+    (counts : (frames.map Leaf.Internal.pageSlots).sum = chunk.group.numRows.toNat) :
+    checkGroup limits bound index = .ok ⟨chunk, frames⟩ := by
+  obtain ⟨group, column, path, physical, values, _, _, rowCap, span, disjoint⟩ :=
+    Leaf.selectChunkWith_sound picked
+  have selected : Leaf.selectChunkWith .scalarDispatch limits bound index = .ok chunk := by
+    cases chunk
+    simp only at path physical values
+    simp [Leaf.selectChunkWith, group, column, path, physical, values, allowed, admitted, span,
+      disjoint, Nat.not_lt.mpr rowCap, pure, Except.pure]
+  simp [checkGroup, selected, framed, counts, Except.mapError, Bind.bind, Except.bind, pure, Except.pure]
+
 private theorem widenGroup {limits : Leaf.Limits} {bound : Bound} {index : Nat}
     {mode : Leaf.ChunkEncoding} {tag : Int} {chunk : Leaf.Chunk} {frames : List Parquet.Page.Frame}
     (arm : (mode, tag) ∈ [(Leaf.ChunkEncoding.plain, 0), (.deltaBinaryPacked, 5), (.byteStreamSplit, 9)])
@@ -212,23 +316,18 @@ private theorem widenGroup {limits : Leaf.Limits} {bound : Bound} {index : Nat}
     (counts : (frames.map Leaf.Internal.pageSlots).sum = chunk.group.numRows.toNat)
     (plainDeclared : mode = .plain → 0 ∈ chunk.column.metadata.encodings) :
     checkGroup limits bound index = .ok ⟨chunk, frames⟩ ∧ tag ∈ chunk.column.metadata.encodings := by
-  obtain ⟨group, column, path, physical, values, codec, metadata, rowCap, span, disjoint⟩ :=
-    Leaf.selectChunkWith_sound picked
+  obtain ⟨_, _, _, _, _, codec, metadata, _, _, _⟩ := Leaf.selectChunkWith_sound picked
   obtain ⟨metadata', advertised⟩ := scalarDispatch_widen arm metadata plainDeclared
-  have codec' : Leaf.ChunkEncoding.scalarDispatch.admitsCodec limits chunk.column.metadata.codec = true := by
+  have old : chunk.column.metadata.codec = 0 ∨ chunk.column.metadata.codec = 1 := by
     simp only [List.mem_cons, Prod.mk.injEq, List.not_mem_nil, or_false] at arm
     rcases arm with ⟨rfl, _⟩ | ⟨rfl, _⟩ | ⟨rfl, _⟩
-    · simp [Leaf.ChunkEncoding.admitsCodec, Leaf.Limits.admitsCodec] at codec ⊢
+    · simp [Leaf.ChunkEncoding.admitsCodec, Leaf.Limits.admitsCodec] at codec
       exact codec.imp_right And.right
-    · exact codec
-    · exact codec
-  have selected : Leaf.selectChunkWith .scalarDispatch limits bound index = .ok chunk := by
-    cases chunk
-    simp only at path physical values
-    simp [Leaf.selectChunkWith, group, column, path, physical, values, codec', metadata', span,
-      disjoint, Nat.not_lt.mpr rowCap, pure, Except.pure]
-  exact ⟨by simp [checkGroup, selected, framed, counts, Except.mapError, Bind.bind, Except.bind, pure, Except.pure],
-    advertised⟩
+    · simpa [Leaf.ChunkEncoding.admitsCodec] using codec
+    · simpa [Leaf.ChunkEncoding.admitsCodec] using codec
+  have codec' : Leaf.ChunkEncoding.scalarDispatch.admitsCodec limits chunk.column.metadata.codec = true :=
+    codec_iff.mpr (old.imp_right Or.inl)
+  exact ⟨checkGroup_of_selection picked codec' metadata' framed counts, advertised⟩
 
 private theorem finishGroup {scalars : Limits} {limits : Leaf.Limits} {bound : Bound} {index : Nat}
     {group : CheckedGroup} {pages : List (List (Option Int64))}
@@ -246,8 +345,10 @@ theorem readGroup_agrees_delta {scalars : Limits} {limits : Leaf.Limits} {bound 
   unfold Leaf.Delta.readGroup at accepted
   obtain ⟨group, checked, accepted⟩ := bind_ok accepted
   obtain ⟨pages, decoded, accepted⟩ := bind_ok accepted
-  obtain ⟨selected, _, _, _, _, _, _, framed, _, counts⟩ := Leaf.Delta.checkGroup_wire checked
+  obtain ⟨selected, _, _, codec, _, _, _, framed, _, counts⟩ := Leaf.Delta.checkGroup_wire checked
   have ⟨admitted, declared⟩ := widenGroup (tag := 5) (by simp) selected framed counts (by simp)
+  have noGzip : group.chunk.column.metadata.codec ≠ 2 := by rcases codec with h | h <;> simp [h]
+  have noZstd : group.chunk.column.metadata.codec ≠ 6 := by rcases codec with h | h <;> simp [h]
   have followed : List.Forall₂ (fun (frame, ordinal) raw =>
       decodePage scalars limits.page bound group.chunk.column.metadata.codec
         group.chunk.column.metadata.encodings frame ordinal = .ok raw) group.frames.zipIdx pages :=
@@ -255,7 +356,7 @@ theorem readGroup_agrees_delta {scalars : Limits} {limits : Leaf.Limits} {bound 
     have ⟨_, params, _, _, _, _, _, _, _, _, parsed, tag, _⟩ := Leaf.Delta.decodePage_wire read
     have chosen : route group.chunk.column.metadata.encodings frame ordinal = .ok .delta :=
       route_ok_iff.mpr ⟨(parameter_tag parsed).1.trans (congrArg some tag), declared⟩
-    simpa [decodePage, chosen, Bind.bind, Except.bind] using read
+    simpa [decodePage, chosen, decodeSelected, Limits.pageFor, noGzip, noZstd, Bind.bind, Except.bind] using read
   exact (finishGroup admitted (List.mapM_eq_ok_iff_forall₂.mpr followed)).trans accepted
 
 theorem readGroup_agrees_split {scalars : Limits} {limits : Leaf.Limits} {bound : Bound} {index : Nat}
@@ -264,8 +365,10 @@ theorem readGroup_agrees_split {scalars : Limits} {limits : Leaf.Limits} {bound 
   unfold Leaf.ByteStreamSplit.readGroup at accepted
   obtain ⟨group, checked, accepted⟩ := bind_ok accepted
   obtain ⟨pages, decoded, accepted⟩ := bind_ok accepted
-  obtain ⟨selected, _, _, _, _, _, _, framed, _, counts⟩ := Leaf.ByteStreamSplit.checkGroup_wire checked
+  obtain ⟨selected, _, _, codec, _, _, _, framed, _, counts⟩ := Leaf.ByteStreamSplit.checkGroup_wire checked
   have ⟨admitted, declared⟩ := widenGroup (tag := 9) (by simp) selected framed counts (by simp)
+  have noGzip : group.chunk.column.metadata.codec ≠ 2 := by rcases codec with h | h <;> simp [h]
+  have noZstd : group.chunk.column.metadata.codec ≠ 6 := by rcases codec with h | h <;> simp [h]
   have followed : List.Forall₂ (fun (frame, ordinal) raw =>
       decodePage scalars limits.page bound group.chunk.column.metadata.codec
         group.chunk.column.metadata.encodings frame ordinal = .ok raw) group.frames.zipIdx pages :=
@@ -273,7 +376,7 @@ theorem readGroup_agrees_split {scalars : Limits} {limits : Leaf.Limits} {bound 
     have ⟨_, params, _, _, _, _, _, _, _, _, parsed, tag, _⟩ := Leaf.ByteStreamSplit.decodePage_wire read
     have chosen : route group.chunk.column.metadata.encodings frame ordinal = .ok .split :=
       route_ok_iff.mpr ⟨(parameter_tag parsed).1.trans (congrArg some tag), declared⟩
-    simpa [decodePage, chosen, Bind.bind, Except.bind] using read
+    simpa [decodePage, chosen, decodeSelected, Limits.pageFor, noGzip, noZstd, Bind.bind, Except.bind] using read
   exact (finishGroup admitted (List.mapM_eq_ok_iff_forall₂.mpr followed)).trans accepted
 
 private theorem plainAdmission {params : ScalarPage.Parameters} {limits : ScalarPage.Limits}
@@ -293,15 +396,15 @@ private theorem plainAdmission {params : ScalarPage.Parameters} {limits : Scalar
 private theorem decodePage_agrees_plain {scalars : Limits} {limits : ScalarPage.Limits}
     {bound : Bound} {codec : Int} {declared : List Int} {frame : Parquet.Page.Frame} {ordinal : Nat}
     {status : Parquet.Page.Checksum.Status} {params : ScalarPage.Parameters} {slots : List (Option Int64)}
-    (advertised : 0 ∈ declared)
-    (verified : Parquet.Page.Checksum.verify limits.compressedBytes bound.snapshot.bytes frame = .ok status)
+    (advertised : 0 ∈ declared) (noZstd : codec ≠ 6)
+    (verified : Parquet.Page.Checksum.verify (scalars.pageFor limits codec).compressedBytes bound.snapshot.bytes frame = .ok status)
     (parsed : Timestamp.Page.parameters bound.binding.leaf bound.levels codec frame.value = .ok params)
-    (read : ScalarPage.decode .int64 params limits (Leaf.Internal.body bound frame) = .ok slots) :
+    (read : ScalarPage.decode .int64 params (scalars.pageFor limits codec) (Leaf.Internal.body bound frame) = .ok slots) :
     decodePage scalars limits bound codec declared frame ordinal = .ok slots := by
   have tag := (plainAdmission read).1
   have routed : route declared frame ordinal = .ok .plain :=
     route_ok_iff.mpr ⟨(parameter_tag parsed).1.trans (congrArg some tag), advertised⟩
-  simp [decodePage, routed, decodePlain, verified, parsed, read, Except.mapError, Bind.bind, Except.bind]
+  simp [decodePage, routed, decodeSelected, noZstd, decodePlain, verified, parsed, read, Except.mapError, Bind.bind, Except.bind]
 
 private def PlainAccepted (limits : ScalarPage.Limits) (bound : Bound) (codec : Int)
     (frame : Parquet.Page.Frame) (slots : List (Option Int64)) : Prop :=
@@ -322,8 +425,15 @@ private theorem readGroup_agrees_plain_frames {scalars : Limits} {limits : Leaf.
   rw [← List.zipIdx_map_fst 0 frames, List.forall₂_map_left_iff] at physical
   apply finishGroup checked
   apply List.mapM_eq_ok_iff_forall₂.mpr
+  have codecs := (Leaf.selectChunk_sound picked).2.2.2.2.2.1
+  have allowed : chunk.column.metadata.codec = 0 ∨ chunk.column.metadata.codec = 1 := by
+    simp [Leaf.Limits.admitsCodec] at codecs
+    exact codecs.imp_right And.right
+  have noGzip : chunk.column.metadata.codec ≠ 2 := by rcases allowed with h | h <;> simp [h]
+  have noZstd : chunk.column.metadata.codec ≠ 6 := by rcases allowed with h | h <;> simp [h]
   exact physical.imp fun _ _ ⟨_, _, verified, parsed, read⟩ =>
-    decodePage_agrees_plain advertised verified parsed read
+    decodePage_agrees_plain advertised noZstd (by simpa [Limits.pageFor, noGzip] using verified)
+      parsed (by simpa [Limits.pageFor, noGzip] using read)
 
 private theorem plainPhysicalCounts {limits : ScalarPage.Limits} {bound : Bound} {codec : Int}
     {frames : List Parquet.Page.Frame} {pages : List (List (Option Int64))}
@@ -401,6 +511,122 @@ theorem readGroup_agrees_plain_v2_snappy {scalars : Limits} {limits : Leaf.Limit
   rw [codec]
   exact physical.imp fun _ _ ⟨_, status, params, _, verified, parsed, decoded, _⟩ =>
     ⟨status, params, verified, parsed, decoded⟩
+
+private theorem compressedPlainMetadata {mode : Leaf.ChunkEncoding}
+    {chunk : Leaf.Chunk} {limits : Leaf.Limits} {bound : Bound} {index : Nat}
+    (selected : Leaf.selectChunkWith mode limits bound index = .ok chunk)
+    (modePolicy : mode.admitsMetadata chunk.column.metadata chunk.group.numRows =
+      Leaf.ChunkEncoding.plain.admitsMetadata chunk.column.metadata chunk.group.numRows)
+    (advertised : 0 ∈ chunk.column.metadata.encodings) :
+    Leaf.ChunkEncoding.scalarDispatch.admitsMetadata chunk.column.metadata chunk.group.numRows = true := by
+  have admitted := (Leaf.selectChunkWith_sound selected).2.2.2.2.2.2.1
+  rw [modePolicy] at admitted
+  exact (scalarDispatch_widen (encoding := .plain) (tag := 0) (by simp) admitted (fun _ => advertised)).1
+
+private theorem gzip_plan_parameters {bound : Bound} {frame : Parquet.Page.Frame}
+    {page : Leaf.Dictionary.DataPage}
+    (planned : Leaf.Dictionary.Gzip.V2.planDataWith (· == 0) bound frame = .ok page) :
+    Timestamp.Page.parameters bound.binding.leaf bound.levels 2 frame.value = .ok page.params := by
+  cases kind : frame.value.kind with
+  | dataV2 header =>
+    by_cases tag : header.encoding = 0
+    · cases parsed : Timestamp.Page.parameters bound.binding.leaf bound.levels Payload.Codec.gzip.id frame.value with
+      | error cause =>
+        simp [Leaf.Dictionary.Gzip.V2.planDataWith, kind, tag, parsed, Except.mapError, Bind.bind, Except.bind] at planned
+      | ok params =>
+        simp [Leaf.Dictionary.Gzip.V2.planDataWith, kind, tag, parsed, Except.mapError, Bind.bind,
+          Except.bind, pure, Except.pure] at planned
+        subst page
+        exact parsed
+    · simp [Leaf.Dictionary.Gzip.V2.planDataWith, kind, tag, Bind.bind, Except.bind] at planned
+  | dataV1 _ | dictionary _ | skipped _ =>
+    simp [Leaf.Dictionary.Gzip.V2.planDataWith, kind, Bind.bind, Except.bind] at planned
+
+theorem readGroup_agrees_gzip_v2 {scalars : Limits} {strict : Leaf.Gzip.V2.Limits}
+    {limits : Leaf.Limits} {bound : Bound} {index : Nat} {slots : Slots bound}
+    (fuel : scalars.gzipCalls = strict.gzipCalls)
+    (advertised : ∀ chunk, Leaf.selectChunkWith .gzipPlainV2 limits bound index = .ok chunk →
+      0 ∈ chunk.column.metadata.encodings)
+    (accepted : Leaf.Gzip.V2.readGroup strict limits bound index = .ok slots) :
+    readGroup scalars limits bound index = .ok slots := by
+  obtain ⟨group, pages, checked, physical, mapped, _⟩ := Leaf.Gzip.V2.readGroup_wire accepted
+  obtain ⟨picked, codec, _, framed, _, counts, _, _⟩ := Leaf.Gzip.V2.checkGroup_wire checked
+  have chosen : group.chunk.column.metadata.codec = 2 := codec
+  have checked := checkGroup_of_selection picked
+    (codec_iff.mpr (.inr (.inr (.inl chosen))))
+    (compressedPlainMetadata picked (Leaf.ChunkEncoding.gzipPlainV2_admitsMetadata ..) (advertised _ picked))
+    framed counts
+  rw [mapped]
+  apply finishGroup checked
+  apply List.mapM_eq_ok_iff_forall₂.mpr
+  rw [← List.zipIdx_map_fst 0 group.frames, List.forall₂_map_left_iff] at physical
+  refine physical.imp fun _ _ ⟨_, _, plan, _, verified, decoded, _⟩ => ?_
+  have parsed := gzip_plan_parameters plan
+  have settings : scalars.pageFor limits.page group.chunk.column.metadata.codec =
+      (strict.withFuel limits).page := by
+    simp [Limits.pageFor, chosen, fuel, Leaf.Dictionary.Gzip.Limits.withFuel]
+  apply decodePage_agrees_plain (advertised _ picked) (by simp [chosen])
+  · simpa only [settings] using verified
+  · simpa only [chosen] using parsed
+  · simpa only [settings] using decoded
+
+private theorem zstdPlain_transfer {scalars : Limits} {strict : Leaf.Zstd.V2.Limits}
+    {limits : Leaf.Limits} {bound : Bound} {frame : Parquet.Page.Frame} {ordinal : Nat}
+    {raw : List (Option Int64)} (compression : scalars.zstd = strict.compression)
+    (read : Leaf.Zstd.V2.decodePage strict limits bound frame ordinal = .ok raw) :
+    pageTag frame = some 0 ∧ decodeZstd scalars limits.page bound .plain frame ordinal = .ok raw := by
+  unfold Leaf.Zstd.V2.decodePage at read
+  cases pageKind : frame.value.kind with
+  | dataV2 header =>
+    simp only [pageKind] at read
+    obtain ⟨status, verified, read⟩ := bind_ok read
+    obtain ⟨params, parsed, read⟩ := bind_ok read
+    have parsed := mapError_ok parsed
+    change Timestamp.Page.parameters bound.binding.leaf bound.levels 6 frame.value = .ok params at parsed
+    have body := mapError_ok read
+    unfold Leaf.Zstd.V2.decodeBody at body
+    obtain ⟨prepared, prep, body⟩ := bind_ok body
+    obtain ⟨values, words, restored⟩ := bind_ok body
+    have tag : params.encoding = 0 := by
+      have ⟨_, layout, valid, _⟩ := FlatColumn.Zstd.prepareFor_sound prep
+      by_contra other
+      simp [ScalarPage.validateFor, other] at valid
+    refine ⟨(parameter_tag parsed).1.trans (congrArg some tag), ?_⟩
+    have same : FlatColumn.Zstd.prepareFor 0 (scalars.zstdPage limits.page) params
+        (Leaf.Internal.body bound frame) = .ok prepared := by
+      rw [Limits.zstdPage, compression]
+      exact prep
+    simp [decodeZstd, mapError_ok verified, parsed, Encoding.tag, same, decodeZstdValues,
+      mapError_ok words, mapError_ok restored, Except.mapError, Bind.bind, Except.bind]
+  | dataV1 _ | dictionary _ | skipped _ => simp [pageKind] at read
+
+theorem readGroup_agrees_zstd_v2 {scalars : Limits} {strict : Leaf.Zstd.V2.Limits}
+    {limits : Leaf.Limits} {bound : Bound} {index : Nat} {slots : Slots bound}
+    (compression : scalars.zstd = strict.compression)
+    (advertised : ∀ chunk, Leaf.selectChunkWith .zstdPlainV2 limits bound index = .ok chunk →
+      0 ∈ chunk.column.metadata.encodings)
+    (accepted : Leaf.Zstd.V2.readGroup strict limits bound index = .ok slots) :
+    readGroup scalars limits bound index = .ok slots := by
+  unfold Leaf.Zstd.V2.readGroup at accepted
+  obtain ⟨group, checked, accepted⟩ := bind_ok accepted
+  obtain ⟨pages, decoded, accepted⟩ := bind_ok accepted
+  obtain ⟨picked, codec, _, framed, _, _, counts, _, _⟩ := Leaf.Zstd.V2.checkGroup_wire checked
+  have chosen : group.chunk.column.metadata.codec = 6 := codec
+  have checked := checkGroup_of_selection picked
+    (codec_iff.mpr (.inr (.inr (.inr chosen))))
+    (compressedPlainMetadata picked (Leaf.ChunkEncoding.zstdPlainV2_admitsMetadata ..) (advertised _ picked))
+    framed counts
+  have followed : List.Forall₂ (fun (frame, ordinal) raw =>
+      decodePage scalars limits.page bound group.chunk.column.metadata.codec
+        group.chunk.column.metadata.encodings frame ordinal = .ok raw) group.frames.zipIdx pages :=
+    (List.mapM_eq_ok_iff_forall₂.mp decoded).imp fun (frame, ordinal) _ read => by
+      obtain ⟨tag, exactPage⟩ := zstdPlain_transfer compression read
+      have routed : route group.chunk.column.metadata.encodings frame ordinal = .ok .plain :=
+        route_ok_iff.mpr ⟨tag, advertised _ picked⟩
+      simpa [decodePage, routed, decodeSelected, chosen, Bind.bind, Except.bind] using exactPage
+  have sameSlots : pages.flatten.map (Option.map bound.binding.descriptor.decode) = slots :=
+    Except.ok.inj accepted
+  simpa only [sameSlots] using finishGroup checked (List.mapM_eq_ok_iff_forall₂.mpr followed)
 
 private theorem reference_complete {bound : Bound} {read : Nat → Except Leaf.Error (Slots bound)}
     {indices : List Nat} (ended : (Leaf.Events.referenceGroupsWith read indices).2 = .eos) :

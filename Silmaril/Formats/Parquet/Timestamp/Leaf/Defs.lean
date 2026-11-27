@@ -6,6 +6,7 @@ public import Silmaril.Formats.Parquet.Timestamp.Page.Defs
 public import Silmaril.Formats.Parquet.DictionaryIndex.Defs
 public import Silmaril.Formats.Parquet.DeltaPage.Defs
 public import Silmaril.Formats.Parquet.ByteStreamSplitPage.Defs
+public import Silmaril.Formats.Parquet.FlatColumn.Zstd.Defs
 
 /-! # Checked selection of one flat INT64 TIMESTAMP column in a Parquet snapshot -/
 
@@ -42,7 +43,8 @@ inductive ChunkEncoding where
 @[expose] def ChunkEncoding.admitsCodec (encoding : ChunkEncoding) (limits : Limits) (code : Int) : Bool :=
   match encoding with
   | .plain => limits.admitsCodec code
-  | .deltaBinaryPacked | .byteStreamSplit | .scalarDispatch => code == 0 || code == 1
+  | .deltaBinaryPacked | .byteStreamSplit => code == 0 || code == 1
+  | .scalarDispatch => code == 0 || code == 1 || code == 2 || code == 6
   | .dictionary => code == 0
   | .snappyDictionary | .snappyLegacyDictionaryV1 | .snappyLegacyFallbackV1 => code == 1
   | .gzipPlainV2 | .gzipDictionaryV1 | .gzipDictionaryV2 => code == 2
@@ -82,6 +84,14 @@ theorem ChunkEncoding.plain_admitsMetadata (metadata : Footer.ColumnMetadata) (r
         (metadata.encodings.all (fun id => id == 0 || id == 3) &&
           (rows == 0 || metadata.encodings.contains 0) && metadata.dictionaryPageOffset.isNone)) := by
   rw [ChunkEncoding.admitsMetadata]
+
+theorem ChunkEncoding.gzipPlainV2_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
+    ChunkEncoding.gzipPlainV2.admitsMetadata metadata rows = ChunkEncoding.plain.admitsMetadata metadata rows := by
+  simp [ChunkEncoding.admitsMetadata]
+
+theorem ChunkEncoding.zstdPlainV2_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
+    ChunkEncoding.zstdPlainV2.admitsMetadata metadata rows = ChunkEncoding.plain.admitsMetadata metadata rows := by
+  simp [ChunkEncoding.admitsMetadata]
 
 theorem ChunkEncoding.delta_admitsMetadata (metadata : Footer.ColumnMetadata) (rows : Int) :
     ChunkEncoding.deltaBinaryPacked.admitsMetadata metadata rows =
@@ -141,6 +151,8 @@ inductive ScalarDispatchError where
   | unsupportedEncoding (tag : Int)
   | undeclaredEncoding (tag : Int)
   | plain (cause : Timestamp.Page.Error)
+  | zstdParameters (cause : Timestamp.Page.Error)
+  | zstd (cause : FlatColumn.Zstd.Error)
   deriving DecidableEq, Repr
 
 inductive DeltaPageError where

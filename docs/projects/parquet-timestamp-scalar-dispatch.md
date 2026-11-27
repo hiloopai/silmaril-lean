@@ -2,7 +2,8 @@
 
 `Timestamp.Leaf.ScalarDispatch.convert` selects one modern flat INT64
 TIMESTAMP leaf through the checked Snapshot. Each selected chunk can
-use UNCOMPRESSED (codec 0) or Snappy (codec 1). Its footer encoding list
+use UNCOMPRESSED (codec 0), Snappy (codec 1), GZIP (codec 2), or
+Zstandard (codec 6). Its footer encoding list
 may contain any union of PLAIN (0), DELTA_BINARY_PACKED (5), and
 BYTE_STREAM_SPLIT (9), with at least one value tag and optional RLE (3)
 for levels. The page's own value tag must occur in that original footer
@@ -19,6 +20,15 @@ separating levels. V2 keeps the raw level prefix and uses the effective
 codec for the exact value suffix. A false storage flag selects literal
 bytes. A true or absent flag uses the footer codec.
 
+GZIP preparation uses the shared exact single-member path, including
+the member trailer checks and a default controller allowance of 65,536
+calls. Zstandard preparation uses the checked dictionary-free frame
+decoder and its strict match-distance rule. This profile admits one
+supported frame and bounds the window at 8 MiB and commands per block
+at 43,690 by default. The output budget is the declared expanded
+body or suffix length under the existing page cap. A literal V2
+suffix consumes only its literal extent. [Checked Zstandard frame profile](zstd-huffman-frame.md)
+
 The PLAIN branch uses the original signed little-endian words. The
 delta branch reconstructs signed INT64 modulo 2^64. The split branch
 reassembles eight byte lanes per present signed little-endian word.
@@ -32,8 +42,9 @@ batches through EOS.
 
 The agreement laws transfer successful homogeneous group results from
 the standalone PLAIN, DELTA_BINARY_PACKED and BYTE_STREAM_SPLIT readers
-and the checksummed codec-0 and Snappy PLAIN V2 readers. The PLAIN laws
-require that the footer declares tag 0, including for a zero-row group.
+and the checksummed PLAIN V2 readers for all four codecs. The GZIP and
+Zstandard comparisons use equal controller and frame limits respectively.
+The PLAIN laws require that the footer declares tag 0, including for a zero-row group.
 Pointwise successful group agreement composes to byte-identical IPC at
 the same writer settings. The entry point uses the strict Snapshot
 bounds and the existing annotation, framing, page, delta, lane, row,
@@ -62,8 +73,24 @@ PyArrow independently reads all the assembled Parquet inputs and all
 separate limit and predecessor checks exercise ten typed refusals and
 five complete earlier prefixes.
 
+The compressed comparison adds fourteen genuine PyArrow files. Twelve
+cover GZIP and Zstandard across all three tags and both versions. Two
+exercise required local microseconds. Native V2 files exercise both
+storage flags. Thrift and zlib verify stored CRCs and GZIP members,
+and libzstd 1.5.7 checks exact Zstandard frame extents. The three labeled
+assemblies retain original producer frames and CRCs. Two mix tags and
+page versions within a GZIP or Zstandard chunk. The six-group assembly
+mixes all four codecs. PyArrow independently reads all 17 actual Lean
+IPC outputs, including three byte-identical standalone PLAIN V2
+comparisons. Late controls exercise outer CRC, GZIP trailer, Zstandard
+magic, null-count and codec budgets, retaining the complete earlier
+groups. Brotli supplies the unsupported-codec control in the original
+comparator.
+
 [Comparator](../../scripts/parquet-timestamp-scalar-dispatch-oracle/check.py) ·
 [Fixture hashes](../../scripts/parquet-timestamp-scalar-dispatch-oracle/fixtures.json) ·
+[Compressed comparator](../../scripts/parquet-timestamp-scalar-codecs-oracle/check.py) ·
+[Compressed fixture hashes](../../scripts/parquet-timestamp-scalar-codecs-oracle/fixtures.json) ·
 [Pinned Python wheels](../../tests/formats/columnar-timestamp-wire/requirements.txt)
 
 ```sh
@@ -74,4 +101,6 @@ lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-timesta
 python3 -m venv /tmp/parquet-timestamp-scalar-oracle
 /tmp/parquet-timestamp-scalar-oracle/bin/pip install --no-deps --require-hashes -r tests/formats/columnar-timestamp-wire/requirements.txt
 /tmp/parquet-timestamp-scalar-oracle/bin/python -I scripts/parquet-timestamp-scalar-dispatch-oracle/check.py
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-timestamp-scalar-codecs-oracle/Axioms.lean
+/tmp/parquet-timestamp-scalar-oracle/bin/python -I scripts/parquet-timestamp-scalar-codecs-oracle/check.py
 ```

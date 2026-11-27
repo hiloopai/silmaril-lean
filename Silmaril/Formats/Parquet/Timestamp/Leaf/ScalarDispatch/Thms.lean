@@ -3,8 +3,11 @@ module
 public import Silmaril.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.Defs
 public import Silmaril.Formats.Parquet.Timestamp.Leaf.Uncompressed.V2.Defs
 public import Silmaril.Formats.Parquet.Timestamp.Leaf.SnappyV2.Defs
+public import Silmaril.Formats.Parquet.Timestamp.Leaf.Gzip.V2.Defs
+public import Silmaril.Formats.Parquet.Timestamp.Leaf.Zstd.V2.Defs
 public import Mathlib.Data.List.Forall2
 import Silmaril.Proofs.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.Wire
+import Silmaril.Proofs.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.Compressed
 import Silmaril.Formats.Parquet.Timestamp.Leaf.Events.Thms
 import Silmaril.Formats.Parquet.Timestamp.Leaf.Events.ToIpc.Thms
 
@@ -22,7 +25,8 @@ theorem checkGroup_wire {limits : Leaf.Limits} {bound : Bound} {index : Nat}
     Leaf.selectChunkWith .scalarDispatch limits bound index = .ok group.chunk ∧
       bound.snapshot.groupAt index = some group.chunk.group ∧
       group.chunk.group.columns[bound.ordinal - 1]? = some group.chunk.column ∧
-      (group.chunk.column.metadata.codec = 0 ∨ group.chunk.column.metadata.codec = 1) ∧
+      (group.chunk.column.metadata.codec = 0 ∨ group.chunk.column.metadata.codec = 1 ∨
+        group.chunk.column.metadata.codec = 2 ∨ group.chunk.column.metadata.codec = 6) ∧
       group.chunk.column.metadata.dictionaryPageOffset = none ∧
       (group.chunk.span.start : Int) = group.chunk.column.metadata.dataPageOffset ∧
       (group.chunk.span.stop : Int) =
@@ -134,11 +138,8 @@ theorem decodePage_branch {scalars : Limits} {limits : ScalarPage.Limits} {bound
     {codec : Int} {declared : List Int} {frame : Parquet.Page.Frame} {ordinal : Nat} {encoding : Encoding}
     (chosen : route declared frame ordinal = .ok encoding) :
     decodePage scalars limits bound codec declared frame ordinal =
-      match encoding with
-      | .plain => decodePlain limits bound codec frame ordinal
-      | .delta => Delta.decodePage scalars.delta limits bound codec frame ordinal
-      | .split => ByteStreamSplit.decodePage scalars.split limits bound codec frame ordinal := by
-  cases encoding <;> simp [decodePage, chosen, Bind.bind, Except.bind]
+      decodeSelected scalars limits bound codec encoding frame ordinal := by
+  simp [decodePage, chosen, Bind.bind, Except.bind]
 
 /-- An unsupported or undeclared original page fails before body decoding. -/
 theorem decodePage_route_error {scalars : Limits} {limits : ScalarPage.Limits} {bound : Bound}
@@ -168,5 +169,96 @@ theorem convert_first_error {scalars : Limits} {inputLimits : Leaf.Events.ToIpc.
     convert scalars inputLimits outputLimits input ordinal = .error (.source (.groupFailure index cause)) :=
   Events.ToIpc.convertGroups_first_error opened split earlier failed
 
+
+/-- The checked footer admits only the declared scalar union and optional RLE, with absent dictionary and index offsets. -/
+theorem checkGroup_encodings {limits : Leaf.Limits} {bound : Bound} {index : Nat}
+    {group : CheckedGroup} (checked : checkGroup limits bound index = .ok group) :
+    let metadata := group.chunk.column.metadata
+    metadata.indexPageOffset = none ∧ metadata.dictionaryPageOffset = none ∧
+      (∀ tag ∈ metadata.encodings, tag = 0 ∨ tag = 3 ∨ tag = 5 ∨ tag = 9) ∧
+      (0 ∈ metadata.encodings ∨ 5 ∈ metadata.encodings ∨ 9 ∈ metadata.encodings) :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.checkGroup_encodings checked
+
+/-- Codec-6 pages retain the checked source frame, stored CRC, prepared layout and ordered selected scalar values. -/
+theorem decodeZstd_wire {scalars : Limits} {limits : ScalarPage.Limits} {bound : Bound}
+    {encoding : Encoding} {frame : Parquet.Page.Frame} {ordinal : Nat} {slots : List (Option Int64)}
+    (read : decodeZstd scalars limits bound encoding frame ordinal = .ok slots) :
+    slots.length = Leaf.Internal.pageSlots frame ∧ ZstdWire scalars limits bound encoding frame slots :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.decodeZstd_wire read
+
+/-- GZIP consumes the exact whole V1 member or the flag-selected V2 suffix after the original raw levels. -/
+theorem gzipWire_extents {scalars : Limits} {limits : ScalarPage.Limits} {bound : Bound}
+    {declared : List Int} {frame : Parquet.Page.Frame} {slots : List (Option Int64)}
+    (wire : PageWire scalars limits bound 2 declared frame slots) :
+    let stored := Leaf.Internal.body bound frame
+    ∃ (prepared : ScalarPage.Prepared) (layout : FlatPage.Layout),
+      slots.map Option.isSome = prepared.mask ∧
+      match frame.value.kind with
+      | .dataV1 header => ∃ body sections,
+        stored.length = frame.value.compressedSize ∧ body.length = frame.value.uncompressedSize ∧
+        Compression.Gzip.decoder stored.toList = some (body, []) ∧
+        FlatPage.split layout limits.levels.bytes (.v1 (Bytes.ofList body)) = .ok sections ∧
+        FlatPage.readMask layout header.numValues limits.levels sections.definitions = .ok prepared.mask ∧
+        prepared.scalars = sections.scalars
+      | .dataV2 header =>
+        header.repetitionBytes = 0 ∧ header.definitionBytes ≤ frame.value.compressedSize ∧
+        header.definitionBytes ≤ frame.value.uncompressedSize ∧
+        ∃ (definitions : Bytes) (suffix : List UInt8),
+          definitions.length = header.definitionBytes ∧ stored.toList = definitions.toList ++ suffix ∧
+          FlatPage.readMask layout header.numValues limits.levels definitions = .ok prepared.mask ∧
+          prepared.mask.count true = header.numValues - header.numNulls ∧
+          suffix.length = frame.value.compressedSize - header.definitionBytes ∧
+          prepared.scalars.length = frame.value.uncompressedSize - header.definitionBytes ∧
+          (if header.isCompressed then Compression.Gzip.decoder suffix = some (prepared.scalars.toList, [])
+           else suffix = prepared.scalars.toList)
+      | _ => False :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.gzipWire_extents wire
+
+/-- Zstandard consumes the exact whole V1 frame or the flag-selected V2 suffix after the original raw levels. -/
+theorem zstdWire_extents {scalars : Limits} {limits : ScalarPage.Limits} {bound : Bound}
+    {encoding : Encoding} {frame : Parquet.Page.Frame} {slots : List (Option Int64)}
+    (wire : ZstdWire scalars limits bound encoding frame slots) :
+    let stored := Leaf.Internal.body bound frame
+    let sizes : ScalarPage.Sizes := ⟨frame.value.compressedSize, frame.value.uncompressedSize⟩
+    ∃ (prepared : ScalarPage.Prepared) (layout : FlatPage.Layout) (values : List Int64),
+      ZstdValuesWire scalars encoding prepared values ∧ slots.map Option.isSome = prepared.mask ∧
+      slots.filterMap id = values ∧
+      match frame.value.kind with
+      | .dataV1 header => ∃ expanded sections,
+        FlatColumn.Zstd.PayloadWire scalars.zstd (limits.payloadBounds sizes 0) 6 stored.toList expanded ∧
+        FlatPage.split layout limits.levels.bytes (.v1 (Bytes.ofList expanded)) = .ok sections ∧
+        FlatPage.readMask layout header.numValues limits.levels sections.definitions = .ok prepared.mask ∧
+        prepared.scalars = sections.scalars
+      | .dataV2 header =>
+        header.repetitionBytes = 0 ∧ header.definitionBytes ≤ frame.value.compressedSize ∧
+        header.definitionBytes ≤ frame.value.uncompressedSize ∧
+        ∃ (definitions : Bytes) (suffix : List UInt8),
+          definitions.length = header.definitionBytes ∧ stored.toList = definitions.toList ++ suffix ∧
+          FlatPage.readMask layout header.numValues limits.levels definitions = .ok prepared.mask ∧
+          prepared.mask.count true = header.numValues - header.numNulls ∧
+          FlatColumn.Zstd.PayloadWire scalars.zstd (limits.payloadBounds sizes header.definitionBytes)
+            (ScalarPage.v2Codec 6 (some header.isCompressed)) suffix prepared.scalars.toList
+      | _ => False :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.zstdWire_extents wire
+
+/-- Successful standalone GZIP PLAIN V2 agrees at the same GZIP controller limit and declared PLAIN tag. -/
+theorem readGroup_agrees_gzip_v2 {scalars : Limits} {strict : Leaf.Gzip.V2.Limits}
+    {limits : Leaf.Limits} {bound : Bound} {index : Nat} {slots : Slots bound}
+    (fuel : scalars.gzipCalls = strict.gzipCalls)
+    (advertised : ∀ chunk, Leaf.selectChunkWith .gzipPlainV2 limits bound index = .ok chunk →
+      0 ∈ chunk.column.metadata.encodings)
+    (accepted : Leaf.Gzip.V2.readGroup strict limits bound index = .ok slots) :
+    readGroup scalars limits bound index = .ok slots :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.readGroup_agrees_gzip_v2 fuel advertised accepted
+
+/-- Successful standalone Zstandard PLAIN V2 agrees at the same frame limits and declared PLAIN tag. -/
+theorem readGroup_agrees_zstd_v2 {scalars : Limits} {strict : Leaf.Zstd.V2.Limits}
+    {limits : Leaf.Limits} {bound : Bound} {index : Nat} {slots : Slots bound}
+    (compression : scalars.zstd = strict.compression)
+    (advertised : ∀ chunk, Leaf.selectChunkWith .zstdPlainV2 limits bound index = .ok chunk →
+      0 ∈ chunk.column.metadata.encodings)
+    (accepted : Leaf.Zstd.V2.readGroup strict limits bound index = .ok slots) :
+    readGroup scalars limits bound index = .ok slots :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.ScalarDispatch.readGroup_agrees_zstd_v2 compression advertised accepted
 
 end Silmaril.Formats.Parquet.Timestamp.Leaf.ScalarDispatch

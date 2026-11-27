@@ -105,7 +105,7 @@ public def main (args : List String) : IO Unit := do
   checkLate directory "assembled_groups" expected
     (.byteStreamSplitPage 2 split (.decode (.scalar .byteLimit)))
     {split := {Leaf.ByteStreamSplit.defaultLimits with bytes := 0}}
-  expectError "unsupported codec" (.source (.groupFailure 0 (.chunkCodec 2)))
+  expectError "unsupported codec" (.source (.groupFailure 0 (.chunkCodec 4)))
     (convert {} {} {} (← input directory "native_unsupported_codec") 2)
   expectError "dictionary profile" (.source (.groupFailure 0 .chunkEncoding))
     (convert {} {} {} (← input directory "native_dictionary") 2)
