@@ -43,9 +43,10 @@ public theorem v2_levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {by
     obtain ⟨width, cap, countCap, bytesCap, wire⟩ := Hybrid.decode_ok_iff.mp decoded
     exact ⟨.encoded positive width cap countCap bytesCap wire, Hybrid.decode_length decoded⟩
 
-private theorem admitted {codec : ColumnCodec} {frame : Page.Frame} {remaining : Nat} {info : Page.DataV2}
-    (read : admitV2Page codec frame remaining = .ok info) :
-    frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
+public theorem admitV2Page_wire {codec : ColumnCodec} {frame : Page.Frame} {remaining : Nat}
+    {encoding : Int} {info : Page.DataV2}
+    (read : admitV2Page codec frame remaining encoding = .ok info) :
+    frame.value.kind = .dataV2 info ∧ info.encoding = encoding ∧ info.numValues ≤ remaining ∧
       (codec.v2 info = 0 → frame.value.uncompressedSize = frame.value.compressedSize) := by
   unfold admitV2Page at read
   split at read
@@ -88,14 +89,30 @@ private theorem v2_slices {limits : Limits} {source : Bytes} {frame : Page.Frame
   simp only [List.mem_cons, List.not_mem_nil, or_false] at member
   rcases member with rfl | rfl | rfl <;> exact bytesAt_exact (by omega) (by omega)
 
-private theorem certify_counts {leaf : Leaf} {start : State} {rowCeiling : Nat}
-    {info : Page.DataV2} {reps defs : List Nat} {suffix : Bytes} {decoded : DecodedPage}
-    (repLength : reps.length = info.numValues)
-    (read : decodeV2Slots leaf info reps defs suffix start rowCeiling = .ok decoded) :
+public theorem readV2Sections_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {info : Page.DataV2} {sections : V2Sections}
+    (read : readV2Sections limits leaf source frame info = .ok sections) :
+    V2SectionsWire limits leaf source frame info sections := by
+  unfold readV2Sections at read
+  obtain ⟨checksum, checked, read⟩ := bind_ok read
+  have verified := from_mapError checked
+  cases split : frame.v2Spans with
+  | none => simp [split] at read
+  | some spans =>
+    simp only [split] at read
+    obtain ⟨reps, repRead, read⟩ := bind_ok read
+    obtain ⟨defs, defRead, done⟩ := bind_ok read
+    obtain ⟨repWire, repLength⟩ := v2_levels_wire (from_mapError repRead)
+    obtain ⟨defWire, _⟩ := v2_levels_wire (from_mapError defRead)
+    cases Except.ok.inj done
+    exact ⟨⟨checksum, verified⟩, split, v2_slices verified split, repWire, defWire, repLength⟩
+
+public theorem checkV2Slots_wire {start : State} {info : Page.DataV2} {reps : List Nat}
+    {decode : Unit → Except PageCause DecodedPage} {decoded : DecodedPage}
+    (read : checkV2Slots info reps start decode = .ok decoded) :
     reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absentSlots decoded = info.numNulls ∧
-      decoded.levels.length = info.numValues ∧
-      ∃ checked, DecodedWire leaf reps defs suffix start rowCeiling checked ∧ decoded = closeV2 checked := by
-  unfold decodeV2Slots at read
+      ∃ checked, decode () = .ok checked ∧ decoded = closeV2 checked := by
+  unfold checkV2Slots at read
   dsimp only at read
   split at read
   · contradiction
@@ -108,11 +125,8 @@ private theorem certify_counts {leaf : Leaf} {start : State} {rowCeiling : Nat}
       · contradiction
       · rename_i nulls
         cases Except.ok.inj read
-        have wire := decodeSlots_wire readSlots
-        have count := congrArg List.length (original_levels wire.slots).1
-        simp only [List.length_map, repLength] at count
         exact ⟨Classical.not_not.mp first, Classical.not_not.mp rows, Classical.not_not.mp nulls,
-          count, checked, wire, rfl⟩
+          checked, readSlots, rfl⟩
 
 public theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf}
     {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes}
@@ -153,23 +167,20 @@ public theorem decodeV2Page_wire {limits : Limits} {codec : ColumnCodec} {leaf :
     V2PageWire limits codec leaf source frame start remaining rowCeiling decoded := by
   unfold decodeV2Page at read
   obtain ⟨info, header, read⟩ := bind_ok read
-  obtain ⟨checksum, checked, read⟩ := bind_ok read
-  have verified := from_mapError checked
-  cases split : frame.v2Spans with
-  | none => simp [split] at read
-  | some spans =>
-    simp only [split] at read
-    obtain ⟨reps, repRead, read⟩ := bind_ok read
-    obtain ⟨defs, defRead, read⟩ := bind_ok read
-    obtain ⟨repWire, repLength⟩ := v2_levels_wire (from_mapError repRead)
-    obtain ⟨defWire, _⟩ := v2_levels_wire (from_mapError defRead)
-    obtain ⟨suffix, suffixRead, read⟩ := bind_ok read
-    obtain ⟨storedExtent, rawExtent, suffixWire⟩ := readV2Suffix_wire suffixRead
-    obtain ⟨first, rows, nulls, count, observed, slots, closed⟩ := certify_counts repLength read
-    obtain ⟨kind, encoding, cap, sizes⟩ := admitted header
-    exact ⟨info, spans, reps, defs, checksum, observed, suffix, kind, encoding, cap, sizes,
-      storedExtent, rawExtent, verified, split, v2_slices verified split, repWire, defWire,
-      suffixWire, first, rows, nulls, count, slots, closed⟩
+  obtain ⟨sections, sectionsRead, read⟩ := bind_ok read
+  obtain ⟨suffix, suffixRead, read⟩ := bind_ok read
+  have sectionsWire := readV2Sections_wire sectionsRead
+  obtain ⟨storedExtent, rawExtent, suffixWire⟩ := readV2Suffix_wire suffixRead
+  obtain ⟨first, rows, nulls, observed, slots, closed⟩ := checkV2Slots_wire read
+  have slotWire := decodeSlots_wire slots
+  have count := congrArg List.length (original_levels slotWire.slots).1
+  simp only [List.length_map, sectionsWire.count] at count
+  obtain ⟨kind, encoding, cap, sizes⟩ := admitV2Page_wire header
+  obtain ⟨checksum, verified⟩ := sectionsWire.checksum
+  exact ⟨info, sections.spans, sections.repetitions, sections.definitions, checksum, observed, suffix,
+    kind, encoding, cap, sizes, storedExtent, rawExtent, verified, sectionsWire.spans, sectionsWire.slices,
+    sectionsWire.repetitions, sectionsWire.definitions, suffixWire, first, rows, nulls,
+    closed ▸ count, slotWire, closed⟩
 
 public theorem decodeDataPage_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}

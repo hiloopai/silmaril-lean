@@ -39,24 +39,20 @@ private def dictionary (file : Bytes) (group column : Nat)
   if observed.dictionary.isSome then
     let mut checked := []
     for page in observed.pages do
-      let .dataV1 info := page.frame.value.kind | throw (IO.userError "expected original V1 frame")
-      let body ← take (readV1Body {} binding.codec file page.frame)
-      let reps ← take (readLevels ({} : Limits).levels binding.leaf.maxRepetition info.numValues body)
-      let defs ← take (readLevels ({} : Limits).levels binding.leaf.maxDefinition info.numValues reps.tail)
+      let suffix ← match page.frame.value.kind with
+        | .dataV1 info => do
+          let body ← take (readV1Body {} binding.codec file page.frame)
+          let reps ← take (readLevels ({} : Limits).levels binding.leaf.maxRepetition info.numValues body)
+          let defs ← take (readLevels ({} : Limits).levels binding.leaf.maxDefinition info.numValues reps.tail)
+          pure defs.tail
+        | .dataV2 info => do
+          let sections ← take (readV2Sections {} binding.leaf file page.frame info)
+          pure (bytesAt file sections.spans.values)
+        | _ => throw (IO.userError "expected an original V1 or V2 data frame")
       let count := (page.decoded.levels.map LevelSlot.present).count true
-      checked := (← take (Parquet.DictionaryIndex.readIndices ({} : Limits).indices count defs.tail)) :: checked
+      checked := (← take (Parquet.DictionaryIndex.readIndices ({} : Limits).indices count suffix)) :: checked
     unless checked.reverse = traces do throw (IO.userError "original index traces differ")
   else unless traces.isEmpty do throw (IO.userError "expected a dictionary")
-
-private def v2Refusal (file : Bytes) (group column dataOffset : Nat) : IO Unit := do
-  let source ← take (openFile {} file)
-  let binding ← take (bindChunk source.schema group column)
-  let some span := binding.span? | throw (IO.userError "missing original span")
-  let frame ← take (Parquet.Page.readPage {} file span dataOffset)
-  let .dataV2 _ := frame.value.kind | throw (IO.userError "expected V2 control")
-  let address := ⟨group, column, binding.leaf.site.location.path⟩
-  deny (.page address ⟨1, dataOffset, {}⟩ (.header (.pageKind frame.value.kind)))
-    (Parquet.RecursiveSchema.Repeated.Chunk.read {} binding)
 """
 
 
@@ -122,6 +118,24 @@ def section_suffix(body, rep, definition, count):
     return reps, defs, body[:len(body) - len(suffix)], suffix
 
 
+def raw_levels(data, maximum, count):
+    if maximum == 0:
+        assert data == b""
+        return [0] * count
+    return HYBRID(data, maximum.bit_length(), count)
+
+
+def sections_v2(info, body, max_rep, max_def):
+    count, nulls, rows, _, dl, rl = (info[i][1] for i in range(1, 7))
+    suffix_at = rl + dl
+    assert suffix_at <= len(body)
+    reps = raw_levels(body[:rl], max_rep, count)
+    defs = raw_levels(body[rl:suffix_at], max_def, count)
+    assert (not reps or reps[0] == 0) and reps.count(0) == rows
+    assert sum(level != max_def for level in defs) == nulls
+    return reps, defs, body[suffix_at:]
+
+
 def inspect(wire, schema, groups):
     """Inspect raw frames independent of Lean, then compare the signed trace with PyArrow."""
     _, leaves = SCHEMA["describe"](wire, schema, [row for group in groups for row in group])
@@ -135,7 +149,7 @@ def inspect(wire, schema, groups):
                     CHUNK["from_arrow"](row[path[0]], schema.field(path[0]), path[1:])]
         assert metadata[4][1] == 0 and metadata[6][1] == metadata[7][1] == stop - start
         slot, row, live = 0, 0, False
-        dictionary, traces, pages = None, [], []
+        dictionary, traces, pages, spans = None, [], [], []
         code = "<i" if field.type.bit_width == 32 else "<q"
         for ordinal, (at, header, payload, body) in enumerate(FRAMES(wire, start, stop)):
             tag = header[1][1]
@@ -151,11 +165,22 @@ def inspect(wire, schema, groups):
                 assert info[1][1] == len(entries) and info[2][1] == 0
                 dictionary = (at, payload, end, crc, entries)
                 continue
-            assert tag == 0
-            info = header[5][1]
-            assert [info[i][1] for i in (2, 3, 4)] == [8 if dictionary else 0, 3, 3]
-            count = info[1][1]
-            reps, defs, _, suffix = section_suffix(body, int(boundary is not None), len(steps), count)
+            max_rep, max_def = int(boundary is not None), len(steps)
+            if tag == 0:
+                info = header[5][1]
+                assert [info[i][1] for i in (2, 3, 4)] == [8 if dictionary else 0, 3, 3]
+                count = info[1][1]
+                reps, defs, _, suffix = section_suffix(body, max_rep, max_def, count)
+                spans.append("none")
+            else:
+                assert tag == 3
+                info = header[8][1]
+                count = info[1][1]
+                assert info[4][1] == (8 if dictionary else 0)
+                reps, defs, suffix = sections_v2(info, body, max_rep, max_def)
+                rep_end, def_end = payload + info[6][1], end - len(suffix)
+                spans.append(f"(some ({V2['schema_term'](info)}, ⟨⟨{payload}, {rep_end}⟩, "
+                             f"⟨{rep_end}, {def_end}⟩, ⟨{def_end}, {end}⟩⟩))")
             nonnull = defs.count(len(steps))
             if dictionary:
                 assert suffix and suffix[0] <= 32
@@ -175,11 +200,13 @@ def inspect(wire, schema, groups):
                 assert rep == 0 or live
                 live = boundary is not None and definition > boundary[2]
                 row += int(rep == 0)
+            if tag == 3:
+                live = False
             slot += count
             pages.append(Page(ordinal, at, payload, end, crc, before, (slot, row, live), events))
         assert pages[-1].stop == stop and slot == len(expected) == metadata[5][1]
         assert row == len(groups[group]) and (dictionary is not None) == (11 in metadata)
-        yield Column(group, column, path, field.type.bit_width, start, stop, slot, row, steps, pages), dictionary, traces
+        yield Column(group, column, path, field.type.bit_width, start, stop, slot, row, steps, pages), dictionary, traces, spans
 
 
 def continuation(scratch):
@@ -286,19 +313,22 @@ def dictionary_term(column, dictionary, traces, label):
             f'{witness} {lst(str(trace) for trace in traces)}')
 
 
-def verify(scratch):
+def nested_samples():
     _, samples, _ = SCHEMA["fixtures"]()
     schema, original = samples["nullable_lists"]
     live = {"flag": 2, "items": [None, {"lo": -2**31, "nested": {"hi": -2**63}},
                                 {"lo": 2**31-1, "nested": {"hi": 2**63-1}},
                                 {"lo": -4, "nested": None}]}
     groups = [original[:3], [{"packet": live, "seq": 2**40}] * 10 + original[3:]]
+    return schema, groups
+
+
+def verify(scratch):
+    schema, groups = nested_samples()
     native = write(schema, groups)
     mixed = write(schema, groups, use_dictionary=["packet.items.list.élément.lo"])
-    # Genuine files outside this slice keep the producer's default dictionary selection.
-    v2 = write(schema, groups, data_page_version="2.0")
     compressed = write(schema, groups, compression="SNAPPY")
-    genuine = {"native": native, "mixed": mixed, "v2": v2, "compressed": compressed}
+    genuine = {"native": native, "mixed": mixed, "compressed": compressed}
     key = 1, 0
     edited = negative_files(native, key)
     edited["continuation"] = continuation(scratch)
@@ -313,7 +343,7 @@ def verify(scratch):
     captured, data_pages, dictionaries = {}, 0, 0
     for label, (declarations, rows) in positives.items():
         captured[label] = {}
-        for column, dictionary, traces in inspect(files[label], declarations, rows):
+        for column, dictionary, traces, _ in inspect(files[label], declarations, rows):
             captured[label][column.group, column.index] = (column, dictionary)
             data_pages += len(column.pages)
             dictionaries += int(dictionary is not None)
@@ -367,8 +397,6 @@ def verify(scratch):
                 f'(.chunk {address} ⟨{start}, {original_column.stop}⟩ (.uncompressedSize {total + 1} {total}))')
     code.append(f'  refuse (← load folder "wrong_data_offset") {group} {column} {{}} '
                 f'(.page {address} ⟨1, {dictionary[2]}, {{}}⟩ (.dataOffset {dictionary[2] + 1} {dictionary[2]}))')
-    v2_at = next(meta[9][1] for here, meta, _, _ in V2["columns"](v2) if here == key)
-    code.append(f'  v2Refusal (← load folder "v2") {group} {column} {v2_at}')
     code.append(f'  bindFailure (← load folder "compressed") {group} {column} (.column {address} (.codec 1))')
 
     terminal = f".readError (.group 1 (.chunk ({late})))"
@@ -395,7 +423,7 @@ def verify(scratch):
         assert wire[cursor:] == STREAM["EOS"]
         ipc[label] = wire
     print(f"Checked {dictionaries} dictionaries, {data_pages} original data pages, "
-          "three native IPC streams and 21 typed controls")
+          "three native IPC streams and 20 typed controls")
     return {"genuine_parquet": fingerprints(genuine), "labeled_edits": fingerprints(edited),
             "lean_ipc": fingerprints(ipc)}
 

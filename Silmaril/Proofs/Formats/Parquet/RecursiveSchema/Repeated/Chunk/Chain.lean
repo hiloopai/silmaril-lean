@@ -25,7 +25,7 @@ private theorem decodeFramedPage_wire {limits : Limits} {carrier : Carrier} {fra
       simpa only [FramedPageWire, dictionary] using decodeDataPage_wire (by simpa only [dictionary] using read)
     | some entries =>
       simpa only [FramedPageWire, dictionary] using
-        decodeDictionaryPage_wire (by simpa only [dictionary] using read)
+        decodeDictionaryDataPage_wire (by simpa only [dictionary] using read)
 
 private theorem framedPage_counts {limits : Limits} {carrier : Carrier} {frame : Page.Frame}
     {start : State} {decoded : DecodedPage}
@@ -34,7 +34,7 @@ private theorem framedPage_counts {limits : Limits} {carrier : Carrier} {frame :
       start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
   cases dictionary : carrier.dictionary with
   | none => exact dataPage_counts (by simpa only [FramedPageWire, dictionary] using wire)
-  | some entries => exact dictionaryPage_counts (by simpa only [FramedPageWire, dictionary] using wire)
+  | some entries => exact dictionaryDataPage_counts (by simpa only [FramedPageWire, dictionary] using wire)
 
 private def WalkResult (limits : Limits) (carrier : Carrier) (cursor : Cursor)
     (budget : Nat) (reversed pages : List ObservedPage) : Prop :=

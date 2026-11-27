@@ -123,6 +123,23 @@ theorem decodeDictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : 
     DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDictionaryPage_wire read
 
+/-- The V2 raw sections, exact Hybrid suffix and local dictionary bind the
+original slots and values. The V2 cursor closes even for an empty page. -/
+theorem decodeV2DictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
+    V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeV2DictionaryPage_wire read
+
+theorem V2DictionaryPageWire.accounting {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded) :
+    ∃ info, frame.value.kind = .dataV2 info ∧
+      decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
+      decoded.levels.countP LevelSlot.startsRow = info.numRows ∧
+      absentSlots decoded = info.numNulls ∧ decoded.after.live = false :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2Dictionary_accounting wire
+
 theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
     {metadata : Footer.ColumnMetadata} {encoding : FramedEncoding metadata}
     {dictionary : Option Dictionary} (read : readPrefix limits carrier metadata encoding = .ok dictionary) :

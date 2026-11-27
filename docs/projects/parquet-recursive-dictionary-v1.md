@@ -7,6 +7,7 @@ The schema admits signed INT32 and INT64 leaves, Structs and
 canonical three-level LIST with at most one repeated ancestor per
 leaf. PLAIN_DICTIONARY, dictionary V2, compressed dictionaries
 and dictionary-to-PLAIN fallback are outside this slice.
+[Dictionary V2 extension](parquet-recursive-dictionary-v2.md)
 [Parquet encoding specification](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md)
 
 The positional column binding retains the original physical path,
@@ -56,8 +57,8 @@ Lean Arrow streams, and independent IPC framing checks exact EOS.
 
 The controls exercise missing and repeated dictionaries, misordering,
 both original offsets, index bounds and exact extent, CRC, entry and
-byte caps, and header-inclusive footer totals. Genuine dictionary V2
-and Snappy files exercise the profile boundary. A late original index
+byte caps, and header-inclusive footer totals. A genuine Snappy dictionary file
+exercises the codec boundary. A late original index
 failure preserves the earlier group through empty projection and
 takes precedence over native output limits.
 [Fixture pins](../../scripts/parquet-recursive-dictionary-v1-oracle/fixtures.json)

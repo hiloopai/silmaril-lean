@@ -6,6 +6,7 @@ import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Thms
 import Silmaril.Formats.Parquet.FlatPage.Thms
 import Silmaril.Formats.Parquet.Plain.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Page
+import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.V2
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk
 
@@ -99,5 +100,71 @@ public theorem dictionaryPage_counts {limits : Limits} {leaf : Leaf} {dictionary
       start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
   obtain ⟨_, _, _, _, _, _, _, _, _, _, slots, _⟩ := wire.original
   exact slot_counts slots.slots
+
+private theorem identity_v2 (info : Page.DataV2) : ColumnCodec.uncompressed.v2 info = 0 := by
+  cases flag : info.isCompressed <;>
+    simp [ColumnCodec.v2, ScalarPage.v2Codec, ColumnCodec.id, ColumnCodec.payload, Payload.Codec.id, flag]
+
+public theorem decodeV2DictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
+    V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded := by
+  unfold decodeV2DictionaryPage at read
+  obtain ⟨info, header, read⟩ := bind_ok read
+  obtain ⟨sections, sectionsRead, read⟩ := bind_ok read
+  obtain ⟨suffix, suffixRead, read⟩ := bind_ok read
+  obtain ⟨kind, encoding, cap, sizes⟩ := admitV2Page_wire header
+  have sameSizes := sizes (identity_v2 info)
+  have sectionsWire := readV2Sections_wire sectionsRead
+  obtain ⟨storedExtent, _, suffixWire⟩ := readV2Suffix_wire suffixRead
+  cases suffixWire with
+  | compressed _ nonzero _ _ _ _ _ => exact False.elim (nonzero (identity_v2 info))
+  | raw _ suffixSize =>
+    obtain ⟨first, rows, nulls, checked, indices, closed⟩ := checkV2Slots_wire read
+    have slotWire := decodeDictionarySlots_wire indices
+    have count := congrArg List.length (original_levels slotWire.slots).1
+    simp only [List.length_map, sectionsWire.count] at count
+    exact ⟨info, sections, checked, kind, encoding, cap, sameSizes, storedExtent, sectionsWire,
+      suffixSize, first, rows, nulls, closed ▸ count, slotWire, closed⟩
+
+public theorem v2Dictionary_accounting {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded) :
+    ∃ info, frame.value.kind = .dataV2 info ∧
+      decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
+      decoded.levels.countP LevelSlot.startsRow = info.numRows ∧
+      absentSlots decoded = info.numNulls ∧ decoded.after.live = false := by
+  obtain ⟨info, sections, checked, kind, _, _, _, _, _, _, _, rows, nulls, count, slots, closed⟩ := wire.original
+  subst decoded
+  change checked.levels.length = info.numValues at count
+  have aligned : checked.words.length = info.numValues := by
+    simpa only [List.length_map, count] using congrArg List.length slots.aligned
+  have rowCount : checked.levels.countP LevelSlot.startsRow = info.numRows := by
+    rw [← rows, ← (original_levels slots.slots).1]
+    simp only [List.count_eq_countP, List.countP_map]
+    rfl
+  exact ⟨info, kind, count, aligned, rowCount, nulls, rfl⟩
+
+public theorem decodeDictionaryDataPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeDictionaryDataPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
+    DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded := by
+  unfold decodeDictionaryDataPage at read
+  split at read
+  · exact .v1 (decodeDictionaryPage_wire read)
+  · exact .v2 (decodeV2DictionaryPage_wire read)
+  · contradiction
+
+public theorem dictionaryDataPage_counts {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (wire : DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded) :
+    start.slot + decoded.levels.length = decoded.after.slot ∧
+      start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
+  cases wire with
+  | v1 original => exact dictionaryPage_counts original
+  | v2 original =>
+    obtain ⟨_, _, checked, _, _, _, _, _, _, _, _, _, _, _, slots, closed⟩ := original.original
+    subst decoded
+    simpa only [closeV2] using slot_counts slots.slots
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk

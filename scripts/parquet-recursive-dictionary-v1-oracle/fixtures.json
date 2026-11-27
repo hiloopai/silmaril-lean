@@ -13,10 +13,6 @@
       "bytes": 3361,
       "sha256": "8f577d7ab8c8427775e4b632e18c9395e8944ea94fb0dfec7da680ffba1e1c54"
     },
-    "v2": {
-      "bytes": 4386,
-      "sha256": "abb6a6f002e133999e32fe16051538d6746bc883e897e1c27b5fa849db145583"
-    },
     "compressed": {
       "bytes": 4525,
       "sha256": "2487fb998958a70f38eaa01ecec609ea0fbda7d5a0e85d05bcdc8e0ba51b1950"

@@ -6,7 +6,7 @@ public import Silmaril.Formats.Parquet.FlatColumn.Zstd.Defs
 public import Silmaril.Formats.Parquet.ScalarPage.BrotliRaw.Defs
 public import Silmaril.Formats.Parquet.DictionaryIndex.Defs
 
-/-! Checked unindexed PLAIN V1/V2 and uncompressed dictionary-first V1 chunks,
+/-! Checked unindexed PLAIN V1/V2 and uncompressed dictionary-first V1/V2 chunks,
 with at most one repeated ancestor and independent bounds on slots and row starts. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -471,28 +471,34 @@ following V1 page from continuing a row that ended on a V2 page. -/
 def closeV2 (decoded : DecodedPage) : DecodedPage :=
   { decoded with after.live := false }
 
-def admitV2Page (codec : ColumnCodec) (frame : Page.Frame) (remaining : Nat) : Except PageCause Page.DataV2 :=
+def admitV2Page (codec : ColumnCodec) (frame : Page.Frame) (remaining : Nat)
+    (encoding : Int := 0) : Except PageCause Page.DataV2 :=
   match frame.value.kind with
   | .dataV2 info =>
-    if info.encoding ≠ 0 then .error (.v2Encoding info.encoding)
+    if info.encoding ≠ encoding then .error (.v2Encoding info.encoding)
     else if codec.v2 info = 0 ∧ frame.value.uncompressedSize ≠ frame.value.compressedSize then
       .error (.header (.pageSizes frame.value.uncompressedSize frame.value.compressedSize))
     else if info.numValues > remaining then .error (.slotOverrun remaining info.numValues)
     else .ok info
   | kind => .error (.header (.pageKind kind))
 
-/-- Check the V2 row boundary and counts around the shared signed decoder. -/
-def decodeV2Slots (leaf : Leaf) (info : Page.DataV2) (reps defs : List Nat) (suffix : Bytes)
-    (start : State) (rowCeiling : Nat) : Except PageCause DecodedPage :=
+/-- Check the V2 row boundary and counts around either signed value decoder.
+Delay the decoder until after the original repetition checks. -/
+def checkV2Slots (info : Page.DataV2) (reps : List Nat) (start : State)
+    (decode : Unit → Except PageCause DecodedPage) : Except PageCause DecodedPage :=
   let first := reps.head?.getD 0
   let rows := reps.count 0
   if first ≠ 0 then .error (.v2RowBoundary start.slot first)
   else if rows ≠ info.numRows then .error (.v2Rows info.numRows rows)
   else do
-    let checked ← decodeSlots leaf reps defs suffix start rowCeiling
+    let checked ← decode ()
     let nulls := absentSlots checked
     if nulls ≠ info.numNulls then .error (.v2Nulls info.numNulls nulls)
     else .ok (closeV2 checked)
+
+def decodeV2Slots (leaf : Leaf) (info : Page.DataV2) (reps defs : List Nat) (suffix : Bytes)
+    (start : State) (rowCeiling : Nat) : Except PageCause DecodedPage :=
+  checkV2Slots info reps start fun _ => decodeSlots leaf reps defs suffix start rowCeiling
 
 def v2LevelBytes (info : Page.DataV2) : Nat :=
   info.repetitionBytes + info.definitionBytes
@@ -532,20 +538,42 @@ inductive V2SuffixWire (limits : Limits) (codec : ColumnCodec) (frame : Page.Fra
       decodePayload limits codec (v2ValueBounds limits frame info) stored = .ok raw →
       V2SuffixWire limits codec frame info stored raw
 
-/-- Verify CRC on the original body, decode the original level spans, and
-use the header's resolved flag and original column codec for the suffix. -/
-def decodeV2Page (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
-    (source : Bytes) (frame : Page.Frame) (start : State)
-    (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
-  let info ← admitV2Page codec frame remaining
+structure V2Sections where
+  spans : Page.V2Spans
+  repetitions : List Nat
+  definitions : List Nat
+
+/-- Check the original stored body CRC before interpreting any of its sections. -/
+def readV2Sections (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (info : Page.DataV2) : Except PageCause V2Sections := do
   let _ ← (Page.Checksum.verify limits.maxBodyBytes source frame).mapError .checksum
   let some spans := frame.v2Spans | throw .v2Extent
   let reps ← (readV2Levels limits.levels leaf.maxRepetition info.numValues
     (bytesAt source spans.repetition)).mapError .repetition
   let defs ← (readV2Levels limits.levels leaf.maxDefinition info.numValues
     (bytesAt source spans.definition)).mapError .definition
-  let suffix ← readV2Suffix limits codec leaf frame info (bytesAt source spans.values)
-  decodeV2Slots leaf info reps defs suffix start rowCeiling
+  return ⟨spans, reps, defs⟩
+
+structure V2SectionsWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (info : Page.DataV2) (sections : V2Sections) : Prop where
+  checksum : ∃ status, Page.Checksum.verify limits.maxBodyBytes source frame = .ok status
+  spans : frame.v2Spans = some sections.spans
+  slices : ∀ span ∈ [sections.spans.repetition, sections.spans.definition, sections.spans.values],
+    source.slice? span.start (some span.stop) = some (bytesAt source span)
+  repetitions : V2LevelWire limits.levels leaf.maxRepetition info.numValues
+    (bytesAt source sections.spans.repetition) sections.repetitions
+  definitions : V2LevelWire limits.levels leaf.maxDefinition info.numValues
+    (bytesAt source sections.spans.definition) sections.definitions
+  count : sections.repetitions.length = info.numValues
+
+/-- Use the resolved flag and original column codec for the PLAIN suffix. -/
+def decodeV2Page (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
+    (source : Bytes) (frame : Page.Frame) (start : State)
+    (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
+  let info ← admitV2Page codec frame remaining
+  let sections ← readV2Sections limits leaf source frame info
+  let suffix ← readV2Suffix limits codec leaf frame info (bytesAt source sections.spans.values)
+  decodeV2Slots leaf info sections.repetitions sections.definitions suffix start rowCeiling
 
 structure V2PageWire (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (source : Bytes)
     (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) (decoded : DecodedPage) : Prop where
@@ -653,6 +681,46 @@ structure DictionaryPageWire (limits : Limits) (leaf : Leaf) (dictionary : Array
     DictionarySlotsWire limits leaf dictionary reps.levels defs.levels defs.tail start rowCeiling decoded ∧
     decoded.levels.length = info.numValues
 
+/-- Under codec zero the V2 index suffix is raw for either resolved flag.
+Its count and variable byte extent are checked by the Hybrid index reader. -/
+def decodeV2DictionaryPage (limits : Limits) (leaf : Leaf) (dictionary : Array Word) (source : Bytes)
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
+  let info ← admitV2Page .uncompressed frame remaining 8
+  let sections ← readV2Sections limits leaf source frame info
+  let suffix ← readV2Suffix limits .uncompressed leaf frame info (bytesAt source sections.spans.values)
+  checkV2Slots info sections.repetitions start fun _ =>
+    decodeDictionarySlots limits leaf dictionary sections.repetitions sections.definitions suffix start rowCeiling
+
+structure V2DictionaryPageWire (limits : Limits) (leaf : Leaf) (dictionary : Array Word)
+    (source : Bytes) (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
+    (decoded : DecodedPage) : Prop where
+  original : ∃ (info : Page.DataV2) (sections : V2Sections) (checked : DecodedPage),
+    frame.value.kind = .dataV2 info ∧ info.encoding = 8 ∧ info.numValues ≤ remaining ∧
+    frame.value.uncompressedSize = frame.value.compressedSize ∧
+    v2LevelBytes info ≤ frame.value.compressedSize ∧
+    V2SectionsWire limits leaf source frame info sections ∧
+    (bytesAt source sections.spans.values).length = frame.value.uncompressedSize - v2LevelBytes info ∧
+    sections.repetitions.head?.getD 0 = 0 ∧ sections.repetitions.count 0 = info.numRows ∧
+    absentSlots decoded = info.numNulls ∧ decoded.levels.length = info.numValues ∧
+    DictionarySlotsWire limits leaf dictionary sections.repetitions sections.definitions
+      (bytesAt source sections.spans.values) start rowCeiling checked ∧
+    decoded = closeV2 checked
+
+def decodeDictionaryDataPage (limits : Limits) (leaf : Leaf) (dictionary : Array Word) (source : Bytes)
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage :=
+  match frame.value.kind with
+  | .dataV1 _ => decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling
+  | .dataV2 _ => decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling
+  | kind => .error (.header (.pageKind kind))
+
+inductive DictionaryDataPageWire (limits : Limits) (leaf : Leaf) (dictionary : Array Word)
+    (source : Bytes) (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
+    (decoded : DecodedPage) : Prop where
+  | v1 : DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded →
+      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded
+  | v2 : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded →
+      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded
+
 structure ObservedPage where
   start : Cursor
   frame : Page.Frame
@@ -680,14 +748,15 @@ def decodeFramedPage (limits : Limits) (carrier : Carrier) (frame : Page.Frame)
     let remaining := carrier.slots - start.slot
     match carrier.dictionary with
     | none => decodeDataPage limits carrier.codec carrier.leaf carrier.bytes frame start remaining carrier.rows
-    | some entries => decodeDictionaryPage limits carrier.leaf entries carrier.bytes frame start remaining carrier.rows
+    | some entries =>
+      decodeDictionaryDataPage limits carrier.leaf entries carrier.bytes frame start remaining carrier.rows
 
 def FramedPageWire (limits : Limits) (carrier : Carrier) (frame : Page.Frame)
     (start : State) (decoded : DecodedPage) : Prop :=
   match carrier.dictionary with
   | none => DataPageWire limits carrier.codec carrier.leaf carrier.bytes frame start
       (carrier.slots - start.slot) carrier.rows decoded
-  | some entries => DictionaryPageWire limits carrier.leaf entries carrier.bytes frame start
+  | some entries => DictionaryDataPageWire limits carrier.leaf entries carrier.bytes frame start
       (carrier.slots - start.slot) carrier.rows decoded
 
 def initial (carrier : Carrier) : Cursor := ⟨0, carrier.span.start, {}⟩
