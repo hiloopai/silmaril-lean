@@ -174,3 +174,40 @@ Generate the fixture with
 `lake env lean --run Silmaril/Formats/Hive/Date32/Render/Checks.lean pruning "$tmp"`.
 Use the pinned outbound command above with
 `python -I /repo/scripts/hive-date32-render-oracle/Oracle.py /out --pruning`.
+
+## Paired read with DATE and UTF-8 partition keys
+
+[`Hive.Date32.Utf8`](../../Silmaril/Formats/Hive/Date32/Utf8/Defs.lean)
+is an opt-in read profile with two distinct caller-named partition keys.
+The caller chooses DATE-first or text-first order. Each path can spell
+its assignments in either order. Missing keys are errors and explicit
+decoded markers give nullable cells. A DATE uses signed epoch-day
+storage, and decoded UTF-8 text uses a byte-array cell. Empty text
+remains a present empty byte array. The physical Parquet columns are the
+existing checked INT32 and opaque BYTE_ARRAY pair. Their order precedes
+the declared virtual key order.
+
+Path admission is strict and runs to completion before the first
+snapshot lookup. The shared lexical and URI checks and the unknown-key
+check apply before conversion. Once those checks pass, a missing key or
+invalid DATE is reported in declared field order. The first failing
+declaration retains its literal path and typed cause. Successful
+admission retains exact lookup keys and repeated path occurrences. The
+strict reader uses the existing checked paired opener and its payload
+error semantics. Projections can repeat or reorder positions, and
+zero-column projections preserve row counts. See the
+[ordered binding and native scan laws](../../Silmaril/Formats/Hive/Date32/Utf8/Thms.lean).
+
+The independent PyArrow comparator uses the pinned
+[paired Parquet fixture](parquet-int32-byte-array-file.md). It reads
+four literal path occurrences, including one repeat, with checked
+groups of 3, 0 and 2 rows each. It compares both declared schemas and
+a repeated projection, including escaped keys, a non-ASCII text value
+with an escaped slash, empty text, and marker nulls. Lean guards pin
+first binding error order for a path with an invalid DATE and missing
+text and check that lexical failures and ingress errors precede lookup.
+
+Generate the fixture with `lake build --wfail +Silmaril.Formats.Hive.Date32.Utf8.Checks`
+and `lake env lean --run Silmaril/Formats/Hive/Date32/Utf8/Checks.lean "$tmp"`.
+Use the pinned PyArrow command above with
+`python -I /repo/scripts/hive-date-utf8-ingress-oracle/Oracle.py /out`.
