@@ -1,0 +1,68 @@
+{
+  "description": "Genuine Arrow IPC streams and labeled offset or arity edits",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c"
+  },
+  "genuine_ipc": {
+    "nested": {
+      "bytes": 1224,
+      "sha256": "98ecd11474f8ed7cb6313bfec6fd96af85833e5558b2741da567741a2f0bde88"
+    },
+    "empty": {
+      "bytes": 64,
+      "sha256": "6664aa09a0ed75fadf7d69595d4a1b0af8f81605f3c244753545049a9d2720dc"
+    },
+    "unsigned": {
+      "bytes": 176,
+      "sha256": "45329a489b05ac731425a2e896235a432ee8a6b4f7b79060c10e0ccfdaa55049"
+    },
+    "large_list": {
+      "bytes": 224,
+      "sha256": "e150262d08c932129fd23c3b3804333f04f052f5780518c5b74c46d569fb3602"
+    },
+    "field_metadata": {
+      "bytes": 256,
+      "sha256": "b1c74dfe84a374385e188c245da8ccc0571dcd07faf6e1c569d3fab86b76d454"
+    },
+    "legacy": {
+      "bytes": 628,
+      "sha256": "0854992944f4c2065a1e30cdba765ed0af644ccce5e2184885a818ce4b874fe2"
+    },
+    "v4": {
+      "bytes": 632,
+      "sha256": "8ff9ea0707e1a7207603e2e882fc8ca7f91393562ddd7d7e7bdd51f6dd63828c"
+    }
+  },
+  "labeled_edits": {
+    "child_vector_extent": {
+      "bytes": 1224,
+      "sha256": "d27b7f40b133ddcd338bcc11af809576df61c5d738da688fdb40485a507a5670"
+    },
+    "child_vector_offset": {
+      "bytes": 1224,
+      "sha256": "e44916e59a5bade1e6e43d56e88bf8a73ebad01689acf542da5c85c1480ee4fc"
+    },
+    "child_slot_offset": {
+      "bytes": 1224,
+      "sha256": "590a90d7a2ab31e7671a8662d2f30e6cc8dd2902724be3cda729c7b33de47088"
+    },
+    "child_table_alignment": {
+      "bytes": 1224,
+      "sha256": "5af3890b5a0ca66cd5052ffc43867562e2a8b8504b85b07cf92a3df554446c09"
+    },
+    "list_arity_zero": {
+      "bytes": 1224,
+      "sha256": "f4e7eaecd20723d60562d9d657af8cc837204f5d40e67ce34347cfcd9d5346e5"
+    },
+    "list_arity_two": {
+      "bytes": 1224,
+      "sha256": "3832bfd48d5e06b233d2d120b3cfb64cb7684c3b961175ccac3a0c79e24d7493"
+    }
+  }
+}

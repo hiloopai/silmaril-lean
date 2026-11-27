@@ -567,6 +567,75 @@ private def messageParts (limits : Limits) (bytes : KBytes) :
   emptyVector bytes value 4 4 4 .customMetadata
   return (tag, payload, bodyLength)
 
+namespace RecursiveSchema.Wire
+
+public inductive Kind where
+  | int32 | int64 | struct | list
+  deriving DecidableEq, Repr
+
+public def Kind.tag : Kind → Nat
+  | .int32 | .int64 => 2
+  | .struct => 13
+  | .list => 12
+
+/-- The local Field table and the extent of its original child offset vector.
+An absent vector has extent `(0, 0)`. -/
+public structure FieldHeader where
+  name : Option String
+  nullable : Bool
+  kind : Kind
+  childrenFirst : Nat
+  childrenCount : Nat
+  deriving DecidableEq, Repr
+
+/-- Find the root field vector of a bodyless little-endian V5 Schema. -/
+public def rootFields (limits : Limits) (bytes : KBytes) : Except Error (Nat × Nat) := do
+  let (tag, schema, bodyLength) ← messageParts limits bytes
+  if tag ≠ 1 then throw (.unsupported (.messageKind tag))
+  if bodyLength ≠ 0 then throw (.malformed .bodyLength)
+  tableShape schema 4
+  let endian ← scalar bytes schema 0 2
+  if endian ≠ 0 then throw (.unsupported (.endianness endian))
+  emptyVector bytes schema 2 4 4 .customMetadata
+  emptyVector bytes schema 3 8 8 .schemaFeatures
+  vector bytes schema 1 4 4
+
+/-- Resolve one uoffset relative to its original word, aligned and bounded by
+the caller's checked vector. The target table is checked by `fieldHeader`. -/
+public def fieldOffset (bytes : KBytes) (word : Nat) : Except Error Nat :=
+  target bytes word
+
+/-- Check one Field and its type table without opening any child Field. -/
+public def fieldHeader (bytes : KBytes) (position : Nat) : Except Error FieldHeader := do
+  let value ← table bytes position
+  tableShape value 7
+  let name ← optionalString bytes value 0
+  let nullable ← bool bytes value 1
+  let tag ← scalar bytes value 2 1
+  check (tag != 0)
+  let payload ← table bytes (← require (← reference bytes value 3))
+  let kind ← match tag with
+    | 2 => do
+      let width ← scalar bytes payload 0 4
+      checkSignedInteger bytes payload width
+      match width with
+      | 32 => pure Kind.int32
+      | 64 => pure Kind.int64
+      | _ => throw (.unsupported .fieldInteger)
+    | 12 => do
+      tableShape payload 0
+      pure Kind.list
+    | 13 => do
+      tableShape payload 0
+      pure Kind.struct
+    | _ => throw (.unsupported (.fieldType tag))
+  noTable bytes value 4 .dictionary
+  let (first, count) ← vector bytes value 5 4 4
+  emptyVector bytes value 6 4 4 .customMetadata
+  return ⟨name, nullable, kind, first, count⟩
+
+end RecursiveSchema.Wire
+
 /-- Check the common V5 Message table and recover the body length for a
 Schema or RecordBatch frame. The typed payload has its own decoder. -/
 public def frameBodyLength (limits : Limits) (bytes : KBytes) : Except Error Nat := do
