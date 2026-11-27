@@ -83,27 +83,32 @@ theorem bound_leaf {snapshot : Snapshot.Checked} (bound : Bound snapshot) :
       rw [binding.leafRepetition]
       cases layout.repetition <;> simp
 
+theorem bindProjection_lookup {snapshot : Snapshot.Checked}
+    {ordinals : List Nat} {columns : List (Bound snapshot)}
+    (bound : bindProjection snapshot ordinals = .ok columns) :
+    List.Forall₂ (fun ordinal column => bindOrdinal snapshot ordinal = .ok column) ordinals columns := by
+  apply indexed_mapM_exact (fun ordinal position column h => ?_) bound
+  change (bindOrdinal snapshot ordinal).mapError (SourceError.bind position ordinal) = .ok column at h
+  cases resolved : bindOrdinal snapshot ordinal with
+  | error cause => simp [resolved, Except.mapError] at h
+  | ok actual =>
+    simp [resolved, Except.mapError] at h
+    exact h ▸ rfl
+
 private theorem bindProjection_ordinals {snapshot : Snapshot.Checked}
     {ordinals : List Nat} {columns : List (Bound snapshot)}
     (bound : bindProjection snapshot ordinals = .ok columns) :
     columns.map Bound.ordinal = ordinals := by
-  have each : List.Forall₂ (fun ordinal (column : Bound snapshot) => column.ordinal = ordinal)
-      ordinals columns := indexed_mapM_exact (fun ordinal position column h => by
-    change (bindOrdinal snapshot ordinal).mapError (SourceError.bind position ordinal) = .ok column at h
-    cases resolved : bindOrdinal snapshot ordinal with
-    | error cause => simp [resolved, Except.mapError] at h
-    | ok actual =>
-      simp [resolved, Except.mapError] at h
-      exact h ▸ bind_ordinal resolved) bound
+  have each := weaken (fun h => bind_ordinal h) (bindProjection_lookup bound)
   clear bound
   induction each with
   | nil => rfl
   | cons head _ ih => simp [head, ih]
 
-theorem open_exact {limits : FlatProjection.Limits} {input : Bytes} {ordinals : List Nat} {checked : Checked}
+theorem open_bindings {limits : FlatProjection.Limits} {input : Bytes} {ordinals : List Nat} {checked : Checked}
     (opened : openFile limits input ordinals = .ok checked) :
     Snapshot.check (Failure := Unit) limits.column.snapshot input = .ok checked.snapshot ∧
-    checked.columns.map Bound.ordinal = ordinals ∧
+    bindProjection checked.snapshot ordinals = .ok checked.columns ∧
     input.length ≤ limits.column.maxFileBytes ∧
     checked.snapshot.metadata.numRows.toNat ≤ limits.maxFileRows ∧ ordinals.length ≤ limits.maxFields := by
   by_cases bytes : limits.column.maxFileBytes < input.length
@@ -122,8 +127,22 @@ theorem open_exact {limits : FlatProjection.Limits} {input : Bytes} {ordinals : 
       simp [openFile, bytes, fields, snapshotResult, rows, bound, Except.mapError, Bind.bind, Except.bind,
         pure, Except.pure] at opened
       subst checked
-      exact ⟨rfl, bindProjection_ordinals bound, Nat.le_of_not_gt bytes,
+      exact ⟨rfl, bound, Nat.le_of_not_gt bytes,
         Nat.le_of_not_gt rows, Nat.le_of_not_gt fields⟩
+
+theorem open_exact {limits : FlatProjection.Limits} {input : Bytes} {ordinals : List Nat} {checked : Checked}
+    (opened : openFile limits input ordinals = .ok checked) :
+    Snapshot.check (Failure := Unit) limits.column.snapshot input = .ok checked.snapshot ∧
+    checked.columns.map Bound.ordinal = ordinals ∧
+    input.length ≤ limits.column.maxFileBytes ∧
+    checked.snapshot.metadata.numRows.toNat ≤ limits.maxFileRows ∧ ordinals.length ≤ limits.maxFields := by
+  obtain ⟨snapshot, bindings, caps⟩ := open_bindings opened
+  exact ⟨snapshot, bindProjection_ordinals bindings, caps⟩
+
+theorem bound_read_congr {snapshot : Snapshot.Checked} {left right : FlatProjection.Limits}
+    (same : left.column = right.column) (bound : Bound snapshot) (index : Nat) :
+    bound.read left index = bound.read right index := by
+  cases bound <;> simp [Bound.read, same]
 
 theorem packBinary_exact (slots : List (Option Bytes)) :
     (packBinary slots).map (Option.map KBytes.toList) = slots.map (Option.map Bytes.toList) := by
@@ -161,11 +180,10 @@ theorem bound_read_exact {snapshot : Snapshot.Checked} {limits : FlatProjection.
       cases found
       exact ⟨⟨slots, rfl, wire⟩, rfl, by simpa [OrderedWriter.Column.length, packBinary] using count⟩
 
-theorem group_exact {limits : FlatProjection.Limits} {index : Nat} {checked : Checked} {batch : OrderedWriter.BatchInput}
+theorem group_lookup {limits : FlatProjection.Limits} {index : Nat} {checked : Checked} {batch : OrderedWriter.BatchInput}
     (read : checked.readGroup limits index = .ok batch) :
     ∃ group, checked.snapshot.groupAt index = some group ∧ batch.rowCount = group.numRows.toNat ∧
-      batch.fields = checked.fields ∧ List.Forall₂
-        (fun bound column => bound.Wire limits index group column ∧ column.length = batch.rowCount)
+      List.Forall₂ (fun bound column => bound.read limits index = .ok column)
         checked.columns batch.columns := by
   cases found : checked.snapshot.groupAt index with
   | none => simp [Checked.readGroup, found, throw] at read
@@ -177,24 +195,30 @@ theorem group_exact {limits : FlatProjection.Limits} {index : Nat} {checked : Ch
     | ok ordered =>
       simp [Checked.readGroup, found, rows, columns, Bind.bind, Except.bind, pure, Except.pure] at read
       subst batch
-      have each : List.Forall₂ (fun (bound : Bound checked.snapshot) column =>
-            bound.Wire limits index group column ∧ column.field = bound.field ∧
-              column.length = group.numRows.toNat) checked.columns ordered :=
-        indexed_mapM_exact (fun bound position column h => by
-          change (bound.read limits index).mapError (SourceError.read index position bound.ordinal) = .ok column at h
-          cases raw : bound.read limits index with
-          | error cause => simp [raw, Except.mapError] at h
-          | ok value =>
-            simp [raw, Except.mapError] at h
-            exact h ▸ bound_read_exact found raw) columns
-      refine ⟨group, rfl, rfl, ?_, weaken (fun h => ⟨h.1, h.2.2⟩) each⟩
-      have exactFields {bindings : List (Bound checked.snapshot)} {values : List OrderedWriter.Column}
-          (same : List.Forall₂ (fun bound column => column.field = bound.field) bindings values) :
-          values.map OrderedWriter.Column.field = bindings.map Bound.field := by
-        induction same with
-        | nil => rfl
-        | cons head _ ih => simp [head, ih]
-      exact exactFields (weaken (fun h => h.2.1) each)
+      refine ⟨group, rfl, rfl, indexed_mapM_exact (fun bound position column h => ?_) columns⟩
+      change (bound.read limits index).mapError (SourceError.read index position bound.ordinal) = .ok column at h
+      cases raw : bound.read limits index with
+      | error cause => simp [raw, Except.mapError] at h
+      | ok value =>
+        simp [raw, Except.mapError] at h
+        exact h ▸ rfl
+
+theorem group_exact {limits : FlatProjection.Limits} {index : Nat} {checked : Checked} {batch : OrderedWriter.BatchInput}
+    (read : checked.readGroup limits index = .ok batch) :
+    ∃ group, checked.snapshot.groupAt index = some group ∧ batch.rowCount = group.numRows.toNat ∧
+      batch.fields = checked.fields ∧ List.Forall₂
+        (fun bound column => bound.Wire limits index group column ∧ column.length = batch.rowCount)
+        checked.columns batch.columns := by
+  obtain ⟨group, found, count, lookup⟩ := group_lookup read
+  have each := weaken (fun h => bound_read_exact found h) lookup
+  refine ⟨group, found, count, ?_, weaken (fun h => ⟨h.1, h.2.2.trans count.symm⟩) each⟩
+  have exactFields {bindings : List (Bound checked.snapshot)} {values : List OrderedWriter.Column}
+      (same : List.Forall₂ (fun bound column => column.field = bound.field) bindings values) :
+      values.map OrderedWriter.Column.field = bindings.map Bound.field := by
+    induction same with
+    | nil => rfl
+    | cons head _ ih => simp [head, ih]
+  exact exactFields (weaken (fun h => h.2.1) each)
 
 theorem readAll_indexed {limits : FlatProjection.Limits} {checked : Checked} {batches : List OrderedWriter.BatchInput}
     (read : checked.readAll limits = .ok batches) :

@@ -40,6 +40,29 @@ repeated and empty projections, a framed empty group, schema-only and
 unselected damage. A selected late failure retains the exact page index
 and header offset even when the writer's field cap would also refuse.
 
+## Positional composition
+
+`Composition.composeOrdinals [3, 0, 1, 2] [2, 1, 2]` yields
+`some [1, 0, 1]`. `Composition.project` applies the same positions to
+the ordered schema and batch observations. Out-of-range positions
+refuse selection. `project_rowCounts` retains all original row counts
+and batch boundaries, including an empty selection on an empty group.
+
+`project_compose` assumes that the original and composed projections
+both open and exhaust the same immutable source under a common column
+policy. The field and total-row admission caps may differ. The proof
+uses exact lookup of the same checked bindings and successful column
+reads. A wider read can fail on a chunk omitted by the narrower read.
+IPC field and cell policies govern downstream emission independently.
+[Composition laws][composition-laws]
+
+The [composition oracle][composition-oracle] reuses the five-leaf
+producer and checks a wider source failure on an omitted damaged
+column, repeated positions, an invalid position, schema-only output,
+and an empty selection through `[12, 0, 6]`. A three-field and a
+54-cell IPC budget each admit the composed output while refusing
+the four-column output of the original successful source read.
+
 ```sh
 lake build --wfail +Silmaril.Formats.Parquet.FlatProjection.Checks
 python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-flat-projection
@@ -47,3 +70,5 @@ python3.13 scripts/parquet-flat-projection-oracle/check.py --out /tmp/parquet-fl
 
 [laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Thms.lean
 [oracle]: ../../scripts/parquet-flat-projection-oracle/check.py
+[composition-laws]: ../../Silmaril/Formats/Parquet/FlatProjection/Composition/Thms.lean
+[composition-oracle]: ../../scripts/parquet-flat-projection-composition-oracle/check.py

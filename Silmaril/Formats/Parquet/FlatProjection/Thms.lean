@@ -24,6 +24,36 @@ theorem bound_leaf {snapshot : Snapshot.Checked} (bound : Bound snapshot) :
   Proofs.Formats.Parquet.FlatProjection.bound_leaf
     bound
 
+/-- The ordered lookup result names the precise successful binding for each source ordinal. -/
+theorem bindProjection_lookup {snapshot : Snapshot.Checked}
+    {ordinals : List Nat} {columns : List (Bound snapshot)}
+    (bound : bindProjection snapshot ordinals = .ok columns) :
+    List.Forall₂ (fun ordinal column => bindOrdinal snapshot ordinal = .ok column) ordinals columns :=
+  Proofs.Formats.Parquet.FlatProjection.bindProjection_lookup bound
+
+/-- A successful open retains the result of binding the original ordinals on its snapshot. -/
+theorem open_bindings {limits : FlatProjection.Limits} {input : Bytes} {ordinals : List Nat} {checked : Checked}
+    (opened : openFile limits input ordinals = .ok checked) :
+    Snapshot.check (Failure := Unit) limits.column.snapshot input = .ok checked.snapshot ∧
+    bindProjection checked.snapshot ordinals = .ok checked.columns ∧
+    input.length ≤ limits.column.maxFileBytes ∧
+    checked.snapshot.metadata.numRows.toNat ≤ limits.maxFileRows ∧ ordinals.length ≤ limits.maxFields :=
+  Proofs.Formats.Parquet.FlatProjection.open_bindings opened
+
+/-- A bound column read depends on the source column policy. -/
+theorem bound_read_congr {snapshot : Snapshot.Checked} {left right : FlatProjection.Limits}
+    (same : left.column = right.column) (bound : Bound snapshot) (index : Nat) :
+    bound.read left index = bound.read right index :=
+  Proofs.Formats.Parquet.FlatProjection.bound_read_congr same bound index
+
+/-- A complete group retains the exact successful column read at every projected position. -/
+theorem group_lookup {limits : FlatProjection.Limits} {index : Nat} {checked : Checked} {batch : OrderedWriter.BatchInput}
+    (read : checked.readGroup limits index = .ok batch) :
+    ∃ group, checked.snapshot.groupAt index = some group ∧ batch.rowCount = group.numRows.toNat ∧
+      List.Forall₂ (fun bound column => bound.read limits index = .ok column)
+        checked.columns batch.columns :=
+  Proofs.Formats.Parquet.FlatProjection.group_lookup read
+
 /-- Open retains the projection list in order and witnesses all source admission caps. -/
 theorem open_exact {limits : FlatProjection.Limits} {input : Bytes} {ordinals : List Nat} {checked : Checked}
     (opened : openFile limits input ordinals = .ok checked) :
