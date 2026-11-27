@@ -1,0 +1,15 @@
+{
+  "v1-absent.parquet": "d1cc8a2ad0e1e63d8d3ee8e595ae0c7dcca354fbe977ff3a69861aff11dece8f",
+  "v1-crc.parquet": "99762d8a05b31b1b6e03202c210cc854971e51865dda9c246a5757c4507e3b57",
+  "v2-absent.parquet": "ab6b6d41d156cd7f3129c83f4d76c08bc1a8e68707972e404da30ecfb0b011c2",
+  "v2-crc.parquet": "75a65a8b730d6600faccf3ef0c999fb015fa8656536b2832cb84de5102bd04a0",
+  "bad-index.parquet": "0ff8f6c02fc2bcea3eb88dfe18dd265155a9e5e6f81f8017c5a674fc5e14da5c",
+  "bad-crc.parquet": "0ccfd4ca802a912fbd930d197cf147524967a7774b315b367f461726dd5aa95f",
+  "mixed-v1.parquet": "dbba0edbc6b21533184ca8af154b4f33c5c670590d12dcc71855734f13b8ef0b",
+  "mixed-v2.parquet": "70263b84de3b311ef005071a35621be6f873e2e89b7e019fc46f068363438edb",
+  "annotated-string.parquet": "19ef2a6ed4b3581c2e5bbd5ad6aed3bf460201e9962d73d1749cf19667fa61fc",
+  "v1-absent.arrows": "cdffbf9d222baa6d8f142d549909522f8afea99e64c6acf7c338555d53a41e2b",
+  "v1-crc.arrows": "cdffbf9d222baa6d8f142d549909522f8afea99e64c6acf7c338555d53a41e2b",
+  "v2-absent.arrows": "cdffbf9d222baa6d8f142d549909522f8afea99e64c6acf7c338555d53a41e2b",
+  "v2-crc.arrows": "cdffbf9d222baa6d8f142d549909522f8afea99e64c6acf7c338555d53a41e2b"
+}

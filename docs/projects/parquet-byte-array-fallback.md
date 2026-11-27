@@ -235,3 +235,35 @@ The annotation controls use one STRING file and a converted-only edit.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Snappy.Checks
 python3 scripts/parquet-snappy-fallback-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in Snappy dictionary-only BinaryView
+
+`ByteArrayFallback.Snappy.Dictionary.convert` uses the same named flat
+optional unannotated BYTE_ARRAY binding, checked byte extents and
+native BinaryView writer. The selected codec-1 chunk must contain a
+leading PLAIN dictionary (tag 0) and only RLE_DICTIONARY data pages
+(tag 8). A PLAIN data page returns its original group, column, page
+ordinal and header offset with an encoding refusal. The readback law
+links the original annotation-free leaf, stored and expanded frame
+extents, CRCs and ordered dictionary lookups to the exact nullable
+bytes in each native batch through EOS.
+
+PyArrow 26.0.1 produces genuine dictionary-only V1 and V2 files with
+and without CRC. Thrift 0.25.0 checks the original footer and page
+headers, exact dictionary octets, both V2 compression flags, raw V2
+levels and original index streams. The native comparison covers
+`[257, 129]` rows with NUL, empty and null slots, and non-text bytes.
+Separate genuine V1 and V2 files both contain an all-dictionary first
+group followed by a group with tag-8 pages and a PLAIN suffix. The
+source returns the first PLAIN header as an indexed error before IPC
+limits. Additional edits exercise a late out-of-range index and CRC
+failure, and a producer STRING file exercises annotation refusal.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Snappy/Dictionary/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Snappy/Dictionary/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-snappy-dictionary-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Snappy.Dictionary.Checks
+python3 scripts/parquet-snappy-dictionary-binary-view-oracle/check.py "$(mktemp -d)"
+```

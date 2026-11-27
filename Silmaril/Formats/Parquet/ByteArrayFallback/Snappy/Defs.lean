@@ -115,12 +115,17 @@ def GroupWire {name : String} (limits : Limits) (checked : Checked name) (index 
       Utf8.Dictionary.Snappy.storedBytes frames ≤ limits.file.column.maxChunkBytes ∧
       FramesWire limits metadata source rows frames output) index group slots
 
-/-- Complete all selected groups before applying native BinaryView writer limits. -/
-def convert (parquet : Limits) (ipc : Arrow.Limits) (view : Column.Limits) (input : Bytes)
-    (name : String) : Except Error KBytes := do
+/-- Finish reading the selected groups before applying native BinaryView limits. -/
+def convertWith (parquet : Limits) (ipc : Arrow.Limits) (view : Column.Limits) (input : Bytes)
+    (name : String) (read : Checked name → Nat → Except GroupError (List (Option Bytes))) : Except Error KBytes := do
   let checked ← (openFile parquet input name).mapError .openFile
-  let groups ← ((List.range checked.physical.snapshot.groupCount).mapM (readGroup parquet checked)).mapError .column
+  let groups ← ((List.range checked.physical.snapshot.groupCount).mapM (read checked)).mapError .column
   let source : ToIpc.Source := ⟨⟨name, true⟩, groups⟩
   (StreamWriter.emit ipc view source.ipcField source.batches).mapError .writer
+
+/-- Export the separately admitted dictionary-to-PLAIN profile. -/
+def convert (parquet : Limits) (ipc : Arrow.Limits) (view : Column.Limits) (input : Bytes)
+    (name : String) : Except Error KBytes :=
+  convertWith parquet ipc view input name (readGroup parquet)
 
 end Silmaril.Formats.Parquet.ByteArrayFallback.Snappy

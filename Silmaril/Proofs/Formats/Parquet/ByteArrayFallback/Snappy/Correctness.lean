@@ -154,6 +154,36 @@ theorem readGroup_wire {parquet : ByteArrayFallback.Snappy.Limits} {name : Strin
     framed, stored, ?_, readFrames_wire decoded⟩
   omega
 
+theorem convertWith_readback {parquet : ByteArrayFallback.Snappy.Limits} {ipc : Arrow.Limits} {view : Column.Limits}
+    {input : Bytes} {name : String} {wire : KBytes}
+    {readGroupAt : Checked name → Nat → Except GroupError (List (Option Bytes))}
+    (written : convertWith parquet ipc view input name readGroupAt = .ok wire) :
+    ∃ (checked : Checked name) (groups : List (List (Option Bytes))) (batches : List (List (Option KBytes))),
+      openFile parquet input name = .ok checked ∧
+      (List.range checked.physical.snapshot.groupCount).mapM (readGroupAt checked) = .ok groups ∧
+      Stream.read ipc view wire = .ok ⟨⟨name, true, .binary⟩, batches⟩ ∧
+      batches.map (List.map (Option.map KBytes.toList)) = groups.map (List.map (Option.map Bytes.toList)) ∧
+      batches.map List.length = groups.map List.length ∧
+      wire.wf = true ∧ ∃ start,
+        Stream.readSchema ipc wire = .ok (⟨name, true, .binary⟩, start) ∧
+        Stream.BatchesWire ipc view wire ⟨name, true, .binary⟩ ipc.batches start batches := by
+  cases opened : openFile parquet input name with
+  | error cause => simp [convertWith, opened, Except.mapError, Bind.bind, Except.bind] at written
+  | ok checked =>
+    cases read : (List.range checked.physical.snapshot.groupCount).mapM (readGroupAt checked) with
+    | error cause => simp [convertWith, opened, read, Except.mapError, Bind.bind, Except.bind] at written
+    | ok groups =>
+      let source : ToIpc.Source := ⟨⟨name, true⟩, groups⟩
+      have emitted : StreamWriter.emit ipc view ⟨name, true, .binary⟩ source.batches = .ok wire := by
+        cases h : StreamWriter.emit ipc view ⟨name, true, .binary⟩ source.batches <;>
+          simp_all [convertWith, source, ToIpc.Source.ipcField, Except.mapError, Bind.bind, Except.bind]
+      obtain ⟨batches, observed, values⟩ := StreamWriter.emit_binary_readback emitted
+      have bytes := values.trans (ToIpc.batches_octets source)
+      have counts : batches.map List.length = groups.map List.length := by
+        simpa [source, List.map_map, Function.comp_def] using congrArg (List.map List.length) bytes
+      exact ⟨checked, groups, batches, rfl, read,
+        observed, bytes, counts, (Stream.read_iff _ _ _ _).mp observed⟩
+
 theorem convert_readback {parquet : ByteArrayFallback.Snappy.Limits} {ipc : Arrow.Limits} {view : Column.Limits}
     {input : Bytes} {name : String} {wire : KBytes} (written : convert parquet ipc view input name = .ok wire) :
     ∃ (checked : Checked name) (groups : List (List (Option Bytes))) (batches : List (List (Option KBytes))),
@@ -166,21 +196,8 @@ theorem convert_readback {parquet : ByteArrayFallback.Snappy.Limits} {ipc : Arro
       wire.wf = true ∧ ∃ start,
         Stream.readSchema ipc wire = .ok (⟨name, true, .binary⟩, start) ∧
         Stream.BatchesWire ipc view wire ⟨name, true, .binary⟩ ipc.batches start batches := by
-  cases opened : openFile parquet input name with
-  | error cause => simp [convert, opened, Except.mapError, Bind.bind, Except.bind] at written
-  | ok checked =>
-    cases read : (List.range checked.physical.snapshot.groupCount).mapM (readGroup parquet checked) with
-    | error cause => simp [convert, opened, read, Except.mapError, Bind.bind, Except.bind] at written
-    | ok groups =>
-      let source : ToIpc.Source := ⟨⟨name, true⟩, groups⟩
-      have emitted : StreamWriter.emit ipc view ⟨name, true, .binary⟩ source.batches = .ok wire := by
-        cases h : StreamWriter.emit ipc view ⟨name, true, .binary⟩ source.batches <;>
-          simp_all [convert, source, ToIpc.Source.ipcField, Except.mapError, Bind.bind, Except.bind]
-      obtain ⟨batches, observed, values⟩ := StreamWriter.emit_binary_readback emitted
-      have bytes := values.trans (ToIpc.batches_octets source)
-      have counts : batches.map List.length = groups.map List.length := by
-        simpa [source, List.map_map, Function.comp_def] using congrArg (List.map List.length) bytes
-      exact ⟨checked, groups, batches, rfl, (List.mapM_eq_ok_iff_forall₂.mp read).imp (fun _ _ h => readGroup_wire h),
-        observed, bytes, counts, (Stream.read_iff _ _ _ _).mp observed⟩
+  obtain ⟨checked, groups, batches, opened, read, decoded, bytes, counts, extent⟩ := convertWith_readback written
+  exact ⟨checked, groups, batches, opened,
+    (List.mapM_eq_ok_iff_forall₂.mp read).imp (fun _ _ h => readGroup_wire h), decoded, bytes, counts, extent⟩
 
 end Silmaril.Proofs.Formats.Parquet.ByteArrayFallback.Snappy

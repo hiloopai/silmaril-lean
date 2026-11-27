@@ -48,6 +48,22 @@ theorem readGroup_wire {parquet : Limits} {name : String} {checked : Checked nam
     ∃ group, GroupWire parquet checked index group slots :=
   Proofs.Formats.Parquet.ByteArrayFallback.Snappy.readGroup_wire read
 
+/-- Native readback of the exact completed groups from a supplied checked reader. -/
+theorem convertWith_readback {parquet : Limits} {ipc : Arrow.Limits} {view : Column.Limits}
+    {input : Bytes} {name : String} {wire : KBytes}
+    {readGroupAt : Checked name → Nat → Except GroupError (List (Option Bytes))}
+    (written : convertWith parquet ipc view input name readGroupAt = .ok wire) :
+    ∃ (checked : Checked name) (groups : List (List (Option Bytes))) (batches : List (List (Option KBytes))),
+      openFile parquet input name = .ok checked ∧
+      (List.range checked.physical.snapshot.groupCount).mapM (readGroupAt checked) = .ok groups ∧
+      Stream.read ipc view wire = .ok ⟨⟨name, true, .binary⟩, batches⟩ ∧
+      batches.map (List.map (Option.map KBytes.toList)) = groups.map (List.map (Option.map Bytes.toList)) ∧
+      batches.map List.length = groups.map List.length ∧
+      wire.wf = true ∧ ∃ start,
+        Stream.readSchema ipc wire = .ok (⟨name, true, .binary⟩, start) ∧
+        Stream.BatchesWire ipc view wire ⟨name, true, .binary⟩ ipc.batches start batches :=
+  Proofs.Formats.Parquet.ByteArrayFallback.Snappy.convertWith_readback written
+
 /-- Exact BinaryView batches carry the original nullable group slots through EOS. -/
 theorem convert_readback {parquet : Limits} {ipc : Arrow.Limits} {view : Column.Limits}
     {input : Bytes} {name : String} {wire : KBytes} (written : convert parquet ipc view input name = .ok wire) :
@@ -63,6 +79,19 @@ theorem convert_readback {parquet : Limits} {ipc : Arrow.Limits} {view : Column.
         Stream.BatchesWire ipc view wire ⟨name, true, .binary⟩ ipc.batches start batches :=
   Proofs.Formats.Parquet.ByteArrayFallback.Snappy.convert_readback written
 
+/-- A supplied reader returns its first indexed error before IPC admission. -/
+theorem convertWith_first_error {parquet : Limits} {ipc : Arrow.Limits} {view : Column.Limits}
+    {input : Bytes} {name : String} {checked : Checked name} {before after : List Nat}
+    {readGroupAt : Checked name → Nat → Except GroupError (List (Option Bytes))}
+    {index : Nat} {earlier : List (List (Option Bytes))} {cause : GroupError}
+    (opened : openFile parquet input name = .ok checked)
+    (indices : List.range checked.physical.snapshot.groupCount = before ++ index :: after)
+    (prefixRead : before.mapM (readGroupAt checked) = .ok earlier)
+    (failed : readGroupAt checked index = .error cause) :
+    convertWith parquet ipc view input name readGroupAt = .error (.column cause) := by
+  simp [convertWith, opened, indices, List.mapM_append, prefixRead, List.mapM_cons, failed,
+    Except.mapError, Bind.bind, Except.bind]
+
 /-- The first indexed source error takes precedence over any IPC admission. -/
 theorem convert_first_error {parquet : Limits} {ipc : Arrow.Limits} {view : Column.Limits}
     {input : Bytes} {name : String} {checked : Checked name} {before after : List Nat}
@@ -71,8 +100,7 @@ theorem convert_first_error {parquet : Limits} {ipc : Arrow.Limits} {view : Colu
     (indices : List.range checked.physical.snapshot.groupCount = before ++ index :: after)
     (prefixRead : before.mapM (readGroup parquet checked) = .ok earlier)
     (failed : readGroup parquet checked index = .error cause) :
-    convert parquet ipc view input name = .error (.column cause) := by
-  simp [convert, opened, indices, List.mapM_append, prefixRead, List.mapM_cons, failed,
-    Except.mapError, Bind.bind, Except.bind]
+    convert parquet ipc view input name = .error (.column cause) :=
+  convertWith_first_error (readGroupAt := readGroup parquet) opened indices prefixRead failed
 
 end Silmaril.Formats.Parquet.ByteArrayFallback.Snappy
