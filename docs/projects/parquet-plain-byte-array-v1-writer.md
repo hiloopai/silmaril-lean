@@ -44,6 +44,39 @@ lake build --wfail +Silmaril.Formats.Parquet.PlainByteArrayV1Writer.Checks
 python3.13 scripts/parquet-plain-byte-array-v1-writer/check.py --out /tmp/parquet-byte-array-v1
 ```
 
+## One-leaf native file
+
+`PlainByteArrayV1Writer.File.emit` writes one named unannotated
+BYTE_ARRAY leaf, one row group and one uncompressed PLAIN V1 page.
+The page input determines the required or optional layout. Both layouts
+admit zero rows and keep one explicit framed group. Optional cells
+distinguish a null slot from a present zero-length byte string.
+
+The writer measures the page and bounds the Compact footer before
+allocating the page body. It uses the existing selected-column reader
+with the supplied file, footer, chunk, page, row and value limits.
+Publication requires the exact singleton footer and exact slots from
+group zero at column ordinal zero.
+
+`emit_wire` ties the native file to the bounded page at byte four, the
+serialized Compact footer and the exact trailer. `emit_readback`
+gives the checked footer and indexed group witness with the original
+ordered slots. The error laws preserve assembly and indexed readback
+causes. [File writer laws](../../Silmaril/Formats/Parquet/PlainByteArrayV1Writer/File/Thms.lean)
+
+PyArrow 26.0.1 reads four complete Lean-emitted files, including empty
+required and optional groups. CPython with Thrift 0.25.0 independently
+checks the physical leaf, data offset, chunk sizes, complete V1 header
+and exact level and scalar bytes. The fixtures include an embedded zero,
+non-UTF-8 bytes and a value with all 256 octets.
+[Comparator](../../scripts/parquet-plain-byte-array-file-writer-oracle/check.py) ·
+[File pins](../../scripts/parquet-plain-byte-array-file-writer-oracle/sha256.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.PlainByteArrayV1Writer.File.Checks
+python3.13 -B scripts/parquet-plain-byte-array-file-writer-oracle/check.py --out /tmp/parquet-byte-array-file
+```
+
 [plain]: ../../Silmaril/Formats/Parquet/Plain/ByteArray/Thms.lean
 [laws]: ../../Silmaril/Formats/Parquet/PlainByteArrayV1Writer/Thms.lean
 [encoding]: https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md

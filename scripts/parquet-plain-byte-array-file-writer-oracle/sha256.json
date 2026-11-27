@@ -1,0 +1,6 @@
+{
+  "optional-empty.parquet": "dd194392bb279f093e4c48dde8025b525376f7daf8f142f1897ca020866b0cd0",
+  "optional.parquet": "59996efd14db3d762a4a081085eb571e09bb521f1d5bf410fec4242d387c0d04",
+  "required-empty.parquet": "23e74defaa3297dc70899e7c51a9caccd4d87f3391e128f98ac4aa24f1c4a89d",
+  "required.parquet": "915cf4e5546c9cce4b882bae755e35d59ec85554c1611e92fb92057570d26144"
+}
