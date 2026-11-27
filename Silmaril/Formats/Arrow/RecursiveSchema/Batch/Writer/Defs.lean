@@ -128,24 +128,28 @@ private def checkColumns (limits : Batch.Limits) (plan : Plan) (width length : N
     Except Error Unit :=
   if plan.slots + width * length ≤ limits.slots then .ok () else .error (.slots plan.nodes.size)
 
-private def planColumns (visit : Field → List Slot → Plan → Except Error Plan)
+private abbrev Column := Unit → Except Error (List Slot)
+
+private def planColumns (visit : Field → Column → Plan → Except Error Plan)
     (rows : List (Option (Array Rows.Cell))) :
     List Field → Nat → Plan → Except Error Plan
   | [], _, plan => .ok plan
   | field :: fields, index, plan => do
-    let column ← rows.mapIdxM fun slot row => do
+    let column : Column := fun _ => rows.mapIdxM fun slot row => do
       let some row := row | return none
       let some cell := row[index]? | throw (.rowWidth slot (index + 1) row.size)
       return some cell
     let next ← visit field column plan
     planColumns visit rows fields (index + 1) next
 
-private def planField (limits : Batch.Limits) : Nat → Field → List Slot → Plan → Except Error Plan
-  | 0, _, _, plan => .error (.depth plan.nodes.size)
-  | depth + 1, .node _ nullable kind children, column, plan => do
+private def planField (limits : Batch.Limits) :
+    Nat → Nat → Field → Column → Plan → Except Error Plan
+  | 0, _, _, _, plan => .error (.depth plan.nodes.size)
+  | depth + 1, length, .node _ nullable kind children, load, plan => do
     let ordinal := plan.nodes.size
     if !validArity kind children.length then throw (.arity ordinal kind children.length)
-    admitNode limits plan kind column.length
+    admitNode limits plan kind length
+    let column ← load ()
     let next := startNode plan column
     match kind with
     | .int32 =>
@@ -158,24 +162,26 @@ private def planField (limits : Batch.Limits) : Nat → Field → List Slot → 
       return next.pushWords 8 (words.map fun word => (word.getD 0).toUInt64.toNat)
     | .struct =>
       let width := children.length
-      checkColumns limits next width column.length
+      if width > 0 && depth == 0 then throw (.depth next.nodes.size)
+      checkColumns limits next width length
       let rows ← readSlots ordinal nullable kind
         (fun | .struct fields => some fields | _ => none) column
       let indexed ← rows.mapIdxM fun index row => row.mapM
         (rowArray width (fun slot actual => .structWidth ordinal slot width actual) index)
-      planColumns (planField limits depth) indexed children 0 next
+      planColumns (planField limits depth length) indexed children 0 next
     | .list =>
       let [child] := children | throw (.arity ordinal kind children.length)
+      if depth == 0 then throw (.depth next.nodes.size)
       let lists ← readSlots ordinal nullable kind
         (fun | .list elements => some elements | _ => none) column
       let windows := lists.map (·.getD [])
       let sizes := windows.map List.length
-      let length := sizes.sum
-      checkOffset ordinal length
-      checkColumns limits next 1 length
+      let childLength := sizes.sum
+      checkOffset ordinal childLength
+      checkColumns limits next 1 childLength
       let offsets := listOffsets sizes
-      let elements := windows.flatMap (List.map some)
-      planField limits depth child elements (next.pushWords 4 offsets)
+      let elements : Column := fun _ => .ok (windows.flatMap (List.map some))
+      planField limits depth childLength child elements (next.pushWords 4 offsets)
 
 /-- Check the row shape and resource limits while planning the original
 preorder. Every padded extent is admitted before allocating byte buffers. -/
@@ -189,8 +195,10 @@ public def plan (limits : Batch.Limits) (schema : Schema) (input : Rows.Observat
   if width > ipc.fields then throw (.ipc (.limit .fields))
   checkMetadata ipc 0 0
   checkColumns limits {} width input.rowCount
+  if width > 0 && limits.schema.depth == 0 then throw (.depth 0)
   let indexed ← input.rows.mapIdxM (rowArray width fun slot actual => .rowWidth slot width actual)
-  planColumns (planField limits limits.schema.depth) (indexed.map some) schema.fields 0 {}
+  planColumns (planField limits limits.schema.depth input.rowCount) (indexed.map some)
+    schema.fields 0 {}
 
 @[expose] public section
 

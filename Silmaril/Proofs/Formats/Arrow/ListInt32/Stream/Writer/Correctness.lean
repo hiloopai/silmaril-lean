@@ -181,7 +181,7 @@ public theorem emitRecord_exact {ipc : Arrow.Limits} {rows : List Row} {frame : 
   have size :
       MetadataWriter.wireSize ⟨.recordBatch (metadata rows (Arrow.Writer.packBuffers 0 (parts rows)).1),
         (Arrow.Writer.packBuffers 0 (parts rows)).2.len⟩ = 200 := by
-    simp [MetadataWriter.wireSize, metadata, shape]
+    simp [MetadataWriter.wireSize, MetadataWriter.Wire.batchSize, metadata, shape]
   have exactFrame := StreamWriter.emitFrame_exact emitted
   dsimp only at exactFrame
   rw [size] at exactFrame
