@@ -12,6 +12,25 @@ namespace Silmaril.Formats.Parquet.Date.Leaf.Gzip
 
 open Silmaril.Relational
 
+/-- The original V1 header supplies the scalar parameters for the selected codec. -/
+theorem planDataFor_wire {codec : Payload.Codec} {bound : Bound} {frame : Page.Frame} {page : DataPage}
+    (planned : planDataFor codec bound frame = .ok page) :
+    page.frame = frame ∧ ∃ header, frame.value.kind = .dataV1 header ∧ header.encoding = 0 ∧
+      page.params =
+        ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩,
+          ⟨0, if bound.field.layout == .required then 0 else 1⟩, header.numValues, codec.id,
+          header.encoding, .v1 header.definitionLevelEncoding header.repetitionLevelEncoding⟩ :=
+  Proofs.Formats.Parquet.Date.Leaf.Gzip.planDataFor_wire planned
+
+/-- A codec-specific PLAIN plan retains the original selected chunk and frames. -/
+theorem checkGroupFor_wire {ε : Type} {codec : Payload.Codec} {wrap : GroupError → ε}
+    {plan : Page.Frame → Nat → Except ε DataPage} {valid : DataPage → Prop}
+    {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
+    (keeps : ∀ {frame ordinal page}, plan frame ordinal = .ok page → page.frame = frame ∧ valid page)
+    (accepted : checkGroupFor codec wrap plan limits bound index = .ok checked) :
+    GroupWire limits bound index checked valid codec :=
+  Proofs.Formats.Parquet.Date.Leaf.Gzip.checkGroupFor_wire keeps accepted
+
 /-- The original V1 header supplies the exact PLAIN scalar parameters. -/
 theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :

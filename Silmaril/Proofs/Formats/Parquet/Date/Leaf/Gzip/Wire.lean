@@ -28,23 +28,32 @@ private theorem bind_ok {α β ε : Type} {input : Except ε α} {next : α → 
   | error => contradiction
   | ok value => exact ⟨value, rfl, read⟩
 
-theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
-    (planned : planData bound frame = .ok page) :
+theorem planDataFor_wire {codec : Payload.Codec} {bound : Bound} {frame : Page.Frame} {page : DataPage}
+    (planned : planDataFor codec bound frame = .ok page) :
     page.frame = frame ∧ ∃ header, frame.value.kind = .dataV1 header ∧ header.encoding = 0 ∧
       page.params =
         ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩,
-          ⟨0, if bound.field.layout == .required then 0 else 1⟩, header.numValues, Payload.Codec.gzip.id,
+          ⟨0, if bound.field.layout == .required then 0 else 1⟩, header.numValues, codec.id,
           header.encoding, .v1 header.definitionLevelEncoding header.repetitionLevelEncoding⟩ := by
   cases kind : frame.value.kind with
   | dataV1 header =>
-    simp only [planData, kind] at planned
+    simp only [planDataFor, kind] at planned
     split at planned
     · contradiction
     rename_i tag
     simp [FlatScan.int32PageParameters, kind, Pure.pure, Except.pure] at planned
     subst page
     exact ⟨rfl, header, rfl, not_not.mp tag, by simp⟩
-  | dictionary _ | dataV2 _ | skipped _ => simp [planData, kind] at planned
+  | dictionary _ | dataV2 _ | skipped _ => simp [planDataFor, kind] at planned
+
+theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
+    (planned : planData bound frame = .ok page) :
+    page.frame = frame ∧ ∃ header, frame.value.kind = .dataV1 header ∧ header.encoding = 0 ∧
+      page.params =
+        ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩,
+          ⟨0, if bound.field.layout == .required then 0 else 1⟩, header.numValues, Payload.Codec.gzip.id,
+          header.encoding, .v1 header.definitionLevelEncoding header.repetitionLevelEncoding⟩ :=
+  planDataFor_wire planned
 
 private theorem pages_plan {ε : Type} {plan : Page.Frame → Nat → Except ε DataPage}
     {valid : DataPage → Prop} {frames : List Page.Frame} {data : List DataPage}
@@ -65,13 +74,13 @@ private theorem pages_plan {ε : Type} {plan : Page.Frame → Nat → Except ε 
     · exact head.2
     · exact ih.2 page later
 
-theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
+theorem checkGroupFor_wire {ε : Type} {codecProfile : Payload.Codec} {wrap : GroupError → ε}
     {plan : Page.Frame → Nat → Except ε DataPage} {valid : DataPage → Prop}
     {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
     (keeps : ∀ {frame ordinal page}, plan frame ordinal = .ok page → page.frame = frame ∧ valid page)
-    (accepted : checkGroupWith wrap plan limits bound index = .ok checked) :
-    GroupWire limits bound index checked valid := by
-  unfold checkGroupWith at accepted
+    (accepted : checkGroupFor codecProfile wrap plan limits bound index = .ok checked) :
+    GroupWire limits bound index checked valid codecProfile := by
+  unfold checkGroupFor at accepted
   obtain ⟨chunk, selected, accepted⟩ := bind_ok accepted
   simp only at accepted
   split at accepted
@@ -110,6 +119,14 @@ theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
     · simpa [CheckedGroup.frames, order] using original
     · simpa [CheckedGroup.frames, order] using (Page.readChunk_chain original).2.2
     · simpa [Option.map_map, Function.comp_def, ← not_not.mp dataOffset] using offset
+
+theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
+    {plan : Page.Frame → Nat → Except ε DataPage} {valid : DataPage → Prop}
+    {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
+    (keeps : ∀ {frame ordinal page}, plan frame ordinal = .ok page → page.frame = frame ∧ valid page)
+    (accepted : checkGroupWith wrap plan limits bound index = .ok checked) :
+    GroupWire limits bound index checked valid :=
+  checkGroupFor_wire keeps accepted
 
 theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
     (accepted : checkGroup limits bound index = .ok checked) :

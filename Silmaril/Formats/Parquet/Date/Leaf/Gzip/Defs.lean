@@ -63,22 +63,25 @@ def CheckedGroup.frames (checked : CheckedGroup) : List Page.Frame :=
 def atFrame (ordinal : Nat) (frame : Page.Frame) : PageError → GroupError :=
   .page ordinal frame.header.start
 
-/-- Keep the original flat V1 header and select the GZIP payload decoder. -/
-def planData (bound : Bound) (frame : Page.Frame) : Except PageError DataPage := do
+/-- Keep the original flat V1 header and record the selected payload codec. -/
+def planDataFor (codec : Payload.Codec) (bound : Bound) (frame : Page.Frame) : Except PageError DataPage := do
   let .dataV1 header := frame.value.kind | throw .expectedV1
   if header.encoding ≠ 0 then throw (.encoding header.encoding)
   let some params := FlatScan.int32PageParameters bound.field frame.value | throw .expectedV1
-  return ⟨frame, { params with codec := Payload.Codec.gzip.id }⟩
+  return ⟨frame, { params with codec := codec.id }⟩
+
+def planData (bound : Bound) (frame : Page.Frame) : Except PageError DataPage :=
+  planDataFor .gzip bound frame
 
 /-- Admit the original selected chunk, checking the stored and expanded
 chunk caps independently before decoding any page bodies. -/
-def checkGroupWith {ε : Type} (wrap : GroupError → ε)
+def checkGroupFor {ε : Type} (codec : Payload.Codec) (wrap : GroupError → ε)
     (plan : Page.Frame → Nat → Except ε DataPage)
     (limits : Limits) (bound : Bound) (index : Nat) : Except ε CheckedGroup := do
   let selected ← (selectChunk bound index).mapError (wrap ∘ .selection)
   let metadata := selected.column.metadata
   let rows := selected.group.numRows.toNat
-  if metadata.codec ≠ Payload.Codec.gzip.id then .error (wrap (.codec metadata.codec))
+  if metadata.codec ≠ codec.id then .error (wrap (.codec metadata.codec))
   else if metadata.dictionaryPageOffset.isSome || metadata.indexPageOffset.isSome then
     .error (wrap .unsupportedOffsets)
   else if metadata.numValues ≠ (rows : Int) then .error (wrap (.rowCount rows metadata.numValues))
@@ -97,15 +100,21 @@ def checkGroupWith {ε : Type} (wrap : GroupError → ε)
         if declared ≠ rows then .error (wrap (.rowCount rows declared))
         else .ok ⟨selected, data⟩
 
+def checkGroupWith {ε : Type} (wrap : GroupError → ε)
+    (plan : Page.Frame → Nat → Except ε DataPage)
+    (limits : Limits) (bound : Bound) (index : Nat) : Except ε CheckedGroup :=
+  checkGroupFor .gzip wrap plan limits bound index
+
 def checkGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError CheckedGroup :=
   checkGroupWith id (fun frame ordinal => (planData bound frame).mapError (atFrame ordinal frame))
     limits bound index
 
-/-- A checked GZIP plan uses the original selected bytes, count and offsets. -/
+/-- A checked PLAIN plan uses the original selected bytes, count and offsets. -/
 structure GroupWire (limits : Limits) (bound : Bound) (index : Nat) (checked : CheckedGroup)
-    (admitted : DataPage → Prop := fun page => planData bound page.frame = .ok page) : Prop where
+    (admitted : DataPage → Prop := fun page => planData bound page.frame = .ok page)
+    (codecProfile : Payload.Codec := .gzip) : Prop where
   selected : selectChunk bound index = .ok checked.selection
-  codec : checked.selection.column.metadata.codec = Payload.Codec.gzip.id
+  codec : checked.selection.column.metadata.codec = codecProfile.id
   storedCap : checked.selection.span.stop - checked.selection.span.start ≤ limits.maxStoredChunkBytes
   expandedCap : (checked.frames.map (·.value.uncompressedSize)).sum ≤ limits.maxExpandedChunkBytes
   frames : Page.readChunk limits.framing bound.snapshot.bytes checked.selection.span = .ok checked.frames

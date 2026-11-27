@@ -1,0 +1,456 @@
+{
+  "cpython": "3.13.5",
+  "pyarrow": "26.0.1",
+  "pyarrow_wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+  "thrift": "0.25.0",
+  "thrift_wheel_sha256": "aa0cfa1db4d2129114d9548c4fc7e85680013aa442692377606b6305d236a1c0",
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "frame_extent_libzstd": "1.5.7",
+  "producer_compression_level": 3,
+  "cases": {
+    "optional_crc": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "e9b48e3457ea48489e1fba7da50dc1512fb54bd647092a287e21c3ba77f02dc4"
+      },
+      "field": "日付",
+      "ordinal": 1,
+      "nullable": true,
+      "batch": 8,
+      "groups": [
+        {
+          "span": [
+            175,
+            367
+          ],
+          "expanded_total": 90,
+          "data": [
+            {
+              "frame": 175,
+              "stored_start": 200,
+              "rows": 8,
+              "parquet_crc": 2010237957,
+              "stored": {
+                "bytes": 39,
+                "sha256": "2b97b3bbfd0410182d94a8253b5927be4d699094d9b12a9fe3a3c49e3847932b"
+              },
+              "expanded": {
+                "bytes": 30,
+                "sha256": "c3f3b956ec1d3a9139bd289775b0727a413b438e65a23a8d507717b747670dce"
+              },
+              "slots_sha256": "6b78e51d590d74213112aa51ec290f72a93b8bec084d552550cf89c73e1943c7",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            {
+              "frame": 239,
+              "stored_start": 264,
+              "rows": 8,
+              "parquet_crc": 2010237957,
+              "stored": {
+                "bytes": 39,
+                "sha256": "2b97b3bbfd0410182d94a8253b5927be4d699094d9b12a9fe3a3c49e3847932b"
+              },
+              "expanded": {
+                "bytes": 30,
+                "sha256": "c3f3b956ec1d3a9139bd289775b0727a413b438e65a23a8d507717b747670dce"
+              },
+              "slots_sha256": "6b78e51d590d74213112aa51ec290f72a93b8bec084d552550cf89c73e1943c7",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            {
+              "frame": 303,
+              "stored_start": 328,
+              "rows": 8,
+              "parquet_crc": 2010237957,
+              "stored": {
+                "bytes": 39,
+                "sha256": "2b97b3bbfd0410182d94a8253b5927be4d699094d9b12a9fe3a3c49e3847932b"
+              },
+              "expanded": {
+                "bytes": 30,
+                "sha256": "c3f3b956ec1d3a9139bd289775b0727a413b438e65a23a8d507717b747670dce"
+              },
+              "slots_sha256": "6b78e51d590d74213112aa51ec290f72a93b8bec084d552550cf89c73e1943c7",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            }
+          ]
+        },
+        {
+          "span": [
+            538,
+            742
+          ],
+          "expanded_total": 102,
+          "data": [
+            {
+              "frame": 538,
+              "stored_start": 563,
+              "rows": 8,
+              "parquet_crc": 3563049477,
+              "stored": {
+                "bytes": 43,
+                "sha256": "c1aaeffdcff0afa5e553988cacf362fa21e1f4203a2ed10b7f45887e953212b0"
+              },
+              "expanded": {
+                "bytes": 34,
+                "sha256": "fe66d4c7d2bc6850947ba8283086f9737ee8d6f853cb99ae7e3365f0fcdf5eb5"
+              },
+              "slots_sha256": "cd0c5b498ba703043f2100d96a0ec099d000bf2b83ccc43d59bc16c86e83ce0a",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            {
+              "frame": 606,
+              "stored_start": 631,
+              "rows": 8,
+              "parquet_crc": 3563049477,
+              "stored": {
+                "bytes": 43,
+                "sha256": "c1aaeffdcff0afa5e553988cacf362fa21e1f4203a2ed10b7f45887e953212b0"
+              },
+              "expanded": {
+                "bytes": 34,
+                "sha256": "fe66d4c7d2bc6850947ba8283086f9737ee8d6f853cb99ae7e3365f0fcdf5eb5"
+              },
+              "slots_sha256": "cd0c5b498ba703043f2100d96a0ec099d000bf2b83ccc43d59bc16c86e83ce0a",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            {
+              "frame": 674,
+              "stored_start": 699,
+              "rows": 8,
+              "parquet_crc": 3563049477,
+              "stored": {
+                "bytes": 43,
+                "sha256": "c1aaeffdcff0afa5e553988cacf362fa21e1f4203a2ed10b7f45887e953212b0"
+              },
+              "expanded": {
+                "bytes": 34,
+                "sha256": "fe66d4c7d2bc6850947ba8283086f9737ee8d6f853cb99ae7e3365f0fcdf5eb5"
+              },
+              "slots_sha256": "cd0c5b498ba703043f2100d96a0ec099d000bf2b83ccc43d59bc16c86e83ce0a",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 680,
+        "sha256": "c9d7177ceee3521fa3ec35259201b0e4a8ab335bd412bf7ba1f3538ff146bff9"
+      }
+    },
+    "required_no_crc": {
+      "parquet": {
+        "bytes": 968,
+        "sha256": "9ff8d0fe049a3d55f2a912e48f99202579b248e78812707562e8330af3529039"
+      },
+      "field": "époque",
+      "ordinal": 1,
+      "nullable": false,
+      "batch": 8,
+      "groups": [
+        {
+          "span": [
+            157,
+            319
+          ],
+          "expanded_total": 96,
+          "data": [
+            {
+              "frame": 157,
+              "stored_start": 176,
+              "rows": 8,
+              "parquet_crc": null,
+              "stored": {
+                "bytes": 35,
+                "sha256": "b0ee207232ee4e27368aa00ac7656b4804cc7211e9050d31f641e150856bdfd6"
+              },
+              "expanded": {
+                "bytes": 32,
+                "sha256": "77fad62df8a2839823fcbb0ab7577ead99a8b8cc05e08495e5bfc33704ef091a"
+              },
+              "slots_sha256": "46d1cbb89e8a33f20e281a721f3beb9e9ff3c3329d166b315d823ae4c7e19744",
+              "first_block_kind": 2,
+              "first_literal_kind": 0,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            {
+              "frame": 211,
+              "stored_start": 230,
+              "rows": 8,
+              "parquet_crc": null,
+              "stored": {
+                "bytes": 35,
+                "sha256": "b0ee207232ee4e27368aa00ac7656b4804cc7211e9050d31f641e150856bdfd6"
+              },
+              "expanded": {
+                "bytes": 32,
+                "sha256": "77fad62df8a2839823fcbb0ab7577ead99a8b8cc05e08495e5bfc33704ef091a"
+              },
+              "slots_sha256": "46d1cbb89e8a33f20e281a721f3beb9e9ff3c3329d166b315d823ae4c7e19744",
+              "first_block_kind": 2,
+              "first_literal_kind": 0,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            {
+              "frame": 265,
+              "stored_start": 284,
+              "rows": 8,
+              "parquet_crc": null,
+              "stored": {
+                "bytes": 35,
+                "sha256": "b0ee207232ee4e27368aa00ac7656b4804cc7211e9050d31f641e150856bdfd6"
+              },
+              "expanded": {
+                "bytes": 32,
+                "sha256": "77fad62df8a2839823fcbb0ab7577ead99a8b8cc05e08495e5bfc33704ef091a"
+              },
+              "slots_sha256": "46d1cbb89e8a33f20e281a721f3beb9e9ff3c3329d166b315d823ae4c7e19744",
+              "first_block_kind": 2,
+              "first_literal_kind": 0,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            }
+          ]
+        },
+        {
+          "span": [
+            472,
+            652
+          ],
+          "expanded_total": 96,
+          "data": [
+            {
+              "frame": 472,
+              "stored_start": 491,
+              "rows": 8,
+              "parquet_crc": null,
+              "stored": {
+                "bytes": 41,
+                "sha256": "5c27e7b3a8c64bc9783064d89ecbfa89507a544f8c97658239aa815f9dd3386e"
+              },
+              "expanded": {
+                "bytes": 32,
+                "sha256": "1b49a01f841161ffc37d415bd5b9cdcb1d806ede0b127cfd5a708fb8ae54bbc5"
+              },
+              "slots_sha256": "e84420b6a22ff54315caee89523f7bc9e40b5bb9f79553ab6e5fb37ad7aaaff0",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            {
+              "frame": 532,
+              "stored_start": 551,
+              "rows": 8,
+              "parquet_crc": null,
+              "stored": {
+                "bytes": 41,
+                "sha256": "5c27e7b3a8c64bc9783064d89ecbfa89507a544f8c97658239aa815f9dd3386e"
+              },
+              "expanded": {
+                "bytes": 32,
+                "sha256": "1b49a01f841161ffc37d415bd5b9cdcb1d806ede0b127cfd5a708fb8ae54bbc5"
+              },
+              "slots_sha256": "e84420b6a22ff54315caee89523f7bc9e40b5bb9f79553ab6e5fb37ad7aaaff0",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            },
+            {
+              "frame": 592,
+              "stored_start": 611,
+              "rows": 8,
+              "parquet_crc": null,
+              "stored": {
+                "bytes": 41,
+                "sha256": "5c27e7b3a8c64bc9783064d89ecbfa89507a544f8c97658239aa815f9dd3386e"
+              },
+              "expanded": {
+                "bytes": 32,
+                "sha256": "1b49a01f841161ffc37d415bd5b9cdcb1d806ede0b127cfd5a708fb8ae54bbc5"
+              },
+              "slots_sha256": "e84420b6a22ff54315caee89523f7bc9e40b5bb9f79553ab6e5fb37ad7aaaff0",
+              "first_block_kind": 0,
+              "first_literal_kind": null,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 680,
+        "sha256": "355a79a566302c34c30191f437a5607171109e4f46a7ab7706da0e2652b64999"
+      }
+    },
+    "nullable_huffman": {
+      "parquet": {
+        "bytes": 3140,
+        "sha256": "82fba1f147fd6c265d5d07363617c06a85828cb4e4cfff7740f5a19dc0f4d39a"
+      },
+      "field": "日付",
+      "ordinal": 1,
+      "nullable": true,
+      "batch": 512,
+      "groups": [
+        {
+          "span": [
+            2080,
+            2917
+          ],
+          "expanded_total": 2055,
+          "data": [
+            {
+              "frame": 2080,
+              "stored_start": 2108,
+              "rows": 512,
+              "parquet_crc": 1577627900,
+              "stored": {
+                "bytes": 809,
+                "sha256": "940b4615a9d6a2da56ed6abdb95d32cfcaf0c980ddfcb496de41226d92bd3f08"
+              },
+              "expanded": {
+                "bytes": 2055,
+                "sha256": "e223b06c64e905db0d37ffc5cbee865a078123645ca0c28b3ece7286a0e648c2"
+              },
+              "slots_sha256": "58bcd056ab83130e03bbb18e506ee1e3fe4d8704714209f880996f15d5f4e3a7",
+              "first_block_kind": 2,
+              "first_literal_kind": 2,
+              "dictionary_field_bytes": 0,
+              "checksum_flag": false
+            }
+          ]
+        }
+      ],
+      "lean_ipc": {
+        "bytes": 2424,
+        "sha256": "f06433962073f2d0461a313299539b329e08010a4441d85414942875ed0fe920"
+      }
+    }
+  },
+  "controls": {
+    "malformed_outer_crc_before_codec": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "5ff8399529a2f46f240000269ffeceb2f0cca432de8eee8de2b14180434f40ac"
+      },
+      "group": 1,
+      "cause": "(.checksum 2 674 (.mismatch 3563049477 2471240958))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "malformed_magic_valid_crc": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "90f53c99cbfc3d497e4d4e9077c79f2f772a6b3eabab316858f48d883da38b63"
+      },
+      "group": 1,
+      "cause": "(.decode 2 674 (.frame (.frame .badMagic)))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }",
+      "recomputed_parquet_crc": 2471240958
+    },
+    "malformed_trailing_byte_valid_crc": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "c6129363f23b1d8d1772507c9192877b753dfacc5c0e92325f64e01bab6857a2"
+      },
+      "group": 1,
+      "cause": "(.decode 2 674 (.frame (.frame .trailingInput)))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }",
+      "recomputed_parquet_crc": 657269665
+    },
+    "low_stored_page_cap": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "e9b48e3457ea48489e1fba7da50dc1512fb54bd647092a287e21c3ba77f02dc4"
+      },
+      "group": 0,
+      "cause": "(.checksum 0 175 .byteLimit)",
+      "source_limits": "{ pages := { scalar := ⟨38, 16777216, ⟨1048576, 16777216⟩, 1048576⟩ } }",
+      "output_limits": "{}"
+    },
+    "low_expanded_page_cap": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "e9b48e3457ea48489e1fba7da50dc1512fb54bd647092a287e21c3ba77f02dc4"
+      },
+      "group": 0,
+      "cause": "(.decode 0 175 (.scalar (.payload .outputLimit)))",
+      "source_limits": "{ pages := { scalar := ⟨16777216, 29, ⟨1048576, 16777216⟩, 1048576⟩ } }",
+      "output_limits": "{}"
+    },
+    "low_stored_chunk_cap": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "e9b48e3457ea48489e1fba7da50dc1512fb54bd647092a287e21c3ba77f02dc4"
+      },
+      "group": 0,
+      "cause": "(.plan .storedChunkLimit)",
+      "source_limits": "{ pages := { maxStoredChunkBytes := 191 } }",
+      "output_limits": "{}"
+    },
+    "low_expanded_chunk_cap": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "e9b48e3457ea48489e1fba7da50dc1512fb54bd647092a287e21c3ba77f02dc4"
+      },
+      "group": 0,
+      "cause": "(.plan .expandedChunkLimit)",
+      "source_limits": "{ pages := { maxExpandedChunkBytes := 89 } }",
+      "output_limits": "{}"
+    },
+    "zero_zstd_window": {
+      "parquet": {
+        "bytes": 1071,
+        "sha256": "e9b48e3457ea48489e1fba7da50dc1512fb54bd647092a287e21c3ba77f02dc4"
+      },
+      "group": 0,
+      "cause": "(.decode 0 175 (.frame (.frame .windowLimit)))",
+      "source_limits": "{ compression := ⟨0, 43690⟩ }",
+      "output_limits": "{}"
+    },
+    "genuine_zstd_v2": {
+      "parquet": {
+        "bytes": 1053,
+        "sha256": "ce95a06f92b094e7d8b09679fb38aa7a5fb5182024b58a44ae4a336e50b5744d"
+      },
+      "group": 0,
+      "cause": "(.plan (.page 0 190 .expectedV1))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "genuine_zstd_dictionary": {
+      "parquet": {
+        "bytes": 1073,
+        "sha256": "e5e9705a7dd84a30f7fae806653a35614e21061587ae349535d714d86ca4333c"
+      },
+      "group": 0,
+      "cause": "(.plan .unsupportedOffsets)",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    }
+  }
+}
