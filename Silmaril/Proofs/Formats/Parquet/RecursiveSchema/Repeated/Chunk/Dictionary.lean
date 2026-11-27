@@ -151,8 +151,12 @@ public theorem decodeDictionaryDataPage_wire {limits : Limits} {leaf : Leaf} {di
     DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded := by
   unfold decodeDictionaryDataPage at read
   split at read
-  · exact .v1 (decodeDictionaryPage_wire read)
-  · exact .v2 (decodeV2DictionaryPage_wire read)
+  · split at read
+    · exact .plain (.v1 (decodeV1Page_wire read))
+    · exact .v1 (decodeDictionaryPage_wire read)
+  · split at read
+    · exact .plain (.v2 (decodeV2Page_wire read))
+    · exact .v2 (decodeV2DictionaryPage_wire read)
   · contradiction
 
 public theorem dictionaryDataPage_counts {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
@@ -161,6 +165,7 @@ public theorem dictionaryDataPage_counts {limits : Limits} {leaf : Leaf} {dictio
     start.slot + decoded.levels.length = decoded.after.slot ∧
       start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
   cases wire with
+  | plain original => exact dataPage_counts original
   | v1 original => exact dictionaryPage_counts original
   | v2 original =>
     obtain ⟨_, _, checked, _, _, _, _, _, _, _, _, _, _, _, slots, closed⟩ := original.original

@@ -140,6 +140,14 @@ theorem V2DictionaryPageWire.accounting {limits : Limits} {leaf : Leaf} {diction
       absentSlots decoded = info.numNulls ∧ decoded.after.live = false :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2Dictionary_accounting wire
 
+/-- Within a dictionary-first chunk, the original per-page tag binds
+either exact PLAIN words or indices into the same leading dictionary. -/
+theorem decodeDictionaryDataPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
+    (read : decodeDictionaryDataPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
+    DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDictionaryDataPage_wire read
+
 theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
     {metadata : Footer.ColumnMetadata} {encoding : FramedEncoding metadata}
     {dictionary : Option Dictionary} (read : readPrefix limits carrier metadata encoding = .ok dictionary) :

@@ -1,0 +1,137 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "v1": {
+      "bytes": 4559,
+      "sha256": "9cfa38f3589d31b041e8753a6e3746643a8f8abe26d0f5682aa44a1206caafc6"
+    },
+    "v2": {
+      "bytes": 4550,
+      "sha256": "0e24cec1d9151373db1a8ca780db0d77bc2b1f8f05a42c58c7581f34fcd66c6a"
+    },
+    "plain_only": {
+      "bytes": 3375,
+      "sha256": "b522328efc798fc468c5f38404801fde5e2ffdd3ae5b512aa33a07aa77723638"
+    },
+    "dictionary_only": {
+      "bytes": 5777,
+      "sha256": "bb3686ea3ad321c80c8fee808e24f6c5d2d13d65ac74dce62959e87e8854406b"
+    }
+  },
+  "labeled_edits": {
+    "v1_interleaved": {
+      "bytes": 4550,
+      "sha256": "21b41e851b7c369047fccd02ee8f0af8cb400565a16c1b96bdf0188379bfcf97"
+    },
+    "v1_missing_leading": {
+      "bytes": 4482,
+      "sha256": "aefdf5b4285239d23ff6acb0ac4b7fc11f4bd8f14e51991ce207bf7dffd18d70"
+    },
+    "v1_repeated_after_plain": {
+      "bytes": 4618,
+      "sha256": "209104a1685fa3bf35d02911a8f984e4b20dfe4a1fcb91ec75c5af439fe29bf2"
+    },
+    "v1_plain_short": {
+      "bytes": 4564,
+      "sha256": "af5b3c18a0d722e80774ceb33ee103ffb1efa6f08969137b513f61ca8e61b46c"
+    },
+    "v1_plain_extra": {
+      "bytes": 4566,
+      "sha256": "34bd15498ea6dc52b128a0af68d01b91cc32a09d6e3be2782bb067aa5d75b9d6"
+    },
+    "v1_plain_crc": {
+      "bytes": 4565,
+      "sha256": "5dd49b8c6f8b8c48440eff9d134b455787b82a577b0d16d34acb30e0642f4288"
+    },
+    "v1_plain_conflicting_header": {
+      "bytes": 4571,
+      "sha256": "4dc6fb0aa4a87f2b3a7510ebcd90ebe83d2145f4012b31aa29c51ded8d25634d"
+    },
+    "v1_unsupported_encoding": {
+      "bytes": 4565,
+      "sha256": "c0f0d590201e9ea934171ff045541c34e7bac5517d38dbbcc044d521f14863bc"
+    },
+    "v2_interleaved": {
+      "bytes": 4540,
+      "sha256": "20742928a4eeb2b1c19450b8c7527b84a91479e4be1ebafa4f6f723bd111176d"
+    },
+    "v2_missing_leading": {
+      "bytes": 4472,
+      "sha256": "0b11ea039062644634003c5c8a4fc5851de2e9be4e9cc4a4bc1e0b32f0d8545f"
+    },
+    "v2_repeated_after_plain": {
+      "bytes": 4608,
+      "sha256": "a9433f0cb9289b7ab84165fe41d83462d3e706b1e0d98290b650cc441051f36a"
+    },
+    "v2_plain_short": {
+      "bytes": 4555,
+      "sha256": "3d2257fbd4cdb366371652b7191087f92fcc02703c9ef731b4d90359fe7e5a7a"
+    },
+    "v2_plain_extra": {
+      "bytes": 4557,
+      "sha256": "3764f0a96edf3545dad6b520b036100febda7fb366a8465f94b9b3bb3f961dd2"
+    },
+    "v2_plain_crc": {
+      "bytes": 4556,
+      "sha256": "c62bb7c4b030012b0bcf3b2600cf7528ed524d4c45ffc668c9c9df63c22498a1"
+    },
+    "v2_plain_conflicting_header": {
+      "bytes": 4562,
+      "sha256": "28406425fc96e8731e303919fe3639c41083ac3f028e3f3023c042bb73895dc3"
+    },
+    "v2_unsupported_encoding": {
+      "bytes": 4556,
+      "sha256": "cac460c34d191b49841f3183ad516cceddf4b44b329dfb5304403ad8a4ad7807"
+    },
+    "continued_into_plain": {
+      "bytes": 643,
+      "sha256": "1bfe0d2c6d3ab31ab78886ad9cf67f5bfba4225f60de0a443c7d0e385acf886a"
+    },
+    "continued_into_dictionary": {
+      "bytes": 643,
+      "sha256": "baa9de3fd64288f3908e4e745e7e8a544563a42aaeac5942147a0d733e116b0e"
+    },
+    "v1_after_closed_plain_v2": {
+      "bytes": 638,
+      "sha256": "01e25db5a06d1dbf9f7711c9595e53dfa9cabd148ae1366576a798f7037ce21e"
+    }
+  },
+  "lean_ipc": {
+    "v1": {
+      "bytes": 2680,
+      "sha256": "e1ee71ffe1743a59a2217f83e38565ca1d761ea0333303f685bb5305e1a1111d"
+    },
+    "v2": {
+      "bytes": 2680,
+      "sha256": "e1ee71ffe1743a59a2217f83e38565ca1d761ea0333303f685bb5305e1a1111d"
+    },
+    "plain_only": {
+      "bytes": 2680,
+      "sha256": "e1ee71ffe1743a59a2217f83e38565ca1d761ea0333303f685bb5305e1a1111d"
+    },
+    "dictionary_only": {
+      "bytes": 2680,
+      "sha256": "e1ee71ffe1743a59a2217f83e38565ca1d761ea0333303f685bb5305e1a1111d"
+    },
+    "v1_interleaved": {
+      "bytes": 2680,
+      "sha256": "e1ee71ffe1743a59a2217f83e38565ca1d761ea0333303f685bb5305e1a1111d"
+    },
+    "v2_interleaved": {
+      "bytes": 2680,
+      "sha256": "e1ee71ffe1743a59a2217f83e38565ca1d761ea0333303f685bb5305e1a1111d"
+    },
+    "continued_into_plain": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    },
+    "continued_into_dictionary": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    }
+  }
+}

@@ -706,16 +706,24 @@ structure V2DictionaryPageWire (limits : Limits) (leaf : Leaf) (dictionary : Arr
       (bytesAt source sections.spans.values) start rowCeiling checked ∧
     decoded = closeV2 checked
 
+/-- A chunk's leading dictionary remains available to every data page.
+Each original data header selects the value decoder for that page. -/
 def decodeDictionaryDataPage (limits : Limits) (leaf : Leaf) (dictionary : Array Word) (source : Bytes)
     (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage :=
   match frame.value.kind with
-  | .dataV1 _ => decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling
-  | .dataV2 _ => decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling
+  | .dataV1 info =>
+    if info.encoding = 0 then decodePage limits leaf source frame start remaining rowCeiling
+    else decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling
+  | .dataV2 info =>
+    if info.encoding = 0 then decodeV2Page limits .uncompressed leaf source frame start remaining rowCeiling
+    else decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling
   | kind => .error (.header (.pageKind kind))
 
 inductive DictionaryDataPageWire (limits : Limits) (leaf : Leaf) (dictionary : Array Word)
     (source : Bytes) (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
     (decoded : DecodedPage) : Prop where
+  | plain : DataPageWire limits .uncompressed leaf source frame start remaining rowCeiling decoded →
+      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded
   | v1 : DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded →
       DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded
   | v2 : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded →

@@ -39,18 +39,23 @@ private def dictionary (file : Bytes) (group column : Nat)
   if observed.dictionary.isSome then
     let mut checked := []
     for page in observed.pages do
-      let suffix ← match page.frame.value.kind with
+      let indices ← match page.frame.value.kind with
         | .dataV1 info => do
-          let body ← take (readV1Body {} binding.codec file page.frame)
-          let reps ← take (readLevels ({} : Limits).levels binding.leaf.maxRepetition info.numValues body)
-          let defs ← take (readLevels ({} : Limits).levels binding.leaf.maxDefinition info.numValues reps.tail)
-          pure defs.tail
+          if info.encoding ≠ 8 then pure none
+          else
+            let body ← take (readV1Body {} binding.codec file page.frame)
+            let reps ← take (readLevels ({} : Limits).levels binding.leaf.maxRepetition info.numValues body)
+            let defs ← take (readLevels ({} : Limits).levels binding.leaf.maxDefinition info.numValues reps.tail)
+            pure (some defs.tail)
         | .dataV2 info => do
-          let sections ← take (readV2Sections {} binding.leaf file page.frame info)
-          pure (bytesAt file sections.spans.values)
+          if info.encoding ≠ 8 then pure none
+          else
+            let sections ← take (readV2Sections {} binding.leaf file page.frame info)
+            pure (some (bytesAt file sections.spans.values))
         | _ => throw (IO.userError "expected an original V1 or V2 data frame")
-      let count := (page.decoded.levels.map LevelSlot.present).count true
-      checked := (← take (Parquet.DictionaryIndex.readIndices ({} : Limits).indices count suffix)) :: checked
+      if let some suffix := indices then
+        let count := (page.decoded.levels.map LevelSlot.present).count true
+        checked := (← take (Parquet.DictionaryIndex.readIndices ({} : Limits).indices count suffix)) :: checked
     unless checked.reverse = traces do throw (IO.userError "original index traces differ")
   else unless traces.isEmpty do throw (IO.userError "expected a dictionary")
 """
@@ -168,7 +173,8 @@ def inspect(wire, schema, groups):
             max_rep, max_def = int(boundary is not None), len(steps)
             if tag == 0:
                 info = header[5][1]
-                assert [info[i][1] for i in (2, 3, 4)] == [8 if dictionary else 0, 3, 3]
+                encoding = info[2][1]
+                assert [info[i][1] for i in (3, 4)] == [3, 3]
                 count = info[1][1]
                 reps, defs, _, suffix = section_suffix(body, max_rep, max_def, count)
                 spans.append("none")
@@ -176,13 +182,14 @@ def inspect(wire, schema, groups):
                 assert tag == 3
                 info = header[8][1]
                 count = info[1][1]
-                assert info[4][1] == (8 if dictionary else 0)
+                encoding = info[4][1]
                 reps, defs, suffix = sections_v2(info, body, max_rep, max_def)
                 rep_end, def_end = payload + info[6][1], end - len(suffix)
                 spans.append(f"(some ({V2['schema_term'](info)}, ⟨⟨{payload}, {rep_end}⟩, "
                              f"⟨{rep_end}, {def_end}⟩, ⟨{def_end}, {end}⟩⟩))")
             nonnull = defs.count(len(steps))
-            if dictionary:
+            assert encoding == 0 or (encoding == 8 and dictionary is not None)
+            if encoding == 8:
                 assert suffix and suffix[0] <= 32
                 indices = HYBRID(suffix[1:], suffix[0], nonnull)
                 assert all(index < len(dictionary[-1]) for index in indices)
@@ -269,7 +276,7 @@ def negative_files(wire, key):
         header[5][1][2] = I32, 2
         return body
 
-    def fallback(header, body):
+    def change_to_plain(header, body):
         header[5][1][2] = I32, 0
         return body
 
@@ -279,7 +286,7 @@ def negative_files(wire, key):
         "second_dictionary": replace([dictionary, first, dictionary, *later]),
         "dictionary_after_data": replace([first, dictionary, *later]),
         "legacy_page": replace([dictionary, edit_frame(first, legacy), *later]),
-        "plain_fallback": replace([dictionary, edit_frame(first, fallback), *later]),
+        "plain_tag_over_indices": replace([dictionary, edit_frame(first, change_to_plain), *later]),
         "index_out_of_range": replace([dictionary, indices(b"\x08\x03" + b"\xff" * 8), *later]),
         "index_trailing": replace([dictionary, edit_frame(first, lambda _, body: body + b"\0"), *later]),
         "index_width_missing": replace([dictionary, indices(b""), *later]),
@@ -377,7 +384,7 @@ def verify(scratch):
         page_error(label, 0, ".missingDictionary")
     page_error("second_dictionary", 2, ".misplacedDictionary")
     page_error("legacy_page", 1, ".header (.encoding 2 3 3)")
-    page_error("plain_fallback", 1, ".header (.encoding 0 3 3)")
+    page_error("plain_tag_over_indices", 1, ".plain .truncated")
     page_error("index_out_of_range", 1, ".dictionaryIndices (.outOfBounds 255)")
     late = page_error("index_trailing", 1, ".dictionaryIndices (.hybrid .trailingBytes)")
     page_error("index_width_missing", 1, ".dictionaryIndices .missingBitWidth")

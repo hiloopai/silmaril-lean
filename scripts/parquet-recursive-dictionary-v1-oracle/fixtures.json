@@ -39,7 +39,7 @@
       "bytes": 4427,
       "sha256": "2a129877e21d6716d1bad250d1c3a218e2ad29e6ead0ecc63a2b9e80568e7ba0"
     },
-    "plain_fallback": {
+    "plain_tag_over_indices": {
       "bytes": 4427,
       "sha256": "68d8351e64bccedd60b8c2b6c67cf82028f043d160d99c0a780f6e48fa887bb5"
     },

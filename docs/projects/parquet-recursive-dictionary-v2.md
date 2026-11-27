@@ -4,10 +4,10 @@ The recursive signed INT32/INT64 Struct/LIST reader admits
 UNCOMPRESSED RLE_DICTIONARY Data Page V2 after the same leading
 PLAIN dictionary used by V1. Columns are unindexed, with at most
 one repeated ancestor per leaf. Pages select V1 or V2 from the
-original frame and require RLE_DICTIONARY in either version.
-PLAIN fallback and PLAIN_DICTIONARY are typed encoding refusals.
-Compressed dictionaries remain outside this profile.
-[Parquet dictionary encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md)
+original frame and check RLE_DICTIONARY in either version.
+PLAIN_DICTIONARY is a typed encoding refusal. Compressed
+dictionaries remain outside this profile.
+[PLAIN fallback extension](parquet-recursive-dictionary-fallback.md) · [Parquet dictionary encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md)
 
 The common V2 reader verifies the optional CRC over the original
 stored body and takes the original repetition, definition and

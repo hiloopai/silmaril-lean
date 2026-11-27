@@ -88,7 +88,7 @@ def controls(wire, key, page):
         "wrong_nulls": change_info(2, lambda n: n + 1),
         "invalid_counts": change_info(2, lambda _: 10000),
         "bad_level_extent": change_info(5, lambda _: 10000),
-        "plain_fallback": change_info(4, lambda _: 0),
+        "plain_tag_over_indices": change_info(4, lambda _: 0),
         "legacy_encoding": change_info(4, lambda _: 2),
         "bad_sizes_true": unequal_sizes(True),
         "bad_sizes_false": unequal_sizes(False),
@@ -179,7 +179,7 @@ def verify(scratch):
     page_error("wrong_nulls", f".v2Nulls {nulls + 1} {nulls}")
     page_error("invalid_counts", ".framing (.header .invalidV2Counts)")
     page_error("bad_level_extent", ".framing (.header .invalidV2Lengths)")
-    page_error("plain_fallback", ".v2Encoding 0")
+    page_error("plain_tag_over_indices", ".plain .truncated")
     page_error("legacy_encoding", ".v2Encoding 2")
     page_error("bad_sizes_true", f".header (.pageSizes {len(body) + 1} {len(body)})")
     page_error("bad_sizes_false", ".framing (.header .invalidV2Lengths)")
