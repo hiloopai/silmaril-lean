@@ -81,22 +81,19 @@ private theorem suffix_storage {storedSize expandedSize : Nat} {compressed : Boo
     cases Option.some.inj selected
     exact decoded
 
-theorem data_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
-    {entries : List Int64} {page : DataPage} {slots : List (Option Int64)}
-    (planned : planData bound page.frame = .ok page)
-    (read : Leaf.Dictionary.Snappy.DataWire limits leafLimits bound entries.toArray page slots) :
-    ∃ header layout definitions storedValues, ∃ prepared : ScalarPage.Prepared, ∃ width runs indices,
+theorem body_wire {admits : Int → Bool} {leafLimits : Leaf.Limits} {bound : Bound}
+    {page : DataPage} {status : Parquet.Page.Checksum.Status} {layout : FlatPage.Layout}
+    {prepared : ScalarPage.Prepared}
+    (planned : planDataWith admits bound page.frame = .ok page)
+    (verified : Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame = .ok status)
+    (expandedBound : page.params.sizes.uncompressed ≤ leafLimits.page.uncompressedBytes)
+    (wire : ScalarPage.PreparedWire page.params leafLimits.page layout (Leaf.Internal.body bound page.frame) prepared) :
+    ∃ header definitions storedValues,
       page.frame.value.kind = .dataV2 header ∧ header.numRows = header.numValues ∧
       BodyWire bound page.frame leafLimits.page header definitions storedValues prepared.scalars.toList ∧
       FlatPage.readMask layout header.numValues leafLimits.page.levels definitions = .ok prepared.mask ∧
-      prepared.mask.count true = header.numValues - header.numNulls ∧
-      prepared.scalars.toList = width :: runs ∧
-      Hybrid.Wire width.toNat (prepared.mask.count true) runs indices ∧
-      slots.map Option.isSome = prepared.mask ∧
-      indices.map (fun index => entries.toArray[index]?) = (slots.filterMap id).map some := by
-  obtain ⟨_, header, kind, _, params⟩ := planData_wire planned
-  obtain ⟨status, layout, prepared, width, runs, indices, verified, expandedBound, wire,
-    suffix, hybrid, mask, signed⟩ := Leaf.Dictionary.Snappy.data_decodes read
+      prepared.mask.count true = header.numValues - header.numNulls := by
+  obtain ⟨_, header, kind, _, params⟩ := planDataWith_wire planned
   rw [params] at wire expandedBound
   obtain ⟨_, rows, noRep, storedFits, expandedFits, definitionBound, definitions, encoded,
     definitionSize, split, readMask, present, payload⟩ := wire
@@ -109,8 +106,42 @@ theorem data_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits
   have body : BodyWire bound page.frame leafLimits.page header definitions encoded prepared.scalars.toList :=
     ⟨slice, storedSize, storedSize ▸ storedBound, checksumWire, expandedBound, noRep, definitionSize,
       definitionBound, ⟨storedFits, expandedFits⟩, split, payload.1, payload.2.1, suffix_storage payload⟩
-  exact ⟨header, layout, definitions, encoded, prepared, width, runs, indices, kind, rows, body,
+  exact ⟨header, definitions, encoded, kind, rows, body, readMask, present⟩
+
+theorem data_decodesWith {admits : Int → Bool} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : List Int64} {page : DataPage} {slots : List (Option Int64)}
+    (planned : planDataWith admits bound page.frame = .ok page)
+    (read : Leaf.Dictionary.Snappy.DataWire limits leafLimits bound entries.toArray page slots) :
+    ∃ header layout definitions storedValues, ∃ prepared : ScalarPage.Prepared, ∃ width runs indices,
+      page.frame.value.kind = .dataV2 header ∧ header.numRows = header.numValues ∧
+      BodyWire bound page.frame leafLimits.page header definitions storedValues prepared.scalars.toList ∧
+      FlatPage.readMask layout header.numValues leafLimits.page.levels definitions = .ok prepared.mask ∧
+      prepared.mask.count true = header.numValues - header.numNulls ∧
+      prepared.scalars.toList = width :: runs ∧
+      Hybrid.Wire width.toNat (prepared.mask.count true) runs indices ∧
+      slots.map Option.isSome = prepared.mask ∧
+      indices.map (fun index => entries.toArray[index]?) = (slots.filterMap id).map some := by
+  obtain ⟨status, layout, prepared, width, runs, indices, verified, expandedBound, wire,
+    suffix, hybrid, mask, signed⟩ := Leaf.Dictionary.Snappy.data_decodes read
+  obtain ⟨header, definitions, storedValues, kind, rows, body, readMask, present⟩ :=
+    body_wire planned verified expandedBound wire
+  exact ⟨header, layout, definitions, storedValues, prepared, width, runs, indices, kind, rows, body,
     readMask, present, suffix, hybrid, mask, signed⟩
+
+theorem data_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : List Int64} {page : DataPage} {slots : List (Option Int64)}
+    (planned : planData bound page.frame = .ok page)
+    (read : Leaf.Dictionary.Snappy.DataWire limits leafLimits bound entries.toArray page slots) :
+    ∃ header layout definitions storedValues, ∃ prepared : ScalarPage.Prepared, ∃ width runs indices,
+      page.frame.value.kind = .dataV2 header ∧ header.numRows = header.numValues ∧
+      BodyWire bound page.frame leafLimits.page header definitions storedValues prepared.scalars.toList ∧
+      FlatPage.readMask layout header.numValues leafLimits.page.levels definitions = .ok prepared.mask ∧
+      prepared.mask.count true = header.numValues - header.numNulls ∧
+      prepared.scalars.toList = width :: runs ∧
+      Hybrid.Wire width.toNat (prepared.mask.count true) runs indices ∧
+      slots.map Option.isSome = prepared.mask ∧
+      indices.map (fun index => entries.toArray[index]?) = (slots.filterMap id).map some :=
+  data_decodesWith (admits := (· == 8)) planned read
 
 theorem readGroup_first_header_error {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
     {bound : Bound} {index ordinal : Nat} {framed : Leaf.Dictionary.FramedChunk} {frame : Parquet.Page.Frame}

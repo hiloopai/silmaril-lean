@@ -1,0 +1,16 @@
+{
+  "utc_nanos": "acfd0cacc311c3128989d9e67a8bba191e0318f90f2624000e7007b998fb57b2",
+  "local_micros": "033cc20cd9bcf8f4b4357b2b0b9ebce39aeb50738a11f8aa75b4ccd92269510d",
+  "mutated_dictionary_crc": "22c12ae2c065689b97cc2f44bc70ee22be6d13e19a03526f933660c4115742bd",
+  "mutated_reference_crc": "e8cede6feb549a7665f86706201ebf8b21faa7e0464a0f78ecae42569e915e8e",
+  "mutated_plain_crc": "7ddb26cfa66783b9b7b29fe42f32c5e575e57be66abb40e47cb4b16aa2262f39",
+  "mutated_competing_crc": "3a0b3b023cdf3dd87197edfbd40c4cd4576d86d5f29462f5d8c18a7765302d6a",
+  "mutated_reference_suffix": "3feb7d4ec75cc34a0a3ccc0b517114a94d9f3de573c838141830887696fe9cef",
+  "mutated_plain_suffix": "39b1d669c77411908ecc4104e5c877776496ab610b544ba928ae01811ef2a695",
+  "mutated_reentry": "5ed23177f00829f17b80f563fa293b88b306d6015aee49b7987d85be06937997",
+  "mutated_starts_plain": "06217969e7a50528ced7c580f751d6e8dc8d35be71ace4dcf3125fb312750466",
+  "assembled_late_v1": "dd8a920cd2970117d023a0a84473020bbf3db62ca65f48b5172dc970daebb341",
+  "assembled_dictionary_only": "feb318ac62bad9452a1ed75ab77e28d560f117ace7899a9dbdf4ef002cc8e1b7",
+  "plain_only": "6b384af2b48a27ab1e626c049316a33439a25571673375022f262f94e4628612",
+  "uncompressed": "4fcd1fd24966ed6045c37268256c831f98adafbf7978ae85dfc9b4756de70971"
+}

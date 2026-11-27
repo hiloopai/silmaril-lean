@@ -39,7 +39,7 @@ def convert (limits : Dictionary.Limits) (inputLimits : Events.ToIpc.Limits)
   Events.ToIpc.convertGroups .modernOnly inputLimits outputLimits input ordinal
     (readGroup limits inputLimits.leaf)
 
-/-- Exact original stored bytes, raw levels and flag-selected reference suffix. -/
+/-- Exact original stored bytes, raw levels and flag-selected value suffix. -/
 structure BodyWire (bound : Bound) (frame : Parquet.Page.Frame) (limits : ScalarPage.Limits)
     (header : Parquet.Page.DataV2) (definitions : Bytes) (storedValues expandedValues : List UInt8) : Prop where
   slice : bound.snapshot.bytes.slice? frame.payload.start (some frame.payload.stop) =

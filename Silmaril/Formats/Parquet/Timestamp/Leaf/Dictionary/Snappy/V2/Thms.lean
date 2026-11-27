@@ -48,6 +48,38 @@ theorem checkGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Lim
       (checked.data.map (·.params.numValues)).sum = checked.chunk.group.numRows.toNat :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.V2.checkGroup_wire admitted
 
+/-- V2 preparation retains the original stored CRC, raw definitions, and
+the exact value region chosen by the original compression flag. -/
+theorem body_wire {admits : Int → Bool} {leafLimits : Leaf.Limits} {bound : Bound}
+    {page : DataPage} {status : Parquet.Page.Checksum.Status} {layout : FlatPage.Layout}
+    {prepared : ScalarPage.Prepared}
+    (planned : planDataWith admits bound page.frame = .ok page)
+    (verified : Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame = .ok status)
+    (expandedBound : page.params.sizes.uncompressed ≤ leafLimits.page.uncompressedBytes)
+    (wire : ScalarPage.PreparedWire page.params leafLimits.page layout (Leaf.Internal.body bound page.frame) prepared) :
+    ∃ header definitions storedValues,
+      page.frame.value.kind = .dataV2 header ∧ header.numRows = header.numValues ∧
+      BodyWire bound page.frame leafLimits.page header definitions storedValues prepared.scalars.toList ∧
+      FlatPage.readMask layout header.numValues leafLimits.page.levels definitions = .ok prepared.mask ∧
+      prepared.mask.count true = header.numValues - header.numNulls :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.V2.body_wire planned verified expandedBound wire
+
+/-- The reference branch retains the exact V2 value region under an admitted header predicate. -/
+theorem data_decodesWith {admits : Int → Bool} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : List Int64} {page : DataPage} {slots : List (Option Int64)}
+    (planned : planDataWith admits bound page.frame = .ok page)
+    (read : Leaf.Dictionary.Snappy.DataWire limits leafLimits bound entries.toArray page slots) :
+    ∃ header layout definitions storedValues, ∃ prepared : ScalarPage.Prepared, ∃ width runs indices,
+      page.frame.value.kind = .dataV2 header ∧ header.numRows = header.numValues ∧
+      BodyWire bound page.frame leafLimits.page header definitions storedValues prepared.scalars.toList ∧
+      FlatPage.readMask layout header.numValues leafLimits.page.levels definitions = .ok prepared.mask ∧
+      prepared.mask.count true = header.numValues - header.numNulls ∧
+      prepared.scalars.toList = width :: runs ∧
+      Hybrid.Wire width.toNat (prepared.mask.count true) runs indices ∧
+      slots.map Option.isSome = prepared.mask ∧
+      indices.map (fun index => entries.toArray[index]?) = (slots.filterMap id).map some :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.V2.data_decodesWith planned read
+
 /-- The verified original V2 body supplies raw levels and exact signed dictionary lookups. -/
 theorem data_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : List Int64} {page : DataPage} {slots : List (Option Int64)}
