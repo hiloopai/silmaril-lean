@@ -1,0 +1,7 @@
+{
+  "explicit-empty.parquet": "dd194392bb279f093e4c48dde8025b525376f7daf8f142f1897ca020866b0cd0",
+  "optional.parquet": "810e8b806bff7c7a2237ae380376668e2a2c1579c72add0605a6e769a5e5c122",
+  "required.parquet": "d3ecc23c42e503119c2e54e3417e865debc565c03dc932ce7c84eb2ebef100d4",
+  "schema-only.parquet": "0c89b9bf73a8a110955e299ed2d8eb9531f83992d0455a45a26ff8e6d6902f57",
+  "singleton.parquet": "59996efd14db3d762a4a081085eb571e09bb521f1d5bf410fec4242d387c0d04"
+}
