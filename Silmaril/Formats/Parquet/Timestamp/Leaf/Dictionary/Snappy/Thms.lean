@@ -27,6 +27,22 @@ theorem stored_verified {cap : Nat} {bound : Bound} {frame : Parquet.Page.Frame}
       | .valid crc => frame.value.crc = some crc ∧ Compression.crc32Spec stored.toList = crc :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.stored_verified verified
 
+/-- Bounded dictionary expansion retains the selected codec and exact stored frame. -/
+theorem readEntriesWithCodec_wire {codec : Payload.Codec} {tag : DictionaryTag} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
+    {bound : Bound} {frame : Parquet.Page.Frame} {entries : List Int64}
+    (read : readEntriesWithCodec codec tag limits leafLimits bound frame = .ok entries) :
+    ∃ header status expanded,
+      frame.value.kind = .dictionary header ∧ header.encoding = tag.id ∧
+      header.numValues ≤ limits.maxEntries ∧
+      Parquet.Page.Checksum.verify (dictionaryBounds limits leafLimits frame).compressedLimit
+        bound.snapshot.bytes frame = .ok status ∧
+      Payload.Decodes frame.value.uncompressedSize codec (Leaf.Internal.body bound frame).toList expanded ∧
+      expanded.length = frame.value.uncompressedSize ∧
+      expanded.length ≤ (dictionaryBounds limits leafLimits frame).outputLimit ∧
+      Plain.decodeInt64 header.numValues (Bytes.ofList expanded) = .ok entries ∧
+      entries.length = header.numValues :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.readEntriesWithCodec_wire read
+
 /-- The original dictionary page tag selects the bounded Snappy PLAIN-word decoder. -/
 theorem readEntriesWith_wire {tag : DictionaryTag} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
     {bound : Bound} {frame : Parquet.Page.Frame} {entries : List Int64}
@@ -180,7 +196,7 @@ theorem readEntries_checksum_error {limits : Dictionary.Limits} {leafLimits : Le
     (failed : Parquet.Page.Checksum.verify (dictionaryBounds limits leafLimits frame).compressedLimit
       bound.snapshot.bytes frame = .error cause) :
     readEntries limits leafLimits bound frame = .error (.checksumFailure cause) := by
-  simp [readEntries, readEntriesWith, DictionaryTag.id, kind, encoding, Nat.not_lt.mpr count, Nat.not_lt.mpr size, failed,
+  simp [readEntries, readEntriesWith, readEntriesWithCodec, DictionaryTag.id, kind, encoding, Nat.not_lt.mpr count, Nat.not_lt.mpr size, failed,
     Except.mapError, Bind.bind, Except.bind]
 
 /-- A refused data checksum keeps its wire ordinal and original header offset. -/

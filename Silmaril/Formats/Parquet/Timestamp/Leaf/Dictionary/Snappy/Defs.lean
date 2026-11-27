@@ -23,8 +23,8 @@ def DictionaryTag.id : DictionaryTag → Int
   | .plainDictionary => 2
 
 /-- Verify the dictionary CRC, when present, over the original stored payload.
-The span and caps are checked before Snappy expansion. -/
-def readEntriesWith (tag : DictionaryTag) (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+The span and caps are checked before payload expansion. -/
+def readEntriesWithCodec (codec : Payload.Codec) (tag : DictionaryTag) (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
     (frame : Parquet.Page.Frame) : Except DictionaryPageError (List Int64) := do
   let .dictionary header := frame.value.kind | throw .expectedDictionary
   if header.encoding ≠ tag.id then throw (.encoding header.encoding)
@@ -33,9 +33,13 @@ def readEntriesWith (tag : DictionaryTag) (limits : Dictionary.Limits) (leafLimi
   if bounds.outputLimit < bounds.expectedSize then throw (.payload .outputLimit)
   let _ ← (Parquet.Page.Checksum.verify bounds.compressedLimit bound.snapshot.bytes frame).mapError
     .checksumFailure
-  let body ← (Payload.decode bounds Payload.Codec.snappy.id
+  let body ← (Payload.decode bounds codec.id
     (Leaf.Internal.body bound frame).toList).mapError .payload
   (Plain.decodeInt64 header.numValues (Bytes.ofList body)).mapError .entries
+
+def readEntriesWith (tag : DictionaryTag) (limits : Dictionary.Limits) (leafLimits : Leaf.Limits)
+    (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError (List Int64) :=
+  readEntriesWithCodec .snappy tag limits leafLimits bound frame
 
 /-- Read a dictionary with the modern PLAIN tag. -/
 def readEntries (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)

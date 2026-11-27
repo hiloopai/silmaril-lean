@@ -50,6 +50,36 @@ theorem stored_verified {cap : Nat} {bound : Bound} {frame : Parquet.Page.Frame}
     obtain ⟨slice, size⟩ := Parquet.Page.Checksum.payload_exact extent
     exact ⟨slice, size, size ▸ withinCap, header, computed⟩
 
+theorem readEntriesWithCodec_wire {codec : Payload.Codec} {tag : DictionaryTag} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
+    {bound : Bound} {frame : Parquet.Page.Frame} {entries : List Int64}
+    (read : readEntriesWithCodec codec tag limits leafLimits bound frame = .ok entries) :
+    ∃ header status expanded,
+      frame.value.kind = .dictionary header ∧ header.encoding = tag.id ∧
+      header.numValues ≤ limits.maxEntries ∧
+      Parquet.Page.Checksum.verify (dictionaryBounds limits leafLimits frame).compressedLimit
+        bound.snapshot.bytes frame = .ok status ∧
+      Payload.Decodes frame.value.uncompressedSize codec (Leaf.Internal.body bound frame).toList expanded ∧
+      expanded.length = frame.value.uncompressedSize ∧
+      expanded.length ≤ (dictionaryBounds limits leafLimits frame).outputLimit ∧
+      Plain.decodeInt64 header.numValues (Bytes.ofList expanded) = .ok entries ∧
+      entries.length = header.numValues := by
+  cases kind : frame.value.kind with
+  | dictionary header =>
+    simp only [readEntriesWithCodec, kind, Bind.bind, Except.bind] at read
+    split_ifs at read with encoding count size
+    obtain ⟨status, verified, read⟩ := bind_ok read
+    obtain ⟨body, decoded, read⟩ := bind_ok read
+    obtain ⟨selected, id, expansion, _, _, exactSize, cap⟩ := Payload.decode_sound (mapError_ok decoded)
+    rw [Payload.Codec.ofId_id] at id
+    cases Option.some.inj id
+    have words := mapError_ok read
+    obtain ⟨_, original, _, rows, _, rfl⟩ := Plain.decodeFixedWidth_ok_iff.mp
+      (by simpa only [Plain.decodeInt64] using words)
+    exact ⟨header, status, body, rfl, Decidable.not_not.mp encoding, Nat.le_of_not_gt count,
+      mapError_ok verified, expansion, exactSize, cap, words, by simpa using rows⟩
+  | dataV1 _ | dataV2 _ | skipped _ =>
+    simp [readEntriesWithCodec, kind] at read
+
 theorem readEntriesWith_wire {tag : DictionaryTag} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
     {bound : Bound} {frame : Parquet.Page.Frame} {entries : List Int64}
     (read : readEntriesWith tag limits leafLimits bound frame = .ok entries) :
@@ -62,23 +92,8 @@ theorem readEntriesWith_wire {tag : DictionaryTag} {limits : Leaf.Dictionary.Lim
       expanded.length = frame.value.uncompressedSize ∧
       expanded.length ≤ (dictionaryBounds limits leafLimits frame).outputLimit ∧
       Plain.decodeInt64 header.numValues (Bytes.ofList expanded) = .ok entries ∧
-      entries.length = header.numValues := by
-  cases kind : frame.value.kind with
-  | dictionary header =>
-    simp only [readEntriesWith, kind, Bind.bind, Except.bind] at read
-    split_ifs at read with encoding count size
-    obtain ⟨status, verified, read⟩ := bind_ok read
-    obtain ⟨body, decoded, read⟩ := bind_ok read
-    obtain ⟨codec, id, expansion, _, _, exactSize, cap⟩ := Payload.decode_sound (mapError_ok decoded)
-    change some Payload.Codec.snappy = some codec at id
-    cases Option.some.inj id
-    have words := mapError_ok read
-    obtain ⟨_, original, _, rows, _, rfl⟩ := Plain.decodeFixedWidth_ok_iff.mp
-      (by simpa only [Plain.decodeInt64] using words)
-    exact ⟨header, status, body, rfl, Decidable.not_not.mp encoding, Nat.le_of_not_gt count,
-      mapError_ok verified, expansion, exactSize, cap, words, by simpa using rows⟩
-  | dataV1 _ | dataV2 _ | skipped _ =>
-    simp [readEntriesWith, kind] at read
+      entries.length = header.numValues :=
+  readEntriesWithCodec_wire (codec := .snappy) read
 
 theorem readEntries_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
     {bound : Bound} {frame : Parquet.Page.Frame} {entries : List Int64}
