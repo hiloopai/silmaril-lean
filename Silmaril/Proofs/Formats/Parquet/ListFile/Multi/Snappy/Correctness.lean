@@ -473,8 +473,8 @@ public theorem readFramesFor_feed_error {version : PageVersion} {limits : Limits
       .error (.frame ordinal frame.header.start (.page cause)) := by
   simp [readFramesFor, decoded, failed, Except.mapError, Bind.bind, Except.bind]
 
-private theorem readGroupsWith_wire {ε σ : Type} {wrap : Nat → ε → σ} {read : GroupReaderFor ε}
-    {witness : ListFile.Checked → Nat → List Row → Nat → Prop} {checked : ListFile.Checked} {indices : List Nat}
+public theorem readGroupsWith_wire {ε σ : Type} {container : ListFile.Container} {wrap : Nat → ε → σ} {read : GroupReaderFor ε container}
+    {witness : ListFile.Checked container → Nat → List Row → Nat → Prop} {checked : ListFile.Checked container} {indices : List Nat}
     {expanded left : Nat} {groups : List (List Row)}
     (sound : ∀ {checked ordinal expanded left rows}, read checked ordinal expanded = .ok (rows, left) →
       witness checked ordinal rows (expanded - left) ∧ left ≤ expanded)
@@ -505,7 +505,7 @@ private theorem readGroupsWith_wire {ε σ : Type} {wrap : Nat → ε → σ} {r
         simp only [List.sum_cons]
         omega
 
-public theorem readGroupsWith_append {ε σ : Type} {wrap : Nat → ε → σ} {read : GroupReaderFor ε} {checked : ListFile.Checked} {before after : List Nat}
+public theorem readGroupsWith_append {ε σ : Type} {container : ListFile.Container} {wrap : Nat → ε → σ} {read : GroupReaderFor ε container} {checked : ListFile.Checked container} {before after : List Nat}
     {expanded left : Nat} {groups : List (List Row)}
     (h : readGroupsWith wrap read checked expanded before = (groups, .ok left)) :
     readGroupsWith wrap read checked expanded (before ++ after) =

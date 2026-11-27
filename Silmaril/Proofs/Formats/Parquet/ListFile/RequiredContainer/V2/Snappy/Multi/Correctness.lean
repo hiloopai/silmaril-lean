@@ -76,6 +76,6 @@ public theorem readGroup_wire {limits : Limits} {checked : Checked} {ordinal : N
   obtain ⟨wire, bound⟩ := readFrame_wire decoded
   obtain ⟨info, kind, _, _, frameWire⟩ := wire.data
   obtain ⟨sections, _, physical, _, rows, absent⟩ := frameWire.data
-  exact ⟨wire, ⟨info, sections.repetition, sections.definition, sections.scalars, kind, physical, rows, absent⟩, bound⟩
+  exact ⟨wire, ListFile.RequiredContainer.V2.Multi.countedFrame kind physical.usingPlain rows absent, bound⟩
 
 end Silmaril.Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Snappy.Multi

@@ -87,10 +87,9 @@ def readGroup (maxGroupSlots : Nat) : RequiredContainer.GroupReader GroupError :
 /-- Counts are determined by the original raw sections and ordered required
 events. Body codecs can supply their own storage and preparation witness. -/
 structure CountedFrame (frame : Page.Frame) (events : List Event) : Prop where
-  data : ∃ (info : Page.DataV2) (repetition definition scalars : Bytes),
-    frame.value.kind = .dataV2 info ∧
-    SectionsWire info.numValues repetition definition scalars events ∧
-    rowStarts events = info.numRows ∧ missingSlots events = info.numNulls
+  data : ∃ info : Page.DataV2,
+    frame.value.kind = .dataV2 info ∧ events.length = info.numValues ∧
+    rowStarts events = info.numRows ∧ missingSlots events = info.numNulls ∧ Event.nullList ∉ events
 
 structure GroupWire (maxGroupSlots : Nat) (checked : Checked) (ordinal : Nat) (rows : List Row)
     (codec : Int := 0) (witness : Page.Frame → List Event → Prop := FrameWire checked) : Prop where

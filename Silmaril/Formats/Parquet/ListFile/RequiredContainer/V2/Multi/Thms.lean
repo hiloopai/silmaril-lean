@@ -10,7 +10,7 @@ namespace Silmaril.Formats.Parquet.ListFile.RequiredContainer.V2.Multi
 
 open ListPage (Event Row State)
 open Silmaril.Relational
-open RequiredContainer (Checked)
+open RequiredContainer (Checked SectionsWireUsing)
 
 theorem readFrame_wire {checked : Checked} {remaining : Nat} {frame : Page.Frame}
     {events : List Event} (h : readFrame checked remaining frame = .ok events) :
@@ -50,6 +50,23 @@ theorem readGroup_frame_error {maxGroupSlots : Nat} {checked : Checked} {ordinal
         state.feed events = .error error ∧ cause = .data (.page error)) :
     readGroup maxGroupSlots checked ordinal = .error (.frame before.length frame.header.start cause) :=
   Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Multi.readGroup_frame_error selected slots rows order earlier failed
+
+theorem countedFrame {ε : Type} {readValues : Nat → Bytes → Except ε (List Int32)}
+    {frame : Page.Frame} {info : Page.DataV2} {repetition definition scalars : Bytes} {events : List Event}
+    (kind : frame.value.kind = .dataV2 info)
+    (physical : SectionsWireUsing readValues info.numValues repetition definition scalars events)
+    (rows : rowStarts events = info.numRows) (absent : missingSlots events = info.numNulls) :
+    CountedFrame frame events :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Multi.countedFrame kind physical rows absent
+
+theorem frameTotals {frames : List Page.Frame} {pages : List (List Event)}
+    (wire : List.Forall₂ CountedFrame frames pages) :
+    ∃ infos,
+      List.Forall₂ (fun (frame : Page.Frame) (info : Page.DataV2) => frame.value.kind = .dataV2 info) frames infos ∧
+      (infos.map (·.numValues)).sum = pages.flatten.length ∧
+      (infos.map (·.numRows)).sum = rowStarts pages.flatten ∧
+      (infos.map (·.numNulls)).sum = missingSlots pages.flatten ∧ Event.nullList ∉ pages.flatten :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Multi.frameTotals wire
 
 /-- The checked codec walk preserves the complete group witness for its page reader. -/
 theorem readGroupWith_wire {frameError : Type} {codec : Int} {maxGroupSlots : Nat}

@@ -24,7 +24,7 @@ theorem expand_checksum_error {storedCap expandedCap : Nat} {source : Bytes} {fr
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.expand_checksum_error h
 
 /-- The leading dictionary is the exact original ordered signed PLAIN words. -/
-theorem readEntries_wire {limits : Limits} {checked : ListFile.Checked} {expanded : Nat}
+theorem readEntries_wire {container : ListFile.Container} {limits : Limits} {checked : ListFile.Checked container} {expanded : Nat}
     {frame : Page.Frame} {entries : List Int32} (h : readEntries limits checked expanded frame = .ok entries) :
     DictionaryWire limits checked frame entries ∧ frame.value.uncompressedSize ≤ expanded :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readEntries_wire h
@@ -56,7 +56,7 @@ theorem readFrames_wire {limits : Limits} {checked : ListFile.Checked} {column :
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readFrames_wire h
 
 /-- The original footer and source frame chain bind both dictionary and first data offsets. -/
-theorem selectChunk_wire {checked : ListFile.Checked} {ordinal : Nat} {chunk : Chunk}
+theorem selectChunk_wire {container : ListFile.Container} {checked : ListFile.Checked container} {ordinal : Nat} {chunk : Chunk}
     (h : selectChunk checked ordinal = .ok chunk) : ChunkWire checked ordinal chunk :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.selectChunk_wire h
 
@@ -136,7 +136,7 @@ theorem readFramesUsing_wire {read : FrameReader} {witness : Page.Frame → List
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readFramesUsing_wire sound h
 
 /-- Checking offsets keeps the original framed group. -/
-theorem selectFramedChunk_wire {checked : ListFile.Checked} {ordinal : Nat}
+theorem selectFramedChunk_wire {container : ListFile.Container} {checked : ListFile.Checked container} {ordinal : Nat}
     {framed : ListFile.FramedGroup} {chunk : Chunk}
     (origin : ListFile.ChunkFrameWire checked ordinal framed 1)
     (h : selectFramedChunk framed = .ok chunk) :
@@ -144,8 +144,8 @@ theorem selectFramedChunk_wire {checked : ListFile.Checked} {ordinal : Nat}
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.selectFramedChunk_wire origin h
 
 /-- Read the original dictionary and data from already selected frames. -/
-theorem readSelectedGroupWith_wire {limits : Limits} {walk : DataWalk} {witness : WalkWitness}
-    {checked : ListFile.Checked} {ordinal expanded left : Nat} {chunk : Chunk} {rows : List Row}
+theorem readSelectedGroupWith_wire {container : ListFile.Container} {limits : Limits} {walk : DataWalk container} {witness : WalkWitness container}
+    {checked : ListFile.Checked container} {ordinal expanded left : Nat} {chunk : Chunk} {rows : List Row}
     (origin : ChunkWire checked ordinal chunk)
     (sound : ∀ {checked column entries ordinal budget state frames left next},
       walk checked column entries ordinal budget state frames = .ok (left, next) →
@@ -158,8 +158,8 @@ theorem readSelectedGroupWith_wire {limits : Limits} {walk : DataWalk} {witness 
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readSelectedGroupWith_wire origin sound h
 
 /-- Lift a checked data walk to the original chunk, signed dictionary and group rows. -/
-theorem readGroupWith_wire {limits : Limits} {walk : DataWalk} {witness : WalkWitness}
-    {checked : ListFile.Checked} {ordinal expanded left : Nat} {rows : List Row}
+theorem readGroupWith_wire {container : ListFile.Container} {limits : Limits} {walk : DataWalk container} {witness : WalkWitness container}
+    {checked : ListFile.Checked container} {ordinal expanded left : Nat} {rows : List Row}
     (sound : ∀ {checked column entries ordinal budget state frames left next},
       walk checked column entries ordinal budget state frames = .ok (left, next) →
       ∃ pages, witness checked column entries frames pages ∧
@@ -171,8 +171,8 @@ theorem readGroupWith_wire {limits : Limits} {walk : DataWalk} {witness : WalkWi
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.DictionaryV1.readGroupWith_wire sound h
 
 /-- The dictionary group walk retains the original dictionary and data-page witnesses. -/
-theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witness : DataWitness}
-    {checked : ListFile.Checked} {ordinal expanded left : Nat}
+theorem readGroupUsing_wire {container : ListFile.Container} {limits : Limits} {read : DataReader container} {witness : DataWitness container}
+    {checked : ListFile.Checked container} {ordinal expanded left : Nat}
     {rows : List Row}
     (sound : ∀ {checked column entries budget frame events}, read checked column entries budget frame = .ok events →
       witness checked column entries frame events ∧ events.length ≤ budget.slots ∧

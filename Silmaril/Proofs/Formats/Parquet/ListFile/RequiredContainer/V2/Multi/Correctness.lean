@@ -13,7 +13,7 @@ public section
 namespace Silmaril.Proofs.Formats.Parquet.ListFile.RequiredContainer.V2.Multi
 
 open Silmaril.Formats Silmaril.Formats.Parquet Silmaril.Relational
-open Silmaril.Formats.Parquet.ListFile.RequiredContainer (Checked eventWire)
+open Silmaril.Formats.Parquet.ListFile.RequiredContainer (Checked eventWire SectionsWireUsing)
 open Silmaril.Formats.Parquet.ListFile.RequiredContainer.V2 (readSections readSections_wire RawWire
   rowStarts missingSlots event_counts sections_physical rowStarts_of_rows)
 open Silmaril.Formats.Parquet.ListFile.RequiredContainer.V2.Multi
@@ -93,7 +93,19 @@ public theorem frame_levels {checked : Checked} {frame : Page.Frame} {events : L
     | first item => exact Or.inr rfl
     | next item => contradiction
 
-private theorem totals {frames : List Page.Frame} {pages : List (List Event)}
+public theorem countedFrame {ε : Type} {readValues : Nat → Bytes → Except ε (List Int32)}
+    {frame : Page.Frame} {info : Page.DataV2} {repetition definition scalars : Bytes} {events : List Event}
+    (kind : frame.value.kind = .dataV2 info)
+    (physical : SectionsWireUsing readValues info.numValues repetition definition scalars events)
+    (rows : rowStarts events = info.numRows) (absent : missingSlots events = info.numNulls) :
+    CountedFrame frame events := by
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, ordered⟩ := physical.data
+  refine ⟨info, kind, physical.count, rows, absent, fun invalid => ?_⟩
+  have noneMember : none ∈ List.map eventWire events := List.mem_map.mpr ⟨Event.nullList, invalid, rfl⟩
+  rw [ordered] at noneMember
+  simp at noneMember
+
+public theorem frameTotals {frames : List Page.Frame} {pages : List (List Event)}
     (wire : List.Forall₂ CountedFrame frames pages) :
     ∃ infos,
       List.Forall₂ (fun (frame : Page.Frame) (info : Page.DataV2) => frame.value.kind = .dataV2 info) frames infos ∧
@@ -103,21 +115,15 @@ private theorem totals {frames : List Page.Frame} {pages : List (List Event)}
   induction wire with
   | nil => exact ⟨[], .nil, rfl, rfl, rfl, by simp⟩
   | cons frame rest ih =>
-    obtain ⟨info, _, _, _, kind, physical, rows, absent⟩ := frame.data
-    have count := physical.count
+    obtain ⟨info, kind, count, rows, absent, validHead⟩ := frame.data
     obtain ⟨infos, kinds, slotsSum, rowSum, nullSum, validTail⟩ := ih
-    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, ordered⟩ := physical.data
     refine ⟨info :: infos, .cons kind kinds, ?_, ?_, ?_, ?_⟩
     · simp only [List.map_cons, List.sum_cons, List.flatten_cons, List.length_append, count, slotsSum]
     · simp only [List.map_cons, List.sum_cons, List.flatten_cons, rowSum, ← rows]
       exact (List.countP_append ..).symm
     · simp only [List.map_cons, List.sum_cons, List.flatten_cons, nullSum, ← absent]
       exact (List.countP_append ..).symm
-    · simp only [List.flatten_cons, List.mem_append, not_or]
-      refine ⟨fun invalid => ?_, validTail⟩
-      have noneMember : none ∈ List.map eventWire _ := List.mem_map.mpr ⟨Event.nullList, invalid, rfl⟩
-      rw [ordered] at noneMember
-      simp at noneMember
+    · simpa only [List.flatten_cons, List.mem_append, not_or] using And.intro validHead validTail
 
 public theorem readGroupWith_wire {frameError : Type} {codec : Int} {maxGroupSlots : Nat}
     {select : Checked → Nat → Except ListFile.ReadError ListFile.FramedGroup}
@@ -163,7 +169,7 @@ public theorem readGroupWith_wire {frameError : Type} {codec : Int} {maxGroupSlo
         simpa only [ListPage.finish_empty, List.flatMap_nil, List.nil_append] using ordered
       have counted := List.Forall₂.imp (fun _ _ both => both.2) frames
       have pageWires := List.Forall₂.imp (fun _ _ both => both.1) frames
-      obtain ⟨infos, kinds, slots, starts, missing, present⟩ := totals counted
+      obtain ⟨infos, kinds, slots, starts, missing, present⟩ := frameTotals counted
       refine ⟨?_, framed, pages, infos, selectedWire selected, pageWires, kinds, ListPage.reconstruct_of_feed fed, order,
         slots.trans (by simpa using count), ?_, not_not.mp rowCount, ?_,
         Nat.le_of_not_gt slotCap, Nat.le_of_not_gt rowCap⟩
@@ -185,7 +191,7 @@ public theorem readGroup_wire {maxGroupSlots : Nat} {checked : Checked} {ordinal
   intro remaining frame events decoded
   obtain ⟨wire, bound⟩ := readFrame_wire decoded
   obtain ⟨info, sections, kind, _, _, _, physical, _, rows, absent, _⟩ := wire.data
-  exact ⟨wire, ⟨info, sections.repetition, sections.definition, sections.scalars, kind, physical, rows, absent⟩, bound⟩
+  exact ⟨wire, countedFrame kind physical.usingPlain rows absent, bound⟩
 
 public theorem readGroupWith_frame_error {frameError : Type} {maxGroupSlots : Nat}
     {select : Checked → Nat → Except ListFile.ReadError ListFile.FramedGroup}

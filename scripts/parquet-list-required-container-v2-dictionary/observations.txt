@@ -1,0 +1,66 @@
+PyArrow 26.0.1
+native-required-v2-dictionary.parquet SHA-256 d28b0ca2b173d0d54d3ace56dca405dce7da1d5313c4cdf2a8512cafc57b4c07, footer [434, 1006)
+  group 0 dictionary @4, crc 36942358, payload [23, 37), signed [-2147483648, 2147483647, 7]
+  group 0 data frame 1 @37, crc -1083805677, slots/rows/nulls 1/1/1, flag False, rep [67, 69), def [69, 71), indices [71, 72) -> 00, width 0, count 0
+  group 0 data frame 2 @72, crc -1501740718, slots/rows/nulls 1/1/1, flag False, rep [102, 104), def [104, 106), indices [106, 107) -> 00, width 0, count 0
+  group 0 data frame 3 @107, crc -2071388830, slots/rows/nulls 3/1/1, flag False, rep [137, 139), def [139, 142), indices [142, 145) -> 010302, width 1, count 2
+  group 0 data frame 4 @145, crc -1526341861, slots/rows/nulls 0/0/0, flag False, rep [175, 175), def [175, 175), indices [175, 176) -> 01, width 1, count 0
+  group 0 data frame 5 @176, crc 925072101, slots/rows/nulls 2/1/0, flag False, rep [206, 208), def [208, 210), indices [210, 213) -> 020402, width 2, count 2
+  group 1 dictionary @213, crc -678909694, payload [233, 247), signed [2147483647, 7, -2147483648]
+  group 1 data frame 1 @247, crc 899275995, slots/rows/nulls 2/1/2, flag False, rep [277, 279), def [279, 281), indices [281, 282) -> 00, width 0, count 0
+  group 1 data frame 2 @282, crc -1083805677, slots/rows/nulls 1/1/1, flag False, rep [312, 314), def [314, 316), indices [316, 317) -> 00, width 0, count 0
+  group 1 data frame 3 @317, crc -372351735, slots/rows/nulls 1/1/0, flag False, rep [347, 349), def [349, 351), indices [351, 354) -> 010200, width 1, count 1
+  group 1 data frame 4 @354, crc -1526341861, slots/rows/nulls 0/0/0, flag False, rep [384, 384), def [384, 384), indices [384, 385) -> 01, width 1, count 0
+  group 1 data frame 5 @385, crc 1794254301, slots/rows/nulls 105/1/1, flag True, rep [416, 421), def [421, 426), indices [426, 434) -> 021b9999999999999999999999999999999999999999999999999999, width 2, count 104
+  total expanded page bodies 106 bytes
+native-required-v2-dictionary-no-crc.parquet SHA-256 8268f497d32370a6a808e40f967c1b6a8c868c8f15acef74f051cebccad69ce2, footer [363, 935)
+  group 0 dictionary @4, crc absent, payload [18, 32), signed [-2147483648, 2147483647, 7]
+  group 0 data frame 1 @32, crc absent, slots/rows/nulls 1/1/1, flag False, rep [56, 58), def [58, 60), indices [60, 61) -> 00, width 0, count 0
+  group 0 data frame 2 @61, crc absent, slots/rows/nulls 1/1/1, flag False, rep [85, 87), def [87, 89), indices [89, 90) -> 00, width 0, count 0
+  group 0 data frame 3 @90, crc absent, slots/rows/nulls 3/1/1, flag False, rep [114, 116), def [116, 119), indices [119, 122) -> 010302, width 1, count 2
+  group 0 data frame 4 @122, crc absent, slots/rows/nulls 0/0/0, flag False, rep [146, 146), def [146, 146), indices [146, 147) -> 01, width 1, count 0
+  group 0 data frame 5 @147, crc absent, slots/rows/nulls 2/1/0, flag False, rep [171, 173), def [173, 175), indices [175, 178) -> 020402, width 2, count 2
+  group 1 dictionary @178, crc absent, payload [192, 206), signed [2147483647, 7, -2147483648]
+  group 1 data frame 1 @206, crc absent, slots/rows/nulls 2/1/2, flag False, rep [230, 232), def [232, 234), indices [234, 235) -> 00, width 0, count 0
+  group 1 data frame 2 @235, crc absent, slots/rows/nulls 1/1/1, flag False, rep [259, 261), def [261, 263), indices [263, 264) -> 00, width 0, count 0
+  group 1 data frame 3 @264, crc absent, slots/rows/nulls 1/1/0, flag False, rep [288, 290), def [290, 292), indices [292, 295) -> 010200, width 1, count 1
+  group 1 data frame 4 @295, crc absent, slots/rows/nulls 0/0/0, flag False, rep [319, 319), def [319, 319), indices [319, 320) -> 01, width 1, count 0
+  group 1 data frame 5 @320, crc absent, slots/rows/nulls 105/1/1, flag True, rep [345, 350), def [350, 355), indices [355, 363) -> 021b9999999999999999999999999999999999999999999999999999, width 2, count 104
+  total expanded page bodies 106 bytes
+assembled-default-flag.parquet SHA-256 5df3cd7f9ae6dbf90b39a1d8cffa357d85022a045ad847c8d3ea06c8d9fc3b5e, footer [431, 609)
+  group 0 dictionary @4, crc 36942358, payload [23, 37), signed [-2147483648, 2147483647, 7]
+  group 0 data frame 1 @37, crc -1083805677, slots/rows/nulls 1/1/1, flag False, rep [67, 69), def [69, 71), indices [71, 72) -> 00, width 0, count 0
+  group 0 data frame 2 @72, crc -1501740718, slots/rows/nulls 1/1/1, flag False, rep [102, 104), def [104, 106), indices [106, 107) -> 00, width 0, count 0
+  group 0 data frame 3 @107, crc -2071388830, slots/rows/nulls 3/1/1, flag False, rep [137, 139), def [139, 142), indices [142, 145) -> 010302, width 1, count 2
+  group 0 data frame 4 @145, crc -1526341861, slots/rows/nulls 0/0/0, flag False, rep [175, 175), def [175, 175), indices [175, 176) -> 01, width 1, count 0
+  group 0 data frame 5 @176, crc 925072101, slots/rows/nulls 2/1/0, flag False, rep [206, 208), def [208, 210), indices [210, 213) -> 020402, width 2, count 2
+  group 1 dictionary @213, crc -678909694, payload [233, 247), signed [2147483647, 7, -2147483648]
+  group 1 data frame 1 @247, crc 899275995, slots/rows/nulls 2/1/2, flag False, rep [277, 279), def [279, 281), indices [281, 282) -> 00, width 0, count 0
+  group 1 data frame 2 @282, crc -1083805677, slots/rows/nulls 1/1/1, flag False, rep [312, 314), def [314, 316), indices [316, 317) -> 00, width 0, count 0
+  group 1 data frame 3 @317, crc -372351735, slots/rows/nulls 1/1/0, flag False, rep [347, 349), def [349, 351), indices [351, 354) -> 010200, width 1, count 1
+  group 1 data frame 4 @354, crc -1526341861, slots/rows/nulls 0/0/0, flag False, rep [384, 384), def [384, 384), indices [384, 385) -> 01, width 1, count 0
+  group 1 data frame 5 @385, crc 1794254301, slots/rows/nulls 105/1/1, flag default true, rep [413, 418), def [418, 423), indices [423, 431) -> 021b9999999999999999999999999999999999999999999999999999, width 2, count 104
+  total expanded page bodies 106 bytes
+native-required-v2-dictionary.arrows SHA-256 d77e1b97e38a80632e7381c8ac0cca13ec8a893833cc35e48bc668fb3ef9c232, exact EOS [1168, 1176)
+native-required-v2-dictionary-no-crc.arrows SHA-256 d77e1b97e38a80632e7381c8ac0cca13ec8a893833cc35e48bc668fb3ef9c232, exact EOS [1168, 1176)
+assembled-default-flag.arrows SHA-256 d77e1b97e38a80632e7381c8ac0cca13ec8a893833cc35e48bc668fb3ef9c232, exact EOS [1168, 1176)
+mutated-dictionary-crc.parquet SHA-256 08be8eaf6f6ec152afa7a944925de6a97deca726f89a445b90926e68e5890964
+dictionary-crc: group 1 frame 0 @213; retained one original batch and no IPC bytes
+mutated-raw-index-crc.parquet SHA-256 e0b571e7aecff2015d453fecad350038f252bac6b48201f7f9ab5b975b0c5889
+raw-index-crc: group 1 frame 3 @317; retained one original batch and no IPC bytes
+mutated-compressed-index-crc.parquet SHA-256 b1c560c45826159be9ca1ffbf534b88f31324ea4a2e1933ce2b05f5aafad5cd8
+compressed-index-crc: group 1 frame 5 @385; retained one original batch and no IPC bytes
+mutated-level-crc.parquet SHA-256 d0a5a38920fa560a7324ab39bbdf6fb920b82ef480c0b68c9630ec81b5f582c1
+level-crc: group 1 frame 5 @385; retained one original batch and no IPC bytes
+assembled-index-out-of-bounds.parquet SHA-256 c91d3dc8fd5fa40a70c5263859520656e6cf860a0c3f791d1fa684e99998c7e5
+index-out-of-bounds: group 1 frame 5 @385; retained one original batch and no IPC bytes
+assembled-no-index-width.parquet SHA-256 7ec781c20b36b2bc6883e6c82165fdfc0bbb0c539df061f16221541d0d38b7b0
+no-index-width: group 1 frame 5 @385; retained one original batch and no IPC bytes
+assembled-late-continuation.parquet SHA-256 bc631a66c1955824b91151ec032ba8feb948586d1a7025a7f5c700033762305c
+late-continuation: group 1 frame 5 @385; retained one original batch and no IPC bytes
+assembled-page-rows.parquet SHA-256 7b89488cdc569f3141e4179e5f6f07823507d152c1a148bf35a47f6f796e1ea3
+page-rows: group 1 frame 5 @385; retained one original batch and no IPC bytes
+assembled-page-nulls.parquet SHA-256 a91de9e40c42b989e67bfcc381f8b60536e2f370f290f93f8ac8ce3e6af3558d
+page-nulls: group 1 frame 5 @385; retained one original batch and no IPC bytes
+assembled-plain-fallback.parquet SHA-256 a736f1bbd4d6667a9edb2d8cd479588fbe36ae36692f6dd68e3515a87eb3ca79
+plain-fallback: group 1 frame 5 @385; retained one original batch and no IPC bytes
