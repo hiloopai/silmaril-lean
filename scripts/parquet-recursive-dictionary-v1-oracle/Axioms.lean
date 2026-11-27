@@ -1,5 +1,7 @@
 module
 
+
+import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Rows.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Rows.Events.Thms
