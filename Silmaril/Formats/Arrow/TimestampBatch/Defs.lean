@@ -23,6 +23,7 @@ structure Binding where
   name : String
   nullable : Bool
   metadata : ColumnarTimestamp.Arrow.Metadata
+  deriving DecidableEq
 
 /-- Bind one normalized Timestamp field for little-endian value decoding. -/
 def bindSchema (schema : SchemaReader.Schema) : Except Error Binding :=

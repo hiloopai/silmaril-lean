@@ -21,6 +21,7 @@ namespace Arrow
 structure Metadata where
   unit : TickUnit
   timezone : Option String
+  deriving DecidableEq
 
 /-- An opaque display annotation. Unset and empty strings both give local semantics. -/
 def Metadata.timezoneAnnotation (metadata : Metadata) : Option String :=
