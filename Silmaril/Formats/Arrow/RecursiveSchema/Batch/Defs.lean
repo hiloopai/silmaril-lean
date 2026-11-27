@@ -162,6 +162,11 @@ private def witness {ε α : Type} (result : Except ε α) : Except ε {value //
   | .ok value => .ok ⟨value, rfl⟩
   | .error cause => .error cause
 
+private theorem witness_ok {ε α : Type} {result : Except ε α} {value : α}
+    (read : result = .ok value) : witness result = .ok ⟨value, read⟩ := by
+  cases read
+  rfl
+
 private def readNode (carrier : Carrier) (cursor : Cursor) (length : Nat) :
     Except Error {node // NodeWire carrier cursor length node} := do
   let index := cursor.nodeIndex
@@ -319,6 +324,20 @@ public structure FrameWire {limits : Limits} {schema : Schema} {input : KBytes} 
   exact_buffers : frame.layout.fields.next.bufferIndex = frame.header.bufferCount
   slots_bound : frame.layout.fields.next.slots ≤ limits.slots
 
+/-- Validate a batch after its original metadata envelope was checked.
+The retained carrier and exact envelope determine all subsequent slices. -/
+public def readMetadataFrame (limits : Limits) (schema : Schema) (input : KBytes)
+    (offset size : Nat) (wf : input.wf = true)
+    (envelope : Arrow.readEnvelope limits.schema.ipc input offset = .ok (.metadata size)) :
+    Except Error (Frame limits schema input offset) := do
+  let metadata := input.slice (offset + 8) size
+  let ⟨header, metadataWire⟩ ← witness (Wire.batchHeader limits.schema.ipc metadata)
+    |>.mapError .metadata
+  let ⟨body, bodyWire⟩ ← witness (Arrow.readBody limits.schema.ipc input
+    (offset + 8 + size) header.bodyLength) |>.mapError .body
+  let layout ← partition ⟨metadata, header, body, limits.slots⟩ limits.schema.depth schema
+  return ⟨size, header, body, layout, wf, envelope, metadataWire, bodyWire⟩
+
 /-- Validate one framed batch at the supplied cursor against a checked Schema.
 The caller can use `Frame.next` to advance to the next envelope. -/
 public def readFrame (limits : Limits) (schema : Schema) (input : KBytes) (offset : Nat) :
@@ -326,14 +345,17 @@ public def readFrame (limits : Limits) (schema : Schema) (input : KBytes) (offse
   if wf : input.wf = true then
     let ⟨.metadata size, envelope⟩ ← witness (Arrow.readEnvelope limits.schema.ipc input offset)
       |>.mapError .envelope | throw .expectedRecord
-    let metadata := input.slice (offset + 8) size
-    let ⟨header, metadataWire⟩ ← witness (Wire.batchHeader limits.schema.ipc metadata)
-      |>.mapError .metadata
-    let ⟨body, bodyWire⟩ ← witness (Arrow.readBody limits.schema.ipc input
-      (offset + 8 + size) header.bodyLength) |>.mapError .body
-    let layout ← partition ⟨metadata, header, body, limits.slots⟩ limits.schema.depth schema
-    return ⟨size, header, body, layout, wf, envelope, metadataWire, bodyWire⟩
+    readMetadataFrame limits schema input offset size wf envelope
   else throw (.envelope (.malformed .source))
+
+/-- The framed entry point and the admitted-envelope entry point return
+exactly the same layout or original typed failure. -/
+public theorem readFrame_of_envelope {limits : Limits} {schema : Schema} {input : KBytes}
+    {offset size : Nat} (wf : input.wf = true)
+    (envelope : Arrow.readEnvelope limits.schema.ipc input offset = .ok (.metadata size)) :
+    readFrame limits schema input offset = readMetadataFrame limits schema input offset size wf envelope := by
+  unfold readFrame
+  simp [wf, witness_ok envelope, bind, Except.bind, Except.mapError]
 
 public structure First (limits : Limits) (input : KBytes) where
   schema : Schema

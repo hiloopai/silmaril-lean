@@ -79,6 +79,11 @@ def readFrame (limits : Limits) (input : KBytes) : Except Error (Schema × Nat) 
   let schema ← readMessage limits (input.slice 8 size)
   return (schema, 8 + size)
 
+/-- Successful schema admission certifies the immutable carrier for later frames. -/
+theorem readFrame_source {limits : Limits} {input : KBytes} {result : Schema × Nat}
+    (accepted : readFrame limits input = .ok result) : input.wf = true := by
+  cases wf : input.wf <;> simp [readFrame, wf, throw, bind, Except.bind] at accepted ⊢
+
 mutual
 
 /-- The original Field table fixes this node's local metadata and child

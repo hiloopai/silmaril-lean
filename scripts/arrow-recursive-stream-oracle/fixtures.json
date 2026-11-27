@@ -1,0 +1,76 @@
+{
+  "description": "Genuine recursive Arrow IPC streams and labeled terminal controls",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c"
+  },
+  "genuine_ipc": {
+    "four_level": {
+      "bytes": 2096,
+      "sha256": "38187024f71d3fc1838651be6a3c85c0c5edb4979d4874c0e24e9861737f7295"
+    },
+    "hidden": {
+      "bytes": 1160,
+      "sha256": "2a331648bf77ffe0f5603db06355eb68e2195bf76ebe291c7b06e3e5a513cece"
+    },
+    "empty_schema": {
+      "bytes": 144,
+      "sha256": "1e31d71e6ad5132110f1fc3f7cef27e9a51e6c7fc6631cef8f4469c1e60ba149"
+    },
+    "two_populated": {
+      "bytes": 1824,
+      "sha256": "f219c7f49167cd0d3e8344d03cd08d6be2b73d5cb78002fd7a1fbe6f0986bad4"
+    },
+    "schema_only": {
+      "bytes": 632,
+      "sha256": "35e6ec6169c6719c86777d63a04ab16011ad1ffe0c3d26d1eca6fbfbbef544c0"
+    },
+    "zero_width_multi": {
+      "bytes": 296,
+      "sha256": "e0dba8ad66569f6db1914596ad397b12db5d72b91f633b315dc23534fb161bd7"
+    },
+    "legacy": {
+      "bytes": 628,
+      "sha256": "0854992944f4c2065a1e30cdba765ed0af644ccce5e2184885a818ce4b874fe2"
+    }
+  },
+  "labeled_edits": {
+    "late_null_count": {
+      "bytes": 1824,
+      "sha256": "1c90bc0f8f682cc537c0b4d1179c3d8ca29663ab8cb302b56ae3d4eda9d11738"
+    },
+    "late_node_length": {
+      "bytes": 1824,
+      "sha256": "9073efab49756047c0f917e57eb3ad996c451313ee839e9a8a16e35db354220a"
+    },
+    "late_truncated_body": {
+      "bytes": 1815,
+      "sha256": "1eeb43a7cb27741d2ce18c1ba50747578fadd1c346dd191f42306a195facb70c"
+    },
+    "late_unaligned_metadata": {
+      "bytes": 1824,
+      "sha256": "9de5bd67ace2e809d9621937d0ed7201e191498a2a9188c0024db41663cac304"
+    },
+    "missing_eos": {
+      "bytes": 1816,
+      "sha256": "76df2e028e408000a07cf080adcefb5b07199e0a269a1f52e8cc94217ebf0110"
+    },
+    "trailing_byte": {
+      "bytes": 1825,
+      "sha256": "90579049bb7fb7939a1084eae98e29f64fa128eeef2424f29817ae7ec4aca137"
+    },
+    "legacy_at_eos": {
+      "bytes": 1824,
+      "sha256": "cf561f4bd83b500bae872615328d87103da9fae0d0da23191af7898f9df9dd0d"
+    },
+    "eos_without_schema": {
+      "bytes": 8,
+      "sha256": "72a4fa3544e43a836ffcb268ce06ccdbc55d44d5e6b1b1c19216a53ea98301fd"
+    }
+  }
+}
