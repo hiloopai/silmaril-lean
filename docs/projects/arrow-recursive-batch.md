@@ -40,6 +40,30 @@ FieldNode and Buffer, the exact body, and the slot bound.
 terminal and adjacent signed offset words. The List wire constructor ties
 the terminal word to the checked child's length.
 
+## Descriptor positions from the schema
+
+`Arrow.RecursiveSchema.Batch.Placement.read` uses the same checked native
+schema reader and returns a positional tree and the final node and buffer
+ordinals. It can plan a schema-only stream. Each field's start gives the
+ordinal of its FieldNode and validity descriptor, even if a later
+RecordBatch uses an empty validity region. A List's signed INT32 offset
+descriptor is at buffer ordinal `b + 1`. Its sole child starts at node
+`n + 1` and buffer `b + 2`. A Struct has just a validity descriptor,
+and a signed integer has validity followed by its value descriptor.
+
+The plan retains the original names, nullabilities and child positions.
+Erasing the ordinals yields the exact admitted declaration. The native
+entry point uses the original schema limits and returns the original typed
+schema refusals, including malformed child vectors and unsupported
+LargeList, FixedSizeList and ListView. The in-memory `ofSchema` takes a
+caller-supplied depth and checks arity.
+
+`frame_agrees` ties every planned original node and buffer ordinal to
+the checked RecordBatch partition and its exact descriptor counts.
+`emit_agrees` recovers the planned schema and exact EOS from a
+successful emission by the existing native schema writer. The placement
+entry point reads only the schema and does not inspect a batch body.
+
 ## Reproduce
 
 ```sh
@@ -56,3 +80,17 @@ logical List offsets. It also checks a following sliced empty batch and a
 genuine two-row batch at width zero. Four genuine IPC pins and 19 labeled
 edits cover 24 typed refusals and a bitmap-content control.
 [Fixture pins](../../scripts/arrow-recursive-batch-oracle/fixtures.json)
+
+The placement oracle compares the same recursive declaration with raw node
+and buffer counts, including a List in a Struct, a Struct in a List and
+nested Lists. It also checks three actual Lean schema streams with PyArrow
+and raw Field vectors, and verifies typed shape and limit refusals.
+
+```sh
+lake build --wfail +Silmaril.Formats.Arrow.RecursiveSchema.Batch.Placement.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/arrow-recursive-placement-oracle/Axioms.lean
+python3 scripts/arrow-recursive-placement-oracle/check.py
+```
+
+[Placement fixture pins](../../scripts/arrow-recursive-placement-oracle/fixtures.json) ·
+[Schema writer fixture pins](../../scripts/arrow-recursive-schema-writer-oracle/fixtures.json)

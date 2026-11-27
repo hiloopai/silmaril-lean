@@ -1,0 +1,15 @@
+{
+  "description": "Genuine PyArrow IPC schemas for unsupported recursive List layouts",
+  "fixture_license": "MIT",
+  "producer_pins": "../arrow-recursive-schema-writer-oracle/fixtures.json",
+  "genuine_ipc": {
+    "fixed_size_list": {
+      "bytes": 248,
+      "sha256": "01a5ce5aa04d190cc80368b49a177a5a539d6d2ec9f224b7ad8560484171da33"
+    },
+    "list_view": {
+      "bytes": 240,
+      "sha256": "8b0d1ab071c7aa5ee8af085bb899dd5704b3fc321973603a2af08acae9aa02c5"
+    }
+  }
+}
