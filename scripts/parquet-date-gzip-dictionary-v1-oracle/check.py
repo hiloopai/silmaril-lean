@@ -62,7 +62,8 @@ def main():
              "required_no_crc": (64, False, False, rows(64, False))}
     files = {label: fallback["produce"](pa, pq, *settings, dictionary_limit=dictionary_limit)
              for label, settings in cases.items()}
-    checked = {label: fallback["inspect"](pa, pq, files[label], *settings, support, prior, dictionary_only=True)
+    checked = {label: fallback["inspect"](pa, pq, files[label], *settings, support, prior,
+                                              dictionary_groups=range(len(settings[-1])))
                for label, settings in cases.items()}
     for groups, _ in checked.values():
         assert [len(group["data"]) for group in groups] == [3, 3]

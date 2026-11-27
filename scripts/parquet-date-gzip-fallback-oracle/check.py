@@ -41,7 +41,7 @@ def footer(wire, thrift):
     return start, thrift["read_struct"](thrift["TCompactProtocol"](memory))
 
 
-def inspect(pa, pq, wire, batch, nullable, checksum, rows, support, prior, *, dictionary_only=False):
+def inspect(pa, pq, wire, batch, nullable, checksum, rows, support, prior, *, dictionary_groups=()):
     thrift, hybrid = support["THRIFT"], support["hybrid"]
     gzip_member, fingerprint, read_group = [prior[name] for name in ("gzip_member", "fingerprint", "read_group")]
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
@@ -76,6 +76,7 @@ def inspect(pa, pq, wire, batch, nullable, checksum, rows, support, prior, *, di
         assert dictionary[0] == column.dictionary_page_offset
         assert dictionary[1][1][1] == 2
         assert [dictionary[1][7][1][field][1] for field in (1, 2)] == [len(entries), 0]
+        dictionary_only = index in dictionary_groups
         dictionary_rows = expected if dictionary_only else expected[:batch]
         assert entries == list(dict.fromkeys(day for day in dictionary_rows if day is not None))
         assert pages[0][0] == column.data_page_offset == dictionary[2] + len(dictionary[3])
