@@ -39,6 +39,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # On PRs, paths-filter reads the rules locally and lists changed files via the API.
+          sparse-checkout: ${{ github.event_name == 'pull_request' && '/.github/paths-filter.yml' || '' }}
+          sparse-checkout-cone-mode: false
       - uses: dorny/paths-filter@15192bc058cc28a13dbf6cde61f19e18988b7af6 # v3
         id: paths
         with:
