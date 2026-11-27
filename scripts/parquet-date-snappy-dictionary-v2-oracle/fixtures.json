@@ -1,0 +1,332 @@
+{
+  "cpython": "3.13.5",
+  "pyarrow": "26.0.1",
+  "pyarrow_wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c",
+  "thrift": "0.25.0",
+  "thrift_wheel_sha256": "aa0cfa1db4d2129114d9548c4fc7e85680013aa442692377606b6305d236a1c0",
+  "lean_toolchain": "leanprover/lean4:nightly-2026-11-05",
+  "zlib_runtime": "1.3.1",
+  "cases": {
+    "dictionary_crc": {
+      "profile": "dictionaryOnly",
+      "parquet": {
+        "bytes": 979,
+        "sha256": "ee8185216c2c9ac5431212b6a9110f82880b487f66edd012a010bfc59b4f3054"
+      },
+      "frames": [
+        [
+          88,
+          122
+        ],
+        [
+          247,
+          281
+        ],
+        [
+          401,
+          435
+        ]
+      ],
+      "crc": [
+        [
+          486644222,
+          3976396386
+        ],
+        [
+          2140451355,
+          3620101635
+        ],
+        [
+          808622271,
+          595103976
+        ]
+      ],
+      "value_suffix_compressed": [
+        [
+          true
+        ],
+        [
+          false
+        ],
+        [
+          true
+        ]
+      ],
+      "expanded_chunk_cap": 76,
+      "lean_ipc": {
+        "bytes": 2152,
+        "sha256": "c2ad0b99796b50d817c60008a16441c847ccee4a2716b87aef6dba1fa9d288de"
+      }
+    },
+    "dictionary_no_crc": {
+      "profile": "dictionaryOnly",
+      "parquet": {
+        "bytes": 923,
+        "sha256": "31a60065fcf3463335e6b2ff5da8ded888f062f0718ad7db93eb6edb3ecbcb46"
+      },
+      "frames": [
+        [
+          82,
+          110
+        ],
+        [
+          223,
+          251
+        ],
+        [
+          359,
+          387
+        ]
+      ],
+      "crc": [
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ],
+        [
+          null,
+          null
+        ]
+      ],
+      "value_suffix_compressed": [
+        [
+          true
+        ],
+        [
+          false
+        ],
+        [
+          true
+        ]
+      ],
+      "expanded_chunk_cap": 76,
+      "lean_ipc": {
+        "bytes": 2152,
+        "sha256": "c2ad0b99796b50d817c60008a16441c847ccee4a2716b87aef6dba1fa9d288de"
+      }
+    },
+    "fallback_compressed_references": {
+      "profile": "fallback",
+      "parquet": {
+        "bytes": 3009,
+        "sha256": "d5ab127616c19bb8e3fdd1caa7a53260683547f4601392d22fc632a0ddbfc970"
+      },
+      "frames": [
+        [
+          304,
+          338,
+          397,
+          625,
+          1112
+        ],
+        [
+          1487,
+          1521,
+          1580,
+          2067,
+          2146
+        ]
+      ],
+      "crc": [
+        [
+          2361492790,
+          3026041291,
+          1129153208,
+          657304591,
+          2814783565
+        ],
+        [
+          2621169068,
+          1003570193,
+          357338419,
+          186952069,
+          2947067138
+        ]
+      ],
+      "value_suffix_compressed": [
+        [
+          true,
+          true,
+          false,
+          true
+        ],
+        [
+          true,
+          false,
+          true,
+          false
+        ]
+      ],
+      "expanded_chunk_cap": 1362,
+      "lean_ipc": {
+        "bytes": 4696,
+        "sha256": "a5a3285b625cc62a807f9a70161c29a22ae0bdfcab24234989765bc64a18a498"
+      }
+    },
+    "fallback_literal_references": {
+      "profile": "fallback",
+      "parquet": {
+        "bytes": 1607,
+        "sha256": "4dcd03d8a25f13c1f67c504eb2853d02d7a8f8897c0623a60076cc0735cdf695"
+      },
+      "frames": [
+        [
+          228,
+          262,
+          305,
+          397,
+          542
+        ],
+        [
+          814,
+          848,
+          891,
+          1036,
+          1088
+        ]
+      ],
+      "crc": [
+        [
+          2361492790,
+          578535567,
+          390203597,
+          1086075760,
+          2341178401
+        ],
+        [
+          2621169068,
+          950723269,
+          753700972,
+          871453781,
+          485471390
+        ]
+      ],
+      "value_suffix_compressed": [
+        [
+          false,
+          true,
+          false,
+          true
+        ],
+        [
+          false,
+          false,
+          true,
+          false
+        ]
+      ],
+      "expanded_chunk_cap": 352,
+      "lean_ipc": {
+        "bytes": 1528,
+        "sha256": "a59623b0844aba5af07f1ac9af231ca8bd039cf3b0be83b3e1cf580eed06a3a3"
+      }
+    }
+  },
+  "controls": {
+    "genuine_v1_dictionary": {
+      "profile": "dictionaryOnly",
+      "parquet": {
+        "bytes": 930,
+        "sha256": "121ef76b2f363d3bd457d3a10dd55f450d2978665652e72d729b475886d8244f"
+      },
+      "error": "(.source (.groupFailure 0 (.header 1 116 .expectedV2)))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "genuine_v1_fallback": {
+      "profile": "fallback",
+      "parquet": {
+        "bytes": 2887,
+        "sha256": "95e2e4143ac1169cde7e3c7fe23e31d56bb1f4ab69667d765659f4d59e78b4bb"
+      },
+      "error": "(.source (.groupFailure 0 (.header 1 314 .expectedV2)))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "genuine_fallback_under_dictionary_only": {
+      "profile": "dictionaryOnly",
+      "parquet": {
+        "bytes": 3009,
+        "sha256": "d5ab127616c19bb8e3fdd1caa7a53260683547f4601392d22fc632a0ddbfc970"
+      },
+      "error": "(.source (.groupFailure 0 (.header 2 397 (.data (.encoding 0)))))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "genuine_dictionary_only_under_fallback": {
+      "profile": "fallback",
+      "parquet": {
+        "bytes": 979,
+        "sha256": "ee8185216c2c9ac5431212b6a9110f82880b487f66edd012a010bfc59b4f3054"
+      },
+      "error": "(.source (.groupFailure 0 (.sequence .missingPlain)))",
+      "source_limits": "{}",
+      "output_limits": "{}"
+    },
+    "mutated_late_dictionary_crc": {
+      "profile": "dictionaryOnly",
+      "parquet": {
+        "bytes": 979,
+        "sha256": "823405ef7e6394bfc957f7d1b7ebe59bc3244b1d4cb5c7db556e7c7b29ab806f"
+      },
+      "error": "(.source (.groupFailure 2 (.chunk (.page 0 401 (.checksum (.mismatch 808622271 2906487241))))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "mutated_late_invalid_reference_valid_crc": {
+      "profile": "dictionaryOnly",
+      "parquet": {
+        "bytes": 979,
+        "sha256": "41f7bb8f40bfa1f723d806809ad4856c1140032a4082b80c81aa5a666d550c45"
+      },
+      "error": "(.source (.groupFailure 1 (.decode (.snappy (.page 1 281 (.references (.outOfBounds 3)))))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }",
+      "recomputed_crc": 2559035588
+    },
+    "mutated_late_fallback_plain_crc": {
+      "profile": "fallback",
+      "parquet": {
+        "bytes": 3009,
+        "sha256": "35eba02b799245864be7522f9d35b9bad729756d1421d180d583bb7189375a4c"
+      },
+      "error": "(.source (.groupFailure 1 (.decode (.snappy (.page 4 2146 (.checksum (.mismatch 2947067138 2716700606)))))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "mutated_late_reentry_before_unsupported_header": {
+      "profile": "fallback",
+      "parquet": {
+        "bytes": 3009,
+        "sha256": "bf0ebc0c8ee450abe28ccb5bdf3aa4c8204758b12085ad98527581ea3153b38d"
+      },
+      "error": "(.source (.groupFailure 1 (.sequence (.suffixEncoding 3 2067 8))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "mutated_late_plain_at_prefix": {
+      "profile": "fallback",
+      "parquet": {
+        "bytes": 3009,
+        "sha256": "4432f1a20ccf217e6f8327d548abdcc70ab9bab9e7e4953cb5eb5a1371f49539"
+      },
+      "error": "(.source (.groupFailure 1 (.sequence (.prefixEncoding 1 1521 0))))",
+      "source_limits": "{}",
+      "output_limits": "{ ipc := { batches := 0 } }"
+    },
+    "low_aggregate_expansion_cap": {
+      "profile": "fallback",
+      "parquet": {
+        "bytes": 3009,
+        "sha256": "d5ab127616c19bb8e3fdd1caa7a53260683547f4601392d22fc632a0ddbfc970"
+      },
+      "error": "(.source (.groupFailure 0 (.chunk .expandedChunkLimit)))",
+      "source_limits": "{ maxExpandedChunkBytes := 1309 }",
+      "output_limits": "{}"
+    }
+  }
+}
