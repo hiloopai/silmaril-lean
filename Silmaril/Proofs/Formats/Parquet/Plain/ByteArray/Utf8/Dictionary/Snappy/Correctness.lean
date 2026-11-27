@@ -44,10 +44,12 @@ theorem stored_wire {cap : Nat} {source : Bytes} {frame : Page.Frame} {status : 
   have ⟨origin, exactLength⟩ := Page.Checksum.payload_exact extent
   exact ⟨⟨status, verified⟩, origin, exactLength, bound⟩
 
-theorem readDictionaryBytes_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+theorem readDictionaryBytesWith_wire {selectedCodec : Payload.Codec} {gzipCalls : Nat}
+    {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {entries : List Bytes}
-    (read : readDictionaryBytes limits metadata source frame = .ok entries) : DictionaryBytesWire limits source frame entries := by
-  unfold readDictionaryBytes at read
+    (read : readDictionaryBytesWith selectedCodec gzipCalls limits metadata source frame = .ok entries) :
+    DictionaryBytesWireWith selectedCodec limits source frame entries := by
+  unfold readDictionaryBytesWith at read
   split at read <;> try contradiction
   rename_i header original
   split at read <;> try contradiction
@@ -60,11 +62,16 @@ theorem readDictionaryBytes_wire {limits : Utf8.Dictionary.Snappy.Limits} {metad
   obtain ⟨status, verified, read⟩ := bind_ok read
   obtain ⟨expanded, physical, read⟩ := bind_ok read
   obtain ⟨codec, matched, expansion, _, _, length, cap⟩ := Payload.decode_sound (mapError_ok physical)
-  have selected := Option.some.inj ((Payload.Codec.ofId_id .snappy).symm.trans matched)
+  have selected := Option.some.inj ((Payload.Codec.ofId_id selectedCodec).symm.trans matched)
   subst codec
   obtain ⟨_, bytes, entriesCount, _⟩ := Plain.ByteArray.decode_ok_iff.mp (mapError_ok read)
   exact ⟨header, expanded, original, Decidable.not_not.mp tag, Nat.le_of_not_gt count,
     stored_wire (mapError_ok verified), expansion, length, cap, by simpa using bytes, entriesCount⟩
+
+theorem readDictionaryBytes_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {frame : Page.Frame} {entries : List Bytes}
+    (read : readDictionaryBytes limits metadata source frame = .ok entries) : DictionaryBytesWire limits source frame entries :=
+  readDictionaryBytesWith_wire read
 
 theorem readDictionary_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {entries : Array String}
@@ -82,11 +89,12 @@ theorem readDictionary_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata :
     simp only [List.length_map] at sizes
     simpa using sizes.trans entriesCount
 
-theorem decodeIndexPage_wire {α : Type} {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+theorem decodeIndexPageWith_wire {α : Type} {codec : Payload.Codec} {gzipCalls : Nat}
+    {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {dictionary : Option (Array α)} {frame : Page.Frame} {text : List (Option α)}
-    (read : decodeIndexPage limits metadata source dictionary frame = .ok text) :
-    ∃ entries, dictionary = some entries ∧ IndexPageWire limits source entries frame text := by
-  unfold decodeIndexPage at read
+    (read : decodeIndexPageWith codec gzipCalls limits metadata source dictionary frame = .ok text) :
+    ∃ entries, dictionary = some entries ∧ IndexPageWireWith codec gzipCalls limits source entries frame text := by
+  unfold decodeIndexPageWith at read
   split at read <;> try contradiction
   rename_i params original
   dsimp only at read
@@ -112,6 +120,12 @@ theorem decodeIndexPage_wire {α : Type} {limits : Utf8.Dictionary.Snappy.Limits
       unfold ByteArrayFallback.declaredSlots
       cases kind : frame.value.kind <;>
         simp [FlatColumn.pageParameters, kind] at original ⊢ <;> subst params <;> exact count
+
+theorem decodeIndexPage_wire {α : Type} {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {dictionary : Option (Array α)} {frame : Page.Frame} {text : List (Option α)}
+    (read : decodeIndexPage limits metadata source dictionary frame = .ok text) :
+    ∃ entries, dictionary = some entries ∧ IndexPageWire limits source entries frame text :=
+  decodeIndexPageWith_wire read
 
 theorem decodePage_wire {limits : Utf8.Dictionary.Snappy.Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {dictionary : Option (Array String)} {frame : Page.Frame} {text : List (Option String)}

@@ -267,3 +267,39 @@ failure, and a producer STRING file exercises annotation refusal.
 lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Snappy.Dictionary.Checks
 python3 scripts/parquet-snappy-dictionary-binary-view-oracle/check.py "$(mktemp -d)"
 ```
+
+### Opt-in GZIP V1 dictionary-only BinaryView
+
+`ByteArrayFallback.Gzip.Dictionary.convert` selects one named flat optional
+BYTE_ARRAY leaf whose original logical and converted annotations are both
+absent. The selected codec-2 chunk must start with a PLAIN dictionary
+(tag 0). Data frames must record V1, RLE definition and repetition encodings,
+and RLE_DICTIONARY (tag 8). A V2 frame or PLAIN fallback produces a typed
+refusal at its original frame. Only the selected column's pages are decoded.
+
+The reader checks each original stored body and its Parquet CRC when present.
+Each dictionary and V1 data body must be exactly one GZIP member, including its
+trailer, within the declared and capped byte extents and per-member call
+budget. The expanded V1 body yields the original definition levels and
+dictionary index stream. Native BinaryView emits the opaque slots in footer
+group order through EOS, with distinct null and empty values. The first
+indexed source failure precedes IPC admission.
+
+PyArrow 26.0.1 produces two nine-row V1 groups with and without CRC. Thrift
+0.25.0 reads one tag-0 dictionary and two tag-8 V1 pages per group. Python's
+zlib checks exact single-member extents, and PyArrow independently compares
+the native BinaryView IPC against the selected source rows, including bytes
+that are invalid UTF-8. A genuine V2 file and a genuine later PLAIN fallback
+exercise profile refusals. An assembled trailing-member edit preserves
+framing by updating the original page and footer extents. A late stored-body
+edit exercises CRC precedence, and a zero-call limit exercises the original
+dictionary budget refusal. A producer STRING file exercises annotation refusal.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Dictionary/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Gzip/Dictionary/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-gzip-dictionary-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Gzip.Dictionary.Checks
+python3 scripts/parquet-gzip-dictionary-binary-view-oracle/check.py "$(mktemp -d)"
+```

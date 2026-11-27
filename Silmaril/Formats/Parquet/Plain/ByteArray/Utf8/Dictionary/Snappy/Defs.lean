@@ -60,7 +60,7 @@ def expandedBytes (frames : List Page.Frame) : Nat :=
 
 /-- Check the original stored CRC and expansion bound before decoding the
 exact PLAIN entries as opaque bytes. -/
-def readDictionaryBytes (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+def readDictionaryBytesWith (codec : Payload.Codec) (gzipCalls : Nat) (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
     (frame : Page.Frame) : Except (FlatColumn.PageError DecodeError) (List Bytes) := do
   let .dictionary header := frame.value.kind | throw .unsupportedKind
   if header.encoding ≠ 0 then .error (.encoding header.encoding)
@@ -68,13 +68,17 @@ def readDictionaryBytes (limits : Limits) (metadata : Footer.ColumnMetadata) (so
   else if limits.maxDictionaryEntries < header.numValues then
     .error (.decode (.dictionaryEntryLimit limits.maxDictionaryEntries header.numValues))
   else
-    let bounds := limits.dictionaryBounds frame
+    let bounds := { limits.dictionaryBounds frame with gzipCallLimit := gzipCalls }
     if bounds.outputLimit < bounds.expectedSize then .error (.decode (.payload .outputLimit))
     else do
       let _ ← (Page.Checksum.verify bounds.compressedLimit source frame).mapError (.decode ∘ .checksum)
-      let expanded ← (Payload.decode bounds Payload.Codec.snappy.id
+      let expanded ← (Payload.decode bounds codec.id
         (Page.Checksum.payloadBytes source frame).toList).mapError (.decode ∘ .payload)
       (Plain.ByteArray.decode limits.entryBytes header.numValues (Bytes.ofList expanded)).mapError (.decode ∘ .entries)
+
+def readDictionaryBytes (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (frame : Page.Frame) : Except (FlatColumn.PageError DecodeError) (List Bytes) :=
+  readDictionaryBytesWith .snappy 0 limits metadata source frame
 
 /-- Interpret every checked dictionary entry as strict STRING, including unused entries. -/
 def readDictionary (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
@@ -85,10 +89,10 @@ def readDictionary (limits : Limits) (metadata : Footer.ColumnMetadata) (source 
 
 /-- Verify the entire stored body, including the original V2 level bytes.
 The scalar adapter selects the codec for the index suffix from the original flag. -/
-def decodeIndexPage {α : Type} (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+def decodeIndexPageWith {α : Type} (codec : Payload.Codec) (gzipCalls : Nat) (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
     (dictionary : Option (Array α)) (frame : Page.Frame) :
     Except (FlatColumn.PageError DecodeError) (List (Option α)) := do
-  let some params := FlatColumn.pageParameters .optional Payload.Codec.snappy.id frame.value |
+  let some params := FlatColumn.pageParameters .optional codec.id frame.value |
     throw .unsupportedKind
   let cap := min limits.file.column.maxRows (Hybrid.runLimit - 1)
   if params.encoding ≠ 8 then .error (.encoding params.encoding)
@@ -99,8 +103,13 @@ def decodeIndexPage {α : Type} (limits : Limits) (metadata : Footer.ColumnMetad
     if limits.maxExpandedPageBytes < frame.value.uncompressedSize then .error (.decode (.payload .outputLimit))
     else do
       let _ ← (Page.Checksum.verify limits.file.column.maxPageBytes source frame).mapError (.decode ∘ .checksum)
-      (DictionaryIndex.decode entries params limits.scalar limits.indices
+      (DictionaryIndex.decode entries params { limits.scalar with gzipCalls } limits.indices
         (Page.Checksum.payloadBytes source frame)).mapError (.decode ∘ .indices)
+
+def decodeIndexPage {α : Type} (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (dictionary : Option (Array α)) (frame : Page.Frame) :
+    Except (FlatColumn.PageError DecodeError) (List (Option α)) :=
+  decodeIndexPageWith .snappy 0 limits metadata source dictionary frame
 
 def decodePage := decodeIndexPage (α := String)
 
@@ -133,27 +142,31 @@ def StoredWire (cap : Nat) (source : Bytes) (frame : Page.Frame) : Prop :=
   frame.value.compressedSize ≤ cap
 
 /-- The original stored dictionary expands to the exact PLAIN entry bytes in order. -/
-def DictionaryBytesWire (limits : Limits) (source : Bytes) (frame : Page.Frame) (entries : List Bytes) : Prop :=
+def DictionaryBytesWireWith (codec : Payload.Codec) (limits : Limits) (source : Bytes) (frame : Page.Frame) (entries : List Bytes) : Prop :=
   ∃ header expanded,
     frame.value.kind = .dictionary header ∧ header.encoding = 0 ∧ header.numValues ≤ limits.maxDictionaryEntries ∧
     StoredWire (limits.dictionaryBounds frame).compressedLimit source frame ∧
-    Payload.Decodes frame.value.uncompressedSize .snappy (Page.Checksum.payloadBytes source frame).toList expanded ∧
+    Payload.Decodes frame.value.uncompressedSize codec (Page.Checksum.payloadBytes source frame).toList expanded ∧
     expanded.length = frame.value.uncompressedSize ∧ expanded.length ≤ limits.expandedDictionaryBytes ∧
     expanded = Plain.ByteArray.wire entries ∧ entries.length = header.numValues
 
+def DictionaryBytesWire := DictionaryBytesWireWith .snappy
+
 /-- Exact tagged index windows and nullable slots for a dictionary of any value type. -/
-def IndexPageWire {α : Type} (limits : Limits) (source : Bytes) (entries : Array α)
+def IndexPageWireWith {α : Type} (codec : Payload.Codec) (gzipCalls : Nat) (limits : Limits) (source : Bytes) (entries : Array α)
     (frame : Page.Frame) (slots : List (Option α)) : Prop :=
   let body := Page.Checksum.payloadBytes source frame
   ∃ (params : ScalarPage.Parameters) (layout : FlatPage.Layout) (page : ScalarPage.Prepared) (indices : List Nat),
-    FlatColumn.pageParameters .optional Payload.Codec.snappy.id frame.value = some params ∧ params.encoding = 8 ∧
+    FlatColumn.pageParameters .optional codec.id frame.value = some params ∧ params.encoding = 8 ∧
     StoredWire limits.file.column.maxPageBytes source frame ∧
     frame.value.uncompressedSize ≤ limits.maxExpandedPageBytes ∧
-    ScalarPage.validateFor 8 params limits.scalar body = .ok layout ∧
-    ScalarPage.PreparedWire params limits.scalar layout body page ∧
+    ScalarPage.validateFor 8 params { limits.scalar with gzipCalls } body = .ok layout ∧
+    ScalarPage.PreparedWire params { limits.scalar with gzipCalls } layout body page ∧
     DictionaryIndex.readIndices limits.indices (page.mask.count true) page.scalars = .ok indices ∧
     indices.map (fun index => entries[index]?) = (slots.filterMap id).map some ∧
     slots.map Option.isSome = page.mask ∧ slots.length = ByteArrayFallback.declaredSlots frame
+
+def IndexPageWire {α : Type} := IndexPageWireWith (α := α) .snappy 0
 
 /-- The fully expanded dictionary has the declared extent and round-trips
 all PLAIN byte strings in original order, including unused entries. -/

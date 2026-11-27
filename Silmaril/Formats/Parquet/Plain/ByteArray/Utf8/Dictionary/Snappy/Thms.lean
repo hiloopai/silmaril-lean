@@ -28,6 +28,21 @@ theorem decodeIndexPage_wire {α : Type} {limits : Limits} {metadata : Footer.Co
     ∃ entries, dictionary = some entries ∧ IndexPageWire limits source entries frame text :=
   Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.decodeIndexPage_wire read
 
+/-- The explicitly selected codec expands the original dictionary to exact opaque entries. -/
+theorem readDictionaryBytesWith_wire {selectedCodec : Payload.Codec} {gzipCalls : Nat} {limits : Limits}
+    {metadata : Footer.ColumnMetadata} {source : Bytes} {frame : Page.Frame} {entries : List Bytes}
+    (read : readDictionaryBytesWith selectedCodec gzipCalls limits metadata source frame = .ok entries) :
+    DictionaryBytesWireWith selectedCodec limits source frame entries :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.readDictionaryBytesWith_wire read
+
+/-- The explicitly selected codec retains the original level and index windows. -/
+theorem decodeIndexPageWith_wire {α : Type} {codec : Payload.Codec} {gzipCalls : Nat} {limits : Limits}
+    {metadata : Footer.ColumnMetadata} {source : Bytes} {dictionary : Option (Array α)}
+    {frame : Page.Frame} {slots : List (Option α)}
+    (read : decodeIndexPageWith codec gzipCalls limits metadata source dictionary frame = .ok slots) :
+    ∃ entries, dictionary = some entries ∧ IndexPageWireWith codec gzipCalls limits source entries frame slots :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.decodeIndexPageWith_wire read
+
 /-- The original stored dictionary expands exactly to the ordered strict UTF-8 entries. -/
 theorem readDictionary_wire {limits : Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {entries : Array String}
