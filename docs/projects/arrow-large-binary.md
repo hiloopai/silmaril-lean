@@ -74,3 +74,43 @@ each signed i64 offset word and the physical data and validity bytes.
 lake build --wfail Silmaril.Formats.Arrow.LargeBinary.StreamWriter.Examples Silmaril.Formats.Arrow.LargeBinary.StreamWriter.Axioms
 python scripts/arrow-large-binary/stream_writer_oracle.py /tmp/large-binary-oracle
 ```
+
+## Standard Arrow events and modern sink
+
+Import `Silmaril.Formats.Arrow.LargeBinary.Stream.Events.Defs` for the
+one-field `Arrow.Events.BatchReader`. Choose modern or legacy framing
+when opening. The schema label retains the exact field name and
+nullability and identifies the LargeBinary kind. Each admitted record yields
+one aligned event, including a zero-row batch. Cells are nullable opaque
+`KBytes`. The cursor retains the original byte carrier.
+
+`Events.readAll` follows the source through exact EOS or the first failed
+pull. Its trace keeps the complete prior events and the original record
+ordinal, byte offset and typed error. The `readAll_exact` law relates a
+successful trace to the eager reader and each failed trace to its original
+checked record windows.
+
+`Events.emit` accepts a one-field trace ending in EOS and uses the checked
+modern writer. It refuses open errors, closed traces, and read or close
+failures. A late failure retains its prefix on the source side and the sink
+returns the same typed terminal error. Emission materializes the complete
+stream.
+
+`transcode_exact` relates both original source and modern output windows
+and preserves the descriptor and every batch boundary. Observing cells as
+octets makes this equality independent of byte rope shape.
+`transcode_rows` gives the corresponding standard event observation
+equivalence. `transcode_late_error` gives the exact completed prefix and
+first failed pull, together with the sink refusal.
+
+The adapter tests reuse the two pinned PyArrow producer files above.
+PyArrow 26.0.1 independently checks the modern outputs from both sources.
+The synthetic late-offset and suffix cases exercise failure preservation
+and sink refusal. Schema-only input and an explicit empty batch remain
+separate cases.
+
+```sh
+lake build --wfail Silmaril.Formats.Arrow.LargeBinary.Stream.Events.Examples Silmaril.Formats.Arrow.LargeBinary.Stream.Events.Axioms
+python scripts/arrow-large-binary/stream_fixture.py
+python scripts/arrow-large-binary/events_oracle.py /tmp/large-binary-events
+```
