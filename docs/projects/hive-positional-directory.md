@@ -263,3 +263,39 @@ against the actual importer.
 python -I scripts/hive-positional-path-oracle/Oracle.py data/parquet-int32-byte-array-file/empty-middle-v2.parquet /tmp/positional-scan-directories.txt /tmp/positional.csv /tmp/positional-zero.csv /tmp/positional-csv-inputs
 lake env lean --run Silmaril/Formats/Hive/Manifest/ParquetSnapshot/Int32ByteArray/RenderedPositional/Checks.lean --check-csv /tmp/positional-csv-inputs
 ```
+
+### Opt-in row-budgeted restore
+
+[`FromCsv.Bounded.importCsv`](../../Silmaril/Formats/Relational/NamedTable/FromRenderedPositional/FromCsv/Bounded/Defs.lean)
+uses the same String/Kind schemas, named insertion policy, wire byte cap,
+and canonical column codecs. It checks the row cap during decoding.
+Each accepted data row spends one unit, including zero-column markers.
+Insertion still requires complete input and exact schema agreement.
+
+An occupied destination takes precedence over wire processing. At a
+vacant name, the supplied wire byte cap is checked before decoding.
+Header errors precede body processing. A reached body record is
+validated before the next budget check, so a malformed cell within the
+budget returns its typed error. When the remaining budget is zero,
+a nonempty suffix returns the bounded decoder's `.rowLimit` before
+parsing that suffix. Schema mismatch is checked at insertion after a
+successful complete decode.
+
+`importCsv_agrees_on_success` proves that both entry points return
+the same updated database on success under the same caps.
+`importCsv_observe` gives the exact ordered observation, including
+duplicate labels, layout tags and width-zero rows, and preserves every
+other database entry. The existing complete-reader entry point is
+available with its original error precedence.
+
+The retained-row cap counts rows. The separate wire byte cap applies
+to the already supplied list, and the parser can allocate the header and
+individual fields within that wire. The row cap is not a per-field byte
+limit. The bounded decoder does not build an entire raw table.
+
+Append `--row-budget` after the output directory in the independent
+oracle command to add late cell and wire errors. Run the checks with
+`--check-bounded-csv` and the same directory. These checks cover exact
+and short caps on both valid CPython inputs, plus reached and unreached
+suffix errors. The existing complete importer is also run on the two
+suffix cases to show the precedence difference.

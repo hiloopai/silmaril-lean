@@ -36,7 +36,7 @@ def keys(profile, path):
     return ds.get_partition_keys(profile.parse(path))
 
 
-def write_import_controls(directory, labels, arrow_rows, row_count):
+def write_import_controls(directory, labels, arrow_rows, row_count, row_budget):
     def tagged(value):
         if value is None:
             return "N"
@@ -59,6 +59,13 @@ def write_import_controls(directory, labels, arrow_rows, row_count):
     write("bad-int.csv", [labels, bad_int, *body[1:]])
     write("bad-zero.csv", [[""], ["unexpected"]])
     print("CPython wrote two valid CSV inputs and four independent refusal controls.")
+    if row_budget:
+        bad_last_cell = [*body[-1][:2], "T+7", *body[-1][3:]]
+        write("late-cell.csv", [labels, *body[:-1], bad_last_cell])
+        write("late-wire.csv", [labels, *body[:-1]])
+        with (directory / "late-wire.csv").open("ab") as output:
+            output.write(b'"unterminated')
+        print("CPython wrote two late corruption controls for the row budget.")
 
 
 for profile, marker_alias in ((uri, marker), (literal, alias)):
@@ -217,4 +224,5 @@ if len(sys.argv) > 2:
                     assert list(csv.reader(source, strict=True)) == [[""]] * (zero.num_rows + 1)
                 print("CPython CSV readback matches PyArrow rows, duplicate headers, and zero-width count.")
                 if len(sys.argv) > 5:
-                    write_import_controls(Path(sys.argv[5]), columns, arrow_rows, zero.num_rows)
+                    write_import_controls(Path(sys.argv[5]), columns, arrow_rows, zero.num_rows,
+                                          row_budget=sys.argv[6:] == ["--row-budget"])

@@ -8,11 +8,13 @@ import Silmaril.Formats.Hive.PartitionPath.Positional.Render.Thms
 import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.Thms
 import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.ToCsv.Thms
 import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.FromCsv.Thms
+import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.FromCsv.Bounded.Thms
 import Silmaril.Formats.Relational.NamedTable.Thms
 meta import Silmaril.Data.IncludeBytes
 meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.Defs
 meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.ToCsv.Defs
 meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.FromCsv.Defs
+meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.FromCsv.Bounded.Defs
 meta import Silmaril.Formats.Hive.Manifest.ParquetSnapshot.Int32ByteArray.RenderedPositional.Defs
 meta import Silmaril.Formats.Hive.Manifest.ParquetSnapshot.Int32ByteArray.Ingress.Defs
 
@@ -371,6 +373,79 @@ public def checkCsvInputs (directory : System.FilePath) : IO Unit := do
 #print axioms FromCsv.importCsv_read_error
 #print axioms FromCsv.import_convert
 
+
+private def boundedReimport (declared : Scan.Schema String Kind) (caps : FromCsv.Limits) (wire : Csv.Bytes) :=
+  FromCsv.Bounded.importCsv database restoredName declared declared caps wire
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv projection 20 4096 paths | return false
+  let .ok restored := boundedReimport projection.schema ⟨result.wire.length, 20⟩ result.wire | return false
+  return observesLoadedProjection restored restoredName
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv zero 20 4096 paths | return false
+  let .ok restored := boundedReimport zero.schema ⟨84, 20⟩ result.wire | return false
+  let .error (.openError (.decode .rowLimit)) := boundedReimport zero.schema ⟨84, 19⟩ result.wire | return false
+  return observesLoadedZero restored
+
+#guard match FromCsv.Bounded.importCsv database "other" zero.schema zero.schema ⟨0, 0⟩ [0] with
+  | .error .nameConflict => true
+  | _ => false
+
+#guard match boundedReimport zero.schema ⟨0, 0⟩ [0] with
+  | .error (.openError (.byteLimit 0 1)) => true
+  | _ => false
+
+#guard match boundedReimport zero.schema ⟨64, 0⟩ "wrong\r\n\"unterminated".toUTF8.data.toList with
+  | .error (.openError (.decode (.csv .headerMismatch))) => true
+  | _ => false
+
+#guard
+  let wire := "region,ordinal,year,region,payload\r\nN,T+1,N,N,N\r\n\"unterminated".toUTF8.data.toList
+  match boundedReimport projection.schema ⟨128, 1⟩ wire with
+  | .error (.openError (.decode (.csv (.parseCell 1)))) => true
+  | _ => false
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv projection 20 4096 paths | return false
+  let .error .schemaMismatch :=
+    FromCsv.Bounded.importCsv database restoredName changedKind projection.schema ⟨4096, 20⟩ result.wire |
+      return false
+  return true
+
+/-- Replay CPython inputs with exact caps and reached versus unreached errors. -/
+public def checkBoundedCsvInputs (directory : System.FilePath) : IO Unit := do
+  for (file, schema, observe) in [("projected.csv", projection.schema,
+      fun db => observesLoadedProjection db restoredName), ("zero.csv", zero.schema, observesLoadedZero)] do
+    let wire ← IO.FS.readBinFile (directory / file)
+    let .ok restored := boundedReimport schema ⟨wire.size, 20⟩ wire.data.toList |
+      throw (IO.userError s!"{file}: exact row cap refused")
+    unless observe restored do
+      throw (IO.userError s!"{file}: unexpected named observation")
+    let .error (.openError (.decode .rowLimit)) := boundedReimport schema ⟨wire.size, 19⟩ wire.data.toList |
+      throw (IO.userError s!"{file}: expected row limit")
+  for (file, expected) in [("late-cell.csv", Csv.Typed.Error.parseCell 2), ("late-wire.csv", .malformedWire)] do
+    let wire ← IO.FS.readBinFile (directory / file)
+    let .error (.openError (.decode .rowLimit)) :=
+      boundedReimport projection.schema ⟨wire.size, 19⟩ wire.data.toList |
+        throw (IO.userError s!"{file}: error in the unexamined suffix should yield the row limit")
+    let .error (.openError (.decode (.csv reached))) :=
+      boundedReimport projection.schema ⟨wire.size, 20⟩ wire.data.toList |
+        throw (IO.userError s!"{file}: expected reached decode error")
+    let .error (.openError (.csv complete)) := reimport projection.schema ⟨wire.size, 19⟩ wire.data.toList |
+      throw (IO.userError s!"{file}: existing importer should report the suffix error")
+    unless reached == expected && complete == expected do
+      throw (IO.userError s!"{file}: unexpected decode error")
+  IO.println "Bounded named imports passed the exact, short, and malformed suffix CPython controls."
+
+#print axioms FromCsv.Bounded.readCsv_ok_iff
+#print axioms FromCsv.Bounded.importCsv_ok_iff
+#print axioms FromCsv.Bounded.importCsv_agrees_on_success
+#print axioms FromCsv.Bounded.importCsv_observe
+
 /-- Emit the actual converted bytes for the independent CSV reader. -/
 public def emitCsv (projectedFile zeroFile : System.FilePath) : IO Unit := do
   let .ok paths := listing | throw (IO.userError "positional fixture rendering failed")
@@ -385,8 +460,10 @@ end Silmaril.Formats.Hive.Manifest.RenderedPositional
 
 public def main (args : List String) : IO Unit :=
   match args with
+  | ["--check-bounded-csv", directory] =>
+    Silmaril.Formats.Hive.Manifest.RenderedPositional.checkBoundedCsvInputs directory
   | ["--check-csv", directory] =>
     Silmaril.Formats.Hive.Manifest.RenderedPositional.checkCsvInputs directory
   | [projectedFile, zeroFile] =>
     Silmaril.Formats.Hive.Manifest.RenderedPositional.emitCsv projectedFile zeroFile
-  | _ => throw (IO.userError "expected CSV output paths or --check-csv and its input directory")
+  | _ => throw (IO.userError "expected CSV output paths or a CSV check mode and its input directory")
