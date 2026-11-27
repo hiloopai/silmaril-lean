@@ -173,12 +173,13 @@ theorem convert_first_rescale_error {ipc : Arrow.Limits} {limits : FromIpc.Limit
   simp [convert, Nat.not_lt.mpr bytes, read, prepare, admitted, split, earlier, failed,
     Except.mapError, Bind.bind, Except.bind]
 
-theorem convert_readback {ipc : Arrow.Limits} {limits : FromIpc.Limits} {input : KBytes} {wire : Bytes}
+theorem convert_image {ipc : Arrow.Limits} {limits : FromIpc.Limits} {input : KBytes} {wire : Bytes}
     (written : convert ipc limits input = .ok wire) :
     ∃ original prepared bound groups,
       Arrow.TimestampStream.read ipc input = .ok original ∧ prepare original = .ok prepared ∧
       Leaf.openLeaf limits.snapshot wire 1 = .ok bound ∧
       FromIpc.Internal.readGroups limits.leaf bound = .ok groups ∧
+      bound.snapshot.metadata.schema.length = 2 ∧
       FromIpc.Internal.ReadbackMatches prepared bound groups ∧
       groups.map FromIpc.Internal.counts =
         (original.batches.map FromIpc.Internal.counts).map (List.map (Option.map (· * 1000))) := by
@@ -190,10 +191,23 @@ theorem convert_readback {ipc : Arrow.Limits} {limits : FromIpc.Limits} {input :
     obtain ⟨output, _, written⟩ := bind_ok written
     obtain ⟨_, certified, written⟩ := bind_ok written
     cases written
-    obtain ⟨bound, groups, checked, decoded, exactRead⟩ := FromIpc.certify_readback (mapError_ok certified)
+    obtain ⟨bound, groups, checked, decoded, oneField, exactRead⟩ := FromIpc.certifyWith_readback (mapError_ok certified)
     have scaled := (prepare_exact adapted).2.2.2.2
-    exact ⟨original, prepared, bound, groups, mapError_ok inputRead, adapted, checked, decoded, exactRead,
+    exact ⟨original, prepared, bound, groups, mapError_ok inputRead, adapted, checked, decoded, by simpa using oneField, exactRead,
       exactRead.2.2.2.2.2.2.trans scaled⟩
+
+theorem convert_readback {ipc : Arrow.Limits} {limits : FromIpc.Limits} {input : KBytes} {wire : Bytes}
+    (written : convert ipc limits input = .ok wire) :
+    ∃ original prepared bound groups,
+      Arrow.TimestampStream.read ipc input = .ok original ∧ prepare original = .ok prepared ∧
+      Leaf.openLeaf limits.snapshot wire 1 = .ok bound ∧
+      FromIpc.Internal.readGroups limits.leaf bound = .ok groups ∧
+      FromIpc.Internal.ReadbackMatches prepared bound groups ∧
+      groups.map FromIpc.Internal.counts =
+        (original.batches.map FromIpc.Internal.counts).map (List.map (Option.map (· * 1000))) := by
+  obtain ⟨original, prepared, bound, groups, inputRead, adapted, checked, read, _, agrees, counts⟩ :=
+    convert_image written
+  exact ⟨original, prepared, bound, groups, inputRead, adapted, checked, read, agrees, counts⟩
 
 private theorem recover_scaled (kind : Kind) (groups : List (List (Option Int))) :
     recover kind (groups.map (List.map (Option.map (· * 1000)))) = some groups := by

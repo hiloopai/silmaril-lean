@@ -88,6 +88,19 @@ theorem convert_first_rescale_error {ipc : Arrow.Limits} {limits : FromIpc.Limit
     convert ipc limits input = .error cause :=
   Proofs.Formats.Parquet.Timestamp.FromIpc.Seconds.convert_first_rescale_error bytes read admitted split earlier failed
 
+/-- The certified output has exactly the root and the one written leaf. -/
+theorem convert_image {ipc : Arrow.Limits} {limits : FromIpc.Limits} {input : KBytes} {wire : Bytes}
+    (written : convert ipc limits input = .ok wire) :
+    ∃ original prepared bound groups,
+      Arrow.TimestampStream.read ipc input = .ok original ∧ prepare original = .ok prepared ∧
+      Leaf.openLeaf limits.snapshot wire 1 = .ok bound ∧
+      FromIpc.Internal.readGroups limits.leaf bound = .ok groups ∧
+      bound.snapshot.metadata.schema.length = 2 ∧
+      FromIpc.Internal.ReadbackMatches prepared bound groups ∧
+      groups.map FromIpc.Internal.counts =
+        (original.batches.map FromIpc.Internal.counts).map (List.map (Option.map (· * 1000))) :=
+  Proofs.Formats.Parquet.Timestamp.FromIpc.Seconds.convert_image written
+
 /-- Checked Parquet readback returns millis under the retained field and exact slot shape. -/
 theorem convert_readback {ipc : Arrow.Limits} {limits : FromIpc.Limits} {input : KBytes} {wire : Bytes}
     (written : convert ipc limits input = .ok wire) :

@@ -17,7 +17,9 @@ exact seconds count times 1,000. The inclusive convertible range is
 the original zero-based batch and logical slot, counting preceding nulls.
 
 The existing writer and its readback certification produce one
-uncompressed PLAIN V1 group per original explicit batch. Empty batches
+uncompressed PLAIN V1 group per original explicit batch. The seconds
+certificate also checks that the retained footer has exactly the root
+and the written leaf. Empty batches
 remain explicit groups and a schema-only stream produces zero groups.
 The writer's strict entry point continues to refuse seconds. Successful
 readback preserves exact nanosecond denotation under the original epoch

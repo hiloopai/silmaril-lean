@@ -66,16 +66,24 @@ theorem readSource_exact {ipc : Arrow.Limits} {limits : Limits} {input : KBytes}
       exact ⟨by simp [Arrow.TimestampStream.read, wf, mapError_ok schema, mapError_ok batchRead,
         Bind.bind, Except.bind, Pure.pure, Except.pure], admitted⟩
 
-theorem certify_sound {limits : Limits} {source : Source} {wire : Bytes}
-    (certified : Internal.certify limits source wire = .ok ()) :
+theorem certifyWith_sound {admit : Leaf.Bound → Bool} {limits : Limits} {source : Source} {wire : Bytes}
+    (certified : Internal.certifyWith admit limits source wire = .ok ()) :
     ∃ bound groups, Leaf.openLeaf limits.snapshot wire 1 = .ok bound ∧
-      Internal.readGroups limits.leaf bound = .ok groups ∧ Internal.ReadbackMatches source bound groups := by
-  unfold Internal.certify at certified
+      Internal.readGroups limits.leaf bound = .ok groups ∧
+      admit bound = true ∧ Internal.ReadbackMatches source bound groups := by
+  unfold Internal.certifyWith at certified
   obtain ⟨bound, openResult, certified⟩ := bind_ok certified
   obtain ⟨groups, groupResult, certified⟩ := bind_ok certified
   split at certified
   · exact ⟨bound, groups, mapError_ok openResult, groupResult, by assumption⟩
   · contradiction
+
+theorem certify_sound {limits : Limits} {source : Source} {wire : Bytes}
+    (certified : Internal.certify limits source wire = .ok ()) :
+    ∃ bound groups, Leaf.openLeaf limits.snapshot wire 1 = .ok bound ∧
+      Internal.readGroups limits.leaf bound = .ok groups ∧ Internal.ReadbackMatches source bound groups := by
+  obtain ⟨bound, groups, opened, read, _, agrees⟩ := certifyWith_sound certified
+  exact ⟨bound, groups, opened, read, agrees⟩
 
 theorem convert_readback {ipc : Arrow.Limits} {limits : Limits} {input : KBytes} {wire : Bytes}
     (written : convert ipc limits input = .ok wire) :

@@ -23,13 +23,36 @@ schema-only file emits zero batches. The strict reader continues to
 require framed chunk spans. The default TIMESTAMP converter preserves
 millis.
 
-The composition theorem pairs successful seconds-to-Parquet and
-Parquet-to-seconds calls. The two legs use the same intermediate
-Snapshot and Leaf limits. Their other file, group, row and IPC caps
-are independent and must admit the corresponding calls. The theorem
-retains the certified intermediate file observation and recovers the
-original Arrow descriptor, ordered nullable second counts, and batch
-boundaries.
+## Round-trip existence
+
+`Existence.rescale_writer_image` derives complete inverse rescaling from
+successful seconds-to-Parquet emission and matched intermediate Snapshot
+and Leaf settings. The forward certificate checks the one-field shape
+on the same retained readback binding. It supplies the checked groups,
+millis descriptor, and exact original seconds observation. The theorem
+recovers the entire original Arrow stream value, including explicit
+empty groups, null slots, and local or UTC interpretation.
+
+`Existence.roundtrip_exists` adds only the independent outer admission
+conditions. `MiddleBounds` checks the file length, number of original
+batches, and total rows against the inverse's file-level caps.
+`SinkAdmits` describes the native Arrow serializer's own success and
+normalized readback checks on the original Arrow stream. It can be
+witnessed independently of the Parquet conversion. The inverse then
+emits those exact bytes, and the Arrow reader recovers the original
+seconds stream through EOS.
+
+The sink comparator first serializes the original Arrow stream without
+involving Parquet. PyArrow measures the metadata and body extents and
+checks the source seconds observation. At those precise output limits,
+the complete round trip emits the same certified bytes. Decreasing each
+nonzero cap separately by one exercises typed refusals for schema or
+record metadata, body bytes, fields, batches, per-batch rows, total rows,
+and total cells. Empty and schema-only profiles exercise the exact zero
+row and body limits.
+
+[Existence theorems](../../Silmaril/Formats/Parquet/Timestamp/Leaf/Events/ToIpc/Seconds/Existence/Thms.lean) ·
+[Tight sink comparator](../../scripts/seconds-roundtrip-existence-oracle/check.py)
 
 [Theorem header](../../Silmaril/Formats/Parquet/Timestamp/Leaf/Events/ToIpc/Seconds/Thms.lean) ·
 [Default converter](../../Silmaril/Formats/Parquet/Timestamp/Leaf/Events/ToIpc/Defs.lean)

@@ -31,6 +31,14 @@ theorem readSource_exact {ipc : Arrow.Limits} {limits : Limits} {input : KBytes}
       descriptor source.stream.binding = .ok source.descriptor :=
   Proofs.Formats.Parquet.Timestamp.FromIpc.readSource_exact read
 
+/-- The added check refers to the same original readback binding and groups. -/
+theorem certifyWith_readback {admit : Leaf.Bound → Bool} {limits : Limits} {source : Source} {wire : Bytes}
+    (certified : Internal.certifyWith admit limits source wire = .ok ()) :
+    ∃ bound groups, Leaf.openLeaf limits.snapshot wire 1 = .ok bound ∧
+      Internal.readGroups limits.leaf bound = .ok groups ∧
+      admit bound = true ∧ Internal.ReadbackMatches source bound groups :=
+  Proofs.Formats.Parquet.Timestamp.FromIpc.certifyWith_sound certified
+
 /-- Certification exposes the same checked file binding and indexed readback
 for every prepared source given to the canonical writer. -/
 theorem certify_readback {limits : Limits} {source : Source} {wire : Bytes}

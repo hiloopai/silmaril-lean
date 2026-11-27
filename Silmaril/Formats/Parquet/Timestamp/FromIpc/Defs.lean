@@ -184,10 +184,15 @@ def readGroups (limits : Leaf.Limits) (bound : Leaf.Bound) : Except Error (List 
   (List.range bound.snapshot.groupCount).mapM fun index =>
     (Leaf.readGroup limits bound index).mapError (.groupReadback index)
 
-def certify (limits : Limits) (source : Source) (wire : Bytes) : Except Error Unit := do
+/-- Check an additional property of the same retained readback binding. -/
+def certifyWith (admit : Leaf.Bound → Bool) (limits : Limits) (source : Source) (wire : Bytes) :
+    Except Error Unit := do
   let bound ← (Leaf.openLeaf limits.snapshot wire 1).mapError .openReadback
   let groups ← readGroups limits.leaf bound
-  if ReadbackMatches source bound groups then return () else throw .readbackMismatch
+  if admit bound = true ∧ ReadbackMatches source bound groups then return () else throw .readbackMismatch
+
+def certify (limits : Limits) (source : Source) (wire : Bytes) : Except Error Unit :=
+  certifyWith (fun _ => true) limits source wire
 
 end Internal
 

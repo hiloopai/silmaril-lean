@@ -58,7 +58,8 @@ def convert (ipc : Arrow.Limits) (limits : FromIpc.Limits) (input : KBytes) : Ex
     let original ← (Arrow.TimestampStream.read ipc input).mapError .source
     let prepared ← prepare original
     let wire ← (FromIpc.Internal.serialize limits prepared).mapError .sink
-    (FromIpc.Internal.certify limits prepared wire).mapError .sink
+    (FromIpc.Internal.certifyWith (fun bound => bound.snapshot.metadata.schema.length == 2)
+      limits prepared wire).mapError .sink
     return wire
 
 /-- Interpret readback counts under the retained epoch and recover whole
