@@ -119,4 +119,9 @@ theorem decode_agrees {leftLimits rightLimits : Limits} {schema : Rows.Schema} {
   have same := Except.ok.inj (leftRaw.symm.trans rightRaw)
   rw [leftTable, rightTable, same]
 
+theorem decode_schema {limits : Limits} {schema : Rows.Schema} {wire : Csv.Bytes}
+    {table : Rows.Table} (read : decode limits schema wire = .ok table) : table.schema = schema := by
+  obtain ⟨_, _, rfl⟩ := decode_rows read
+  rfl
+
 end Silmaril.Proofs.Formats.Csv.Typed.Utf8.MixedIpc

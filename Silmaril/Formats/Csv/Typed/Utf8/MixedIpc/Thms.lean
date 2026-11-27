@@ -34,6 +34,11 @@ theorem decode_agrees {leftLimits rightLimits : Limits} {schema : Rows.Schema} {
     left = right :=
   Proofs.Formats.Csv.Typed.Utf8.MixedIpc.decode_agrees leftRead rightRead
 
+/-- A successful decode retains the declared ordered descriptor. -/
+theorem decode_schema {limits : Limits} {schema : Rows.Schema} {wire : Csv.Bytes} {table : Rows.Table}
+    (read : decode limits schema wire = .ok table) : table.schema = schema :=
+  Proofs.Formats.Csv.Typed.Utf8.MixedIpc.decode_schema read
+
 /-- IPC → Scan → typed CSV → Scan commutes on every successful conversion.
 The result retains the original ordered Arrow descriptor and flattened rows. -/
 theorem convert_roundtrip {ipc : Arrow.MixedFlat.Limits} {csv : Limits} {input : KBytes} {output : Output}

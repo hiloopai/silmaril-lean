@@ -103,3 +103,21 @@ the exported CSV to the input rows, and PyArrow checks the actual Lean
 output has the same descriptors and cells in a single four-row batch.
 [Round-trip laws](../../Silmaril/Formats/Csv/Typed/Utf8/MixedIpc/RoundTrip/Thms.lean) ·
 [Comparator](../../scripts/mixed-ipc-csv-row-roundtrip-oracle/check.py)
+
+### Named tables with mixed IPC descriptors
+
+`MixedIpc.NamedTable.importCsv` decodes bounded CSV under its declared
+descriptor, then uses the packed database's vacant-name and exact-schema
+gate. The descriptor retains every field's position, kind, name and
+nullability, including repeated names. `exportCsv` looks up the requested
+name and checks the expected descriptor before encoding. It distinguishes
+a missing entry, a descriptor mismatch and a typed encoding failure.
+
+`import_exportCsv` copies the observed table into a vacant destination
+at the same CSV limits and updates only that key. `ipc_roundtrip` relates
+the original checked IPC rows, the inserted table and the checked IPC
+returned after named export. Each stage has its own limits. The output
+has one batch through EOS, including a zero-row batch for a schema-only
+source. Positive-row zero-width tables keep their row count.
+[Named bridge laws](../../Silmaril/Formats/Csv/Typed/Utf8/MixedIpc/NamedTable/Thms.lean) ·
+[PyArrow and CPython comparator](../../scripts/typed-mixed-csv-named-table-oracle/check.py)

@@ -142,15 +142,6 @@ theorem emitted_table {limits : Arrow.MixedFlat.Limits} {table : Rows.Table} {ba
   have materialized := Rows.toTable_columns table.schema [AlignedColumns.ofRows table.rows]
   simpa [Rows.readRows, exactEvents, fields, AlignedColumns.toRows_ofRows] using materialized
 
-private theorem decode_schema {csv : Csv.Typed.Utf8.MixedIpc.Limits} {schema : Rows.Schema}
-    {input : Csv.Bytes} {table : Rows.Table}
-    (read : Csv.Typed.Utf8.MixedIpc.decode csv schema input = .ok table) :
-    table.schema = schema := by
-  unfold Csv.Typed.Utf8.MixedIpc.decode at read
-  simp only [Bind.bind, Except.bind] at read
-  repeat' first | split at read | contradiction
-  exact congrArg Scan.Observation.schema (Except.ok.inj read).symm
-
 theorem convert_readback {csv : Csv.Typed.Utf8.MixedIpc.Limits} {ipc : Arrow.MixedFlat.Limits}
     {schema : Rows.Schema} {input : Csv.Bytes} {wire : KBytes}
     (converted : convert csv ipc schema input = .ok wire) :
@@ -170,7 +161,7 @@ theorem convert_readback {csv : Csv.Typed.Utf8.MixedIpc.Limits} {ipc : Arrow.Mix
         have exactWire : output = wire := by
           simpa [convert, read, prepared, emitted, Except.mapError, Bind.bind, Except.bind] using converted
         subst wire
-        have exactSchema := decode_schema read
+        have exactSchema := Csv.Typed.Utf8.MixedIpc.decode_schema read
         obtain ⟨events, rows⟩ := emitted_table prepared emitted
         exact ⟨table, rfl, exactSchema, by simpa [exactSchema] using events, rows⟩
 
