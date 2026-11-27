@@ -159,18 +159,22 @@ structure FramedGroup where
 
 /-- Select the original group and physical column ordinal 0 of the admitted
 LIST schema, then frame the entire declared chunk on the same snapshot. -/
-def Checked.frameGroupFor (checked : Checked) (codec : Int) (index : Nat) : Except ReadError FramedGroup := do
+def Checked.frameGroupWith (checked : Checked) (codec : Int) (allowDictionary : Bool) (index : Nat) : Except ReadError FramedGroup := do
   let some group := checked.snapshot.groupAt index | throw (.groupOrdinal index)
   let [chunk] := group.columns | throw .column
   let metadata := chunk.metadata
   if ¬ (metadata.pathInSchema = checked.shape.path ∧ metadata.physicalType = .int32) then
     return ← throw .column
   if metadata.codec ≠ codec then return ← throw (.codec metadata.codec)
-  if metadata.dictionaryPageOffset.isSome || metadata.indexPageOffset.isSome then
+  if (!allowDictionary && metadata.dictionaryPageOffset.isSome) || metadata.indexPageOffset.isSome then
     return ← throw .unsupportedOffsets
   let some span := Page.columnSpan checked.snapshot.footer.start metadata | throw .chunkBounds
   let frames ← (Page.readChunk checked.limits.framing checked.snapshot.bytes span).mapError .framing
   pure ⟨group, chunk, span, frames⟩
+
+/-- The original non-dictionary profiles. -/
+def Checked.frameGroupFor (checked : Checked) (codec : Int) (index : Nat) : Except ReadError FramedGroup :=
+  checked.frameGroupWith codec false index
 
 /-- The original uncompressed profile. -/
 def Checked.frameGroup (checked : Checked) (index : Nat) : Except ReadError FramedGroup :=
@@ -190,6 +194,19 @@ def Checked.readGroup (checked : Checked) (index : Nat) : Except ReadError (List
   let some body := checked.snapshot.bytes.slice? frame.payload.start (some frame.payload.stop) |
     throw .payloadBounds
   (ListPage.decodeV1 checked.limits.page metadata.codec frame.value group.numRows.toNat body).mapError .page
+
+/-- Origin of the original selected chunk before a dictionary profile checks its offsets. -/
+structure ChunkFrameWire (checked : Checked) (index : Nat) (framed : FramedGroup)
+    (codecId : Int) : Prop where
+  group : checked.snapshot.groupAt index = some framed.group
+  chunk : framed.group.columns = [framed.chunk]
+  path : framed.chunk.metadata.pathInSchema = checked.shape.path
+  physical : framed.chunk.metadata.physicalType = .int32
+  codec : framed.chunk.metadata.codec = codecId
+  indexPageOffset : framed.chunk.metadata.indexPageOffset = none
+  span : Page.columnSpan checked.snapshot.footer.start framed.chunk.metadata = some framed.span
+  frames : Page.readChunk checked.limits.framing checked.snapshot.bytes framed.span = .ok framed.frames
+  chain : Page.Chain framed.span framed.span.start framed.span.stop framed.frames
 
 structure FramedGroupWire (checked : Checked) (index : Nat) (framed : FramedGroup)
     (codecId : Int := 0) : Prop where

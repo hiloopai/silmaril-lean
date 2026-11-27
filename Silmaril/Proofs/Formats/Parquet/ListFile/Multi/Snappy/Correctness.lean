@@ -435,12 +435,12 @@ public theorem readFramesFor_feed_error {version : PageVersion} {limits : Limits
       .error (.frame ordinal frame.header.start (.page cause)) := by
   simp [readFramesFor, decoded, failed, Except.mapError, Bind.bind, Except.bind]
 
-private theorem readGroupsUsing_wire {read : GroupReader}
+private theorem readGroupsWith_wire {ε σ : Type} {wrap : Nat → ε → σ} {read : GroupReaderFor ε}
     {witness : ListFile.Checked → Nat → List Row → Nat → Prop} {checked : ListFile.Checked} {indices : List Nat}
     {expanded left : Nat} {groups : List (List Row)}
     (sound : ∀ {checked ordinal expanded left rows}, read checked ordinal expanded = .ok (rows, left) →
       witness checked ordinal rows (expanded - left) ∧ left ≤ expanded)
-    (h : readGroupsUsing read checked expanded indices = (groups, .ok left)) :
+    (h : readGroupsWith wrap read checked expanded indices = (groups, .ok left)) :
     ∃ costs,
       List.Forall₂ (fun ordinal (batch : List Row × Nat) => witness checked ordinal batch.1 batch.2)
         indices (groups.zip costs) ∧
@@ -451,13 +451,13 @@ private theorem readGroupsUsing_wire {read : GroupReader}
     obtain rfl := Except.ok.inj same
     exact ⟨[], .nil, rfl, by simp⟩
   | cons ordinal rest ih =>
-    rw [readGroupsUsing] at h
+    rw [readGroupsWith] at h
     cases group : read checked ordinal expanded with
     | error e => simp [group] at h
     | ok result =>
       obtain ⟨rows, remaining⟩ := result
       simp only [group] at h
-      cases tailRead : readGroupsUsing read checked remaining rest with
+      cases tailRead : readGroupsWith wrap read checked remaining rest with
       | mk tail outcome =>
         rw [tailRead] at h
         obtain ⟨rfl, rfl⟩ := Prod.mk.inj h
@@ -467,11 +467,11 @@ private theorem readGroupsUsing_wire {read : GroupReader}
         simp only [List.sum_cons]
         omega
 
-public theorem readGroupsUsing_append {read : GroupReader} {checked : ListFile.Checked} {before after : List Nat}
+public theorem readGroupsWith_append {ε σ : Type} {wrap : Nat → ε → σ} {read : GroupReaderFor ε} {checked : ListFile.Checked} {before after : List Nat}
     {expanded left : Nat} {groups : List (List Row)}
-    (h : readGroupsUsing read checked expanded before = (groups, .ok left)) :
-    readGroupsUsing read checked expanded (before ++ after) =
-      let tail := readGroupsUsing read checked left after
+    (h : readGroupsWith wrap read checked expanded before = (groups, .ok left)) :
+    readGroupsWith wrap read checked expanded (before ++ after) =
+      let tail := readGroupsWith wrap read checked left after
       (groups ++ tail.1, tail.2) := by
   induction before generalizing expanded groups with
   | nil =>
@@ -479,19 +479,67 @@ public theorem readGroupsUsing_append {read : GroupReader} {checked : ListFile.C
     obtain rfl := Except.ok.inj same
     simp
   | cons ordinal rest ih =>
-    rw [readGroupsUsing] at h
-    rw [List.cons_append, readGroupsUsing]
+    rw [readGroupsWith] at h
+    rw [List.cons_append, readGroupsWith]
     cases group : read checked ordinal expanded with
     | error e => simp [group] at h
     | ok result =>
       obtain ⟨rows, remaining⟩ := result
       simp only [group] at h ⊢
-      cases tailRead : readGroupsUsing read checked remaining rest with
+      cases tailRead : readGroupsWith wrap read checked remaining rest with
       | mk tail outcome =>
         rw [tailRead] at h
         obtain ⟨rfl, rfl⟩ := Prod.mk.inj h
         rw [ih tailRead]
         rfl
+
+public theorem convertWith_first_error {ε σ ρ : Type} {errors : ConversionErrors ε σ ρ}
+    {read : GroupReaderFor ε} {limits : Limits} {source : Bytes} {checked : ListFile.Checked}
+    {before after : List Nat} {ordinal left : Nat} {groups : List (List Row)} {cause : ε}
+    (opened : ListFile.openFile limits.parquet.file source = .ok checked)
+    (split : List.range checked.snapshot.groupCount = before ++ ordinal :: after)
+    (earlier : readGroupsWith errors.groupFailure read checked limits.maxExpandedBytes before = (groups, .ok left))
+    (failed : read checked ordinal left = .error cause) :
+    (convertWith errors limits read source).trace = .ok ⟨ListFile.schema checked,
+      ⟨groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked), .readError (errors.groupFailure ordinal cause)⟩⟩ ∧
+    (convertWith errors limits read source).wire = .error (errors.sourceFailure (errors.groupFailure ordinal cause)) := by
+  unfold convertWith
+  rw [opened]
+  simp only [split, readGroupsWith_append earlier, readGroupsWith, failed, List.append_nil, and_self]
+
+public theorem convertWith_readback {ε σ ρ : Type} {errors : ConversionErrors ε σ ρ}
+    {read : GroupReaderFor ε} {limits : Limits}
+    {witness : ListFile.Checked → Nat → List Row → Nat → Prop} {source : Bytes} {wire : KBytes}
+    (sound : ∀ {checked ordinal expanded left rows}, read checked ordinal expanded = .ok (rows, left) →
+      witness checked ordinal rows (expanded - left) ∧ left ≤ expanded)
+    (h : (convertWith errors limits read source).wire = .ok wire) : ReadbackWith errors limits read witness source wire := by
+  cases opened : ListFile.openFile limits.parquet.file source with
+  | error e => simp [convertWith, opened] at h
+  | ok checked =>
+    cases groupsRead : readGroupsWith errors.groupFailure read checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount) with
+    | mk groups outcome =>
+      cases outcome with
+      | error e => simp [convertWith, opened, groupsRead] at h
+      | ok left =>
+        simp only [convertWith, opened, groupsRead] at h
+        cases written : Arrow.ListInt32.Stream.Writer.emit limits.ipc (ListFile.Multi.ToIpc.fieldOf checked) groups with
+        | error e => simp [written, Except.mapError] at h
+        | ok bytes =>
+          obtain rfl := Except.ok.inj (by simpa only [written, Except.mapError] using h)
+          obtain ⟨costs, witness, count, cap⟩ := readGroupsWith_wire (read := read) (witness := witness) (fun hp => sound hp) groupsRead
+          obtain ⟨decoded, size, read, agrees, wf, envelope, schema, batches⟩ :=
+            Arrow.ListInt32.Stream.Writer.emit_readback written
+          exact ⟨checked, groups, costs, left, decoded, size, opened, ListFile.openFile_wire opened,
+            groupsRead, witness, count, cap, by simp [convertWith, opened, groupsRead],
+            read, agrees, wf, envelope, schema, batches⟩
+
+public theorem readGroupsUsing_append {read : GroupReader} {checked : ListFile.Checked} {before after : List Nat}
+    {expanded left : Nat} {groups : List (List Row)}
+    (h : readGroupsUsing read checked expanded before = (groups, .ok left)) :
+    readGroupsUsing read checked expanded (before ++ after) =
+      let tail := readGroupsUsing read checked left after
+      (groups ++ tail.1, tail.2) :=
+  readGroupsWith_append (wrap := SourceError.groupFailure) h
 
 public theorem convertUsing_first_error {read : GroupReader} {limits : Limits} {source : Bytes} {checked : ListFile.Checked}
     {before after : List Nat} {ordinal left : Nat} {groups : List (List Row)} {cause : GroupError}
@@ -501,35 +549,15 @@ public theorem convertUsing_first_error {read : GroupReader} {limits : Limits} {
     (failed : read checked ordinal left = .error cause) :
     (convertUsing limits read source).trace = .ok ⟨ListFile.schema checked,
       ⟨groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked), .readError (.groupFailure ordinal cause)⟩⟩ ∧
-    (convertUsing limits read source).wire = .error (.source (.groupFailure ordinal cause)) := by
-  unfold convertUsing
-  rw [opened]
-  simp only [split, readGroupsUsing_append earlier, readGroupsUsing, failed, List.append_nil, and_self]
+    (convertUsing limits read source).wire = .error (.source (.groupFailure ordinal cause)) :=
+  convertWith_first_error (errors := standardErrors) opened split earlier failed
 
 public theorem convertUsing_readback {read : GroupReader} {limits : Limits}
     {witness : ListFile.Checked → Nat → List Row → Nat → Prop} {source : Bytes} {wire : KBytes}
     (sound : ∀ {checked ordinal expanded left rows}, read checked ordinal expanded = .ok (rows, left) →
       witness checked ordinal rows (expanded - left) ∧ left ≤ expanded)
-    (h : (convertUsing limits read source).wire = .ok wire) : ReadbackUsing limits read witness source wire := by
-  cases opened : ListFile.openFile limits.parquet.file source with
-  | error e => simp [convertUsing, opened] at h
-  | ok checked =>
-    cases groupsRead : readGroupsUsing read checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount) with
-    | mk groups outcome =>
-      cases outcome with
-      | error e => simp [convertUsing, opened, groupsRead] at h
-      | ok left =>
-        simp only [convertUsing, opened, groupsRead] at h
-        cases written : Arrow.ListInt32.Stream.Writer.emit limits.ipc (ListFile.Multi.ToIpc.fieldOf checked) groups with
-        | error e => simp [written, Except.mapError] at h
-        | ok bytes =>
-          obtain rfl := Except.ok.inj (by simpa only [written, Except.mapError] using h)
-          obtain ⟨costs, witness, count, cap⟩ := readGroupsUsing_wire (read := read) (witness := witness) (fun hp => sound hp) groupsRead
-          obtain ⟨decoded, size, read, agrees, wf, envelope, schema, batches⟩ :=
-            Arrow.ListInt32.Stream.Writer.emit_readback written
-          exact ⟨checked, groups, costs, left, decoded, size, opened, ListFile.openFile_wire opened,
-            groupsRead, witness, count, cap, by simp [convertUsing, opened, groupsRead],
-            read, agrees, wf, envelope, schema, batches⟩
+    (h : (convertUsing limits read source).wire = .ok wire) : ReadbackUsing limits read witness source wire :=
+  ⟨(convertWith_readback (errors := standardErrors) (read := read) (witness := witness) (fun proof => sound proof) h).data⟩
 
 public theorem readGroupsFor_append {version : PageVersion} {limits : Limits} {checked : ListFile.Checked} {before after : List Nat}
     {expanded left : Nat} {groups : List (List Row)}

@@ -113,10 +113,11 @@ public theorem reconstruct_continuation (item : Option Int32) (rest : List Event
   rw [reconstruct, feed_next]
   rfl
 
-public theorem decodeSections_wire {limits : Limits} {slots : Nat} {repetition definition scalars : Bytes}
-    {events : List Event} (h : decodeSections limits slots repetition definition scalars = .ok events) :
-    SectionsWire slots repetition definition scalars events := by
-  unfold decodeSections at h
+public theorem decodeSectionsUsing_wire {ε : Type} {wrap : Error → ε}
+    {readValues : Nat → Bytes → Except ε (List Int32)} {limits : Limits} {slots : Nat} {repetition definition scalars : Bytes}
+    {events : List Event} (h : decodeSectionsUsing wrap readValues limits slots repetition definition scalars = .ok events) :
+    SectionsWireUsing readValues slots repetition definition scalars events := by
+  unfold decodeSectionsUsing at h
   cases repRead : Hybrid.decode 1 slots limits.levels repetition with
   | error => simp [repRead, Except.mapError, bind, Except.bind] at h
   | ok reps =>
@@ -125,30 +126,36 @@ public theorem decodeSections_wire {limits : Limits} {slots : Nat} {repetition d
     | error => simp [defRead] at h
     | ok defs =>
       simp only [defRead] at h
-      cases plain : Plain.decodeInt32 ((valueMask defs).count true) scalars with
-      | error => simp [plain] at h
+      cases read : readValues ((valueMask defs).count true) scalars with
+      | error => simp [read] at h
       | ok values =>
-        simp only [plain] at h
+        simp only [read] at h
         cases filled : FlatPage.reconstruct (valueMask defs) values with
         | error => simp [filled] at h
         | ok entries =>
           simp only [filled] at h
-          have exactEvents := readEvents_wire h
-          obtain ⟨mask, ordered⟩ := FlatPage.reconstruct_ok_iff.mp filled
-          have repCount := Hybrid.decode_length repRead
-          have defCount := Hybrid.decode_length defRead
-          have entryCount : entries.length = slots := by
-            simpa [valueMask, defCount] using congrArg List.length mask
-          have slotsExact : events.length = slots := by
-            simpa [repCount, defCount, entryCount] using congrArg List.length exactEvents
-          exact ⟨slotsExact, reps, defs, values, entries,
-            (Hybrid.decode_ok_iff.mp repRead).2.2.2.2, (Hybrid.decode_ok_iff.mp defRead).2.2.2.2,
-            repCount, defCount, entryCount, plain, mask, ordered, exactEvents⟩
+          cases actual : (reps.zip (defs.zip entries)).mapM readEvent with
+          | error e => simp [actual] at h
+          | ok decoded =>
+            simp only [actual] at h
+            obtain rfl := Except.ok.inj h
+            have exactEvents := readEvents_wire actual
+            obtain ⟨mask, ordered⟩ := FlatPage.reconstruct_ok_iff.mp filled
+            have repCount := Hybrid.decode_length repRead
+            have defCount := Hybrid.decode_length defRead
+            have entryCount : entries.length = slots := by
+              simpa [valueMask, defCount] using congrArg List.length mask
+            have slotsExact : decoded.length = slots := by
+              simpa [repCount, defCount, entryCount] using congrArg List.length exactEvents
+            exact ⟨slotsExact, reps, defs, values, entries,
+              (Hybrid.decode_ok_iff.mp repRead).2.2.2.2, (Hybrid.decode_ok_iff.mp defRead).2.2.2.2,
+              repCount, defCount, entryCount, read, mask, ordered, exactEvents⟩
 
-public theorem decodeEvents_wire {limits : Limits} {slots : Nat} {body : Bytes}
-    {events : List Event} (h : decodeEvents limits slots body = .ok events) :
-    EventsWire limits slots body events := by
-  unfold decodeEvents at h
+public theorem decodeEventsUsing_wire {ε : Type} {wrap : Error → ε}
+    {readValues : Nat → Bytes → Except ε (List Int32)} {limits : Limits} {slots : Nat} {body : Bytes}
+    {events : List Event} (h : decodeEventsUsing wrap readValues limits slots body = .ok events) :
+    EventsWireUsing readValues limits slots body events := by
+  unfold decodeEventsUsing at h
   split at h
   · cases h
   rename_i bodyCap
@@ -162,12 +169,31 @@ public theorem decodeEvents_wire {limits : Limits} {slots : Nat} {body : Bytes}
       simp only [defSplit] at h
       obtain ⟨repLength, repWidth, repBytes, _, fromBody⟩ := FlatPage.splitV1Optional_ok_iff.mp repSplit
       obtain ⟨defLength, defWidth, defBytes, _, fromRest⟩ := FlatPage.splitV1Optional_ok_iff.mp defSplit
-      obtain ⟨exact, reps, defs, values, entries, repWire, defWire, repCount, defCount, entryCount,
-        plain, mask, ordered, exactEvents⟩ := decodeSections_wire h
-      exact ⟨Nat.le_of_not_gt bodyCap, exact, repLength, defLength, first.definitions, second.definitions,
-        second.scalars, reps, defs, values, entries, repWidth, defWidth, repBytes, defBytes,
-        by simpa [fromRest, List.append_assoc] using fromBody, repWire, defWire, repCount, defCount,
-        entryCount, plain, mask, ordered, exactEvents⟩
+      exact ⟨Nat.le_of_not_gt bodyCap, repLength, defLength, first.definitions, second.definitions,
+        second.scalars, repWidth, defWidth, repBytes, defBytes,
+        by simpa [fromRest, List.append_assoc] using fromBody, decodeSectionsUsing_wire h⟩
+
+private theorem plain_read_eq {count : Nat} {source : Bytes} {values : List Int32}
+    (h : readPlain count source = .ok values) : Plain.decodeInt32 count source = .ok values := by
+  cases raw : Plain.decodeInt32 count source <;> simp_all [readPlain, Except.mapError]
+
+public theorem decodeSections_wire {limits : Limits} {slots : Nat} {repetition definition scalars : Bytes}
+    {events : List Event} (h : decodeSections limits slots repetition definition scalars = .ok events) :
+    SectionsWire slots repetition definition scalars events := by
+  obtain ⟨exact, reps, defs, values, entries, repWire, defWire, repCount, defCount, entryCount,
+    plain, mask, ordered, eventWire⟩ := decodeSectionsUsing_wire (wrap := id) (readValues := readPlain) h
+  exact ⟨exact, reps, defs, values, entries, repWire, defWire, repCount, defCount, entryCount,
+    plain_read_eq plain, mask, ordered, eventWire⟩
+
+public theorem decodeEvents_wire {limits : Limits} {slots : Nat} {body : Bytes}
+    {events : List Event} (h : decodeEvents limits slots body = .ok events) : EventsWire limits slots body events := by
+  obtain ⟨cap, repLength, defLength, repBytes, defBytes, scalars, repWidth, defWidth,
+    repSize, defSize, bodyWire, sections⟩ := decodeEventsUsing_wire (wrap := id) (readValues := readPlain) h
+  obtain ⟨exact, reps, defs, values, entries, repWire, defWire, repCount, defCount, entryCount,
+    plain, mask, ordered, eventWire⟩ := sections
+  exact ⟨cap, exact, repLength, defLength, repBytes, defBytes, scalars, reps, defs, values, entries,
+    repWidth, defWidth, repSize, defSize, bodyWire, repWire, defWire, repCount, defCount,
+    entryCount, plain_read_eq plain, mask, ordered, eventWire⟩
 
 public theorem decodeBody_wire {limits : Limits} {expectedRows slots : Nat} {body : Bytes}
     {rows : List Row} (h : decodeBody limits expectedRows slots body = .ok rows) :

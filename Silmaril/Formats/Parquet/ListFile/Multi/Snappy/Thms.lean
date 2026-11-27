@@ -219,4 +219,26 @@ theorem convertUsing_readback {read : GroupReader} {limits : Limits}
     (h : (convertUsing limits read source).wire = .ok wire) : ReadbackUsing limits read witness source wire :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertUsing_readback sound h
 
+/-- A selected typed source error preserves its group prefix and precedes native IPC admission. -/
+theorem convertWith_first_error {ε σ ρ : Type} {errors : ConversionErrors ε σ ρ}
+    {read : GroupReaderFor ε} {limits : Limits} {source : Bytes} {checked : ListFile.Checked}
+    {before after : List Nat} {ordinal left : Nat} {groups : List (List Row)} {cause : ε}
+    (opened : ListFile.openFile limits.parquet.file source = .ok checked)
+    (split : List.range checked.snapshot.groupCount = before ++ ordinal :: after)
+    (earlier : readGroupsWith errors.groupFailure read checked limits.maxExpandedBytes before = (groups, .ok left))
+    (failed : read checked ordinal left = .error cause) :
+    (convertWith errors limits read source).trace = .ok ⟨ListFile.schema checked,
+      ⟨groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked), .readError (errors.groupFailure ordinal cause)⟩⟩ ∧
+    (convertWith errors limits read source).wire = .error (errors.sourceFailure (errors.groupFailure ordinal cause)) :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertWith_first_error opened split earlier failed
+
+/-- A typed group reader with per-group witnesses composes with checked native IPC readback. -/
+theorem convertWith_readback {ε σ ρ : Type} {errors : ConversionErrors ε σ ρ}
+    {read : GroupReaderFor ε} {limits : Limits}
+    {witness : ListFile.Checked → Nat → List Row → Nat → Prop} {source : Bytes} {wire : KBytes}
+    (sound : ∀ {checked ordinal expanded left rows}, read checked ordinal expanded = .ok (rows, left) →
+      witness checked ordinal rows (expanded - left) ∧ left ≤ expanded)
+    (h : (convertWith errors limits read source).wire = .ok wire) : ReadbackWith errors limits read witness source wire :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.convertWith_readback sound h
+
 end Silmaril.Formats.Parquet.ListFile.Multi.Snappy

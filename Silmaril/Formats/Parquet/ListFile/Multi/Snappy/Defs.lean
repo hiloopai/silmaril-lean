@@ -253,20 +253,26 @@ structure GroupWire (limits : Limits) (checked : ListFile.Checked) (ordinal : Na
     framed.group.numRows.toNat ≤ checked.limits.page.maxRows ∧
     expandedSize framed.frames = spent
 
-abbrev GroupReader :=
-  ListFile.Checked → Nat → Nat → Except GroupError (List Row × Nat)
+abbrev GroupReaderFor (failure : Type) :=
+  ListFile.Checked → Nat → Nat → Except failure (List Row × Nat)
+
+abbrev GroupReader := GroupReaderFor GroupError
 
 /-- Preserve the successful groups before the first indexed failure. A single
 expansion budget is threaded through the whole file. -/
-def readGroupsUsing (read : GroupReader) (checked : ListFile.Checked) (expanded : Nat) :
-    List Nat → List (List Row) × Except SourceError Nat
+def readGroupsWith {ε σ : Type} (wrap : Nat → ε → σ) (read : GroupReaderFor ε)
+    (checked : ListFile.Checked) (expanded : Nat) : List Nat → List (List Row) × Except σ Nat
   | [] => ([], .ok expanded)
   | ordinal :: rest =>
     match read checked ordinal expanded with
-    | .error cause => ([], .error (.groupFailure ordinal cause))
+    | .error cause => ([], .error (wrap ordinal cause))
     | .ok (rows, left) =>
-      let (groups, outcome) := readGroupsUsing read checked left rest
+      let (groups, outcome) := readGroupsWith wrap read checked left rest
       (rows :: groups, outcome)
+
+def readGroupsUsing (read : GroupReader) (checked : ListFile.Checked) (expanded : Nat) (indices : List Nat) :
+    List (List Row) × Except SourceError Nat :=
+  readGroupsWith SourceError.groupFailure read checked expanded indices
 
 def readGroupsFor (version : PageVersion) (limits : Limits) (checked : ListFile.Checked)
     (expanded : Nat) (groups : List Nat) : List (List Row) × Except SourceError Nat :=
@@ -287,16 +293,34 @@ structure Result where
   trace : SourceTrace
   wire : Except Error KBytes
 
-def convertUsing (limits : Limits) (read : GroupReader) (source : Bytes) : Result :=
+structure ConversionErrors (group source output : Type) where
+  openFailure : ListFile.OpenError → source
+  groupFailure : Nat → group → source
+  sourceFailure : source → output
+  writerFailure : Arrow.ListInt32.Stream.Writer.Error → output
+
+structure ResultWith (source output : Type) where
+  trace : Arrow.Events.EventStream String ListFile.Cell source
+  wire : Except output KBytes
+
+def standardErrors : ConversionErrors GroupError SourceError Error :=
+  ⟨.openFailure, .groupFailure, .source, .writer⟩
+
+def convertWith {ε σ ρ : Type} (errors : ConversionErrors ε σ ρ) (limits : Limits)
+    (read : GroupReaderFor ε) (source : Bytes) : ResultWith σ ρ :=
   match ListFile.openFile limits.parquet.file source with
-  | .error cause => ⟨.error (.openFailure cause), .error (.source (.openFailure cause))⟩
+  | .error cause => ⟨.error (errors.openFailure cause), .error (errors.sourceFailure (errors.openFailure cause))⟩
   | .ok checked =>
-    let (groups, outcome) := readGroupsUsing read checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount)
+    let (groups, outcome) := readGroupsWith errors.groupFailure read checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount)
     let batches := groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked)
     match outcome with
-    | .error cause => ⟨.ok ⟨ListFile.schema checked, ⟨batches, .readError cause⟩⟩, .error (.source cause)⟩
+    | .error cause => ⟨.ok ⟨ListFile.schema checked, ⟨batches, .readError cause⟩⟩, .error (errors.sourceFailure cause)⟩
     | .ok _ => ⟨.ok ⟨ListFile.schema checked, ⟨batches, .eos⟩⟩,
-      (Arrow.ListInt32.Stream.Writer.emit limits.ipc (ToIpc.fieldOf checked) groups).mapError .writer⟩
+      (Arrow.ListInt32.Stream.Writer.emit limits.ipc (ToIpc.fieldOf checked) groups).mapError errors.writerFailure⟩
+
+def convertUsing (limits : Limits) (read : GroupReader) (source : Bytes) : Result :=
+  let converted := convertWith standardErrors limits read source
+  ⟨converted.trace, converted.wire⟩
 
 def convertFor (version : PageVersion) (limits : Limits) (source : Bytes) : Result :=
   convertUsing limits (readGroupFor version limits) source
@@ -308,17 +332,17 @@ def convert (limits : Limits) (source : Bytes) : Result :=
 def convertV2 (limits : Limits) (source : Bytes) : Result :=
   convertFor .v2 limits source
 
-structure ReadbackUsing (limits : Limits) (read : GroupReader)
-    (witness : ListFile.Checked → Nat → List Row → Nat → Prop) (source : Bytes) (wire : KBytes) : Prop where
-  data : ∃ checked groups costs left decoded size,
+abbrev ReadbackDataWith {ε σ ρ : Type} (errors : ConversionErrors ε σ ρ) (limits : Limits) (read : GroupReaderFor ε)
+    (witness : ListFile.Checked → Nat → List Row → Nat → Prop) (source : Bytes) (wire : KBytes) : Prop :=
+  ∃ checked groups costs left decoded size,
     ListFile.openFile limits.parquet.file source = .ok checked ∧
     ListFile.OpenWire limits.parquet.file source checked ∧
-    readGroupsUsing read checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount) =
+    readGroupsWith errors.groupFailure read checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount) =
       (groups, .ok left) ∧
     List.Forall₂ (fun ordinal (batch : List Row × Nat) => witness checked ordinal batch.1 batch.2)
       (List.range checked.snapshot.groupCount) (groups.zip costs) ∧
     costs.length = groups.length ∧ costs.sum + left = limits.maxExpandedBytes ∧
-    (convertUsing limits read source).trace = .ok ⟨ListFile.schema checked,
+    (convertWith errors limits read source).trace = .ok ⟨ListFile.schema checked,
       ⟨groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked), .eos⟩⟩ ∧
     Arrow.ListInt32.Stream.read limits.ipc wire = .ok decoded ∧
     Arrow.ListInt32.Stream.Writer.Agrees (ToIpc.fieldOf checked) groups decoded ∧
@@ -327,23 +351,17 @@ structure ReadbackUsing (limits : Limits) (read : GroupReader)
     Arrow.ListInt32.readSchema limits.ipc.ipc (wire.slice 8 size) = .ok (ToIpc.fieldOf checked) ∧
     Arrow.ListInt32.Stream.BatchesWire limits.ipc wire limits.ipc.ipc.batches 0 0 (8 + size) decoded.batches
 
+structure ReadbackWith {ε σ ρ : Type} (errors : ConversionErrors ε σ ρ) (limits : Limits) (read : GroupReaderFor ε)
+    (witness : ListFile.Checked → Nat → List Row → Nat → Prop) (source : Bytes) (wire : KBytes) : Prop where
+  data : ReadbackDataWith errors limits read witness source wire
+
+structure ReadbackUsing (limits : Limits) (read : GroupReader)
+    (witness : ListFile.Checked → Nat → List Row → Nat → Prop) (source : Bytes) (wire : KBytes) : Prop where
+  data : ReadbackDataWith standardErrors limits read witness source wire
+
 structure Readback (limits : Limits) (source : Bytes) (wire : KBytes)
     (version : PageVersion := .v1) : Prop where
-  data : ∃ checked groups costs left decoded size,
-    ListFile.openFile limits.parquet.file source = .ok checked ∧
-    ListFile.OpenWire limits.parquet.file source checked ∧
-    readGroupsFor version limits checked limits.maxExpandedBytes (List.range checked.snapshot.groupCount) =
-      (groups, .ok left) ∧
-    List.Forall₂ (fun ordinal (batch : List Row × Nat) => GroupWire limits checked ordinal batch.1 batch.2 version)
-      (List.range checked.snapshot.groupCount) (groups.zip costs) ∧
-    costs.length = groups.length ∧ costs.sum + left = limits.maxExpandedBytes ∧
-    (convertFor version limits source).trace = .ok ⟨ListFile.schema checked,
-      ⟨groups.map (AlignedColumns.ofRows ∘ ListFile.rows checked), .eos⟩⟩ ∧
-    Arrow.ListInt32.Stream.read limits.ipc wire = .ok decoded ∧
-    Arrow.ListInt32.Stream.Writer.Agrees (ToIpc.fieldOf checked) groups decoded ∧
-    wire.wf = true ∧
-    Arrow.readEnvelope limits.ipc.ipc wire 0 = .ok (.metadata size) ∧
-    Arrow.ListInt32.readSchema limits.ipc.ipc (wire.slice 8 size) = .ok (ToIpc.fieldOf checked) ∧
-    Arrow.ListInt32.Stream.BatchesWire limits.ipc wire limits.ipc.ipc.batches 0 0 (8 + size) decoded.batches
+  data : ReadbackDataWith standardErrors limits (readGroupFor version limits)
+    (fun checked ordinal rows spent => GroupWire limits checked ordinal rows spent version) source wire
 
 end Silmaril.Formats.Parquet.ListFile.Multi.Snappy

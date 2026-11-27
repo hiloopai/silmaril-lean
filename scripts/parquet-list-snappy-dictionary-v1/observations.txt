@@ -1,0 +1,48 @@
+PyArrow 26.0.1
+native-crc-v1.parquet SHA-256 c3109052e3236c347c193fb78d761660c5ad4e17debd4eee84823de1edd484f0, footer [471, 1022)
+  group 0 dictionary @4 payload [24, 38), signed [-7, 2147483647, -2147483648]
+  group 0 page 1 header @38 payload [63, 78), reps [0], defs [0], width 0, indices []
+  group 0 page 2 header @78 payload [103, 118), reps [0], defs [1], width 0, indices []
+  group 0 page 3 header @118 payload [143, 161), reps [0, 1, 1, 1], defs [3, 2, 3, 3], width 1, indices [0, 0, 1]
+  group 0 page 4 header @161 payload [186, 197), reps [], defs [], width 1, indices []
+  group 0 page 5 header @197 payload [221, 239), reps [0, 1, 1], defs [3, 3, 3], width 2, indices [2, 1, 2]
+  group 1 dictionary @239 payload [259, 269), signed [8, -11]
+  group 1 page 1 header @269 payload [294, 309), reps [0], defs [1], width 0, indices []
+  group 1 page 2 header @309 payload [334, 349), reps [0], defs [0], width 0, indices []
+  group 1 page 3 header @349 payload [374, 392), reps [0, 1, 1], defs [2, 3, 3], width 1, indices [0, 0]
+  group 1 page 4 header @392 payload [417, 428), reps [], defs [], width 1, indices []
+  group 1 page 5 header @428 payload [453, 471), reps [0, 1, 1, 1], defs [3, 3, 3, 2], width 1, indices [1, 1, 0]
+native-no-crc-empty-dictionary-v1.parquet SHA-256 0a35157e18d7878954cf31268e5a711cd3b8561392cc9fc67e2f202e68e109ae, footer [581, 1223)
+  group 0 dictionary @4 payload [18, 32), signed [-7, 2147483647, -2147483648]
+  group 0 page 1 header @32 payload [51, 66), reps [0], defs [0], width 0, indices []
+  group 0 page 2 header @66 payload [85, 100), reps [0], defs [1], width 0, indices []
+  group 0 page 3 header @100 payload [119, 137), reps [0, 1, 1, 1], defs [3, 2, 3, 3], width 1, indices [0, 0, 1]
+  group 0 page 4 header @137 payload [156, 167), reps [], defs [], width 1, indices []
+  group 0 page 5 header @167 payload [186, 204), reps [0, 1, 1], defs [3, 3, 3], width 2, indices [2, 1, 2]
+  group 1 dictionary @204 payload [218, 228), signed [8, -11]
+  group 1 page 1 header @228 payload [247, 262), reps [0], defs [1], width 0, indices []
+  group 1 page 2 header @262 payload [281, 296), reps [0], defs [0], width 0, indices []
+  group 1 page 3 header @296 payload [315, 333), reps [0, 1, 1], defs [2, 3, 3], width 1, indices [0, 0]
+  group 1 page 4 header @333 payload [352, 363), reps [], defs [], width 1, indices []
+  group 1 page 5 header @363 payload [382, 400), reps [0, 1, 1, 1], defs [3, 3, 3, 2], width 1, indices [1, 1, 0]
+  group 2 dictionary @400 payload [414, 415), signed []
+  group 2 page 1 header @415 payload [434, 449), reps [0], defs [0], width 0, indices []
+  group 2 page 2 header @449 payload [468, 483), reps [0], defs [1], width 0, indices []
+  group 2 page 3 header @483 payload [502, 517), reps [0], defs [2], width 0, indices []
+  group 2 page 4 header @517 payload [536, 547), reps [], defs [], width 0, indices []
+  group 2 page 5 header @547 payload [566, 581), reps [0, 1], defs [2, 2], width 0, indices []
+native-crc-v1.arrows SHA-256 435fa88e8e327420a2863899f8b8ea8f79c882f6ca4457ce8454d5a90503adc6, EOS [768, 776)
+native-no-crc-empty-dictionary-v1.arrows SHA-256 c62fab8e86f28e9666dcd50e83580d68af33b942cb73ed5f123d74a5b9b447f2, EOS [1032, 1040)
+mutated-dictionary-crc.parquet SHA-256 23717ccb718cb84c8bcbe540ada8f5d7472af801e05572965b187167ac79946b
+dictionary-crc: group 1 page 0 @239; one retained batch and no IPC bytes
+mutated-data-crc.parquet SHA-256 e27e32812dc4a32e06ae5613a0c98c12453159f169f3bfac081a249885908e62
+data-crc: group 1 page 5 @428; one retained batch and no IPC bytes
+assembled-index.parquet SHA-256 a5c33ad9061d86b232c119947a0a1c9e46de8d71ac93b23cfbe0e8a630ed3097
+index: group 1 page 5 @428; one retained batch and no IPC bytes
+assembled-dictionary-count.parquet SHA-256 7b4fff4c7d0a11683e8493495c36bc5b906a3481290609af2a3e6af9a17c4e18
+dictionary-count: group 1 page 0 @239; one retained batch and no IPC bytes
+assembled-plain-tag.parquet SHA-256 d0ba55c99c1d4ecb273bda2b82e74ee4f26d5b231b445cbeaa9e1927b119e00f
+plain-tag: group 1 page 5 @428; one retained batch and no IPC bytes
+assembled-data-offset.parquet SHA-256 edc2e932892943ad60b4a13fb1240f9ae2c01451db7df731a5532175275a5ce4
+data-offset: group 1 page 1 @269; one retained batch and no IPC bytes
+budget: group 1 page 5 @428; one retained batch and no IPC bytes

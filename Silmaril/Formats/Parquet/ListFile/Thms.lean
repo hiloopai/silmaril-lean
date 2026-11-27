@@ -22,6 +22,13 @@ theorem openFile_wire {limits : Limits} {source : Bytes} {checked : Checked}
     (h : openFile limits source = .ok checked) : OpenWire limits source checked :=
   Proofs.Formats.Parquet.ListFile.openFile_wire h
 
+/-- A dictionary-aware caller still gets the original local ordered frame chain. -/
+theorem frameGroupWith_wire {checked : Checked} {codec : Int} {allowDictionary : Bool}
+    {index : Nat} {framed : FramedGroup} (h : checked.frameGroupWith codec allowDictionary index = .ok framed) :
+    ChunkFrameWire checked index framed codec ∧
+      (allowDictionary = false → framed.chunk.metadata.dictionaryPageOffset = none) :=
+  Proofs.Formats.Parquet.ListFile.frameGroupWith_wire h
+
 /-- A codec-specific profile retains the original checked group and exact chunk. -/
 theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat} {framed : FramedGroup}
     (h : checked.frameGroupFor codec index = .ok framed) : FramedGroupWire checked index framed codec :=

@@ -141,9 +141,11 @@ public theorem openFile_wire {limits : ListFile.Limits} {source : Bytes} {checke
                     extents.1, extents.2, unmarked.1, unmarked.2.1, unmarked.2.2, checkList_wire tag⟩
           · contradiction
 
-public theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat} {framed : FramedGroup}
-    (h : checked.frameGroupFor codec index = .ok framed) : FramedGroupWire checked index framed codec := by
-  unfold Checked.frameGroupFor at h
+public theorem frameGroupWith_wire {checked : Checked} {codec : Int} {allowDictionary : Bool}
+    {index : Nat} {framed : FramedGroup} (h : checked.frameGroupWith codec allowDictionary index = .ok framed) :
+    ChunkFrameWire checked index framed codec ∧
+      (allowDictionary = false → framed.chunk.metadata.dictionaryPageOffset = none) := by
+  unfold Checked.frameGroupWith at h
   cases groupRead : checked.snapshot.groupAt index with
   | none => simp [groupRead] at h
   | some group =>
@@ -161,8 +163,10 @@ public theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat
           split at h
           · contradiction
           · rename_i offsets
-            have absent : chunk.metadata.dictionaryPageOffset = none ∧
-                chunk.metadata.indexPageOffset = none := by simpa using offsets
+            have indexAbsent : chunk.metadata.indexPageOffset = none := by
+              cases tag : chunk.metadata.indexPageOffset <;> simp_all
+            have dictionaryAbsent (refuses : allowDictionary = false) :
+                chunk.metadata.dictionaryPageOffset = none := by simpa [refuses, indexAbsent] using offsets
             cases bounds : Page.columnSpan checked.snapshot.footer.start chunk.metadata with
             | none => simp [bounds] at h
             | some span =>
@@ -172,9 +176,15 @@ public theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat
               | ok frames =>
                 simp only [parsed] at h
                 obtain rfl := Except.ok.inj h
-                exact ⟨groupRead, columns, associated.1, associated.2, codec, absent.1, absent.2,
-                  bounds, parsed, (Page.readChunk_chain parsed).2.2⟩
+                exact ⟨⟨groupRead, columns, associated.1, associated.2, codec, indexAbsent,
+                  bounds, parsed, (Page.readChunk_chain parsed).2.2⟩, dictionaryAbsent⟩
     · contradiction
+
+public theorem frameGroupFor_wire {checked : Checked} {codec : Int} {index : Nat} {framed : FramedGroup}
+    (h : checked.frameGroupFor codec index = .ok framed) : FramedGroupWire checked index framed codec := by
+  obtain ⟨origin, absent⟩ := frameGroupWith_wire (allowDictionary := false) h
+  exact ⟨origin.group, origin.chunk, origin.path, origin.physical, origin.codec, absent rfl,
+    origin.indexPageOffset, origin.span, origin.frames, origin.chain⟩
 
 public theorem frameGroup_wire {checked : Checked} {index : Nat} {framed : FramedGroup}
     (h : checked.frameGroup index = .ok framed) : FramedGroupWire checked index framed :=
