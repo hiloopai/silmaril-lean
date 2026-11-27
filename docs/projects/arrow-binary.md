@@ -110,3 +110,32 @@ schema-only output, and a single empty batch.
 lake build --wfail Silmaril.Formats.Arrow.Binary.StreamWriter.Examples Silmaril.Formats.Arrow.Binary.StreamWriter.Axioms
 python scripts/arrow-binary/stream_writer_oracle.py /tmp/arrow-binary-oracle
 ```
+
+## Standard Arrow batch events
+
+Import `Silmaril.Formats.Arrow.Binary.Stream.Events.Defs` for a standard
+`Arrow.Events.BatchReader` over either framing profile. Its schema has one
+`.binary` column labeled by the exact field name and nullability. A present
+cell is an opaque `KBytes`. The adapter delegates each step to the native
+cursor and converts the returned batch without changing the row count or
+nullable slots. An empty RecordBatch still produces one event.
+
+`Events.readAll` uses the configured batch limit plus one pull to check the
+terminal marker or report the next indexed failure. An invalid Schema is an
+open error. A later failure produces `.readError (.record failure)` with the
+original ordinal, byte offset and cause, after the successful event prefix.
+A caller-supplied shorter budget on the generic driver can produce `.closed`.
+The cursor holds the whole source carrier. Successful frame ranges and the
+EOS byte offset are available through the native trace used in the laws.
+
+`Events.readAll_exact` proves equality of the standard driver trace and the
+native cursor trace after converting batches and the terminal reply.
+`Events.readAll_failure` links the event prefix to its original cursor steps
+and first failing attempt. The pinned modern and legacy PyArrow fixtures
+check the descriptor, opaque octets, explicit empty and schema-only cases,
+and synthetic late offset and trailing-data failures.
+
+```sh
+python scripts/arrow-binary/batch_fixture.py
+lake build --wfail Silmaril.Formats.Arrow.Binary.Stream.Events.Examples Silmaril.Formats.Arrow.Binary.Stream.Events.Axioms
+```
