@@ -1,0 +1,23 @@
+{
+  "description": "Complete native Lean recursive signed Parquet files",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "lean_parquet": {
+    "nullable_multi": {
+      "bytes": 1266,
+      "sha256": "c5ea9f7ff4baa419fa384074d57881a0dd12fa1e481e7ae5b4d96cbb5af6ab75"
+    },
+    "required_lists": {
+      "bytes": 486,
+      "sha256": "26d6bde4b4b2e447ec8ede2f4f61689804ff84964c4de7a28f916ebcf5ccc46f"
+    },
+    "schema_only": {
+      "bytes": 83,
+      "sha256": "dbeeb35accd7437b961e6a7161e570d20296019b6bbc0d8e1d469e2923c90902"
+    }
+  }
+}
