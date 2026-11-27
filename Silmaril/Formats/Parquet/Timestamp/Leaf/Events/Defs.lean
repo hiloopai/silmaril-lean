@@ -14,6 +14,7 @@ open Silmaril.Relational Silmaril.Numeric.Timestamp
 structure Kind where
   metadata : ColumnarTimestamp.Arrow.Metadata
   nullable : Bool
+  deriving DecidableEq
 
 abbrev Cell (kind : Kind) := Ticks kind.metadata.kind kind.metadata.unit
 

@@ -1,0 +1,6 @@
+{
+  "region=caf%C3%A9%2F%E6%9D%B1%E4%BA%AC/rank=-17/z%41.parquet": "f75d91c28d406bf7123f70b478d117b536a3ec2b24f3f7b00191800afc7624e3",
+  "region=__HIVE_DEFAULT_PARTITION__/rank=9/middle.parquet": "d95611579b99ce8a9082666fda3293dcb15b10c61bc803494cb866093e766a32",
+  "rank=0/a.parquet": "7246e58417329dbc86d178a38c848933abc1265230bf05d239e680aec871d847",
+  "late:region=__HIVE_DEFAULT_PARTITION__/rank=9/middle.parquet": "89ea7aa0893c2c838265fc638948826ed6d91a4ed2012ab9adde3a1ebac0bba9"
+}

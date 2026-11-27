@@ -23,6 +23,7 @@ inductive Kind where
   | int32 (nullable : Bool)
   | utf8 (nullable : Bool)
   | timestamp (kind : Timestamp.Leaf.Events.Kind)
+  deriving DecidableEq
 
 def Cell : Kind → Type
   | .int32 _ => Int32
