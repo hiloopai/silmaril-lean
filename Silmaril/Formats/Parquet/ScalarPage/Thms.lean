@@ -60,6 +60,16 @@ theorem prepared_v1_slices {params : Parameters} {limits : Limits} {source : Byt
           body = lengthWord ++ definitions.toList ++ page.scalars.toList :=
   Proofs.Formats.Parquet.ScalarPage.prepared_v1_slices version h
 
+/-- A checked GZIP V1 body consumes one exact member with the declared output size. -/
+theorem prepared_v1_gzip_member {params : Parameters} {limits : Limits} {layout : FlatPage.Layout}
+    {source : Bytes} {page : Prepared} {definitionEncoding repetitionEncoding : Int}
+    (version : params.version = .v1 definitionEncoding repetitionEncoding)
+    (codec : params.codec = Payload.Codec.gzip.id)
+    (wire : PreparedWire params limits layout source page) :
+    ∃ expanded, Compression.Gzip.decoder source.toList = some (expanded, []) ∧
+      expanded.length = params.sizes.uncompressed :=
+  Proofs.Formats.Parquet.ScalarPage.prepared_v1_gzip_member version codec wire
+
 theorem prepared_mask_length {params : Parameters} {limits : Limits} {source : Bytes}
     {page : Prepared} (h : prepare params limits source = .ok page) :
     page.mask.length = params.numValues :=

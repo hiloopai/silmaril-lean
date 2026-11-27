@@ -22,8 +22,6 @@ from thrift.transport.TTransport import TMemoryBuffer
 assert (version("pyarrow"), version("thrift")) == ("26.0.1", "0.25.0")
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
-OUT = Path(sys.argv[1]).resolve()
-OUT.mkdir(parents=True, exist_ok=True)
 THRIFT = run_path(str(ROOT / "tests/formats/parquet-timestamp-leaf/check-fixtures.py"))
 DICTIONARIES = [[b"", b"\xff\x00", b"\xed\xa0\x80", bytes([0xfe, group]) * 8, b"\xfe\x80unused"]
                 for group in range(2)]
@@ -159,48 +157,55 @@ def produce_fallback():
         return wire, groups[1][6].header
 
 
-cases = {}
-geometry = {}
-for name, version_number, crc in [("v1-absent", "1.0", False), ("v1-crc", "1.0", True), ("v2", "2.0", True)]:
-    cases[name] = produce(version_number, crc)
-    geometry[name] = inspect(cases[name], version_number, crc)
-    print(f"{name}: original headers {[[frame.header for frame in group] for group in geometry[name]]}", flush=True)
 
-crc_frame = geometry["v1-crc"][1][-1]
-crc_wire = cases["v1-crc"]
-cases["bad-crc"] = crc_wire[:crc_frame.body] + bytes([crc_wire[crc_frame.body] ^ 1]) + crc_wire[crc_frame.body + 1:]
-member_frame = geometry["v1-absent"][1][-1]
-cases["extra-member"] = add_member(cases["v1-absent"], member_frame)
-cases["fallback"], fallback_offset = produce_fallback()
-sink = pa.BufferOutputStream()
-pq.write_table(pa.table({"blob": ["雪", None, ""]}), sink, compression="GZIP", data_page_version="1.0",
-               use_dictionary=["blob"], write_statistics=False, store_schema=False)
-cases["string"] = sink.getvalue().to_pybytes()
-_, string_footer = read_footer(cases["string"])
-assert 10 in THRIFT["list_field"](string_footer, 2)[1]
-for name in ("bad-crc", "extra-member"):
-    with pq.ParquetFile(pa.BufferReader(cases[name]), page_checksum_verification=True) as file:
-        assert file.read_row_group(0, columns=["blob"]).column(0).to_pylist() == EXPECTED[0]
-bad_crc = crc32(cases["bad-crc"][crc_frame.body:crc_frame.stop])
-assert bad_crc != crc_frame.fields[4][1] % 2**32
-for name, wire in cases.items():
-    (OUT / f"{name}.parquet").write_bytes(wire)
+def main(out):
+    out.mkdir(parents=True, exist_ok=True)
+    cases = {}
+    geometry = {}
+    for name, version_number, crc in [("v1-absent", "1.0", False), ("v1-crc", "1.0", True), ("v2", "2.0", True)]:
+        cases[name] = produce(version_number, crc)
+        geometry[name] = inspect(cases[name], version_number, crc)
+        print(f"{name}: original headers {[[frame.header for frame in group] for group in geometry[name]]}", flush=True)
 
-subprocess.run([os.environ.get("LAKE", "lake"), "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
-                "--run", str(HERE / "Emit.lean"), str(OUT), str(crc_frame.header), str(member_frame.header),
-                str(geometry["v2"][0][1].header), str(geometry["v1-absent"][0][0].header), str(fallback_offset),
-                str(crc_frame.fields[4][1] % 2**32), str(bad_crc)],
-               cwd=ROOT, check=True)
-outputs = ["v1-absent", "v1-crc"]
-for name in outputs:
-    with pq.ParquetFile(OUT / f"{name}.parquet", page_checksum_verification=True) as source, \
-            pa.ipc.open_stream(OUT / f"{name}.arrows") as reader:
-        assert reader.schema == pa.schema([pa.field("blob", pa.binary_view())])
-        assert [batch.column(0).to_pylist() for batch in reader] == [
-            source.read_row_group(i, columns=["blob"]).column(0).to_pylist() for i in range(source.num_row_groups)]
+    crc_frame = geometry["v1-crc"][1][-1]
+    crc_wire = cases["v1-crc"]
+    cases["bad-crc"] = crc_wire[:crc_frame.body] + bytes([crc_wire[crc_frame.body] ^ 1]) + crc_wire[crc_frame.body + 1:]
+    member_frame = geometry["v1-absent"][1][-1]
+    cases["extra-member"] = add_member(cases["v1-absent"], member_frame)
+    cases["fallback"], fallback_offset = produce_fallback()
+    sink = pa.BufferOutputStream()
+    pq.write_table(pa.table({"blob": ["雪", None, ""]}), sink, compression="GZIP", data_page_version="1.0",
+                   use_dictionary=["blob"], write_statistics=False, store_schema=False)
+    cases["string"] = sink.getvalue().to_pybytes()
+    _, string_footer = read_footer(cases["string"])
+    assert 10 in THRIFT["list_field"](string_footer, 2)[1]
+    for name in ("bad-crc", "extra-member"):
+        with pq.ParquetFile(pa.BufferReader(cases[name]), page_checksum_verification=True) as file:
+            assert file.read_row_group(0, columns=["blob"]).column(0).to_pylist() == EXPECTED[0]
+    bad_crc = crc32(cases["bad-crc"][crc_frame.body:crc_frame.stop])
+    assert bad_crc != crc_frame.fields[4][1] % 2**32
+    for name, wire in cases.items():
+        (out / f"{name}.parquet").write_bytes(wire)
 
-artifacts = [OUT / f"{name}.parquet" for name in cases] + [OUT / f"{name}.arrows" for name in outputs]
-pins = {path.name: sha256(path.read_bytes()).hexdigest() for path in artifacts}
-print(json.dumps(pins, indent=2), flush=True)
-assert pins == json.loads((HERE / "fixtures.json").read_text())
-print("PyArrow/Thrift: exact dictionary octets, single GZIP members, [9, 9] BinaryView rows and pin replay")
+    subprocess.run([os.environ.get("LAKE", "lake"), "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
+                    "--run", str(HERE / "Emit.lean"), str(out), str(crc_frame.header), str(member_frame.header),
+                    str(geometry["v2"][0][1].header), str(geometry["v1-absent"][0][0].header), str(fallback_offset),
+                    str(crc_frame.fields[4][1] % 2**32), str(bad_crc)],
+                   cwd=ROOT, check=True)
+    outputs = ["v1-absent", "v1-crc"]
+    for name in outputs:
+        with pq.ParquetFile(out / f"{name}.parquet", page_checksum_verification=True) as source, \
+                pa.ipc.open_stream(out / f"{name}.arrows") as reader:
+            assert reader.schema == pa.schema([pa.field("blob", pa.binary_view())])
+            assert [batch.column(0).to_pylist() for batch in reader] == [
+                source.read_row_group(i, columns=["blob"]).column(0).to_pylist() for i in range(source.num_row_groups)]
+
+    artifacts = [out / f"{name}.parquet" for name in cases] + [out / f"{name}.arrows" for name in outputs]
+    pins = {path.name: sha256(path.read_bytes()).hexdigest() for path in artifacts}
+    print(json.dumps(pins, indent=2), flush=True)
+    assert pins == json.loads((HERE / "fixtures.json").read_text())
+    print("PyArrow/Thrift: exact dictionary octets, single GZIP members, [9, 9] BinaryView rows and pin replay")
+
+
+if __name__ == "__main__":
+    main(Path(sys.argv[1]).resolve())

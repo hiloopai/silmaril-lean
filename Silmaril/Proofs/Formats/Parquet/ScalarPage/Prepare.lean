@@ -182,4 +182,19 @@ public theorem prepared_mask_length {params : Parameters} {limits : Limits} {sou
     page.mask.length = params.numValues :=
   (preparedFor_counts h).1
 
+public theorem prepared_v1_gzip_member {params : Parameters} {limits : Limits} {layout : FlatPage.Layout}
+    {source : Bytes} {page : Prepared} {definitionEncoding repetitionEncoding : Int}
+    (version : params.version = .v1 definitionEncoding repetitionEncoding)
+    (codec : params.codec = Payload.Codec.gzip.id)
+    (wire : PreparedWire params limits layout source page) :
+    ∃ expanded, Compression.Gzip.decoder source.toList = some (expanded, []) ∧
+      expanded.length = params.sizes.uncompressed := by
+  simp only [PreparedWire, version] at wire
+  obtain ⟨_, _, expanded, _, exactPayload, _, _, _⟩ := wire
+  obtain ⟨_, length, actual, matched, expansion⟩ := exactPayload
+  rw [codec, Payload.Codec.ofId_id] at matched
+  cases matched
+  cases expansion with
+  | gzip exactMember => exact ⟨expanded, exactMember, length⟩
+
 end Silmaril.Proofs.Formats.Parquet.ScalarPage

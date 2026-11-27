@@ -6,7 +6,7 @@ import Mathlib.Data.List.Forall2
 import Silmaril.Formats.Parquet.ByteArrayFallback.Snappy.Thms
 import Silmaril.Formats.Parquet.ByteArrayFallback.Thms
 import Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Snappy.Thms
-import Silmaril.Formats.Parquet.Payload.Thms
+import Silmaril.Formats.Parquet.ScalarPage.Thms
 
 public section
 
@@ -69,12 +69,7 @@ theorem data_member {limits : Gzip.Dictionary.Limits} {source : Bytes} {entries 
   obtain ⟨⟨header, kind, _⟩, params, layout, page, _, original, _, _, _, _, prepared, _, _, _, _⟩ := wire
   simp only [FlatColumn.pageParameters, kind, Option.some.injEq] at original
   subst params
-  obtain ⟨_, _, expanded, _, encoded, _, _, _⟩ := prepared
-  obtain ⟨_, length, codec, matched, expansion⟩ := encoded
-  have selected := Option.some.inj (matched.symm.trans (Payload.Codec.ofId_id .gzip))
-  subst codec
-  cases expansion with
-  | gzip exactMember => exact ⟨expanded, exactMember, length⟩
+  exact ScalarPage.prepared_v1_gzip_member rfl rfl prepared
 
 private theorem pages_count {limits : Gzip.Dictionary.Limits} {source : Bytes}
     {entries : Array Bytes} {frames : List Page.Frame} {pages : List (List (Option Bytes))}

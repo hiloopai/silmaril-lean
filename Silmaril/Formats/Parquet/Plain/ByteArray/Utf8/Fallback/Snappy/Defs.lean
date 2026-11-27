@@ -35,16 +35,20 @@ def plainLimits (limits : Limits) : Plain.ByteArray.Limits :=
   ⟨limits.maxExpandedPageBytes, limits.file.maxValueBytes⟩
 
 /-- Check the whole stored body before decoding PLAIN opaque values. -/
-def decodePlainBytes (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+def decodePlainBytesWith (codec : Payload.Codec) (gzipCalls : Nat) (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
     (frame : Page.Frame) : Except (FlatColumn.PageError DecodeError) (List (Option Bytes)) := do
-  let some params := FlatColumn.pageParameters .optional Payload.Codec.snappy.id frame.value |
+  let some params := FlatColumn.pageParameters .optional codec.id frame.value |
     throw .unsupportedKind
   if !metadata.encodings.contains 0 then .error (.decode .unadvertisedPlain)
   else if limits.maxExpandedPageBytes < params.sizes.uncompressed then .error (.decode .expandedPageLimit)
   else do
     let _ ← (Page.Checksum.verify limits.file.column.maxPageBytes source frame).mapError (.decode ∘ .checksum)
-    (ScalarPage.decode (.byteArray (plainLimits limits)) params limits.scalar
+    (ScalarPage.decode (.byteArray (plainLimits limits)) params { limits.scalar with gzipCalls }
       (Page.Checksum.payloadBytes source frame)).mapError (.decode ∘ .plain)
+
+def decodePlainBytes (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
+    (frame : Page.Frame) : Except (FlatColumn.PageError DecodeError) (List (Option Bytes)) :=
+  decodePlainBytesWith .snappy 0 limits metadata source frame
 
 /-- Validate present PLAIN values as text in original logical slot order. -/
 def decodePlain (limits : Limits) (metadata : Footer.ColumnMetadata) (source : Bytes)
@@ -80,16 +84,18 @@ def readGroup {name : String} (limits : Limits) (checked : Checked name) (index 
     checked.physical.binding limits.toLimits (readFrames limits) index
 
 /-- Exact original stored bytes, scalar preparation and opaque PLAIN slots. -/
-def PlainBytesWire (limits : Limits) (source : Bytes) (frame : Page.Frame) (slots : List (Option Bytes)) : Prop :=
+def PlainBytesWireWith (codec : Payload.Codec) (gzipCalls : Nat) (limits : Limits) (source : Bytes) (frame : Page.Frame) (slots : List (Option Bytes)) : Prop :=
   let body := Page.Checksum.payloadBytes source frame
   ∃ (params : ScalarPage.Parameters) (layout : FlatPage.Layout) (page : ScalarPage.Prepared),
-    FlatColumn.pageParameters .optional Payload.Codec.snappy.id frame.value = some params ∧
+    FlatColumn.pageParameters .optional codec.id frame.value = some params ∧
     Dictionary.Snappy.StoredWire limits.file.column.maxPageBytes source frame ∧
     params.sizes.uncompressed ≤ limits.maxExpandedPageBytes ∧
-    ScalarPage.validate params limits.scalar body = .ok layout ∧
-    ScalarPage.PreparedWire params limits.scalar layout body page ∧ slots.map Option.isSome = page.mask ∧
+    ScalarPage.validate params { limits.scalar with gzipCalls } body = .ok layout ∧
+    ScalarPage.PreparedWire params { limits.scalar with gzipCalls } layout body page ∧ slots.map Option.isSome = page.mask ∧
     page.scalars.toList = Plain.ByteArray.wire (slots.filterMap id) ∧
     slots.length = ByteArrayFallback.declaredSlots frame
+
+def PlainBytesWire := PlainBytesWireWith .snappy 0
 
 /-- Exact original frame, raw levels or V1 body, and PLAIN UTF-8 octets. -/
 def PlainPageWire (limits : Limits) (source : Bytes) (frame : Page.Frame) (slots : List (Option String)) : Prop :=

@@ -37,10 +37,12 @@ private theorem map_present (slots : List (Option String)) :
   | nil => rfl
   | cons slot rest ih => cases slot <;> simp [ih]
 
-theorem decodePlainBytes_wire {limits : Utf8.Fallback.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+theorem decodePlainBytesWith_wire {codec : Payload.Codec} {gzipCalls : Nat}
+    {limits : Utf8.Fallback.Snappy.Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {slots : List (Option Bytes)}
-    (read : decodePlainBytes limits metadata source frame = .ok slots) : PlainBytesWire limits source frame slots := by
-  unfold decodePlainBytes at read
+    (read : decodePlainBytesWith codec gzipCalls limits metadata source frame = .ok slots) :
+    PlainBytesWireWith codec gzipCalls limits source frame slots := by
+  unfold decodePlainBytesWith at read
   split at read <;> try contradiction
   rename_i params original
   split at read <;> try contradiction
@@ -60,6 +62,11 @@ theorem decodePlainBytes_wire {limits : Utf8.Fallback.Snappy.Limits} {metadata :
   exact ⟨params, layout, page, original, Utf8.Dictionary.Snappy.stored_wire (mapError_ok verified),
     Nat.le_of_not_gt expanded, validated, wire, mask, exactPlain.trans (congrArg Plain.ByteArray.wire present).symm,
     count⟩
+
+theorem decodePlainBytes_wire {limits : Utf8.Fallback.Snappy.Limits} {metadata : Footer.ColumnMetadata}
+    {source : Bytes} {frame : Page.Frame} {slots : List (Option Bytes)}
+    (read : decodePlainBytes limits metadata source frame = .ok slots) : PlainBytesWire limits source frame slots :=
+  decodePlainBytesWith_wire read
 
 theorem decodePlain_wire {limits : Utf8.Fallback.Snappy.Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {slots : List (Option String)}

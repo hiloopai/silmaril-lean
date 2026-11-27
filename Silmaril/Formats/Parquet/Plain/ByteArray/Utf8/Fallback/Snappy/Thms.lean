@@ -16,6 +16,13 @@ theorem decodePlainBytes_wire {limits : Limits} {metadata : Footer.ColumnMetadat
     (read : decodePlainBytes limits metadata source frame = .ok slots) : PlainBytesWire limits source frame slots :=
   Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.Snappy.decodePlainBytes_wire read
 
+/-- The selected codec retains the exact PLAIN source, prepared mask and opaque slots. -/
+theorem decodePlainBytesWith_wire {codec : Payload.Codec} {gzipCalls : Nat} {limits : Limits}
+    {metadata : Footer.ColumnMetadata} {source : Bytes} {frame : Page.Frame} {slots : List (Option Bytes)}
+    (read : decodePlainBytesWith codec gzipCalls limits metadata source frame = .ok slots) :
+    PlainBytesWireWith codec gzipCalls limits source frame slots :=
+  Proofs.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.Snappy.decodePlainBytesWith_wire read
+
 /-- The CRC-checked original frame determines the exact PLAIN nullable octets. -/
 theorem decodePlain_wire {limits : Limits} {metadata : Footer.ColumnMetadata}
     {source : Bytes} {frame : Page.Frame} {slots : List (Option String)}
