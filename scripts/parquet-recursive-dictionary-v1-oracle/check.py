@@ -51,7 +51,9 @@ private def dictionary (file : Bytes) (group column : Nat)
           if info.encoding ≠ 8 then pure none
           else
             let sections ← take (readV2Sections {} binding.leaf file page.frame info)
-            pure (some (bytesAt file sections.spans.values))
+            let suffix ← take (readV2SuffixWith {} binding.codec page.frame info
+              (bytesAt file sections.spans.values) none)
+            pure (some suffix)
         | _ => throw (IO.userError "expected an original V1 or V2 data frame")
       if let some suffix := indices then
         let count := (page.decoded.levels.map LevelSlot.present).count true
@@ -141,7 +143,7 @@ def sections_v2(info, body, max_rep, max_def):
     return reps, defs, body[suffix_at:]
 
 
-def inspect(wire, schema, groups):
+def inspect(wire, schema, groups, *, decode_snappy=None):
     """Inspect raw frames independent of Lean, then compare the signed trace with PyArrow."""
     _, leaves = SCHEMA["describe"](wire, schema, [row for group in groups for row in group])
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
@@ -152,13 +154,17 @@ def inspect(wire, schema, groups):
         (_, path), field, steps, boundary = leaves[column]
         expected = [slot for row in groups[group] for slot in
                     CHUNK["from_arrow"](row[path[0]], schema.field(path[0]), path[1:])]
-        assert metadata[4][1] == 0 and metadata[6][1] == metadata[7][1] == stop - start
-        slot, row, live = 0, 0, False
+        codec = metadata[4][1]
+        assert codec == 0 or (codec == 1 and decode_snappy is not None)
+        assert metadata[7][1] == stop - start
+        slot, row, live, raw_total = 0, 0, False, 0
         dictionary, traces, pages, spans = None, [], [], []
         code = "<i" if field.type.bit_width == 32 else "<q"
         for ordinal, (at, header, payload, body) in enumerate(FRAMES(wire, start, stop)):
             tag = header[1][1]
-            assert header[2][1] == header[3][1] == len(body)
+            assert header[3][1] == len(body)
+            raw_size = header[2][1]
+            raw_total += (payload - at) + raw_size
             crc = header[4][1] & 0xffffffff
             assert zlib.crc32(body) == crc
             end = payload + len(body)
@@ -166,7 +172,9 @@ def inspect(wire, schema, groups):
                 assert ordinal == 0 and at == metadata[11][1] and end == metadata[9][1]
                 assert metadata[2][1][1] == [0, 3, 8]
                 info = header[7][1]
-                entries = [word for word, in struct.iter_unpack(code, body)]
+                raw = decode_snappy(body, raw_size) if codec == 1 else body
+                assert len(raw) == raw_size
+                entries = [word for word, in struct.iter_unpack(code, raw)]
                 assert info[1][1] == len(entries) and info[2][1] == 0
                 dictionary = (at, payload, end, crc, entries)
                 continue
@@ -176,7 +184,9 @@ def inspect(wire, schema, groups):
                 encoding = info[2][1]
                 assert [info[i][1] for i in (3, 4)] == [3, 3]
                 count = info[1][1]
-                reps, defs, _, suffix = section_suffix(body, max_rep, max_def, count)
+                raw = decode_snappy(body, raw_size) if codec == 1 else body
+                assert len(raw) == raw_size
+                reps, defs, _, suffix = section_suffix(raw, max_rep, max_def, count)
                 spans.append("none")
             else:
                 assert tag == 3
@@ -185,6 +195,10 @@ def inspect(wire, schema, groups):
                 encoding = info[4][1]
                 reps, defs, suffix = sections_v2(info, body, max_rep, max_def)
                 rep_end, def_end = payload + info[6][1], end - len(suffix)
+                suffix_size = raw_size - info[5][1] - info[6][1]
+                if codec == 1 and info.get(7, (None, True))[1]:
+                    suffix = decode_snappy(suffix, suffix_size)
+                assert len(suffix) == suffix_size
                 spans.append(f"(some ({V2['schema_term'](info)}, ⟨⟨{payload}, {rep_end}⟩, "
                              f"⟨{rep_end}, {def_end}⟩, ⟨{def_end}, {end}⟩⟩))")
             nonnull = defs.count(len(steps))
@@ -211,6 +225,7 @@ def inspect(wire, schema, groups):
                 live = False
             slot += count
             pages.append(Page(ordinal, at, payload, end, crc, before, (slot, row, live), events))
+        assert raw_total == metadata[6][1]
         assert pages[-1].stop == stop and slot == len(expected) == metadata[5][1]
         assert row == len(groups[group]) and (dictionary is not None) == (11 in metadata)
         yield Column(group, column, path, field.type.bit_width, start, stop, slot, row, steps, pages), dictionary, traces, spans
@@ -334,7 +349,7 @@ def verify(scratch):
     schema, groups = nested_samples()
     native = write(schema, groups)
     mixed = write(schema, groups, use_dictionary=["packet.items.list.élément.lo"])
-    compressed = write(schema, groups, compression="SNAPPY")
+    compressed = write(schema, groups, compression="GZIP")
     genuine = {"native": native, "mixed": mixed, "compressed": compressed}
     key = 1, 0
     edited = negative_files(native, key)
@@ -404,7 +419,7 @@ def verify(scratch):
                 f'(.chunk {address} ⟨{start}, {original_column.stop}⟩ (.uncompressedSize {total + 1} {total}))')
     code.append(f'  refuse (← load folder "wrong_data_offset") {group} {column} {{}} '
                 f'(.page {address} ⟨1, {dictionary[2]}, {{}}⟩ (.dataOffset {dictionary[2] + 1} {dictionary[2]}))')
-    code.append(f'  bindFailure (← load folder "compressed") {group} {column} (.column {address} (.codec 1))')
+    code.append(f'  bindFailure (← load folder "compressed") {group} {column} (.column {address} (.codec 2))')
 
     terminal = f".readError (.group 1 (.chunk ({late})))"
     bridge.extend([

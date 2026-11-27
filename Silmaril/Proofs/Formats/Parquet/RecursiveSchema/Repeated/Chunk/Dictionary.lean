@@ -28,9 +28,9 @@ private theorem from_mapError {α ε δ : Type} {first : Except ε α} {wrap : �
   | ok => simpa only [Except.mapError, Except.ok.injEq] using read
 
 public theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
-    {frame : Page.Frame} {dictionary : Dictionary}
-    (read : readDictionary limits leaf source frame = .ok dictionary) :
-    dictionary.frame = frame ∧ DictionaryWire limits leaf source dictionary := by
+    {frame : Page.Frame} {dictionary : Dictionary} {codec : DictionaryCodec}
+    (read : readDictionary limits leaf source frame codec = .ok dictionary) :
+    dictionary.frame = frame ∧ dictionary.codec = codec ∧ DictionaryWire limits leaf source dictionary := by
   unfold readDictionary at read
   split at read
   · rename_i info kind
@@ -45,16 +45,22 @@ public theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Byt
         · rename_i bytes
           split at read
           · contradiction
-          · rename_i sizes
-            obtain ⟨body, bodyRead, read⟩ := bind_ok read
-            obtain ⟨words, wordRead, done⟩ := bind_ok read
-            obtain ⟨_, original, exact, count, width, ordered⟩ :=
-              Plain.decodeFixedWidth_ok_iff.mp (from_mapError wordRead)
-            cases Except.ok.inj done
-            exact ⟨rfl, ⟨info, body, original, kind, Classical.not_not.mp encoding,
-              Nat.le_of_not_gt entries, Nat.le_of_not_gt bytes,
-              readV1Body_wire (fun _ => Classical.not_not.mp sizes) bodyRead,
-              exact, count, width, congrArg List.toArray ordered⟩⟩
+          · rename_i rawBytes
+            split at read
+            · contradiction
+            · rename_i sizes
+              obtain ⟨body, bodyRead, read⟩ := bind_ok read
+              obtain ⟨words, wordRead, done⟩ := bind_ok read
+              obtain ⟨_, original, exact, count, width, ordered⟩ :=
+                Plain.decodeFixedWidth_ok_iff.mp (from_mapError wordRead)
+              cases Except.ok.inj done
+              have rawSize : (codec.column == .uncompressed) = true →
+                  frame.value.uncompressedSize = frame.value.compressedSize :=
+                fun identity => Classical.byContradiction (fun mismatch =>
+                  sizes ⟨beq_iff_eq.mp identity, mismatch⟩)
+              exact ⟨rfl, rfl, ⟨info, body, original, kind, Classical.not_not.mp encoding,
+                Nat.le_of_not_gt entries, Nat.le_of_not_gt bytes, Nat.le_of_not_gt rawBytes,
+                readV1Body_wire rawSize bodyRead, exact, count, width, congrArg List.toArray ordered⟩⟩
   · contradiction
 
 public theorem decodeDictionarySlots_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
@@ -76,9 +82,9 @@ public theorem decodeDictionarySlots_wire {limits : Limits} {leaf : Leaf} {dicti
     (DictionaryIndex.select_ok_iff.mp selection).trans (congrArg (List.map some) positions.symm)⟩
 
 public theorem decodeDictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
-    DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded := by
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (read : decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling codec = .ok decoded) :
+    DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec := by
   unfold decodeDictionaryPage at read
   obtain ⟨info, header, read⟩ := bind_ok read
   obtain ⟨body, decodedBody, read⟩ := bind_ok read
@@ -94,47 +100,40 @@ public theorem decodeDictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictio
     repetition, definition, decodedWire, count⟩
 
 public theorem dictionaryPage_counts {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (wire : DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded) :
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (wire : DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec) :
     start.slot + decoded.levels.length = decoded.after.slot ∧
       start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
   obtain ⟨_, _, _, _, _, _, _, _, _, _, slots, _⟩ := wire.original
   exact slot_counts slots.slots
 
-private theorem identity_v2 (info : Page.DataV2) : ColumnCodec.uncompressed.v2 info = 0 := by
-  cases flag : info.isCompressed <;>
-    simp [ColumnCodec.v2, ScalarPage.v2Codec, ColumnCodec.id, ColumnCodec.payload, Payload.Codec.id, flag]
-
 public theorem decodeV2DictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
-    V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded := by
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat}
+    {decoded : DecodedPage} {codec : DictionaryCodec}
+    (read : decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling codec = .ok decoded) :
+    V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec := by
   unfold decodeV2DictionaryPage at read
   obtain ⟨info, header, read⟩ := bind_ok read
   obtain ⟨sections, sectionsRead, read⟩ := bind_ok read
   obtain ⟨suffix, suffixRead, read⟩ := bind_ok read
   obtain ⟨kind, encoding, cap, sizes⟩ := admitV2Page_wire header
-  have sameSizes := sizes (identity_v2 info)
   have sectionsWire := readV2Sections_wire sectionsRead
-  obtain ⟨storedExtent, _, suffixWire⟩ := readV2Suffix_wire suffixRead
-  cases suffixWire with
-  | compressed _ nonzero _ _ _ _ _ => exact False.elim (nonzero (identity_v2 info))
-  | raw _ suffixSize =>
-    obtain ⟨first, rows, nulls, checked, indices, closed⟩ := checkV2Slots_wire read
-    have slotWire := decodeDictionarySlots_wire indices
-    have count := congrArg List.length (original_levels slotWire.slots).1
-    simp only [List.length_map, sectionsWire.count] at count
-    exact ⟨info, sections, checked, kind, encoding, cap, sameSizes, storedExtent, sectionsWire,
-      suffixSize, first, rows, nulls, closed ▸ count, slotWire, closed⟩
+  obtain ⟨storedExtent, rawExtent, suffixWire⟩ := readV2SuffixWith_wire suffixRead
+  obtain ⟨first, rows, nulls, checked, indices, closed⟩ := checkV2Slots_wire read
+  have slotWire := decodeDictionarySlots_wire indices
+  have count := congrArg List.length (original_levels slotWire.slots).1
+  simp only [List.length_map, sectionsWire.count] at count
+  exact ⟨info, sections, checked, suffix, kind, encoding, cap, sizes, storedExtent, rawExtent,
+    sectionsWire, suffixWire, first, rows, nulls, closed ▸ count, slotWire, closed⟩
 
 public theorem v2Dictionary_accounting {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (wire : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded) :
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (wire : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec) :
     ∃ info, frame.value.kind = .dataV2 info ∧
       decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
       decoded.levels.countP LevelSlot.startsRow = info.numRows ∧
       absentSlots decoded = info.numNulls ∧ decoded.after.live = false := by
-  obtain ⟨info, sections, checked, kind, _, _, _, _, _, _, _, rows, nulls, count, slots, closed⟩ := wire.original
+  obtain ⟨info, _, checked, _, kind, _, _, _, _, _, _, _, _, rows, nulls, count, slots, closed⟩ := wire.original
   subst decoded
   change checked.levels.length = info.numValues at count
   have aligned : checked.words.length = info.numValues := by
@@ -146,9 +145,9 @@ public theorem v2Dictionary_accounting {limits : Limits} {leaf : Leaf} {dictiona
   exact ⟨info, kind, count, aligned, rowCount, nulls, rfl⟩
 
 public theorem decodeDictionaryDataPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeDictionaryDataPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
-    DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded := by
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (read : decodeDictionaryDataPage limits leaf dictionary source frame start remaining rowCeiling codec = .ok decoded) :
+    DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec := by
   unfold decodeDictionaryDataPage at read
   split at read
   · split at read
@@ -160,15 +159,15 @@ public theorem decodeDictionaryDataPage_wire {limits : Limits} {leaf : Leaf} {di
   · contradiction
 
 public theorem dictionaryDataPage_counts {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (wire : DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded) :
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (wire : DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec) :
     start.slot + decoded.levels.length = decoded.after.slot ∧
       start.rows + decoded.levels.countP LevelSlot.startsRow = decoded.after.rows := by
   cases wire with
   | plain original => exact dataPage_counts original
   | v1 original => exact dictionaryPage_counts original
   | v2 original =>
-    obtain ⟨_, _, checked, _, _, _, _, _, _, _, _, _, _, _, slots, closed⟩ := original.original
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, slots, closed⟩ := original.original
     subst decoded
     simpa only [closeV2] using slot_counts slots.slots
 

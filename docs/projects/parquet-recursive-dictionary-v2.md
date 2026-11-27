@@ -7,7 +7,7 @@ one repeated ancestor per leaf. Pages select V1 or V2 from the
 original frame and check RLE_DICTIONARY in either version.
 PLAIN_DICTIONARY is a typed encoding refusal. Compressed
 dictionaries remain outside this profile.
-[PLAIN fallback extension](parquet-recursive-dictionary-fallback.md) · [Parquet dictionary encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md)
+[PLAIN fallback extension](parquet-recursive-dictionary-fallback.md) · [Snappy](parquet-recursive-dictionary-snappy.md) · [Parquet dictionary encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/Encodings.md)
 
 The common V2 reader verifies the optional CRC over the original
 stored body and takes the original repetition, definition and

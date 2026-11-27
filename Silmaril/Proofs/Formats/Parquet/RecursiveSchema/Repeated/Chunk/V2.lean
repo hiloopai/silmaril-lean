@@ -128,12 +128,12 @@ public theorem checkV2Slots_wire {start : State} {info : Page.DataV2} {reps : Li
         exact ⟨Classical.not_not.mp first, Classical.not_not.mp rows, Classical.not_not.mp nulls,
           checked, readSlots, rfl⟩
 
-public theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf}
-    {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes}
-    (read : readV2Suffix limits codec leaf frame info stored = .ok raw) :
+public theorem readV2SuffixWith_wire {limits : Limits} {codec : ColumnCodec}
+    {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes} {signedExtent : Option Nat}
+    (read : readV2SuffixWith limits codec frame info stored signedExtent = .ok raw) :
     v2LevelBytes info ≤ frame.value.compressedSize ∧ v2LevelBytes info ≤ frame.value.uncompressedSize ∧
       V2SuffixWire limits codec frame info stored raw := by
-  unfold readV2Suffix at read
+  unfold readV2SuffixWith at read
   dsimp only at read
   split at read
   · contradiction
@@ -160,6 +160,13 @@ public theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf :
         · contradiction
         · obtain ⟨model, before, _, after, _⟩ := decodePayload_wire read
           exact .compressed compressed notRaw model before after (by omega) read
+
+public theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf}
+    {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes}
+    (read : readV2Suffix limits codec leaf frame info stored = .ok raw) :
+    v2LevelBytes info ≤ frame.value.compressedSize ∧ v2LevelBytes info ≤ frame.value.uncompressedSize ∧
+      V2SuffixWire limits codec frame info stored raw :=
+  readV2SuffixWith_wire read
 
 public theorem decodeV2Page_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf} {source : Bytes} {frame : Page.Frame}
     {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}

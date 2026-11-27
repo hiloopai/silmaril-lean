@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Formats.Parquet.Page.Thms
+import Silmaril.Formats.Parquet.Footer.Thms
 import Silmaril.Formats.Parquet.Snapshot.Thms
 import Silmaril.Formats.Parquet.Footer.PageLessRecursive.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.V2
@@ -122,7 +123,7 @@ public theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
   | plain _ offset =>
     cases Except.ok.inj read
     exact offset
-  | dictionary _ codec =>
+  | dictionary _ codec originalCodec =>
     unfold readPrefix at read
     dsimp only at read
     split at read
@@ -137,7 +138,7 @@ public theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
           | error => simp [parsed, Except.mapError, bind, Except.bind] at read
           | ok frame =>
             simp only [parsed, Except.mapError, bind, Except.bind] at read
-            cases decoded : readDictionary limits carrier.leaf carrier.bytes frame with
+            cases decoded : readDictionary limits carrier.leaf carrier.bytes frame codec with
             | error => simp [decoded] at read
             | ok dict =>
               simp only [decoded] at read
@@ -145,8 +146,8 @@ public theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
               · contradiction
               · rename_i dataOffset
                 cases Except.ok.inj read
-                obtain ⟨rfl, words⟩ := readDictionary_wire decoded
-                refine ⟨codec, ?_, by omega, by omega, by omega, parsed, words⟩
+                obtain ⟨rfl, sameCodec, words⟩ := readDictionary_wire decoded
+                refine ⟨sameCodec.symm ▸ originalCodec, ?_, by omega, by omega, by omega, parsed, words⟩
                 rw [offsetEq, Classical.not_not.mp origin]
                 rfl
     · contradiction
@@ -234,6 +235,37 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
       (List.mem_of_getElem? binding.chunkAt)
     exact ⟨by simp [Observation.levels, slots], by simp [Observation.levels, rows],
       by simp [carrier, Page.columnSpan, Footer.checkDataSpan, bytes]⟩
+
+private theorem chain_storedSize {span : Footer.Span} {start stop : Nat} {frames : List Page.Frame}
+    (wire : Page.Chain span start stop frames) : stop = start + storedChunkBytes frames := by
+  induction wire with
+  | nil => simp [storedChunkBytes]
+  | @cons start stop frame rest within _ ih =>
+    have headerStart := within.headerStart
+    have headerProgress := within.headerProgress
+    have adjacent := within.adjacent
+    have payloadWidth := within.payloadWidth
+    simp only [storedChunkBytes, List.map_cons, List.sum_cons] at ih ⊢
+    omega
+
+public theorem chunkBytes_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat}
+    {limits : Limits} {binding : Binding schema group column} {output : Observation}
+    {span : Footer.Span} (wire : Wire limits binding output) (framed : binding.span? = some span) :
+    binding.chunk.metadata.totalCompressedSize = Int.ofNat (storedChunkBytes output.frames) ∧
+      binding.chunk.metadata.totalUncompressedSize = Int.ofNat (rawChunkBytes output.frames) := by
+  cases storage : binding.storage with
+  | pageless => simp [Binding.span?, storage] at framed
+  | framed originalSpan _ original =>
+    simp only [Binding.span?, storage, Option.some.injEq] at framed
+    subst span
+    have checked : FramedWire limits binding originalSpan output := by
+      simpa only [storage] using wire.storage
+    have storedSize := chain_storedSize checked.frames
+    have storedSizeInt := congrArg Int.ofNat storedSize
+    change (originalSpan.stop : Int) = (originalSpan.start : Int) + Int.ofNat (storedChunkBytes output.frames) at storedSizeInt
+    obtain ⟨first, last, _⟩ := Footer.checkDataSpan_some_iff.mp original
+    exact ⟨by omega, checked.uncompressed⟩
 
 public theorem noSpan_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}

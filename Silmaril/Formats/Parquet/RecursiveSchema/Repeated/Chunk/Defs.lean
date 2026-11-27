@@ -6,7 +6,7 @@ public import Silmaril.Formats.Parquet.FlatColumn.Zstd.Defs
 public import Silmaril.Formats.Parquet.ScalarPage.BrotliRaw.Defs
 public import Silmaril.Formats.Parquet.DictionaryIndex.Defs
 
-/-! Checked unindexed PLAIN V1/V2 and uncompressed dictionary-first V1/V2 chunks,
+/-! Checked unindexed PLAIN V1/V2 and identity or Snappy dictionary-first V1/V2 chunks,
 with at most one repeated ancestor and independent bounds on slots and row starts. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -100,10 +100,26 @@ instance (metadata : Footer.ColumnMetadata) : Decidable (DictionaryEncodings met
   unfold DictionaryEncodings
   infer_instance
 
+/-- The codecs currently admitted for dictionary-first columns. -/
+inductive DictionaryCodec where
+  | uncompressed
+  | snappy
+  deriving DecidableEq, Repr
+
+def DictionaryCodec.ofId : Int → Option DictionaryCodec
+  | 0 => some .uncompressed
+  | 1 => some .snappy
+  | _ => none
+
+def DictionaryCodec.column : DictionaryCodec → ColumnCodec
+  | .uncompressed => .uncompressed
+  | .snappy => .snappy
+
 inductive FramedEncoding (metadata : Footer.ColumnMetadata) where
   | plain : SupportedEncodings metadata → metadata.dictionaryPageOffset = none →
       FramedEncoding metadata
-  | dictionary : DictionaryEncodings metadata → metadata.codec = 0 → FramedEncoding metadata
+  | dictionary : DictionaryEncodings metadata → (codec : DictionaryCodec) →
+      DictionaryCodec.ofId metadata.codec = some codec → FramedEncoding metadata
 
 /-- A pageless chunk retains its original metadata, but has no byte interval. -/
 inductive Storage (snapshot : Snapshot.Checked) (rowGroup : Footer.RowGroup)
@@ -168,9 +184,9 @@ public def bindChunk {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
   let encodings ← if admitted : snapshot.admitsPageLessRecursive rowGroup = true then
       pure (Sum.inl (PLift.up admitted))
     else if metadata.dictionaryPageOffset.isSome || metadata.encodings.contains 8 then do
-      let ⟨identity⟩ ← check (metadata.codec = 0) (fail (.codec metadata.codec))
+      let ⟨dictionaryCodec, original⟩ ← lookup (DictionaryCodec.ofId metadata.codec) (fail (.codec metadata.codec))
       let ⟨supported⟩ ← check (DictionaryEncodings metadata) (fail (.encodings metadata.encodings))
-      pure (Sum.inr (.dictionary supported identity))
+      pure (Sum.inr (.dictionary supported dictionaryCodec original))
     else do
       let ⟨supported⟩ ← check (SupportedEncodings metadata) (fail (.encodings metadata.encodings))
       let ⟨offset⟩ ← check (metadata.dictionaryPageOffset = none) (fail .pageOffsets)
@@ -227,6 +243,7 @@ inductive PageCause where
   | dictionaryEncoding (actual : Int)
   | dictionaryEntryLimit (count : Nat)
   | dictionaryByteLimit (count : Nat)
+  | dictionaryRawByteLimit (count : Nat)
   | dictionaryIndices (original : DictionaryIndex.Error)
   | v2Encoding (actual : Int)
   | v2Extent
@@ -510,8 +527,8 @@ def v2ValueBounds (limits : Limits) (frame : Page.Frame) (info : Page.DataV2) : 
 
 /-- Check both extents before subtracting the original raw level prefix.
 Only the independently bounded stored value suffix enters the codec. -/
-def readV2Suffix (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
-    (frame : Page.Frame) (info : Page.DataV2) (stored : Bytes) : Except PageCause Bytes := do
+def readV2SuffixWith (limits : Limits) (codec : ColumnCodec) (frame : Page.Frame)
+    (info : Page.DataV2) (stored : Bytes) (signedExtent : Option Nat) : Except PageCause Bytes := do
   let levels := v2LevelBytes info
   let bounds := v2ValueBounds limits frame info
   if levels > frame.value.compressedSize ∨ levels > frame.value.uncompressedSize then
@@ -521,9 +538,14 @@ def readV2Suffix (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
     else throw .v2Extent
   else
     if frame.value.uncompressedSize > limits.maxBodyBytes then throw (.payload .outputLimit)
-    let expected := (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind
-    if bounds.expectedSize ≠ expected then throw (.v2SignedExtent bounds.expectedSize expected)
+    if signedExtent.any (· != bounds.expectedSize) then
+      throw (.v2SignedExtent bounds.expectedSize (signedExtent.getD 0))
     decodePayload limits codec bounds stored
+
+def readV2Suffix (limits : Limits) (codec : ColumnCodec) (leaf : Leaf)
+    (frame : Page.Frame) (info : Page.DataV2) (stored : Bytes) : Except PageCause Bytes :=
+  readV2SuffixWith limits codec frame info stored
+    (some ((info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth leaf.kind))
 
 inductive V2SuffixWire (limits : Limits) (codec : ColumnCodec) (frame : Page.Frame)
     (info : Page.DataV2) (stored : Bytes) : Bytes → Prop where
@@ -610,21 +632,24 @@ inductive DataPageWire (limits : Limits) (codec : ColumnCodec) (leaf : Leaf) (so
 structure Dictionary where
   frame : Page.Frame
   entries : Array Word
+  codec : DictionaryCodec
   deriving Repr
 
-def readDictionary (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame) :
-    Except PageCause Dictionary := do
+def readDictionary (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (codec : DictionaryCodec := .uncompressed) : Except PageCause Dictionary := do
   let .dictionary info := frame.value.kind | throw .missingDictionary
   if info.encoding ≠ 0 then throw (.dictionaryEncoding info.encoding)
   else if info.numValues > limits.maxDictionaryEntries then throw (.dictionaryEntryLimit info.numValues)
   else if frame.value.compressedSize > limits.maxDictionaryBytes then
     throw (.dictionaryByteLimit frame.value.compressedSize)
-  else if frame.value.uncompressedSize ≠ frame.value.compressedSize then
+  else if frame.value.uncompressedSize > limits.maxDictionaryBytes then
+    throw (.dictionaryRawByteLimit frame.value.uncompressedSize)
+  else if codec.column = .uncompressed ∧ frame.value.uncompressedSize ≠ frame.value.compressedSize then
     throw (.header (.pageSizes frame.value.uncompressedSize frame.value.compressedSize))
   else
-    let body ← readV1Body limits .uncompressed source frame
+    let body ← readV1Body limits codec.column source frame
     let entries ← (RecursiveSchema.Chunk.readWords leaf.kind info.numValues body).mapError .plain
-    return ⟨frame, entries.toArray⟩
+    return ⟨frame, entries.toArray, codec⟩
 
 structure DictionaryWire (limits : Limits) (leaf : Leaf) (source : Bytes)
     (dictionary : Dictionary) : Prop where
@@ -632,7 +657,8 @@ structure DictionaryWire (limits : Limits) (leaf : Leaf) (source : Bytes)
     dictionary.frame.value.kind = .dictionary info ∧ info.encoding = 0 ∧
     info.numValues ≤ limits.maxDictionaryEntries ∧
     dictionary.frame.value.compressedSize ≤ limits.maxDictionaryBytes ∧
-    V1BodyWire limits .uncompressed source dictionary.frame body ∧
+    dictionary.frame.value.uncompressedSize ≤ limits.maxDictionaryBytes ∧
+    V1BodyWire limits dictionary.codec.column source dictionary.frame body ∧
     body.toList = words.flatten ∧ words.length = info.numValues ∧
     (∀ word ∈ words, word.length = RecursiveSchema.Chunk.wordWidth leaf.kind) ∧
     dictionary.entries = (words.map (RecursiveSchema.Chunk.readWord leaf.kind)).toArray
@@ -661,73 +687,75 @@ structure DictionarySlotsWire (limits : Limits) (leaf : Leaf) (dictionary : Arra
     indices.map (fun index => dictionary[index]?) = (decoded.words.filterMap id).map some
 
 def decodeDictionaryPage (limits : Limits) (leaf : Leaf) (dictionary : Array Word) (source : Bytes)
-    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
-  let info ← admitPage frame remaining .uncompressed 8
-  let body ← readV1Body limits .uncompressed source frame
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
+    (codec : DictionaryCodec := .uncompressed) : Except PageCause DecodedPage := do
+  let info ← admitPage frame remaining codec.column 8
+  let body ← readV1Body limits codec.column source frame
   let reps ← (readLevels limits.levels leaf.maxRepetition info.numValues body).mapError .repetition
   let defs ← (readLevels limits.levels leaf.maxDefinition info.numValues reps.tail).mapError .definition
   decodeDictionarySlots limits leaf dictionary reps.levels defs.levels defs.tail start rowCeiling
 
 structure DictionaryPageWire (limits : Limits) (leaf : Leaf) (dictionary : Array Word)
     (source : Bytes) (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
-    (decoded : DecodedPage) : Prop where
+    (decoded : DecodedPage) (codec : DictionaryCodec := .uncompressed) : Prop where
   original : ∃ (info : Page.DataV1) (body : Bytes) (reps defs : LevelBlock),
     frame.value.kind = .dataV1 info ∧
     (info.encoding = 8 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
     info.numValues ≤ remaining ∧
-    V1BodyWire limits .uncompressed source frame body ∧
+    V1BodyWire limits codec.column source frame body ∧
     LevelWire limits.levels leaf.maxRepetition info.numValues body reps ∧
     LevelWire limits.levels leaf.maxDefinition info.numValues reps.tail defs ∧
     DictionarySlotsWire limits leaf dictionary reps.levels defs.levels defs.tail start rowCeiling decoded ∧
     decoded.levels.length = info.numValues
 
-/-- Under codec zero the V2 index suffix is raw for either resolved flag.
-Its count and variable byte extent are checked by the Hybrid index reader. -/
+/-- V2 index streams have a header-sized suffix for either resolved flag.
+The Hybrid reader checks the variable byte extent and value count. -/
 def decodeV2DictionaryPage (limits : Limits) (leaf : Leaf) (dictionary : Array Word) (source : Bytes)
-    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage := do
-  let info ← admitV2Page .uncompressed frame remaining 8
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
+    (codec : DictionaryCodec := .uncompressed) : Except PageCause DecodedPage := do
+  let info ← admitV2Page codec.column frame remaining 8
   let sections ← readV2Sections limits leaf source frame info
-  let suffix ← readV2Suffix limits .uncompressed leaf frame info (bytesAt source sections.spans.values)
+  let suffix ← readV2SuffixWith limits codec.column frame info (bytesAt source sections.spans.values) none
   checkV2Slots info sections.repetitions start fun _ =>
     decodeDictionarySlots limits leaf dictionary sections.repetitions sections.definitions suffix start rowCeiling
 
 structure V2DictionaryPageWire (limits : Limits) (leaf : Leaf) (dictionary : Array Word)
     (source : Bytes) (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
-    (decoded : DecodedPage) : Prop where
-  original : ∃ (info : Page.DataV2) (sections : V2Sections) (checked : DecodedPage),
+    (decoded : DecodedPage) (codec : DictionaryCodec := .uncompressed) : Prop where
+  original : ∃ (info : Page.DataV2) (sections : V2Sections) (checked : DecodedPage) (suffix : Bytes),
     frame.value.kind = .dataV2 info ∧ info.encoding = 8 ∧ info.numValues ≤ remaining ∧
-    frame.value.uncompressedSize = frame.value.compressedSize ∧
-    v2LevelBytes info ≤ frame.value.compressedSize ∧
+    (codec.column.v2 info = 0 → frame.value.uncompressedSize = frame.value.compressedSize) ∧
+    v2LevelBytes info ≤ frame.value.compressedSize ∧ v2LevelBytes info ≤ frame.value.uncompressedSize ∧
     V2SectionsWire limits leaf source frame info sections ∧
-    (bytesAt source sections.spans.values).length = frame.value.uncompressedSize - v2LevelBytes info ∧
+    V2SuffixWire limits codec.column frame info (bytesAt source sections.spans.values) suffix ∧
     sections.repetitions.head?.getD 0 = 0 ∧ sections.repetitions.count 0 = info.numRows ∧
     absentSlots decoded = info.numNulls ∧ decoded.levels.length = info.numValues ∧
-    DictionarySlotsWire limits leaf dictionary sections.repetitions sections.definitions
-      (bytesAt source sections.spans.values) start rowCeiling checked ∧
+    DictionarySlotsWire limits leaf dictionary sections.repetitions sections.definitions suffix start rowCeiling checked ∧
     decoded = closeV2 checked
 
 /-- A chunk's leading dictionary remains available to every data page.
 Each original data header selects the value decoder for that page. -/
 def decodeDictionaryDataPage (limits : Limits) (leaf : Leaf) (dictionary : Array Word) (source : Bytes)
-    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat) : Except PageCause DecodedPage :=
+    (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
+    (codec : DictionaryCodec := .uncompressed) : Except PageCause DecodedPage :=
   match frame.value.kind with
   | .dataV1 info =>
-    if info.encoding = 0 then decodePage limits leaf source frame start remaining rowCeiling
-    else decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling
+    if info.encoding = 0 then decodeV1Page limits codec.column leaf source frame start remaining rowCeiling
+    else decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling codec
   | .dataV2 info =>
-    if info.encoding = 0 then decodeV2Page limits .uncompressed leaf source frame start remaining rowCeiling
-    else decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling
+    if info.encoding = 0 then decodeV2Page limits codec.column leaf source frame start remaining rowCeiling
+    else decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling codec
   | kind => .error (.header (.pageKind kind))
 
 inductive DictionaryDataPageWire (limits : Limits) (leaf : Leaf) (dictionary : Array Word)
     (source : Bytes) (frame : Page.Frame) (start : State) (remaining rowCeiling : Nat)
-    (decoded : DecodedPage) : Prop where
-  | plain : DataPageWire limits .uncompressed leaf source frame start remaining rowCeiling decoded →
-      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded
-  | v1 : DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded →
-      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded
-  | v2 : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded →
-      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded
+    (decoded : DecodedPage) (codec : DictionaryCodec := .uncompressed) : Prop where
+  | plain : DataPageWire limits codec.column leaf source frame start remaining rowCeiling decoded →
+      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec
+  | v1 : DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec →
+      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec
+  | v2 : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec →
+      DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec
 
 structure ObservedPage where
   start : Cursor
@@ -746,7 +774,7 @@ structure Carrier where
   slots : Nat
   rows : Nat
   codec : ColumnCodec
-  dictionary : Option (Array Word)
+  dictionary : Option Dictionary
 
 def decodeFramedPage (limits : Limits) (carrier : Carrier) (frame : Page.Frame)
     (start : State) : Except PageCause DecodedPage :=
@@ -756,16 +784,17 @@ def decodeFramedPage (limits : Limits) (carrier : Carrier) (frame : Page.Frame)
     let remaining := carrier.slots - start.slot
     match carrier.dictionary with
     | none => decodeDataPage limits carrier.codec carrier.leaf carrier.bytes frame start remaining carrier.rows
-    | some entries =>
-      decodeDictionaryDataPage limits carrier.leaf entries carrier.bytes frame start remaining carrier.rows
+    | some dictionary =>
+      decodeDictionaryDataPage limits carrier.leaf dictionary.entries carrier.bytes frame start
+        remaining carrier.rows dictionary.codec
 
 def FramedPageWire (limits : Limits) (carrier : Carrier) (frame : Page.Frame)
     (start : State) (decoded : DecodedPage) : Prop :=
   match carrier.dictionary with
   | none => DataPageWire limits carrier.codec carrier.leaf carrier.bytes frame start
       (carrier.slots - start.slot) carrier.rows decoded
-  | some entries => DictionaryDataPageWire limits carrier.leaf entries carrier.bytes frame start
-      (carrier.slots - start.slot) carrier.rows decoded
+  | some dictionary => DictionaryDataPageWire limits carrier.leaf dictionary.entries carrier.bytes frame start
+      (carrier.slots - start.slot) carrier.rows decoded dictionary.codec
 
 def initial (carrier : Carrier) : Cursor := ⟨0, carrier.span.start, {}⟩
 
@@ -804,14 +833,14 @@ def carrierOf {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (binding : Binding schema group column) (span : Footer.Span)
     (dictionary : Option Dictionary := none) : Carrier :=
   ⟨snapshot.bytes, span, binding.leaf, ⟨group, column, binding.leaf.site.location.path⟩,
-    binding.chunk.metadata.numValues.toNat, binding.rowGroup.numRows.toNat, binding.codec, dictionary.map (·.entries)⟩
+    binding.chunk.metadata.numValues.toNat, binding.rowGroup.numRows.toNat, binding.codec, dictionary⟩
 
-/-- Parquet column sizes include each original header. The identity codec
-already checks that the footer size agrees with the stored span. -/
-def rawChunkBytes (carrier : Carrier) (pages : List ObservedPage) : Nat :=
-  if carrier.codec = .uncompressed then carrier.span.stop - carrier.span.start
-  else (pages.map fun page =>
-    page.frame.header.stop - page.frame.header.start + page.frame.value.uncompressedSize).sum
+/-- Parquet column sizes include each original header, including the dictionary. -/
+def storedChunkBytes (frames : List Page.Frame) : Nat :=
+  (frames.map fun frame => frame.header.stop - frame.header.start + frame.value.compressedSize).sum
+
+def rawChunkBytes (frames : List Page.Frame) : Nat :=
+  (frames.map fun frame => frame.header.stop - frame.header.start + frame.value.uncompressedSize).sum
 
 /-- A dictionary occupies physical page ordinal zero but consumes no slots
 or rows. Its stored end must coincide with the declared first data page. -/
@@ -821,7 +850,7 @@ def readPrefix (limits : Limits) (carrier : Carrier) (metadata : Footer.ColumnMe
     (encoding : FramedEncoding metadata) : Except Error (Option Dictionary) := do
   match encoding with
   | .plain _ _ => return none
-  | .dictionary _ _ =>
+  | .dictionary _ codec _ =>
     let cursor := initial carrier
     let failed := Error.page carrier.address cursor
     let some offset := metadata.dictionaryPageOffset | throw (failed .missingDictionary)
@@ -830,7 +859,7 @@ def readPrefix (limits : Limits) (carrier : Carrier) (metadata : Footer.ColumnMe
     else
       let frame ← (Page.readPage limits.framing carrier.bytes carrier.span cursor.byte).mapError
         (failed ∘ .framing)
-      let dictionary ← (readDictionary limits carrier.leaf carrier.bytes frame).mapError failed
+      let dictionary ← (readDictionary limits carrier.leaf carrier.bytes frame codec).mapError failed
       if metadata.dataPageOffset ≠ Int.ofNat frame.payload.stop ∨ frame.payload.stop ≥ carrier.span.stop then
         throw (Error.page carrier.address (afterDictionary dictionary)
           (.dataOffset metadata.dataPageOffset frame.payload.stop))
@@ -843,7 +872,7 @@ def prefixCursor (carrier : Carrier) (dictionary : Option Dictionary) : Cursor :
 
 structure PrefixWire (limits : Limits) (carrier : Carrier) (metadata : Footer.ColumnMetadata)
     (dictionary : Dictionary) : Prop where
-  codec : metadata.codec = 0
+  codec : DictionaryCodec.ofId metadata.codec = some dictionary.codec
   offset : metadata.dictionaryPageOffset = some (Int.ofNat carrier.span.start)
   dataOffset : metadata.dataPageOffset = Int.ofNat dictionary.frame.payload.stop
   hasData : dictionary.frame.payload.stop < carrier.span.stop
@@ -874,10 +903,11 @@ def readFramed {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     let dictionary ← readPrefix limits carrier binding.chunk.metadata encoding
     let start := prefixCursor carrier dictionary
     let pages ← walk limits (carrierOf binding span dictionary) (limits.framing.maxPages - start.page) start []
-    let rawBytes := rawChunkBytes carrier pages
+    let observed := Observation.mk pages dictionary
+    let rawBytes := rawChunkBytes observed.frames
     if binding.chunk.metadata.totalUncompressedSize ≠ Int.ofNat rawBytes then
       throw (failed (.uncompressedSize binding.chunk.metadata.totalUncompressedSize rawBytes))
-    return ⟨pages, dictionary⟩
+    return observed
 
 def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
@@ -905,7 +935,7 @@ structure FramedWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
   rowCap : binding.rowGroup.numRows.toNat ≤ limits.maxRows
   pageCap : output.frames.length ≤ limits.framing.maxPages
   leading : PrefixAdmission limits (carrierOf binding span) binding.chunk.metadata output.dictionary
-  uncompressed : binding.chunk.metadata.totalUncompressedSize = Int.ofNat (rawChunkBytes (carrierOf binding span) output.pages)
+  uncompressed : binding.chunk.metadata.totalUncompressedSize = Int.ofNat (rawChunkBytes output.frames)
   chain : ∃ stop : Cursor, stop.byte = span.stop ∧
     stop.state.slot = binding.chunk.metadata.numValues.toNat ∧
     stop.state.rows = binding.rowGroup.numRows.toNat ∧

@@ -110,30 +110,30 @@ theorem decodeDataPage_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf
 /-- The ordered entries come from exact signed words in the original
 checksum-checked dictionary frame. -/
 theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
-    {frame : Page.Frame} {dictionary : Dictionary}
-    (read : readDictionary limits leaf source frame = .ok dictionary) :
-    dictionary.frame = frame ∧ DictionaryWire limits leaf source dictionary :=
+    {frame : Page.Frame} {dictionary : Dictionary} {codec : DictionaryCodec}
+    (read : readDictionary limits leaf source frame codec = .ok dictionary) :
+    dictionary.frame = frame ∧ dictionary.codec = codec ∧ DictionaryWire limits leaf source dictionary :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readDictionary_wire read
 
 /-- Every present slot follows the exact original padded Hybrid stream and
 selects an in-range word from this chunk's dictionary in original order. -/
 theorem decodeDictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
-    DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded :=
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (read : decodeDictionaryPage limits leaf dictionary source frame start remaining rowCeiling codec = .ok decoded) :
+    DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDictionaryPage_wire read
 
 /-- The V2 raw sections, exact Hybrid suffix and local dictionary bind the
 original slots and values. The V2 cursor closes even for an empty page. -/
 theorem decodeV2DictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
-    V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded :=
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (read : decodeV2DictionaryPage limits leaf dictionary source frame start remaining rowCeiling codec = .ok decoded) :
+    V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeV2DictionaryPage_wire read
 
 theorem V2DictionaryPageWire.accounting {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (wire : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded) :
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (wire : V2DictionaryPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec) :
     ∃ info, frame.value.kind = .dataV2 info ∧
       decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
       decoded.levels.countP LevelSlot.startsRow = info.numRows ∧
@@ -143,9 +143,9 @@ theorem V2DictionaryPageWire.accounting {limits : Limits} {leaf : Leaf} {diction
 /-- Within a dictionary-first chunk, the original per-page tag binds
 either exact PLAIN words or indices into the same leading dictionary. -/
 theorem decodeDictionaryDataPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
-    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage}
-    (read : decodeDictionaryDataPage limits leaf dictionary source frame start remaining rowCeiling = .ok decoded) :
-    DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded :=
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}
+    (read : decodeDictionaryDataPage limits leaf dictionary source frame start remaining rowCeiling codec = .ok decoded) :
+    DictionaryDataPageWire limits leaf dictionary source frame start remaining rowCeiling decoded codec :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.decodeDictionaryDataPage_wire read
 
 theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
@@ -183,6 +183,16 @@ theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {limits : Limits} {binding : Binding schema group column} {output : Observation}
     (accepted : read limits binding = .ok output) : Wire limits binding output :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.read_wire accepted
+
+/-- Both original footer byte totals include every original frame header
+and the dictionary's stored or decoded body, respectively. -/
+theorem Wire.chunkBytes {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat}
+    {limits : Limits} {binding : Binding schema group column} {output : Observation} {span : Footer.Span}
+    (wire : Wire limits binding output) (framed : binding.span? = some span) :
+    binding.chunk.metadata.totalCompressedSize = Int.ofNat (storedChunkBytes output.frames) ∧
+      binding.chunk.metadata.totalUncompressedSize = Int.ofNat (rawChunkBytes output.frames) :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.chunkBytes_wire wire framed
 
 /-- A checked pageless column carries no page and cannot designate a positive
 source byte range, even when neighboring columns have framed bodies. -/
