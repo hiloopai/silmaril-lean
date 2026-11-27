@@ -46,23 +46,36 @@ inductive BindError where
   | column (address : Address) (cause : BindCause)
   deriving DecidableEq, Repr
 
+/-- A pageless chunk retains its original metadata, but has no byte interval. -/
+inductive Storage (snapshot : Snapshot.Checked) (rowGroup : Footer.RowGroup)
+    (chunk : Footer.ColumnChunk) where
+  | framed (span : Footer.Span)
+      (encodings : SupportedEncodings chunk.metadata)
+      (original : Page.columnSpan snapshot.footer.start chunk.metadata = some span)
+  | pageless (admitted : snapshot.admitsPageLessRecursive rowGroup = true)
+
 structure Binding {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (schema : Compiled schemaLimits snapshot) (group column : Nat) where
   leaf : Leaf
   rowGroup : Footer.RowGroup
   chunk : Footer.ColumnChunk
-  span : Footer.Span
+  storage : Storage snapshot rowGroup chunk
   leafAt : schema.leaves[column]? = some leaf
   groupAt : snapshot.groupAt group = some rowGroup
   chunkAt : rowGroup.columns[column]? = some chunk
   path : chunk.metadata.pathInSchema = leaf.site.location.path
   physical : chunk.metadata.physicalType = leaf.kind.physical
   codec : chunk.metadata.codec = 0
-  encodings : SupportedEncodings chunk.metadata
   pageOffsets : chunk.metadata.dictionaryPageOffset = none ∧ chunk.metadata.indexPageOffset = none
   unindexed : Unindexed chunk
   counts : 0 ≤ chunk.metadata.numValues ∧ 0 ≤ rowGroup.numRows
-  originalSpan : Page.columnSpan snapshot.footer.start chunk.metadata = some span
+
+def Binding.span? {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat}
+    (binding : Binding schema group column) : Option Footer.Span :=
+  match binding.storage with
+  | .framed span _ _ => some span
+  | .pageless _ => none
 
 end
 
@@ -90,15 +103,23 @@ public def bindChunk {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
     (metadata.pathInSchema = leaf.site.location.path ∧ metadata.physicalType = leaf.kind.physical)
     (fail .association)
   let ⟨codec⟩ ← check (metadata.codec = 0) (fail (.codec metadata.codec))
-  let ⟨encodings⟩ ← check (SupportedEncodings metadata) (fail (.encodings metadata.encodings))
+  let encodings ← if admitted : snapshot.admitsPageLessRecursive rowGroup = true then
+      pure (Sum.inl (PLift.up admitted))
+    else do
+      let supported ← check (SupportedEncodings metadata) (fail (.encodings metadata.encodings))
+      pure (Sum.inr supported)
   let ⟨pageOffsets⟩ ← check
     (metadata.dictionaryPageOffset = none ∧ metadata.indexPageOffset = none) (fail .pageOffsets)
   let ⟨unindexed⟩ ← check (Unindexed chunk) (fail .pageIndex)
   let ⟨counts⟩ ← check (0 ≤ metadata.numValues ∧ 0 ≤ rowGroup.numRows)
     (fail (.negativeCounts metadata.numValues rowGroup.numRows))
-  let ⟨span, originalSpan⟩ ← lookup (Page.columnSpan snapshot.footer.start metadata) (fail .span)
-  return ⟨leaf, rowGroup, chunk, span, leafAt, groupAt, chunkAt, path, physical, codec, encodings,
-    pageOffsets, unindexed, counts, originalSpan⟩
+  let storage ← match encodings with
+    | .inl admitted => pure (.pageless admitted.down)
+    | .inr supported => do
+      let ⟨span, original⟩ ← lookup (Page.columnSpan snapshot.footer.start metadata) (fail .span)
+      pure (.framed span supported.down original)
+  return ⟨leaf, rowGroup, chunk, storage, leafAt, groupAt, chunkAt, path, physical, codec,
+    pageOffsets, unindexed, counts⟩
 
 @[expose] public section
 
@@ -441,14 +462,14 @@ def Observation.levels (column : Observation) : List LevelSlot :=
 
 def carrierOf {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
-    (binding : Binding schema group column) : Carrier :=
-  ⟨snapshot.bytes, binding.span, binding.leaf, ⟨group, column, binding.leaf.site.location.path⟩,
+    (binding : Binding schema group column) (span : Footer.Span) : Carrier :=
+  ⟨snapshot.bytes, span, binding.leaf, ⟨group, column, binding.leaf.site.location.path⟩,
     binding.chunk.metadata.numValues.toNat, binding.rowGroup.numRows.toNat⟩
 
-def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+def readFramed {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
-    (limits : Limits) (binding : Binding schema group column) : Except Error Observation :=
-  let carrier := carrierOf binding
+    (limits : Limits) (binding : Binding schema group column) (span : Footer.Span) : Except Error Observation :=
+  let carrier := carrierOf binding span
   let bytes := carrier.span.stop - carrier.span.start
   let failed := Error.chunk carrier.address carrier.span
   if ¬ (carrier.span.start ≤ carrier.span.stop ∧ carrier.span.stop ≤ carrier.bytes.length)
@@ -460,6 +481,13 @@ def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     .error (failed (.uncompressedSize binding.chunk.metadata.totalUncompressedSize bytes))
   else (walk limits carrier limits.framing.maxPages (initial carrier) []).map Observation.mk
 
+def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat}
+    (limits : Limits) (binding : Binding schema group column) : Except Error Observation :=
+  match binding.storage with
+  | .framed span _ _ => readFramed limits binding span
+  | .pageless _ => .ok ⟨[]⟩
+
 inductive ChainWire (limits : Limits) (carrier : Carrier) : Cursor → Cursor → List ObservedPage → Prop where
   | nil (cursor : Cursor) : ChainWire limits carrier cursor cursor []
   | more {start stop first rest} :
@@ -470,23 +498,33 @@ inductive ChainWire (limits : Limits) (carrier : Carrier) : Cursor → Cursor �
       ChainWire limits carrier (start.advance first) stop rest →
       ChainWire limits carrier start stop (first :: rest)
 
-structure Wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+structure FramedWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
-    (limits : Limits) (binding : Binding schema group column) (output : Observation) : Prop where
-  bounds : binding.span.start ≤ binding.span.stop ∧ binding.span.stop ≤ snapshot.bytes.length
-  chunkCap : binding.span.stop - binding.span.start ≤ limits.maxChunkBytes
+    (limits : Limits) (binding : Binding schema group column) (span : Footer.Span)
+    (output : Observation) : Prop where
+  bounds : span.start ≤ span.stop ∧ span.stop ≤ snapshot.bytes.length
+  chunkCap : span.stop - span.start ≤ limits.maxChunkBytes
   slotCap : binding.chunk.metadata.numValues.toNat ≤ limits.maxSlots
   rowCap : binding.rowGroup.numRows.toNat ≤ limits.maxRows
   pageCap : output.pages.length ≤ limits.framing.maxPages
-  uncompressed : binding.chunk.metadata.totalUncompressedSize =
-    Int.ofNat (binding.span.stop - binding.span.start)
-  chain : ∃ stop : Cursor, stop.byte = binding.span.stop ∧
+  uncompressed : binding.chunk.metadata.totalUncompressedSize = Int.ofNat (span.stop - span.start)
+  chain : ∃ stop : Cursor, stop.byte = span.stop ∧
     stop.state.slot = binding.chunk.metadata.numValues.toNat ∧
     stop.state.rows = binding.rowGroup.numRows.toNat ∧
-    ChainWire limits (carrierOf binding) (initial (carrierOf binding)) stop output.pages
-  frames : Page.Chain binding.span binding.span.start binding.span.stop (output.pages.map ObservedPage.frame)
+    ChainWire limits (carrierOf binding span) (initial (carrierOf binding span)) stop output.pages
+  frames : Page.Chain span span.start span.stop (output.pages.map ObservedPage.frame)
   slots : output.levels.length = binding.chunk.metadata.numValues.toNat
   rows : output.levels.countP LevelSlot.startsRow = binding.rowGroup.numRows.toNat
+
+structure Wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat}
+    (limits : Limits) (binding : Binding schema group column) (output : Observation) : Prop where
+  slots : output.levels.length = binding.chunk.metadata.numValues.toNat
+  rows : output.levels.countP LevelSlot.startsRow = binding.rowGroup.numRows.toNat
+  storage : match binding.storage with
+    | .framed span _ _ => FramedWire limits binding span output
+    | .pageless _ => output.pages = [] ∧
+        Page.columnSpan snapshot.footer.start binding.chunk.metadata = none
 
 end
 

@@ -1,0 +1,109 @@
+{
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  },
+  "genuine_parquet": {
+    "pyarrow_v1_stats": {
+      "bytes": 1739,
+      "sha256": "3e13a617b4999f37be929e8b9b4a7bba876c8b6449c46b1a9c88713c3420b595"
+    },
+    "pyarrow_v1_no_stats": {
+      "bytes": 1271,
+      "sha256": "60d751ca9331b9408f9db68541dee4dd9d0ac86a991def44591b2a3e2ff651bd"
+    },
+    "pyarrow_v2_stats": {
+      "bytes": 1737,
+      "sha256": "dd8209fbd54d60f6d6bc33dcf61f38cd18861dc9b91f1b3d1a6ba8bb21efa57d"
+    },
+    "pyarrow_v2_no_stats": {
+      "bytes": 1269,
+      "sha256": "98617ed9713bf37abb02b1b6ae8bf6ddaccdc41f8e6791939d8d07bf4f1b5def"
+    }
+  },
+  "labeled_edits": {
+    "group_rows": {
+      "bytes": 1737,
+      "sha256": "2f48039f2035855754d3e41c26089dbf8aefd24d30207ef85381f60655557c60"
+    },
+    "group_size": {
+      "bytes": 1737,
+      "sha256": "fd9b53b0c99ce8b54e31b923313f59a90e5ad37c40c59d8bd0795471c7d940f0"
+    },
+    "group_offset": {
+      "bytes": 1737,
+      "sha256": "33f8564e417fef1cfac42716ac8f1e2b24bb307ea6d0ea8971f16bde6822e474"
+    },
+    "group_compressed": {
+      "bytes": 1737,
+      "sha256": "59440db95c945a8a8452f02dba500b46ae87f3f747bd07c935a4cb1d09aef8bb"
+    },
+    "slots": {
+      "bytes": 1737,
+      "sha256": "e2bf01cf6e6814273ce7e4762b31b8f4c0e6dd29d69d292bb683d45158196dc5"
+    },
+    "uncompressed_size": {
+      "bytes": 1737,
+      "sha256": "8030f1031fcea590117df9213112fed7b5f4629a352268d62b928cc88eadf1c6"
+    },
+    "compressed_size": {
+      "bytes": 1737,
+      "sha256": "0b43e4db7e668857e570073f4e0ca5e2e16582c167a3658f910bcef08d16c1dd"
+    },
+    "data_offset": {
+      "bytes": 1737,
+      "sha256": "c8a2985707776013bb4dee496578025b554bd3de3f38ed33e44b620b8a7d16b9"
+    },
+    "dictionary_offset": {
+      "bytes": 1739,
+      "sha256": "1683b96ddce93fc5043363709984b675513b1d035a57d6679672054033ae35a8"
+    },
+    "chunk_offset": {
+      "bytes": 1737,
+      "sha256": "44d4c94c6d3051bcf4b8081eea1f59d9d8b87b61d688de2be094c2cab6bd05cc"
+    },
+    "empty_external_path": {
+      "bytes": 1739,
+      "sha256": "30c753eae46c29f3fbcb592295182717e16f4070aee9763924880bb4baf40a0d"
+    },
+    "index": {
+      "bytes": 1741,
+      "sha256": "80b996c99dbf486d32164a0dd9396b5421df37a760185e3c0f6b1a89df8c51dc"
+    },
+    "extra_metadata": {
+      "bytes": 1739,
+      "sha256": "19ced087b85e20ff02dc732b20025fac52f449b783892c0f4bbbaf2115f9737a"
+    },
+    "wrong_type": {
+      "bytes": 1737,
+      "sha256": "2ddc40fbe1c9096b7a89769d27c79d5a95e61cad3d10a0ac94e8f963a00a8979"
+    },
+    "wrong_path": {
+      "bytes": 1716,
+      "sha256": "c829a2821f86e1c05fbab29df7644dce41f47b2b82ef5a09aa3e1a9b2385a739"
+    },
+    "undeclared_byte": {
+      "bytes": 1738,
+      "sha256": "89f8155ae0f530ae08b9be766aff92d328138ab0eafcac323a5fa6b07043aab6"
+    }
+  },
+  "lean_ipc": {
+    "pyarrow_v1_stats": {
+      "bytes": 2400,
+      "sha256": "67232bb993632244d59217a313ab0827b3e8806f3545a0ccb695a64c31b8b9d5"
+    },
+    "pyarrow_v1_no_stats": {
+      "bytes": 2400,
+      "sha256": "67232bb993632244d59217a313ab0827b3e8806f3545a0ccb695a64c31b8b9d5"
+    },
+    "pyarrow_v2_stats": {
+      "bytes": 2400,
+      "sha256": "67232bb993632244d59217a313ab0827b3e8806f3545a0ccb695a64c31b8b9d5"
+    },
+    "pyarrow_v2_no_stats": {
+      "bytes": 2400,
+      "sha256": "67232bb993632244d59217a313ab0827b3e8806f3545a0ccb695a64c31b8b9d5"
+    }
+  }
+}

@@ -335,7 +335,7 @@ def main():
         code.extend([
             f'  bindFailure (← load folder "snappy") 0 0 (.column ⟨0, 0, {leaf_path}⟩ (.codec 1))',
             f'  bindFailure (← load folder "indexed") 0 0 (.column ⟨0, 0, {leaf_path}⟩ .pageIndex)',
-            '  deny (.original (.snapshot (.invalidMetadata .pageInterval))) (openFile {} (← load folder "pageless_zero"))',
+            '  deny (.invalidMetadata .pageInterval) (Parquet.Snapshot.check (Failure := Unit) {} (← load folder "pageless_zero"))',
         ])
         fields, groups, _ = BRIDGE["observed"](files["nested"], limit=1)
         bridge.extend([

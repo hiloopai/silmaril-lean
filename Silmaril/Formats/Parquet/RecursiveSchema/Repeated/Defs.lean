@@ -148,6 +148,7 @@ instance (entry : Entry) : Decidable (ListOuter entry) := by
 
 inductive Error where
   | original (cause : RecursiveSchema.Error)
+  | pageLess (cause : Footer.PageLessRecursive.Error)
   | annotation (site : Location) (cause : ListFile.OpenError)
   | listShape (site : Location)
   | wrapper (site : Location)
@@ -247,7 +248,7 @@ structure Compiled (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) wher
 structure Source (limits : Snapshot.Limits) (bytes : Bytes) where
   snapshot : Snapshot.Checked
   schema : Compiled limits snapshot
-  original : Snapshot.check (Failure := Unit) limits bytes = .ok snapshot
+  original : Snapshot.checkRecursive limits bytes = .ok snapshot
 
 def Compiled.arrow {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (schema : Compiled limits snapshot) : Arrow.RecursiveSchema.Schema :=
@@ -382,8 +383,9 @@ public def compile (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) :
     else throw (.original (.schemaExtent snapshot.metadata.schema.length items.length))
 
 public def openFile (limits : Snapshot.Limits) (bytes : Bytes) : Except Error (Source limits bytes) := do
-  match original : Snapshot.check (Failure := Unit) limits bytes with
-  | .error cause => throw (.original (.snapshot cause))
+  match original : Snapshot.checkRecursive limits bytes with
+  | .error (.original cause) => throw (.original (.snapshot cause))
+  | .error (.pageLess cause) => throw (.pageLess cause)
   | .ok snapshot => return ⟨snapshot, ← compile limits snapshot, original⟩
 
 end Silmaril.Formats.Parquet.RecursiveSchema.Repeated

@@ -107,12 +107,21 @@ theorem ChainWire.counts {limits : Limits} {carrier : Carrier} {start stop : Cur
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.chain_counts wire
 
 /-- Starting with no live list, successful decoding walks consecutive
-original pages and attains both independent original footer counts. -/
+original pages when framed and attains both independent original footer counts. -/
 theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
     {limits : Limits} {binding : Binding schema group column} {output : Observation}
     (accepted : read limits binding = .ok output) : Wire limits binding output :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.read_wire accepted
+
+/-- A checked pageless column carries no page and cannot designate a positive
+source byte range, even when neighboring columns have framed bodies. -/
+theorem Wire.noSpan {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat}
+    {limits : Limits} {binding : Binding schema group column} {output : Observation}
+    (wire : Wire limits binding output) (empty : binding.span? = none) :
+    output.pages = [] ∧ Page.columnSpan snapshot.footer.start binding.chunk.metadata = none :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.noSpan_wire wire empty
 
 end
 

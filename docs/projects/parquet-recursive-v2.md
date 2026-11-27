@@ -42,8 +42,9 @@ column, page and cursor.
 Pinned PyArrow yields genuine nested V2 rows in multiple groups,
 checksummed pages, null and empty Lists, null elements, signed
 endpoints and unequal sibling page cuts. Its genuine zero-row group
-contains pageless chunks and hits the existing footer interval
-refusal. A separately labeled assembly gives that group one valid
+contains pageless chunks and hits the strict snapshot interval refusal.
+The recursive reader admits this convention under its separate
+[pageless group policy](parquet-recursive-pageless.md). A separately labeled assembly gives that group one valid
 V2 frame per leaf with matching metadata. PyArrow and Lean read all
 three groups, including the zero-row group.
 

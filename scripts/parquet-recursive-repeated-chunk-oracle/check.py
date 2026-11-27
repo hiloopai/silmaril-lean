@@ -63,8 +63,8 @@ private def check (file : Bytes) (limits : Limits) (group column : Nat) (path : 
     (slots rows start stop : Nat) (expected : List ExpectedPage) : IO Unit := do
   let source ← take (openFile {} file)
   let binding ← take (bindChunk source.schema group column)
-  unless binding.leaf.site.location.path = path ∧ binding.span.start = start ∧
-      binding.span.stop = stop ∧ binding.chunk.metadata.numValues = Int.ofNat slots ∧
+  unless binding.leaf.site.location.path = path ∧ binding.span? = some ⟨start, stop⟩ ∧
+      binding.chunk.metadata.numValues = Int.ofNat slots ∧
       binding.rowGroup.numRows = Int.ofNat rows do
     throw (IO.userError s!"original binding differs at ({group}, {column})")
   let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read limits binding)

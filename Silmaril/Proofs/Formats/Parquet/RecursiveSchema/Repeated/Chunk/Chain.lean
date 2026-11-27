@@ -2,6 +2,8 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 import Silmaril.Formats.Parquet.Page.Thms
+import Silmaril.Formats.Parquet.Snapshot.Thms
+import Silmaril.Formats.Parquet.Footer.PageLessRecursive.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.V2
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk
@@ -89,11 +91,12 @@ public theorem chain_counts {limits : Limits} {carrier : Carrier} {start stop : 
     simp only [Observation.levels, List.length_cons, List.flatMap_cons, List.length_append, List.countP_append]
     omega
 
-public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+private theorem readFramed_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group column : Nat}
     {limits : Limits} {binding : Binding schema group column} {output : Observation}
-    (accepted : Formats.Parquet.RecursiveSchema.Repeated.Chunk.read limits binding = .ok output) : Wire limits binding output := by
-  unfold Formats.Parquet.RecursiveSchema.Repeated.Chunk.read at accepted
+    {span : Footer.Span}
+    (accepted : readFramed limits binding span = .ok output) : FramedWire limits binding span output := by
+  unfold readFramed at accepted
   dsimp only at accepted
   split at accepted
   · contradiction
@@ -110,8 +113,8 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
           split at accepted
           · contradiction
           · rename_i uncompressed
-            cases walked : walk limits (carrierOf binding) limits.framing.maxPages
-                (initial (carrierOf binding)) [] with
+            cases walked : walk limits (carrierOf binding span) limits.framing.maxPages
+                (initial (carrierOf binding span)) [] with
             | error reason => simp [walked, Except.map] at accepted
             | ok pages =>
               simp only [walked, Except.map, Except.ok.injEq] at accepted
@@ -124,5 +127,35 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
                 ⟨stop, byteEnd, slotEnd, rowEnd, chain⟩, byteEnd ▸ frames,
                 by simpa [initial, carrierOf] using slotsExact.trans slotEnd,
                 by simpa [initial, carrierOf] using rowsExact.trans rowEnd⟩
+
+public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat}
+    {limits : Limits} {binding : Binding schema group column} {output : Observation}
+    (accepted : Formats.Parquet.RecursiveSchema.Repeated.Chunk.read limits binding = .ok output) :
+    Wire limits binding output := by
+  unfold Formats.Parquet.RecursiveSchema.Repeated.Chunk.read at accepted
+  cases carrier : binding.storage with
+  | framed span encodings original =>
+    rw [carrier] at accepted
+    have wire := readFramed_wire accepted
+    exact ⟨wire.slots, wire.rows, by rw [carrier]; exact wire⟩
+  | pageless admitted =>
+    simp only [carrier, Except.ok.injEq] at accepted
+    subst output
+    have empty : Footer.PageLessRecursive.isPageLess binding.rowGroup = true :=
+      Snapshot.Checked.admitsPageLessRecursive_isPageLess admitted
+    obtain ⟨rows, slots, bytes⟩ := Footer.PageLessRecursive.empty_counts empty
+      (List.mem_of_getElem? binding.chunkAt)
+    exact ⟨by simp [Observation.levels, slots], by simp [Observation.levels, rows],
+      by simp [carrier, Page.columnSpan, Footer.checkDataSpan, bytes]⟩
+
+public theorem noSpan_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group column : Nat}
+    {limits : Limits} {binding : Binding schema group column} {output : Observation}
+    (wire : Wire limits binding output) (empty : binding.span? = none) :
+    output.pages = [] ∧ Page.columnSpan snapshot.footer.start binding.chunk.metadata = none := by
+  cases storage : binding.storage with
+  | framed span encodings original => simp [Binding.span?, storage] at empty
+  | pageless admitted => simpa only [storage] using wire.storage
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk
