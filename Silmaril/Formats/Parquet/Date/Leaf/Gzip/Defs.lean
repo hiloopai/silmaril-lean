@@ -72,31 +72,38 @@ def planData (bound : Bound) (frame : Page.Frame) : Except PageError DataPage :=
 
 /-- Admit the original selected chunk, checking the stored and expanded
 chunk caps independently before decoding any page bodies. -/
-def checkGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError CheckedGroup := do
-  let selected ← (selectChunk bound index).mapError .selection
+def checkGroupWith {ε : Type} (wrap : GroupError → ε)
+    (plan : Page.Frame → Nat → Except ε DataPage)
+    (limits : Limits) (bound : Bound) (index : Nat) : Except ε CheckedGroup := do
+  let selected ← (selectChunk bound index).mapError (wrap ∘ .selection)
   let metadata := selected.column.metadata
   let rows := selected.group.numRows.toNat
-  if metadata.codec ≠ Payload.Codec.gzip.id then .error (.codec metadata.codec)
+  if metadata.codec ≠ Payload.Codec.gzip.id then .error (wrap (.codec metadata.codec))
   else if metadata.dictionaryPageOffset.isSome || metadata.indexPageOffset.isSome then
-    .error .unsupportedOffsets
-  else if metadata.numValues ≠ (rows : Int) then .error (.rowCount rows metadata.numValues)
-  else if limits.maxRows < rows then .error .rowLimit
-  else if limits.maxStoredChunkBytes < selected.span.stop - selected.span.start then .error .storedChunkLimit
+    .error (wrap .unsupportedOffsets)
+  else if metadata.numValues ≠ (rows : Int) then .error (wrap (.rowCount rows metadata.numValues))
+  else if limits.maxRows < rows then .error (wrap .rowLimit)
+  else if limits.maxStoredChunkBytes < selected.span.stop - selected.span.start then .error (wrap .storedChunkLimit)
   else do
-    let frames ← (Page.readChunk limits.framing bound.snapshot.bytes selected.span).mapError .framing
+    let frames ← (Page.readChunk limits.framing bound.snapshot.bytes selected.span).mapError (wrap ∘ .framing)
     if limits.maxExpandedChunkBytes < (frames.map (·.value.uncompressedSize)).sum then
-      .error .expandedChunkLimit
+      .error (wrap .expandedChunkLimit)
     else do
-      let first :: _ := frames | throw .missingData
-      if metadata.dataPageOffset ≠ (first.header.start : Int) then .error (atFrame 0 first .dataOffset)
+      let first :: _ := frames | throw (wrap .missingData)
+      if metadata.dataPageOffset ≠ (first.header.start : Int) then .error (wrap (atFrame 0 first .dataOffset))
       else do
-        let data ← frames.zipIdx.mapM fun (frame, ordinal) => (planData bound frame).mapError (atFrame ordinal frame)
+        let data ← frames.zipIdx.mapM fun (frame, ordinal) => plan frame ordinal
         let declared := (data.map (·.params.numValues)).sum
-        if declared ≠ rows then .error (.rowCount rows declared)
+        if declared ≠ rows then .error (wrap (.rowCount rows declared))
         else .ok ⟨selected, data⟩
 
-/-- The checked V1 plan uses the original selected bytes, count and offsets. -/
-structure GroupWire (limits : Limits) (bound : Bound) (index : Nat) (checked : CheckedGroup) : Prop where
+def checkGroup (limits : Limits) (bound : Bound) (index : Nat) : Except GroupError CheckedGroup :=
+  checkGroupWith id (fun frame ordinal => (planData bound frame).mapError (atFrame ordinal frame))
+    limits bound index
+
+/-- A checked GZIP plan uses the original selected bytes, count and offsets. -/
+structure GroupWire (limits : Limits) (bound : Bound) (index : Nat) (checked : CheckedGroup)
+    (admitted : DataPage → Prop := fun page => planData bound page.frame = .ok page) : Prop where
   selected : selectChunk bound index = .ok checked.selection
   codec : checked.selection.column.metadata.codec = Payload.Codec.gzip.id
   storedCap : checked.selection.span.stop - checked.selection.span.start ≤ limits.maxStoredChunkBytes
@@ -105,11 +112,11 @@ structure GroupWire (limits : Limits) (bound : Bound) (index : Nat) (checked : C
   chain : Page.Chain checked.selection.span checked.selection.span.start checked.selection.span.stop checked.frames
   dataOffset : checked.data.head?.map (fun page => (page.frame.header.start : Int)) =
     some checked.selection.column.metadata.dataPageOffset
-  data : ∀ page ∈ checked.data, planData bound page.frame = .ok page
+  data : ∀ page ∈ checked.data, admitted page
   rows : (checked.data.map (·.params.numValues)).sum = checked.selection.group.numRows.toNat
 
-/-- The outer Parquet CRC is checked over the stored GZIP member. The
-scalar decoder then checks the member itself and observes the V1 body. -/
+/-- Verify the outer Parquet CRC over the entire stored page before
+selecting the scalar page layout and decoding its payload. -/
 def decodePage (limits : Limits) (source : Bytes) (page : DataPage) (ordinal : Nat) :
     Except GroupError Slots := do
   let _ ← (Page.Checksum.verify limits.scalar.compressedBytes source page.frame).mapError

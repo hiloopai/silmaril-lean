@@ -46,29 +46,32 @@ theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
     exact ⟨rfl, header, rfl, not_not.mp tag, by simp⟩
   | dictionary _ | dataV2 _ | skipped _ => simp [planData, kind] at planned
 
-private theorem pages_plan {bound : Bound} {frames : List Page.Frame} {data : List DataPage}
-    (planned : frames.zipIdx.mapM (fun (frame, ordinal) =>
-      (planData bound frame).mapError (atFrame ordinal frame)) = .ok data) :
-    data.map (·.frame) = frames ∧ ∀ page ∈ data, planData bound page.frame = .ok page := by
-  have indexed := (List.mapM_eq_ok_iff_forall₂.mp planned).imp fun _ _ h => mapError_ok h
-  have paired : List.Forall₂ (fun frame page => planData bound frame = .ok page) frames data := by
+private theorem pages_plan {ε : Type} {plan : Page.Frame → Nat → Except ε DataPage}
+    {valid : DataPage → Prop} {frames : List Page.Frame} {data : List DataPage}
+    (keeps : ∀ {frame ordinal page}, plan frame ordinal = .ok page → page.frame = frame ∧ valid page)
+    (planned : frames.zipIdx.mapM (fun (frame, ordinal) => plan frame ordinal) = .ok data) :
+    data.map (·.frame) = frames ∧ ∀ page ∈ data, valid page := by
+  have indexed := (List.mapM_eq_ok_iff_forall₂.mp planned).imp fun _ _ h => keeps h
+  have paired : List.Forall₂ (fun frame page => page.frame = frame ∧ valid page) frames data := by
     rw [← List.zipIdx_map_fst 0 frames, List.forall₂_map_left_iff]
     exact indexed
   clear planned indexed
   induction paired with
   | nil => simp
   | cons head _ ih =>
-    have original := (planData_wire head).1
-    refine ⟨by simp [original, ih.1], ?_⟩
+    refine ⟨by simp [head.1, ih.1], ?_⟩
     intro page member
     rcases List.mem_cons.mp member with rfl | later
-    · rwa [original]
+    · exact head.2
     · exact ih.2 page later
 
-theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
-    (accepted : checkGroup limits bound index = .ok checked) :
-    GroupWire limits bound index checked := by
-  unfold checkGroup at accepted
+theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
+    {plan : Page.Frame → Nat → Except ε DataPage} {valid : DataPage → Prop}
+    {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
+    (keeps : ∀ {frame ordinal page}, plan frame ordinal = .ok page → page.frame = frame ∧ valid page)
+    (accepted : checkGroupWith wrap plan limits bound index = .ok checked) :
+    GroupWire limits bound index checked valid := by
+  unfold checkGroupWith at accepted
   obtain ⟨chunk, selected, accepted⟩ := bind_ok accepted
   simp only at accepted
   split at accepted
@@ -97,7 +100,7 @@ theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked
     · contradiction
     rename_i count
     cases Except.ok.inj accepted
-    obtain ⟨order, headers⟩ := pages_plan planned
+    obtain ⟨order, headers⟩ := pages_plan (plan := plan) keeps planned
     have head := congrArg List.head? order
     rw [List.head?_map] at head
     have offset := congrArg (Option.map (fun frame : Page.Frame => (frame.header.start : Int))) head
@@ -108,6 +111,15 @@ theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked
     · simpa [CheckedGroup.frames, order] using (Page.readChunk_chain original).2.2
     · simpa [Option.map_map, Function.comp_def, ← not_not.mp dataOffset] using offset
 
+theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
+    (accepted : checkGroup limits bound index = .ok checked) :
+    GroupWire limits bound index checked := by
+  apply checkGroupWith_wire _ accepted
+  intro frame ordinal page read
+  have decoded := mapError_ok read
+  have same := (planData_wire decoded).1
+  exact ⟨same, by simpa only [same] using decoded⟩
+
 theorem decodePage_wire {limits : Limits} {source : Bytes} {page : DataPage} {ordinal : Nat}
     {slots : Slots} (read : decodePage limits source page ordinal = .ok slots) :
     PageWire limits source page slots := by
@@ -115,7 +127,7 @@ theorem decodePage_wire {limits : Limits} {source : Bytes} {page : DataPage} {or
   obtain ⟨status, verified, decoded⟩ := bind_ok read
   exact ⟨status, mapError_ok verified, mapError_ok decoded⟩
 
-private theorem stored_exact {cap : Nat} {source : Bytes} {frame : Page.Frame} {status : Page.Checksum.Status}
+theorem stored_exact {cap : Nat} {source : Bytes} {frame : Page.Frame} {status : Page.Checksum.Status}
     (verified : Page.Checksum.verify cap source frame = .ok status) :
     let stored := Page.Checksum.payloadBytes source frame
     source.slice? frame.payload.start (some frame.payload.stop) = some stored ∧
@@ -133,7 +145,7 @@ private theorem stored_exact {cap : Nat} {source : Bytes} {frame : Page.Frame} {
     obtain ⟨slice, size⟩ := Page.Checksum.payload_exact extent
     exact ⟨slice, size, size ▸ withinCap, header, computed⟩
 
-private theorem expanded_bound {params : ScalarPage.Parameters} {limits : ScalarPage.Limits}
+theorem expanded_bound {params : ScalarPage.Parameters} {limits : ScalarPage.Limits}
     {source : Bytes} {layout : FlatPage.Layout}
     (valid : ScalarPage.validate params limits source = .ok layout) :
     params.sizes.uncompressed ≤ limits.uncompressedBytes := by

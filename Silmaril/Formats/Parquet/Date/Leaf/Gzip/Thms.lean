@@ -22,6 +22,15 @@ theorem planData_wire {bound : Bound} {frame : Page.Frame} {page : DataPage}
           header.encoding, .v1 header.definitionLevelEncoding header.repetitionLevelEncoding⟩ :=
   Proofs.Formats.Parquet.Date.Leaf.Gzip.planData_wire planned
 
+/-- A profile that retains its original page frames shares the checked GZIP chunk. -/
+theorem checkGroupWith_wire {ε : Type} {wrap : GroupError → ε}
+    {plan : Page.Frame → Nat → Except ε DataPage} {valid : DataPage → Prop}
+    {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
+    (keeps : ∀ {frame ordinal page}, plan frame ordinal = .ok page → page.frame = frame ∧ valid page)
+    (accepted : checkGroupWith wrap plan limits bound index = .ok checked) :
+    GroupWire limits bound index checked valid :=
+  Proofs.Formats.Parquet.Date.Leaf.Gzip.checkGroupWith_wire keeps accepted
+
 /-- The selected footer range supplies the original bounded frames and slot total. -/
 theorem checkGroup_wire {limits : Limits} {bound : Bound} {index : Nat} {checked : CheckedGroup}
     (accepted : checkGroup limits bound index = .ok checked) :
@@ -33,6 +42,24 @@ theorem decodePage_wire {limits : Limits} {source : Bytes} {page : DataPage} {or
     {slots : Slots} (read : decodePage limits source page ordinal = .ok slots) :
     PageWire limits source page slots :=
   Proofs.Formats.Parquet.Date.Leaf.Gzip.decodePage_wire read
+
+/-- A checked CRC status identifies the exact bounded stored slice. -/
+theorem stored_exact {cap : Nat} {source : Bytes} {frame : Page.Frame} {status : Page.Checksum.Status}
+    (verified : Page.Checksum.verify cap source frame = .ok status) :
+    let stored := Page.Checksum.payloadBytes source frame
+    source.slice? frame.payload.start (some frame.payload.stop) = some stored ∧
+      stored.length = frame.value.compressedSize ∧ stored.length ≤ cap ∧
+      match status with
+      | .absent => frame.value.crc = none
+      | .valid crc => frame.value.crc = some crc ∧ Compression.crc32Spec stored.toList = crc :=
+  Proofs.Formats.Parquet.Date.Leaf.Gzip.stored_exact verified
+
+/-- Scalar admission independently bounds the expanded page size. -/
+theorem expanded_bound {params : ScalarPage.Parameters} {limits : ScalarPage.Limits}
+    {source : Bytes} {layout : FlatPage.Layout}
+    (valid : ScalarPage.validate params limits source = .ok layout) :
+    params.sizes.uncompressed ≤ limits.uncompressedBytes :=
+  Proofs.Formats.Parquet.Date.Leaf.Gzip.expanded_bound valid
 
 /-- The exact bounded stored bytes expand as one GZIP member into the checked
 V1 level and signed PLAIN slices, with independent stored and expanded caps. -/
