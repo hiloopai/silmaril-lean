@@ -182,6 +182,18 @@ theorem plan_extent {limits : Limits} {schema : Schema} {budget : Budget}
   obtain ⟨extent, bound⟩ := planned_fields planned_field initial fieldsRead
   exact ⟨extent, bound.2.1, bound.2.2, bound.1⟩
 
+theorem serializeFrame_extent {limits : Limits} {schema : Schema} {bytes : KBytes}
+    (written : serializeFrame limits schema = .ok bytes) :
+    ∃ budget, plan limits schema = .ok budget ∧
+      budget.bytes = (metadata schema).len ∧ budget.bytes < 2^31 ∧
+      budget.bytes ≤ limits.ipc.metadataBytes ∧
+      bytes = Formats.Arrow.StreamWriter.envelopeBytes budget.bytes ++ metadata schema := by
+  unfold serializeFrame at written
+  obtain ⟨budget, setup, output⟩ := bind_ok written
+  obtain ⟨extent, word, cap, _⟩ := plan_extent setup
+  cases Except.ok.inj output
+  exact ⟨budget, setup, extent.trans (metadata_extent schema).symm, word, cap, rfl⟩
+
 theorem serialize_extent {limits : Limits} {schema : Schema} {bytes : KBytes}
     (accepted : serialize limits schema = .ok bytes) :
     ∃ budget, plan limits schema = .ok budget ∧

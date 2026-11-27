@@ -1,0 +1,138 @@
+{
+  "description": "Genuine PyArrow inputs, Lean streams, and independently inspected frame cursors",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c"
+  },
+  "genuine_ipc": {
+    "four_level": {
+      "bytes": 2096,
+      "sha256": "38187024f71d3fc1838651be6a3c85c0c5edb4979d4874c0e24e9861737f7295"
+    },
+    "hidden": {
+      "bytes": 1160,
+      "sha256": "2a331648bf77ffe0f5603db06355eb68e2195bf76ebe291c7b06e3e5a513cece"
+    },
+    "zero_width_multi": {
+      "bytes": 296,
+      "sha256": "e0dba8ad66569f6db1914596ad397b12db5d72b91f633b315dc23534fb161bd7"
+    },
+    "schema_only": {
+      "bytes": 632,
+      "sha256": "35e6ec6169c6719c86777d63a04ab16011ad1ffe0c3d26d1eca6fbfbbef544c0"
+    },
+    "repeated_multi": {
+      "bytes": 1328,
+      "sha256": "6f6abf6fef5d0051ddf9170cf4afceed38353c647708e27475182ec485432a30"
+    }
+  },
+  "lean_ipc": {
+    "four_level": {
+      "bytes": 2584,
+      "sha256": "5b6f6d7611ba143be4d55d6d47a2f49c01f74840555dbb9677b9d89a14789aad",
+      "schema_end": 1072,
+      "records": [
+        {
+          "start": 1072,
+          "metadata": 584,
+          "body": 296,
+          "rows": 4,
+          "end": 1960
+        },
+        {
+          "start": 1960,
+          "metadata": 584,
+          "body": 24,
+          "rows": 0,
+          "end": 2576
+        }
+      ],
+      "eos": 2576
+    },
+    "hidden": {
+      "bytes": 1472,
+      "sha256": "1c017035d3aca4364adfb7f2141bc4931605c8c39a4e3c0892e867382b2f50b2",
+      "schema_end": 800,
+      "records": [
+        {
+          "start": 800,
+          "metadata": 456,
+          "body": 200,
+          "rows": 4,
+          "end": 1464
+        }
+      ],
+      "eos": 1464
+    },
+    "zero_width_multi": {
+      "bytes": 424,
+      "sha256": "680bd81958880753404e2325d1a0c5d9162610eb3540b06124f2bbfa6498a1c1",
+      "schema_end": 80,
+      "records": [
+        {
+          "start": 80,
+          "metadata": 104,
+          "body": 0,
+          "rows": 2,
+          "end": 192
+        },
+        {
+          "start": 192,
+          "metadata": 104,
+          "body": 0,
+          "rows": 0,
+          "end": 304
+        },
+        {
+          "start": 304,
+          "metadata": 104,
+          "body": 0,
+          "rows": 1,
+          "end": 416
+        }
+      ],
+      "eos": 416
+    },
+    "schema_only": {
+      "bytes": 1080,
+      "sha256": "4c15e8c95112ed0351818db400a0891afbbc9e8da0df7d20599df4575fa59dee",
+      "schema_end": 1072,
+      "records": [],
+      "eos": 1072
+    },
+    "repeated_multi": {
+      "bytes": 1560,
+      "sha256": "3fc548c2a55964cf4f5b69763fd15e9ba25036c33e5950a8929b4f0129e0b26b",
+      "schema_end": 448,
+      "records": [
+        {
+          "start": 448,
+          "metadata": 280,
+          "body": 152,
+          "rows": 7,
+          "end": 888
+        },
+        {
+          "start": 888,
+          "metadata": 280,
+          "body": 0,
+          "rows": 0,
+          "end": 1176
+        },
+        {
+          "start": 1176,
+          "metadata": 280,
+          "body": 88,
+          "rows": 3,
+          "end": 1552
+        }
+      ],
+      "eos": 1552
+    }
+  }
+}

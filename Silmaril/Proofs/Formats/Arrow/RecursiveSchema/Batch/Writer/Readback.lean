@@ -40,7 +40,7 @@ private theorem cell_exact {depth : Nat} {left right : Cell}
         · exact congrArg Value.struct (list_exact ih same)
         · exact congrArg Value.list (list_exact ih same)
 
-private theorem agrees_exact {depth : Nat} {input output : Observation}
+theorem agrees_exact {depth : Nat} {input output : Observation}
     (same : agrees depth input output = true) : input = output := by
   obtain ⟨count, values⟩ := Bool.and_eq_true_iff.mp same
   have rows : input.rows = output.rows := list_exact (list_exact cell_exact) values

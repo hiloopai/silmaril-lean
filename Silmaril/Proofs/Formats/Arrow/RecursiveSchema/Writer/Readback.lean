@@ -38,13 +38,17 @@ private theorem equalField_exact {depth : Nat} {left right : Field}
     cases kinds
     exact congrArg (Field.node name nullable kind) (equalFields_exact ih childCompare)
 
+theorem equalSchema_exact {depth : Nat} {left right : Schema}
+    (same : equalFields (equalField depth) left.fields right.fields = true) : left = right :=
+  congrArg Schema.mk (equalFields_exact equalField_exact same)
+
 private theorem agrees_exact {depth : Nat} {schema : Schema}
     {decoded : Formats.Arrow.RecursiveSchema.Stream.Trace} (same : agrees depth schema decoded = true) :
     decoded = ⟨schema, decoded.schemaEnd, [], .eos 0 decoded.schemaEnd⟩ := by
   simp only [agrees, Bool.and_eq_true] at same
   obtain ⟨⟨fields, empty⟩, eos⟩ := same
   have declarations : decoded.schema = schema :=
-    congrArg Schema.mk (equalFields_exact equalField_exact fields)
+    equalSchema_exact fields
   have noBatches := List.isEmpty_iff.mp empty
   have ending := beq_iff_eq.mp eos
   cases decoded

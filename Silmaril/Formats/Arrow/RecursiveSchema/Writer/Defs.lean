@@ -123,6 +123,11 @@ def plan (limits : Limits) (schema : Schema) : Except Error Budget := do
   checkSize limits bytes
   planFields (planField limits limits.depth) schema.fields ⟨0, bytes⟩
 
+/-- Serialize the bodyless Schema frame for use at the front of a stream. -/
+def serializeFrame (limits : Limits) (schema : Schema) : Except Error KBytes := do
+  let budget ← plan limits schema
+  return StreamWriter.envelopeBytes budget.bytes ++ Wire.metadata schema
+
 /-- Emit one bodyless Schema message and the explicit modern EOS. -/
 def serialize (limits : Limits) (schema : Schema) : Except Error KBytes := do
   let budget ← plan limits schema

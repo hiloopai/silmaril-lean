@@ -52,6 +52,18 @@ theorem serialize_extent {limits : Limits} {schema : Schema} {bytes : KBytes}
       bytes = StreamWriter.envelopeBytes budget.bytes ++ (Wire.metadata schema ++ StreamWriter.eos) :=
   Proofs.Formats.Arrow.RecursiveSchema.Writer.serialize_extent accepted
 
+theorem equalSchema_exact {depth : Nat} {left right : Schema}
+    (same : equalFields (equalField depth) left.fields right.fields = true) : left = right :=
+  Proofs.Formats.Arrow.RecursiveSchema.Writer.equalSchema_exact same
+
+theorem serializeFrame_extent {limits : Limits} {schema : Schema} {bytes : KBytes}
+    (written : serializeFrame limits schema = .ok bytes) :
+    ∃ budget, plan limits schema = .ok budget ∧
+      budget.bytes = (Wire.metadata schema).len ∧ budget.bytes < 2^31 ∧
+      budget.bytes ≤ limits.ipc.metadataBytes ∧
+      bytes = StreamWriter.envelopeBytes budget.bytes ++ Wire.metadata schema :=
+  Proofs.Formats.Arrow.RecursiveSchema.Writer.serializeFrame_extent written
+
 /-- Successful emission certifies exact readback of the original schema,
 zero RecordBatches and the native modern EOS at the end of the carrier. -/
 theorem emit_wire {limits : Limits} {schema : Schema} {bytes : KBytes}

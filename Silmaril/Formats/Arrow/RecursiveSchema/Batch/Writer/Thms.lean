@@ -35,6 +35,10 @@ theorem serialize_frame {limits : Batch.Limits} {schema : Schema} {input : Rows.
       StreamWriter.emitFrame limits.schema.ipc record.message record.body = .ok bytes :=
   Proofs.Formats.Arrow.RecursiveSchema.Batch.Writer.serialize_frame written
 
+theorem agrees_exact {depth : Nat} {input output : Rows.Observation}
+    (same : agrees depth input output = true) : input = output :=
+  Proofs.Formats.Arrow.RecursiveSchema.Batch.Writer.agrees_exact same
+
 /-- Success certifies a single whole native frame and the exact ordered
 logical rows under the original schema, with the original byte witnesses. -/
 theorem emit_wire {limits : Batch.Limits} {schema : Schema} {input : Rows.Observation}
