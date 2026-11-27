@@ -86,6 +86,21 @@ structure Schema where
 
 end SchemaReader
 
+namespace Binary
+
+/-- A flat plain Binary field (Schema.fbs union tag 4). -/
+structure Field where
+  name : String
+  nullable : Bool
+  deriving DecidableEq, Repr
+
+inductive SchemaError where
+  | metadata (cause : Arrow.Error)
+  | fieldCount (actual : Nat)
+  deriving DecidableEq, Repr
+
+end Binary
+
 namespace ListInt32
 
 /-- The admitted nested field is a nullable List with one nullable signed
@@ -494,6 +509,23 @@ private def viewFieldKind (tag : Nat) (payload : Table) :
   let kind ← BinaryView.Schema.Kind.ofTag tag
   tableShape payload 0
   return kind
+
+/-- Admit one plain Binary field from bodyless little-endian V5 Schema metadata.
+This profile is independent of the primitive and mixed Schema readers. -/
+public def Binary.readSchema (limits : Limits) (bytes : KBytes) :
+    Except Binary.SchemaError Binary.Field := do
+  let (tag, payload, bodyLength) ← (messageParts limits bytes).mapError .metadata
+  if tag ≠ 1 then throw (.metadata (.unsupported (.messageKind tag)))
+  if bodyLength ≠ 0 then throw (.metadata (.malformed .bodyLength))
+  let (_, fields) ← (schemaWith limits bytes payload
+    (fun endian => if endian = 0 then .ok () else .error (.unsupported (.endianness endian)))
+    (fun pos => fieldWith bytes pos
+      (fun kind payload => do
+        if kind ≠ 4 then throw (.unsupported (.fieldType kind))
+        tableShape payload 0)
+      (fun name nullable () => Binary.Field.mk name nullable))).mapError .metadata
+  let [field] := fields | throw (.fieldCount fields.length)
+  return field
 
 /-- Read the bodyless little-endian V5 Schema of a standalone one-field
 view batch. Its kind is independent of legacy and other Schema readers. -/
