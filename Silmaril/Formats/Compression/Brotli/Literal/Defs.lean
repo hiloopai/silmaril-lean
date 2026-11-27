@@ -115,12 +115,15 @@ structure Source where
   map : Map
   trees : List Table
 
-/-- Index the original map using the current two-byte history. -/
-def Source.treeIndex? (source : Source) (history : History) : Option Nat :=
-  let index := (contextId source.mode history).val
-  match source.map with
+/-- Look up one context-map entry without expanding the implicit map. -/
+def lookup (map : Map) (index : Nat) : Option Nat :=
+  match map with
   | .implicit entries => if index < entries then some 0 else none
   | .coded _ values => values[index]?
+
+/-- Index the original map using the current two-byte history. -/
+def Source.treeIndex? (source : Source) (history : History) : Option Nat :=
+  lookup source.map (contextId source.mode history).val
 
 structure Limits where
   /-- Total output allowed so far in this meta-block, including the new literals. -/
@@ -197,6 +200,14 @@ inductive Wire (source : Source) : History → List Bool → List UInt8 → Hist
       Wire source (history.push byte) tailBits tail final →
       Wire source history (msbBits code width ++ tailBits) (byte :: tail) final
 
+/-- Decode a checked byte symbol using the selected literal table. -/
+def readByte (table : Table) (bitLimit : Nat) (before : LSBReader) : Except Error (UInt8 × LSBReader) :=
+  if table.alphabetSize ≠ 256 then .error .treeAlphabet
+  else do
+    let (symbol, after) ← (table.readBounded bitLimit before).mapError Error.symbol
+    if fits : symbol < 256 then .ok (UInt8.ofNatLT symbol fits, after)
+    else .error .symbolRange
+
 namespace Internal
 
 structure Cursor where
@@ -213,12 +224,9 @@ def readOne (source : Source) (history : History) (cursor : Cursor) :
   | some tree =>
     match source.trees[tree]? with
     | none => .error .treeIndex
-    | some table =>
-      if table.alphabetSize ≠ 256 then .error .treeAlphabet
-      else do
-        let (symbol, after) ← (table.readBounded cursor.remaining cursor.reader).mapError Error.symbol
-        if fits : symbol < 256 then .ok (UInt8.ofNatLT symbol fits, cursor.advance after)
-        else .error .symbolRange
+    | some table => do
+      let (byte, after) ← readByte table cursor.remaining cursor.reader
+      pure (byte, cursor.advance after)
 
 /-- The insertion quota is fuel even for zero-bit singleton trees. -/
 def scan (source : Source) :

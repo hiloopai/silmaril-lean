@@ -161,4 +161,14 @@ theorem select_error {controls : Controls} {category : Category} {bitLimit : Nat
     simp only [step, bind, Except.bind] at parsed
     cases parsed
 
+theorem Failure.offset {category : Category} {control : Control} {bitLimit : Nat} {state : Run}
+    {before : LSBReader} {input : List Bool} {error : Switch.Error}
+    (failure : Failure category control bitLimit state before input error) :
+    ∃ used suffix, input = used ++ suffix ∧ error.bit = before.totalRead + used.length := by
+  cases failure with
+  | invalidState | singleExhausted | typeSymbol | typeRange =>
+    exact ⟨[], input, rfl, by simp⟩
+  | length _ _ _ _ _ _ split _ position _ _ =>
+    exact ⟨_, _, split, by simpa only [msbBits_length] using position⟩
+
 end Silmaril.Proofs.Formats.Compression.Brotli.BlockTypes.Switch

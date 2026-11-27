@@ -23,6 +23,15 @@ theorem Wire.bit_bound {source : Source} {start final : History} {bits : List Bo
     (wire : Wire source start bits bytes final) : bits.length ≤ 15 * bytes.length :=
   Proofs.Formats.Compression.Brotli.Literal.Wire.bit_bound wire
 
+theorem readByte_sound {table : Huffman.Description.Table} {bitLimit : Nat} {before after : LSBReader}
+    {byte : UInt8} {input : List Bool} (rep : before.Rep input) (count : before.count < 8)
+    (read : readByte table bitLimit before = .ok (byte, after)) :
+    table.alphabetSize = 256 ∧
+    ∃ code width suffix, table.codeFor byte.toNat = some (code, width) ∧ width ≤ 15 ∧ width ≤ bitLimit ∧
+      input = msbBits code width ++ suffix ∧ after.Rep suffix ∧ after.count < 8 ∧
+      after.totalRead = before.totalRead + width :=
+  Proofs.Formats.Compression.Brotli.Literal.readByte_sound rep count read
+
 /-- The header-selected trees witness each original code. The exact
     returned cursor still holds all bits after the insertion. -/
 theorem read_sound {header : CompressedHeader.Header} {command : Command.Value} {metaLength : Nat}

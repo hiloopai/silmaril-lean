@@ -36,6 +36,22 @@ theorem copyTail_rejects_overrun {header : CompressedHeader.Header} {block : Blo
       Internal.copyTail header block limits initial command literals bitLimit before = .error .outputLimit) :=
   Proofs.Formats.Compression.Brotli.Execute.copyTail_rejects_overrun parsed target
 
+theorem copyTail_sound {header : CompressedHeader.Header} {block : Block} {limits : Limits}
+    {initial : State} {command : Command.Value} {literals : List UInt8} {bitLimit : Nat}
+    {before after : LSBReader} {input : List Bool} {result : Result}
+    (pending : initial.output.size + literals.length < block.endOutput)
+    (rep : before.Rep input) (count : before.count < 8)
+    (read : Internal.copyTail header block limits initial command literals bitLimit before = .ok (result, after)) :
+    result.command = command ∧ initial.output.size < result.state.output.size ∧
+    result.state.output.size ≤ block.endOutput ∧ result.state.output.size ≤ limits.output ∧
+    ∃ used matched suffix,
+      TailWire header block command initial.ring (initial.output.toList ++ literals)
+        used matched result.distance result.state.ring ∧
+      result.state.output.toList = initial.output.toList ++ literals ++ matched ∧
+      input = used ++ suffix ∧ after.Rep suffix ∧ after.count < 8 ∧
+      after.totalRead = before.totalRead + used.length ∧ used.length ≤ bitLimit :=
+  Proofs.Formats.Compression.Brotli.Execute.copyTail_sound pending rep count read
+
 /-- An accepted command appends the exact literal and overlap-copy
     sequence, with the resolved ring and original source suffix. -/
 theorem read_sound {header : CompressedHeader.Header} {block : Block} {limits : Limits}

@@ -28,7 +28,7 @@ private theorem mapError_ok {ε α : Type} {action : Except ε α}
     action = .ok value := by
   cases action <;> cases read <;> rfl
 
-private theorem copyTail_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
+theorem copyTail_sound {header : CompressedHeader.Header} {block : Block} {limits : Execute.Limits}
     {initial : State} {command : Command.Value} {literals : List UInt8} {bitLimit : Nat}
     {before after : LSBReader} {input : List Bool} {result : Result}
     (pending : initial.output.size + literals.length < block.endOutput)

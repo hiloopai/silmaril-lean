@@ -67,6 +67,25 @@ theorem Wire.bit_bound {source : Source} {start final : History} {bits : List Bo
     simp only [List.length_append, List.length_cons, msbBits_length]
     omega
 
+theorem readByte_sound {table : Huffman.Description.Table} {bitLimit : Nat} {before after : LSBReader}
+    {byte : UInt8} {input : List Bool} (rep : before.Rep input) (count : before.count < 8)
+    (read : readByte table bitLimit before = .ok (byte, after)) :
+    table.alphabetSize = 256 ∧
+    ∃ code width suffix, table.codeFor byte.toNat = some (code, width) ∧ width ≤ 15 ∧ width ≤ bitLimit ∧
+      input = msbBits code width ++ suffix ∧ after.Rep suffix ∧ after.count < 8 ∧
+      after.totalRead = before.totalRead + width := by
+  unfold readByte at read
+  split at read <;> try contradiction
+  rename_i alphabet
+  obtain ⟨⟨symbol, cursor⟩, actual, done⟩ := bind_ok read
+  simp only [] at done
+  split at done <;> try contradiction
+  cases done
+  obtain ⟨code, width, suffix, assigned, widthBound, cap, split, nextRep, nextCount, offset⟩ :=
+    Huffman.Description.Table.readBounded_sound rep count (mapError_ok actual)
+  exact ⟨by omega, code, width, suffix, by simpa only [UInt8.toNat_ofNatLT] using assigned, widthBound, cap,
+    split, nextRep, nextCount, offset⟩
+
 private theorem readOne_sound {source : Source} {history : History} {before after : Cursor}
     {byte : UInt8} {input : List Bool}
     (rep : before.reader.Rep input) (count : before.reader.count < 8)
@@ -80,18 +99,12 @@ private theorem readOne_sound {source : Source} {history : History} {before afte
   rename_i tree treeRead
   split at read <;> try contradiction
   rename_i table tableRead
-  split at read <;> try contradiction
-  rename_i alphabet
-  obtain ⟨⟨symbol, cursor⟩, actual, done⟩ := bind_ok read
-  simp only [] at done
-  split at done <;> try contradiction
-  rename_i fits
+  obtain ⟨⟨byte, next⟩, parsed, done⟩ := bind_ok read
   cases done
-  obtain ⟨code, width, suffix, assigned, widthBound, cap, split, nextRep, nextCount, offset⟩ :=
-    Huffman.Description.Table.readBounded_sound rep count (mapError_ok actual)
-  exact ⟨tree, table, code, width, suffix, treeRead, tableRead, by omega,
-    by simpa only [UInt8.toNat_ofNatLT] using assigned, widthBound, split, nextRep, nextCount,
-    by simpa only [Cursor.advance, msbBits_length] using offset,
+  obtain ⟨alphabet, code, width, suffix, assigned, widthBound, cap, split, nextRep, nextCount, offset⟩ :=
+    readByte_sound rep count parsed
+  exact ⟨tree, table, code, width, suffix, treeRead, tableRead, alphabet, assigned, widthBound, split,
+    nextRep, nextCount, by simpa only [Cursor.advance, msbBits_length] using offset,
     by simp only [Cursor.advance, msbBits_length, offset]; omega⟩
 
 private theorem scan_sound {source : Source} {amount : Nat} {history finalHistory : History}

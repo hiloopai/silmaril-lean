@@ -1,0 +1,508 @@
+{
+  "libbrotli_commit": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "provenance": "independently assembled RFC 7932 two-meta-block specimen",
+  "assembled": {
+    "wire_hex": "a000208a0210410010144a000000000000004000800000000000002a68a880c10392c0242086128c500088a200441000048512000000000000001000200000000000800a1a2a60f08024300988a10403",
+    "sha256": "f709f47e00132e6f09a4ff10b979cae47c80c499a9cde65e258e6b5e7e119402",
+    "plain_hex": "41c0c0c04341434343e04141c0c0c04341434343e041",
+    "commands": [
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        144,
+        2,
+        296
+      ],
+      [
+        0,
+        1,
+        1,
+        0,
+        0,
+        152,
+        3,
+        303
+      ],
+      [
+        0,
+        2,
+        0,
+        1,
+        0,
+        144,
+        2,
+        311
+      ],
+      [
+        1,
+        0,
+        0,
+        1,
+        0,
+        144,
+        2,
+        614
+      ],
+      [
+        1,
+        1,
+        1,
+        0,
+        0,
+        152,
+        3,
+        621
+      ],
+      [
+        1,
+        2,
+        0,
+        1,
+        0,
+        144,
+        2,
+        629
+      ]
+    ],
+    "literals": [
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        65,
+        296,
+        297
+      ],
+      [
+        0,
+        0,
+        1,
+        1,
+        0,
+        1,
+        1,
+        65,
+        0,
+        16,
+        1,
+        192,
+        300,
+        301
+      ],
+      [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        192,
+        192,
+        48,
+        0,
+        67,
+        303,
+        304
+      ],
+      [
+        0,
+        1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        67,
+        192,
+        3,
+        0,
+        65,
+        307,
+        308
+      ],
+      [
+        0,
+        1,
+        2,
+        0,
+        1,
+        0,
+        0,
+        65,
+        67,
+        1,
+        0,
+        67,
+        308,
+        309
+      ],
+      [
+        0,
+        2,
+        0,
+        1,
+        0,
+        0,
+        1,
+        67,
+        67,
+        16,
+        1,
+        224,
+        314,
+        315
+      ],
+      [
+        0,
+        2,
+        1,
+        0,
+        1,
+        0,
+        0,
+        224,
+        67,
+        32,
+        0,
+        65,
+        318,
+        319
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        65,
+        224,
+        1,
+        0,
+        65,
+        614,
+        615
+      ],
+      [
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        1,
+        65,
+        65,
+        16,
+        1,
+        192,
+        618,
+        619
+      ],
+      [
+        1,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        192,
+        192,
+        48,
+        0,
+        67,
+        621,
+        622
+      ],
+      [
+        1,
+        1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        67,
+        192,
+        3,
+        0,
+        65,
+        625,
+        626
+      ],
+      [
+        1,
+        1,
+        2,
+        0,
+        1,
+        0,
+        0,
+        65,
+        67,
+        1,
+        0,
+        67,
+        626,
+        627
+      ],
+      [
+        1,
+        2,
+        0,
+        1,
+        0,
+        0,
+        1,
+        67,
+        67,
+        16,
+        1,
+        224,
+        632,
+        633
+      ],
+      [
+        1,
+        2,
+        1,
+        0,
+        1,
+        0,
+        0,
+        224,
+        67,
+        32,
+        0,
+        65,
+        636,
+        637
+      ]
+    ],
+    "switches": [
+      [
+        0,
+        0,
+        1,
+        0,
+        1,
+        2,
+        297,
+        298,
+        300
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        301,
+        301,
+        303
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        2,
+        304,
+        305,
+        307
+      ],
+      [
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        309,
+        309,
+        311
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        311,
+        312,
+        314
+      ],
+      [
+        0,
+        0,
+        1,
+        1,
+        0,
+        1,
+        315,
+        316,
+        318
+      ],
+      [
+        1,
+        0,
+        1,
+        0,
+        1,
+        2,
+        615,
+        616,
+        618
+      ],
+      [
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        619,
+        619,
+        621
+      ],
+      [
+        1,
+        0,
+        0,
+        1,
+        0,
+        2,
+        622,
+        623,
+        625
+      ],
+      [
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        627,
+        627,
+        629
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        629,
+        630,
+        632
+      ],
+      [
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        633,
+        634,
+        636
+      ]
+    ],
+    "ring": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "end": 637,
+    "failures": {
+      "L-count-cap": {
+        "bit": 298,
+        "block": 0,
+        "cause": "Silmaril.Formats.Compression.Brotli.BlockTypes.Error.bitLimit",
+        "command": 0,
+        "kind": "literal-length",
+        "literal": 1
+      },
+      "L-code-cap": {
+        "bit": 300,
+        "block": 0,
+        "cause": "Silmaril.Formats.Compression.Brotli.Literal.Error.symbol\n  (Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.bitLimit)",
+        "command": 0,
+        "kind": "literal-code",
+        "literal": 1
+      },
+      "I-count-cap": {
+        "bit": 301,
+        "block": 0,
+        "cause": "Silmaril.Formats.Compression.Brotli.BlockTypes.Error.bitLimit",
+        "command": 1,
+        "kind": "insertCopy-length",
+        "literal": null
+      },
+      "bounds-before-literal": {
+        "bit": 296,
+        "block": 0,
+        "cause": "Silmaril.Formats.Compression.Brotli.Execute.Error.outputLimit",
+        "command": 0,
+        "kind": "bounds",
+        "literal": null
+      },
+      "late-literal-truncation": {
+        "bit": 632,
+        "block": 1,
+        "cause": "Silmaril.Formats.Compression.Brotli.Literal.Error.symbol\n  (Silmaril.Formats.Compression.Brotli.Huffman.Description.SymbolError.truncated)",
+        "command": 2,
+        "kind": "literal-code",
+        "literal": 0
+      }
+    }
+  },
+  "unsupported": {
+    "distance": {
+      "sha256": "b6f4cc28d89176693b920d0b1109ae3d91c128b40e18074aab1d88a61c5c7f3e",
+      "failure": {
+        "bit": 583,
+        "block": 0,
+        "cause": null,
+        "command": 0,
+        "kind": "distanceBlockTypes",
+        "literal": null
+      }
+    },
+    "dictionary": {
+      "sha256": "6a552bdbff1a5d0e76e4b71ab59c9121d7182142b96e0173f6be16823c2f4a11",
+      "failure": {
+        "bit": 448,
+        "block": 0,
+        "cause": [
+          28183,
+          8,
+          28174
+        ],
+        "command": 0,
+        "kind": "dictionary",
+        "literal": null
+      }
+    }
+  }
+}

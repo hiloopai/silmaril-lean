@@ -45,4 +45,10 @@ theorem select_error {controls : Controls} {category : Category} {bitLimit : Nat
     Failure category (category.control controls) bitLimit (state.get category) before input error :=
   Proofs.Formats.Compression.Brotli.BlockTypes.Switch.select_error rep count parsed
 
+theorem Failure.offset {category : Category} {control : Control} {bitLimit : Nat} {state : Run}
+    {before : LSBReader} {input : List Bool} {error : Error}
+    (failure : Failure category control bitLimit state before input error) :
+    ∃ used suffix, input = used ++ suffix ∧ error.bit = before.totalRead + used.length :=
+  Proofs.Formats.Compression.Brotli.BlockTypes.Switch.Failure.offset failure
+
 end Silmaril.Formats.Compression.Brotli.BlockTypes.Switch
