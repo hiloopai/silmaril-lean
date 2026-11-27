@@ -67,6 +67,7 @@ inductive DictionaryPageError where
 
 inductive Error where
   | snapshot (cause : Snapshot.Error Unit)
+  | pageLessSnapshot (cause : Footer.PageLessTimestamp.Error)
   | schemaShape
   | annotation (cause : Timestamp.Error)
   | leafMismatch
@@ -136,11 +137,12 @@ def bindSelectionWith (profile : AnnotationProfile) (limits : Footer.Limits)
 
 def disjoint (snapshot : Snapshot.Checked) (groupIndex columnIndex : Nat) (span : Footer.Span) : Bool :=
   snapshot.metadata.rowGroups.zipIdx.all fun (group, groupOrdinal) =>
-    group.columns.zipIdx.all fun (column, columnOrdinal) =>
-      (groupOrdinal == groupIndex && columnOrdinal == columnIndex) ||
-        match Parquet.Page.columnSpan snapshot.footer.start column.metadata with
-        | none => false
-        | some other => decide (span.stop ≤ other.start ∨ other.stop ≤ span.start)
+    snapshot.admitsPageLessTimestamp group ||
+      group.columns.zipIdx.all fun (column, columnOrdinal) =>
+        (groupOrdinal == groupIndex && columnOrdinal == columnIndex) ||
+          match Parquet.Page.columnSpan snapshot.footer.start column.metadata with
+          | none => false
+          | some other => decide (span.stop ≤ other.start ∨ other.stop ≤ span.start)
 
 def pageSlots (frame : Parquet.Page.Frame) : Nat :=
   match frame.value.kind with

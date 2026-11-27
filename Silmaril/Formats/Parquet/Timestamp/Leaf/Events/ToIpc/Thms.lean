@@ -10,6 +10,14 @@ namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Events.ToIpc
 open Silmaril.Relational
 open Silmaril.Numeric.Timestamp (Ticks)
 
+theorem openBoundUsing_sound {limits : Limits} {input : Bytes} {bound : Leaf.Bound}
+    {bind : Bytes → Except Leaf.Error Leaf.Bound}
+    (opened : openBoundUsing limits input bind = .ok bound) :
+    bind input = .ok bound ∧ input.length ≤ limits.maxFileBytes ∧
+      bound.snapshot.groupCount ≤ limits.maxGroups ∧
+      bound.snapshot.metadata.numRows.toNat ≤ limits.maxTotalRows :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Events.ToIpc.openBoundUsing_sound opened
+
 /-- A successful open checks the original file, selected leaf and resource bounds. -/
 theorem openBoundWith_sound {profile : AnnotationProfile} {limits : Limits} {input : Bytes} {ordinal : Nat} {bound : Leaf.Bound}
     (opened : openBoundWith profile limits input ordinal = .ok bound) :
@@ -54,6 +62,18 @@ theorem emit_readback {limits : Arrow.ObservationLimits} {schema : Scan.Schema S
         (batchesAt trace column).map Arrow.TimestampBatch.Writer.tickCounts :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Events.ToIpc.emit_readback one ended written
 
+theorem convertGroupsUsing_first_error {source : Except Error Leaf.Bound}
+    {outputLimits : Arrow.ObservationLimits}
+    {read : (bound : Leaf.Bound) → Nat → Except Leaf.Error (Leaf.Slots bound)}
+    {index : Nat} {bound : Leaf.Bound}
+    {before after : List Nat} {groups : List (Leaf.Slots bound)} {cause : Leaf.Error}
+    (opened : source = .ok bound)
+    (split : List.range bound.snapshot.groupCount = before ++ index :: after)
+    (earlier : before.mapM (read bound) = .ok groups)
+    (failed : read bound index = .error cause) :
+    convertGroupsUsing source outputLimits read = .error (.source (.groupFailure index cause)) :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Events.ToIpc.convertGroupsUsing_first_error opened split earlier failed
+
 /-- The first failed footer group determines the exact original source error. -/
 theorem convertGroups_first_error {profile : AnnotationProfile} {inputLimits : Limits} {outputLimits : Arrow.ObservationLimits}
     {read : (bound : Leaf.Bound) → Nat → Except Leaf.Error (Leaf.Slots bound)}
@@ -87,6 +107,19 @@ theorem convert_first_error {inputLimits : Limits} {outputLimits : Arrow.Observa
     (failed : Leaf.readGroup inputLimits.leaf bound index = .error cause) :
     convert inputLimits outputLimits input ordinal = .error (.source (.groupFailure index cause)) :=
   convertWith_first_error (profile := .modernOnly) opened split earlier failed
+
+theorem convertGroupsUsing_readback {source : Except Error Leaf.Bound}
+    {outputLimits : Arrow.ObservationLimits}
+    {read : (bound : Leaf.Bound) → Nat → Except Leaf.Error (Leaf.Slots bound)}
+    {wire : KBytes}
+    (written : convertGroupsUsing source outputLimits read = .ok wire) :
+    ∃ bound : Leaf.Bound, source = .ok bound ∧
+      let reference := Leaf.Events.referenceGroupsWith (read bound) (List.range bound.snapshot.groupCount)
+      reference.2 = .eos ∧ ∃ result, Arrow.TimestampStream.read outputLimits.ipc wire = .ok result ∧
+        result.binding = selectedBinding bound ∧
+        result.batches.map Arrow.TimestampBatch.Writer.tickCounts =
+          reference.1.map (List.map (Option.map Ticks.ticks)) :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Events.ToIpc.convertGroupsUsing_readback written
 
 /-- Successful IPC reads back to the same leaf descriptor and complete original
 group observations in footer order. -/

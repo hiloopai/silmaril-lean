@@ -3,6 +3,7 @@ module
 public import Silmaril.Formats.Parquet.Snapshot.Defs
 import Silmaril.Proofs.Formats.Parquet.Snapshot.Correctness
 import Silmaril.Proofs.Formats.Parquet.Snapshot.PageLessInt32
+import Silmaril.Proofs.Formats.Parquet.Snapshot.PageLessTimestamp
 
 public section
 
@@ -21,6 +22,23 @@ theorem checkPageLessInt32_exact {limits : Limits} {input : Bytes} {snapshot : C
       snapshot.groupCount = snapshot.metadata.rowGroups.length ∧
       ∀ index, snapshot.groupAt index = snapshot.metadata.rowGroups[index]? :=
   Proofs.Formats.Parquet.Snapshot.PageLessInt32.check_exact opened
+
+/-- The strict snapshot never enables the no-frame TIMESTAMP policy. -/
+theorem check_noPageLessTimestamp {Failure : Type*} {limits : Limits} {input : Bytes} {snapshot : Checked}
+    (opened : check (Failure := Failure) limits input = .ok snapshot) (group : Footer.RowGroup) :
+    snapshot.admitsPageLessTimestamp group = false :=
+  Proofs.Formats.Parquet.Snapshot.PageLessTimestamp.check_strict opened group
+
+/-- The opt-in snapshot retains the original footer, bytes, and no-frame group ordinals. -/
+theorem checkPageLessTimestamp_exact {limits : Limits} {input : Bytes} {snapshot : Checked}
+    (opened : checkPageLessTimestamp limits input = .ok snapshot) :
+    Footer.readFooter limits.footer input = .ok (snapshot.footer, snapshot.metadata) ∧
+      Footer.PageLessTimestamp.validate limits.footer limits.maxSchemaDepth input
+        snapshot.footer snapshot.metadata = .ok () ∧ snapshot.bytes = input ∧
+      snapshot.groupCount = snapshot.metadata.rowGroups.length ∧
+      (∀ index, snapshot.groupAt index = snapshot.metadata.rowGroups[index]?) ∧
+      ∀ group, snapshot.admitsPageLessTimestamp group = Footer.PageLessTimestamp.isPageLess group :=
+  Proofs.Formats.Parquet.Snapshot.PageLessTimestamp.check_exact opened
 
 /-- The checked snapshot retains the metadata parsed from the original footer. -/
 theorem check_metadata {limits : Limits} {bytes : Bytes} {checked : Checked}

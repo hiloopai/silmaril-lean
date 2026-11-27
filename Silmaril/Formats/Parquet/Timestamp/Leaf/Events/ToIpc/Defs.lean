@@ -31,15 +31,20 @@ inductive Error where
   deriving DecidableEq, Repr
 
 /-- Bound the entire source before pulling rows from the checked selection. -/
-def openBoundWith (profile : AnnotationProfile) (limits : Limits) (input : Bytes) (ordinal : Nat) : Except Error Leaf.Bound :=
+def openBoundUsing (limits : Limits) (input : Bytes) (bind : Bytes → Except Leaf.Error Leaf.Bound) :
+    Except Error Leaf.Bound :=
   if limits.maxFileBytes < input.length then .error (.fileByteLimit limits.maxFileBytes input.length)
   else do
-    let bound ← (Leaf.openLeafWith profile limits.snapshot input ordinal).mapError (.source ∘ .openFailure)
+    let bound ← (bind input).mapError (.source ∘ .openFailure)
     let groups := bound.snapshot.groupCount
     let rows := bound.snapshot.metadata.numRows.toNat
     if limits.maxGroups < groups then .error (.groupLimit limits.maxGroups groups)
     else if limits.maxTotalRows < rows then .error (.rowLimit limits.maxTotalRows rows)
     else .ok bound
+
+def openBoundWith (profile : AnnotationProfile) (limits : Limits) (input : Bytes) (ordinal : Nat) :
+    Except Error Leaf.Bound :=
+  openBoundUsing limits input (fun bytes => Leaf.openLeafWith profile limits.snapshot bytes ordinal)
 
 def openBound (limits : Limits) (input : Bytes) (ordinal : Nat) : Except Error Leaf.Bound :=
   openBoundWith .modernOnly limits input ordinal
@@ -74,13 +79,17 @@ def emit (limits : Arrow.ObservationLimits) (source : Source) : Except Error KBy
         (Arrow.TimestampStream.Writer.emit limits (bindingAt schema column) (batchesAt trace column)).mapError .writer
       else .error (.fieldCount schema.width)
 
-/-- Bind the checked source once, pull the selected group profile, and emit
-only after complete footer-order reads. The root has ordinal zero. -/
+/-- Pull the checked source once in footer order and emit only after EOS. -/
+def convertGroupsUsing (opened : Except Error Leaf.Bound) (outputLimits : Arrow.ObservationLimits)
+    (read : (bound : Leaf.Bound) → Nat → Except Leaf.Error (Leaf.Slots bound)) : Except Error KBytes := do
+  let bound ← opened
+  emit outputLimits (Events.readBoundWith bound (read bound))
+
+/-- Bind the checked source once, then run the selected group reader. -/
 def convertGroups (profile : AnnotationProfile) (inputLimits : Limits)
     (outputLimits : Arrow.ObservationLimits) (input : Bytes) (ordinal : Nat)
-    (read : (bound : Leaf.Bound) → Nat → Except Leaf.Error (Leaf.Slots bound)) : Except Error KBytes := do
-  let bound ← openBoundWith profile inputLimits input ordinal
-  emit outputLimits (Events.readBoundWith bound (read bound))
+    (read : (bound : Leaf.Bound) → Nat → Except Leaf.Error (Leaf.Slots bound)) : Except Error KBytes :=
+  convertGroupsUsing (openBoundWith profile inputLimits input ordinal) outputLimits read
 
 /-- Select the serialized footer leaf ordinal and read its PLAIN data pages. -/
 def convertWith (profile : AnnotationProfile) (inputLimits : Limits) (outputLimits : Arrow.ObservationLimits)

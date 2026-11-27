@@ -1,0 +1,14 @@
+{
+  "utc": "24dcbc5fc2d601d072a5c3b10f70a5f90886fd873fd3d944890b2c153ad7dda8",
+  "local": "d70466392fe83d95dcc4776069858d54256e3ad89de61eba5f2788e6dcc319fc",
+  "all_empty": "8118dc87cf32bdeb6ef930ee18216c966f026d6f395c1c858e65f936c253ee13",
+  "schema_only": "dcfc115923ad1b5df3761e46befe5746c093767b44145baa3d8154c11c47a976",
+  "assembled": "eb12ee4d6c1716b750120a6eb8723d55d110c47d20761f96aad2f4b74124883f",
+  "late_crc": "40e2cda05c7ab2899ce9c7a8a1933dfce8b54ca2612865b79e3b9a6854b99bce",
+  "positive_missing": "aeb4443d6ae6de262b2b8f81836b0630c03a18b4209b90fa4d173c02e7a457aa",
+  "nonzero_values": "8227761083a9b57a396a7feca67648cd9f13ceb3fee70ecc572d91425000fdb8",
+  "wrong_empty_path": "58891cdb376745d3d53a94bf44adf1783df5e49f323b77dc797cbafe5819cbd1",
+  "nonempty_stats": "49f55ffe64061710ec72fa4eae8bdaba995f0de57ba592da3bb21463be9ab0fc",
+  "unclaimed_byte": "82c8c2b3eea49c02f2eb3dcc55f106a1e190e44f6fc7f4f68bd860a4d9dccb65",
+  "empty_dictionary_frame": "f7cc9f17702b69ff8a06abd9760680f5b47e91c6a0debb0eb4134000fbc41b25"
+}

@@ -142,7 +142,7 @@ theorem readAll_single {limits : Limits} {bytes : Bytes} {footer : Footer.Span}
       decode snapshot 0 group = .ok rows)
     (count : rows.length = group.numRows.toNat) :
     readAll limits bind bytes = .ok ⟨schema, ⟨[AlignedColumns.ofRows rows], .eos⟩⟩ := by
-  let snapshot : Checked := ⟨bytes, footer, metadata, metadata.rowGroups.toArray⟩
+  let snapshot : Checked := ⟨bytes, footer, metadata, metadata.rowGroups.toArray, false⟩
   have checked : check (Failure := Failure) limits bytes = .ok snapshot := by
     simp [check, read, valid, snapshot, Except.mapError, Bind.bind, Except.bind, Pure.pure, Except.pure]
   have opened : openSource limits bind bytes = .ok (snapshot.source decode) := by
