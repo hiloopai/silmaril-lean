@@ -263,15 +263,15 @@ structure GroupWire (limits : Limits) (checked : ListFile.Checked) (ordinal : Na
     framed.group.numRows.toNat ≤ checked.limits.page.maxRows ∧
     expandedSize framed.frames = spent
 
-abbrev GroupReaderFor (failure : Type) :=
-  ListFile.Checked → Nat → Nat → Except failure (List Row × Nat)
+abbrev GroupReaderFor (failure : Type) (container : ListFile.Container := .nullable) :=
+  ListFile.Checked container → Nat → Nat → Except failure (List Row × Nat)
 
 abbrev GroupReader := GroupReaderFor GroupError
 
 /-- Preserve the successful groups before the first indexed failure. A single
 expansion budget is threaded through the whole file. -/
-def readGroupsWith {ε σ : Type} (wrap : Nat → ε → σ) (read : GroupReaderFor ε)
-    (checked : ListFile.Checked) (expanded : Nat) : List Nat → List (List Row) × Except σ Nat
+def readGroupsWith {ε σ : Type} {container : ListFile.Container}
+    (wrap : Nat → ε → σ) (read : GroupReaderFor ε container) (checked : ListFile.Checked container) (expanded : Nat) : List Nat → List (List Row) × Except σ Nat
   | [] => ([], .ok expanded)
   | ordinal :: rest =>
     match read checked ordinal expanded with

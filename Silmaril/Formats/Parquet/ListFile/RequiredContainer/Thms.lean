@@ -29,7 +29,7 @@ theorem decodeSections_bad_definition {limits : ListPage.Limits} {slots : Nat}
     (defn : Hybrid.decode 2 slots limits.levels definition = .ok defs)
     (bad : defs.any (fun level => 2 < level) = true) :
     decodeSections limits slots repetition definition scalars = .error .levelPair := by
-  simp [decodeSections, rep, defn, bad, Except.mapError, Bind.bind, Except.bind]
+  simp [decodeSections, decodeSectionsUsing, rep, defn, bad, Except.mapError, Bind.bind, Except.bind]
   rfl
 
 /-- A body refusal keeps the original frame-zero ordinal and absolute offset. -/
@@ -44,6 +44,14 @@ theorem readGroup_frame_error {checked : Checked} {ordinal : Nat}
 theorem readEvent_wire {entry : Triple} {event : Event}
     (h : readEvent entry = .ok event) : eventWire event = some entry :=
   Proofs.Formats.Parquet.ListFile.RequiredContainer.readEvent_wire h
+
+/-- Select exactly the physical slots from the original level streams using the supplied value reader. -/
+theorem decodeSectionsUsing_wire {ε : Type} {pageError : ListPage.Error → ε}
+    {readValues : Nat → Bytes → Except ε (List Int32)} {limits : ListPage.Limits} {slots : Nat}
+    {repetition definition scalars : Bytes} {events : List Event}
+    (h : decodeSectionsUsing pageError readValues limits slots repetition definition scalars = .ok events) :
+    SectionsWireUsing readValues slots repetition definition scalars events :=
+  Proofs.Formats.Parquet.ListFile.RequiredContainer.decodeSectionsUsing_wire h
 
 /-- The raw level streams and exact scalar suffix preserve ordered slots. -/
 theorem decodeSections_wire {limits : ListPage.Limits} {slots : Nat}

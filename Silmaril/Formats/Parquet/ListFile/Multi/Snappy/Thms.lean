@@ -271,4 +271,24 @@ theorem pageRows_of_rows (rows : List Row) :
     pageRows (rows.flatMap ListPage.rowEvents) = rows.length :=
   Proofs.Formats.Parquet.ListFile.Multi.Snappy.pageRows_of_rows rows
 
+theorem readGroupsWith_wire {ε σ : Type} {container : ListFile.Container} {wrap : Nat → ε → σ} {read : GroupReaderFor ε container}
+    {witness : ListFile.Checked container → Nat → List Row → Nat → Prop} {checked : ListFile.Checked container} {indices : List Nat}
+    {expanded left : Nat} {groups : List (List Row)}
+    (sound : ∀ {checked ordinal expanded left rows}, read checked ordinal expanded = .ok (rows, left) →
+      witness checked ordinal rows (expanded - left) ∧ left ≤ expanded)
+    (h : readGroupsWith wrap read checked expanded indices = (groups, .ok left)) :
+    ∃ costs,
+      List.Forall₂ (fun ordinal (batch : List Row × Nat) => witness checked ordinal batch.1 batch.2)
+        indices (groups.zip costs) ∧
+      costs.length = groups.length ∧ costs.sum + left = expanded :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.readGroupsWith_wire sound h
+
+theorem readGroupsWith_append {ε σ : Type} {container : ListFile.Container} {wrap : Nat → ε → σ} {read : GroupReaderFor ε container} {checked : ListFile.Checked container} {before after : List Nat}
+    {expanded left : Nat} {groups : List (List Row)}
+    (h : readGroupsWith wrap read checked expanded before = (groups, .ok left)) :
+    readGroupsWith wrap read checked expanded (before ++ after) =
+      let tail := readGroupsWith wrap read checked left after
+      (groups ++ tail.1, tail.2) :=
+  Proofs.Formats.Parquet.ListFile.Multi.Snappy.readGroupsWith_append h
+
 end Silmaril.Formats.Parquet.ListFile.Multi.Snappy

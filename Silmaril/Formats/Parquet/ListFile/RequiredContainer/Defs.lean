@@ -34,15 +34,18 @@ def readEvent : Triple → Except ListPage.Error Event
 def valueMask (definitions : List Nat) : List Bool :=
   definitions.map (· == 2)
 
-def decodeSections (limits : ListPage.Limits) (slots : Nat) (repetition definition scalars : Bytes) :
-    Except ListPage.Error (List Event) := do
-  let reps ← (Hybrid.decode 1 slots limits.levels repetition).mapError .repetition
-  let defs ← (Hybrid.decode 2 slots limits.levels definition).mapError .definition
-  if defs.any (fun level => 2 < level) then return ← throw .levelPair
+def decodeSectionsUsing {ε : Type} (pageError : ListPage.Error → ε)
+    (read : Nat → Bytes → Except ε (List Int32)) (limits : ListPage.Limits) (slots : Nat) (repetition definition scalars : Bytes) :
+    Except ε (List Event) := do
+  let reps ← (Hybrid.decode 1 slots limits.levels repetition).mapError (pageError ∘ .repetition)
+  let defs ← (Hybrid.decode 2 slots limits.levels definition).mapError (pageError ∘ .definition)
+  if defs.any (fun level => 2 < level) then return ← throw (pageError .levelPair)
   let mask := valueMask defs
-  let values ← (Plain.decodeInt32 (mask.count true) scalars).mapError .plain
-  let entries ← (FlatPage.reconstruct mask values).mapError .reconstruct
-  (reps.zip (defs.zip entries)).mapM readEvent
+  let values ← read (mask.count true) scalars
+  let entries ← (FlatPage.reconstruct mask values).mapError (pageError ∘ .reconstruct)
+  ((reps.zip (defs.zip entries)).mapM readEvent).mapError pageError
+
+def decodeSections := decodeSectionsUsing id (fun count bytes => (Plain.decodeInt32 count bytes).mapError .plain)
 
 def decodeEvents (limits : ListPage.Limits) (slots : Nat) (body : Bytes) :
     Except ListPage.Error (List Event) := do
@@ -50,6 +53,15 @@ def decodeEvents (limits : ListPage.Limits) (slots : Nat) (body : Bytes) :
   let first ← (FlatPage.splitV1Optional limits.levels.bytes body).mapError .repetitionSection
   let second ← (FlatPage.splitV1Optional limits.levels.bytes first.scalars).mapError .definitionSection
   decodeSections limits slots first.definitions second.definitions second.scalars
+
+structure SectionsWireUsing {ε : Type} (read : Nat → Bytes → Except ε (List Int32)) (slots : Nat) (repetition definition scalars : Bytes) (events : List Event) : Prop where
+  count : events.length = slots
+  data : ∃ (reps defs : List Nat) (values : List Int32) (entries : List (Option Int32)),
+    Hybrid.Wire 1 slots repetition.toList reps ∧ Hybrid.Wire 2 slots definition.toList defs ∧
+    reps.length = slots ∧ defs.length = slots ∧ entries.length = slots ∧
+    read ((valueMask defs).count true) scalars = .ok values ∧
+    entries.map Option.isSome = valueMask defs ∧ entries.filterMap id = values ∧
+    events.map eventWire = (reps.zip (defs.zip entries)).map some
 
 structure SectionsWire (slots : Nat) (repetition definition scalars : Bytes) (events : List Event) : Prop where
   count : events.length = slots
@@ -59,6 +71,11 @@ structure SectionsWire (slots : Nat) (repetition definition scalars : Bytes) (ev
     Plain.decodeInt32 ((valueMask defs).count true) scalars = .ok values ∧
     entries.map Option.isSome = valueMask defs ∧ entries.filterMap id = values ∧
     events.map eventWire = (reps.zip (defs.zip entries)).map some
+
+theorem SectionsWire.usingPlain {slots : Nat} {repetition definition scalars : Bytes} {events : List Event}
+    (wire : SectionsWire slots repetition definition scalars events) :
+    SectionsWireUsing Plain.decodeInt32 slots repetition definition scalars events :=
+  ⟨wire.count, wire.data⟩
 
 structure EventsWire (limits : ListPage.Limits) (slots : Nat) (body : Bytes) (events : List Event) : Prop where
   cap : body.length ≤ limits.maxBodyBytes

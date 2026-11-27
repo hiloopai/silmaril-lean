@@ -60,7 +60,7 @@ public theorem expand_checksum_error {storedCap expandedCap : Nat} {source : Byt
     expand storedCap expandedCap source frame = .error (.checksum cause) := by
   simp [expand, h, Except.mapError, Bind.bind, Except.bind]
 
-public theorem readEntries_wire {limits : Limits} {checked : ListFile.Checked} {expanded : Nat}
+public theorem readEntries_wire {container : ListFile.Container} {limits : Limits} {checked : ListFile.Checked container} {expanded : Nat}
     {frame : Page.Frame} {entries : List Int32} (h : readEntries limits checked expanded frame = .ok entries) :
     DictionaryWire limits checked frame entries ∧ frame.value.uncompressedSize ≤ expanded := by
   unfold readEntries at h
@@ -216,7 +216,7 @@ public theorem readFrames_wire {limits : Limits} {checked : ListFile.Checked} {c
       next.finish.flatMap ListPage.rowEvents = state.finish.flatMap ListPage.rowEvents ++ pages.flatten :=
   readFramesUsing_wire (read := readFrame limits checked column entries) (fun proof => readFrame_wire proof) h
 
-public theorem selectFramedChunk_wire {checked : ListFile.Checked} {ordinal : Nat}
+public theorem selectFramedChunk_wire {container : ListFile.Container} {checked : ListFile.Checked container} {ordinal : Nat}
     {framed : ListFile.FramedGroup} {chunk : Chunk}
     (origin : ListFile.ChunkFrameWire checked ordinal framed 1)
     (h : selectFramedChunk framed = .ok chunk) :
@@ -239,7 +239,7 @@ public theorem selectFramedChunk_wire {checked : ListFile.Checked} {ordinal : Na
       obtain rfl := Except.ok.inj h
       exact ⟨⟨origin, frames, not_not.mp dictOffset, not_not.mp dataOffset⟩, rfl⟩
 
-public theorem selectChunk_wire {checked : ListFile.Checked} {ordinal : Nat} {chunk : Chunk}
+public theorem selectChunk_wire {container : ListFile.Container} {checked : ListFile.Checked container} {ordinal : Nat} {chunk : Chunk}
     (h : selectChunk checked ordinal = .ok chunk) : ChunkWire checked ordinal chunk := by
   unfold selectChunk at h
   cases selected : checked.frameGroupWith 1 true ordinal with
@@ -248,8 +248,8 @@ public theorem selectChunk_wire {checked : ListFile.Checked} {ordinal : Nat} {ch
     simp only [selected, Except.mapError, Bind.bind, Except.bind] at h
     exact (selectFramedChunk_wire (ListFile.frameGroupWith_wire selected).1 h).1
 
-public theorem readSelectedGroupWith_wire {limits : Limits} {walk : DataWalk} {witness : WalkWitness}
-    {checked : ListFile.Checked} {ordinal expanded left : Nat} {chunk : Chunk} {rows : List Row}
+public theorem readSelectedGroupWith_wire {container : ListFile.Container} {limits : Limits} {walk : DataWalk container} {witness : WalkWitness container}
+    {checked : ListFile.Checked container} {ordinal expanded left : Nat} {chunk : Chunk} {rows : List Row}
     (origin : ChunkWire checked ordinal chunk)
     (sound : ∀ {checked column entries ordinal budget state frames left next},
       walk checked column entries ordinal budget state frames = .ok (left, next) →
@@ -302,8 +302,8 @@ public theorem readSelectedGroupWith_wire {limits : Limits} {walk : DataWalk} {w
         ListPage.reconstruct_of_feed fed, by simpa [ListPage.finish_empty] using order,
         Nat.le_of_not_gt slotCap, Nat.le_of_not_gt rowCap, by omega⟩, by omega⟩
 
-public theorem readGroupWith_wire {limits : Limits} {walk : DataWalk} {witness : WalkWitness}
-    {checked : ListFile.Checked} {ordinal expanded left : Nat} {rows : List Row}
+public theorem readGroupWith_wire {container : ListFile.Container} {limits : Limits} {walk : DataWalk container} {witness : WalkWitness container}
+    {checked : ListFile.Checked container} {ordinal expanded left : Nat} {rows : List Row}
     (sound : ∀ {checked column entries ordinal budget state frames left next},
       walk checked column entries ordinal budget state frames = .ok (left, next) →
       ∃ pages, witness checked column entries frames pages ∧
@@ -319,8 +319,8 @@ public theorem readGroupWith_wire {limits : Limits} {walk : DataWalk} {witness :
     simp only [chosen, Bind.bind, Except.bind] at h
     exact readSelectedGroupWith_wire (selectChunk_wire chosen) sound h
 
-public theorem readGroupUsing_wire {limits : Limits} {read : DataReader} {witness : DataWitness}
-    {checked : ListFile.Checked} {ordinal expanded left : Nat}
+public theorem readGroupUsing_wire {container : ListFile.Container} {limits : Limits} {read : DataReader container} {witness : DataWitness container}
+    {checked : ListFile.Checked container} {ordinal expanded left : Nat}
     {rows : List Row}
     (sound : ∀ {checked column entries budget frame events}, read checked column entries budget frame = .ok events →
       witness checked column entries frame events ∧ events.length ≤ budget.slots ∧

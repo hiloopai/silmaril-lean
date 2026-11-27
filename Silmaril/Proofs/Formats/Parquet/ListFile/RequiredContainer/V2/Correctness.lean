@@ -13,7 +13,7 @@ namespace Silmaril.Proofs.Formats.Parquet.ListFile.RequiredContainer.V2
 
 open Silmaril.Formats Silmaril.Formats.Parquet
 open Silmaril.Formats.Parquet.ListFile.RequiredContainer.V2
-open Silmaril.Formats.Parquet.ListFile.RequiredContainer (Checked Limits SectionsWire Triple eventWire valueMask)
+open Silmaril.Formats.Parquet.ListFile.RequiredContainer (Checked Limits SectionsWire SectionsWireUsing Triple eventWire valueMask)
 open Silmaril.Relational
 open ListPage (Event Row)
 
@@ -109,10 +109,10 @@ private theorem words_size (words : List (List UInt8))
     simp only [List.map_cons, List.sum_cons, first, List.length_cons, ih tail]
     omega
 
-public theorem sections_physical {slots : Nat} {repetition definition scalars : Bytes} {events : List Event}
-    (wire : SectionsWire slots repetition definition scalars events) :
-    Plain.decodeInt32 (slots - missingSlots events) scalars = .ok (events.filterMap (fun event => event.wire.2.2)) ∧
-    scalars.length = 4 * (slots - missingSlots events) := by
+public theorem sections_values {ε : Type} {readValues : Nat → Bytes → Except ε (List Int32)}
+    {slots : Nat} {repetition definition scalars : Bytes} {events : List Event}
+    (wire : SectionsWireUsing readValues slots repetition definition scalars events) :
+    readValues (slots - missingSlots events) scalars = .ok (events.filterMap (fun event => event.wire.2.2)) := by
   obtain ⟨reps, defs, values, entries, _, _, repCount, defCount, entryCount, read, mask, valuesOrder, eventOrder⟩ := wire.data
   have order := slot_values (repCount.trans entryCount.symm) (defCount.trans entryCount.symm) eventOrder
   have missing : missingSlots events = entries.countP Option.isNone := by
@@ -128,6 +128,13 @@ public theorem sections_physical {slots : Nat} {repetition definition scalars : 
     rw [← valuesOrder, ← order, List.filterMap_map]
     rfl
   rw [count, physical]
+  exact read
+
+public theorem sections_physical {slots : Nat} {repetition definition scalars : Bytes} {events : List Event}
+    (wire : SectionsWire slots repetition definition scalars events) :
+    Plain.decodeInt32 (slots - missingSlots events) scalars = .ok (events.filterMap (fun event => event.wire.2.2)) ∧
+    scalars.length = 4 * (slots - missingSlots events) := by
+  have read := sections_values wire.usingPlain
   refine ⟨read, ?_⟩
   obtain ⟨_, words, wordBytes, wordCount, widths, _⟩ := Plain.decodeFixedWidth_ok_iff.mp read
   rw [← Bytes.length_toList, wordBytes, List.length_flatten, words_size words widths, wordCount]
@@ -221,9 +228,10 @@ public theorem rowStarts_of_rows (rows : List Row) :
     simp only [List.flatMap_cons, List.countP_append, one, ih, List.length_cons]
     omega
 
-public theorem event_counts {info : Page.DataV2} {repetition definition scalars : Bytes}
+public theorem event_counts_using {ε : Type} {readValues : Nat → Bytes → Except ε (List Int32)}
+    {info : Page.DataV2} {repetition definition scalars : Bytes}
     {events : List Event}
-    (sectionWire : SectionsWire info.numValues repetition definition scalars events)
+    (sectionWire : SectionsWireUsing readValues info.numValues repetition definition scalars events)
     (rowCount : rowStarts events = info.numRows)
     (nullCount : missingSlots events = info.numNulls) :
     ∃ reps defs,
@@ -247,6 +255,19 @@ public theorem event_counts {info : Page.DataV2} {repetition definition scalars 
   · change defs.countP (fun d => !(d == 2)) = info.numNulls
     rw [← missing, ← values, List.countP_map]
     exact nullCount
+
+public theorem event_counts {info : Page.DataV2} {repetition definition scalars : Bytes}
+    {events : List Event}
+    (sectionWire : SectionsWire info.numValues repetition definition scalars events)
+    (rowCount : rowStarts events = info.numRows)
+    (nullCount : missingSlots events = info.numNulls) :
+    ∃ reps defs,
+      Hybrid.Wire 1 info.numValues repetition.toList reps ∧
+      Hybrid.Wire 2 info.numValues definition.toList defs ∧
+      reps.length = info.numValues ∧ defs.length = info.numValues ∧
+      reps.count 0 = info.numRows ∧ defs.countP (· != 2) = info.numNulls ∧
+      events.map (fun event => event.wire.1) = reps :=
+  event_counts_using sectionWire.usingPlain rowCount nullCount
 
 public theorem sections_counts {info : Page.DataV2} {repetition definition scalars : Bytes}
     {rows : List Row}

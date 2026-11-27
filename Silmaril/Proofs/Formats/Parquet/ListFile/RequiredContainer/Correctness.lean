@@ -43,11 +43,12 @@ private theorem readEvents_wire {entries : List (Nat × Nat × Option Int32)} {e
         obtain rfl := Except.ok.inj h
         simp [readEvent_wire first, ih tail]
 
-public theorem decodeSections_wire {limits : ListPage.Limits} {slots : Nat}
+public theorem decodeSectionsUsing_wire {ε : Type} {pageError : ListPage.Error → ε}
+    {readValues : Nat → Bytes → Except ε (List Int32)} {limits : ListPage.Limits} {slots : Nat}
     {repetition definition scalars : Bytes} {events : List Event}
-    (h : decodeSections limits slots repetition definition scalars = .ok events) :
-    SectionsWire slots repetition definition scalars events := by
-  unfold decodeSections at h
+    (h : decodeSectionsUsing pageError readValues limits slots repetition definition scalars = .ok events) :
+    SectionsWireUsing readValues slots repetition definition scalars events := by
+  unfold decodeSectionsUsing at h
   cases repRead : Hybrid.decode 1 slots limits.levels repetition with
   | error => simp [repRead, Except.mapError, bind, Except.bind] at h
   | ok reps =>
@@ -58,7 +59,7 @@ public theorem decodeSections_wire {limits : ListPage.Limits} {slots : Nat}
       simp only [defRead] at h
       split at h
       · contradiction
-      cases read : Plain.decodeInt32 ((valueMask defs).count true) scalars with
+      cases read : readValues ((valueMask defs).count true) scalars with
       | error => simp [read] at h
       | ok values =>
         simp only [read] at h
@@ -82,6 +83,18 @@ public theorem decodeSections_wire {limits : ListPage.Limits} {slots : Nat}
             exact ⟨slotsExact, reps, defs, values, entries,
               (Hybrid.decode_ok_iff.mp repRead).2.2.2.2, (Hybrid.decode_ok_iff.mp defRead).2.2.2.2,
               repCount, defCount, entryCount, read, mask, ordered, exactEvents⟩
+
+public theorem decodeSections_wire {limits : ListPage.Limits} {slots : Nat}
+    {repetition definition scalars : Bytes} {events : List Event}
+    (h : decodeSections limits slots repetition definition scalars = .ok events) :
+    SectionsWire slots repetition definition scalars events := by
+  obtain ⟨count, reps, defs, values, entries, a, b, c, d, e, read, f, g, i⟩ :=
+    decodeSectionsUsing_wire (pageError := id)
+      (readValues := fun n bytes => (Plain.decodeInt32 n bytes).mapError ListPage.Error.plain) h
+  refine ⟨count, reps, defs, values, entries, a, b, c, d, e, ?_, f, g, i⟩
+  cases decoded : Plain.decodeInt32 ((valueMask defs).count true) scalars <;>
+    simp [decoded, Except.mapError] at read
+  exact congrArg Except.ok read
 
 public theorem decodeEvents_wire {limits : ListPage.Limits} {slots : Nat} {body : Bytes}
     {events : List Event} (h : decodeEvents limits slots body = .ok events) :

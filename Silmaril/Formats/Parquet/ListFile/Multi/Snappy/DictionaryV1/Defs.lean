@@ -70,7 +70,7 @@ def errors : Snappy.ConversionErrors GroupError SourceError Error :=
 def dictionaryStoredCap (limits : Limits) : Nat :=
   min limits.snappy.maxStoredPageBytes limits.maxDictionaryBytes
 
-def dictionaryExpandedCap (limits : Limits) (checked : ListFile.Checked) : Nat :=
+def dictionaryExpandedCap {container : ListFile.Container} (limits : Limits) (checked : ListFile.Checked container) : Nat :=
   min limits.maxDictionaryBytes checked.limits.page.maxBodyBytes
 
 /-- Verify the original stored bytes before expanding the exact full V1 body. -/
@@ -91,7 +91,7 @@ structure ExpandedWire (storedCap expandedCap : Nat) (source : Bytes) (frame : P
     Payload.Decodes frame.value.uncompressedSize .snappy stored.toList expanded.toList
 
 /-- The leading dictionary consists of exactly the advertised signed words. -/
-def readEntries (limits : Limits) (checked : ListFile.Checked) (expanded : Nat)
+def readEntries {container : ListFile.Container} (limits : Limits) (checked : ListFile.Checked container) (expanded : Nat)
     (frame : Page.Frame) : Except FrameError (List Int32) := do
   let .dictionary info := frame.value.kind | throw .expectedDictionary
   if info.encoding ≠ 0 then return ← throw (.dictionaryEncoding info.encoding)
@@ -103,7 +103,7 @@ def readEntries (limits : Limits) (checked : ListFile.Checked) (expanded : Nat)
   let body ← expand (dictionaryStoredCap limits) (dictionaryExpandedCap limits checked) checked.snapshot.bytes frame
   (Plain.decodeInt32 info.numValues body).mapError .entries
 
-structure DictionaryWire (limits : Limits) (checked : ListFile.Checked) (frame : Page.Frame)
+structure DictionaryWire {container : ListFile.Container} (limits : Limits) (checked : ListFile.Checked container) (frame : Page.Frame)
     (entries : List Int32) : Prop where
   data : ∃ info body,
     frame.value.kind = .dictionary info ∧ info.encoding = 0 ∧ info.numValues ≤ limits.maxEntries ∧
@@ -150,9 +150,9 @@ structure FrameWire (limits : Limits) (checked : ListFile.Checked) (column : Foo
 
 abbrev FrameReader := Budget → Page.Frame → Except FrameError (List Event)
 
-abbrev DataReader := ListFile.Checked → Footer.ColumnChunk → Array Int32 → FrameReader
+abbrev DataReader (container : ListFile.Container := .nullable) := ListFile.Checked container → Footer.ColumnChunk → Array Int32 → FrameReader
 
-abbrev DataWitness := ListFile.Checked → Footer.ColumnChunk → Array Int32 → Page.Frame → List Event → Prop
+abbrev DataWitness (container : ListFile.Container := .nullable) := ListFile.Checked container → Footer.ColumnChunk → Array Int32 → Page.Frame → List Event → Prop
 
 /-- The selected data callback is applied in original order with a single
 chunk-local dictionary and the remaining slot and expansion budgets. -/
@@ -186,24 +186,24 @@ def selectFramedChunk (framed : ListFile.FramedGroup) : Except GroupError Chunk 
     return ← throw (.dataOffset metadata.dataPageOffset first.header.start)
   pure ⟨framed, dictionary, first, rest⟩
 
-def selectChunk (checked : ListFile.Checked) (ordinal : Nat) : Except GroupError Chunk := do
+def selectChunk {container : ListFile.Container} (checked : ListFile.Checked container) (ordinal : Nat) : Except GroupError Chunk := do
   let framed ← (checked.frameGroupWith 1 true ordinal).mapError .framing
   selectFramedChunk framed
 
-structure ChunkWire (checked : ListFile.Checked) (ordinal : Nat) (chunk : Chunk) : Prop where
+structure ChunkWire {container : ListFile.Container} (checked : ListFile.Checked container) (ordinal : Nat) (chunk : Chunk) : Prop where
   origin : ListFile.ChunkFrameWire checked ordinal chunk.framed 1
   order : chunk.framed.frames = chunk.dictionary :: chunk.firstData :: chunk.rest
   dictionaryOffset :
     chunk.framed.chunk.metadata.dictionaryPageOffset = some (chunk.dictionary.header.start : Int)
   dataOffset : chunk.framed.chunk.metadata.dataPageOffset = (chunk.firstData.header.start : Int)
 
-abbrev DataWalk := ListFile.Checked → Footer.ColumnChunk → Array Int32 →
+abbrev DataWalk (container : ListFile.Container := .nullable) := ListFile.Checked container → Footer.ColumnChunk → Array Int32 →
   Nat → Budget → State → List Page.Frame → Except GroupError (Budget × State)
 
-abbrev WalkWitness := ListFile.Checked → Footer.ColumnChunk → Array Int32 →
+abbrev WalkWitness (container : ListFile.Container := .nullable) := ListFile.Checked container → Footer.ColumnChunk → Array Int32 →
   List Page.Frame → List (List Event) → Prop
 
-def readSelectedGroupWith (limits : Limits) (walk : DataWalk) (checked : ListFile.Checked)
+def readSelectedGroupWith {container : ListFile.Container} (limits : Limits) (walk : DataWalk container) (checked : ListFile.Checked container)
     (selected : Chunk) (expanded : Nat) : Except GroupError (List Row × Nat) := do
   let column := selected.framed.chunk
   let slots := column.metadata.numValues.toNat
@@ -220,19 +220,19 @@ def readSelectedGroupWith (limits : Limits) (walk : DataWalk) (checked : ListFil
   if rows.length ≠ expectedRows then return ← throw (.rowCount expectedRows rows.length)
   pure (rows, left.expanded)
 
-def readGroupWith (limits : Limits) (walk : DataWalk) (checked : ListFile.Checked) (ordinal expanded : Nat) :
+def readGroupWith {container : ListFile.Container} (limits : Limits) (walk : DataWalk container) (checked : ListFile.Checked container) (ordinal expanded : Nat) :
     Except GroupError (List Row × Nat) := do
   let selected ← selectChunk checked ordinal
   readSelectedGroupWith limits walk checked selected expanded
 
-def readGroupUsing (limits : Limits) (read : DataReader) :=
+def readGroupUsing {container : ListFile.Container} (limits : Limits) (read : DataReader container) :=
   readGroupWith limits (fun checked column entries => readFramesUsing (read checked column entries))
 
 def readGroup (limits : Limits) (checked : ListFile.Checked) (ordinal expanded : Nat) :
     Except GroupError (List Row × Nat) :=
   readGroupUsing limits (readFrame limits) checked ordinal expanded
 
-abbrev GroupWireWith (limits : Limits) (witness : WalkWitness) (checked : ListFile.Checked) (ordinal : Nat)
+abbrev GroupWireWith {container : ListFile.Container} (limits : Limits) (witness : WalkWitness container) (checked : ListFile.Checked container) (ordinal : Nat)
     (rows : List Row) (spent : Nat) : Prop :=
   ∃ chunk entries pages,
     ChunkWire checked ordinal chunk ∧ DictionaryWire limits checked chunk.dictionary entries ∧
@@ -246,10 +246,10 @@ abbrev GroupWireWith (limits : Limits) (witness : WalkWitness) (checked : ListFi
     chunk.framed.group.numRows.toNat ≤ checked.limits.page.maxRows ∧
     Snappy.expandedSize chunk.framed.frames = spent
 
-abbrev GroupWireData (limits : Limits) (witness : DataWitness) :=
-  GroupWireWith limits (fun checked column entries => List.Forall₂ (witness checked column entries))
+abbrev GroupWireData {container : ListFile.Container} (limits : Limits) (witness : DataWitness container) :=
+  GroupWireWith (container := container) limits (fun checked column entries => List.Forall₂ (witness checked column entries))
 
-structure GroupWireUsing (limits : Limits) (witness : DataWitness) (checked : ListFile.Checked) (ordinal : Nat)
+structure GroupWireUsing {container : ListFile.Container} (limits : Limits) (witness : DataWitness container) (checked : ListFile.Checked container) (ordinal : Nat)
     (rows : List Row) (spent : Nat) : Prop where
   data : GroupWireData limits witness checked ordinal rows spent
 
