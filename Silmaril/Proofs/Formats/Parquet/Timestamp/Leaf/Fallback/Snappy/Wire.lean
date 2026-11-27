@@ -54,14 +54,41 @@ theorem checkGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Lim
   exact ⟨selected, by simpa [Leaf.ChunkEncoding.admitsCodec] using codec,
     cap, frames, chain, dictionary, data, entries, plans, Leaf.Fallback.checkSequence_wire sequence, rows⟩
 
+theorem decodePage_wireWith {dictionaryTag : Int} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : Array Int64} {page : DataPage} {ordinal : Nat} {slots : List (Option Int64)}
+    (admitted : page.params.encoding = dictionaryTag ∨ page.params.encoding = 0)
+    (read : decodePage limits leafLimits bound entries page ordinal = .ok slots) :
+    DataWireWith dictionaryTag limits leafLimits bound entries page slots := by
+  unfold decodePage at read
+  obtain ⟨status, verified, physical⟩ := bind_ok read
+  exact ⟨status, mapError_ok verified, Leaf.Fallback.decodePage_wireWith admitted physical⟩
+
 theorem decodePage_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : Array Int64} {page : DataPage} {ordinal : Nat} {slots : List (Option Int64)}
     (admitted : Leaf.Fallback.admits page.params.encoding = true)
     (read : decodePage limits leafLimits bound entries page ordinal = .ok slots) :
     DataWire limits leafLimits bound entries page slots := by
-  unfold decodePage at read
-  obtain ⟨status, verified, physical⟩ := bind_ok read
-  exact ⟨status, mapError_ok verified, Leaf.Fallback.decodePage_wire admitted physical⟩
+  apply decodePage_wireWith (dictionaryTag := 8) _ read
+  simpa [Leaf.Fallback.admits] using admitted
+
+theorem plain_decodesWith {dictionaryTag : Int} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : Array Int64} {page : DataPage} {slots : List (Option Int64)}
+    (different : dictionaryTag ≠ 0) (plain : page.params.encoding = 0)
+    (read : DataWireWith dictionaryTag limits leafLimits bound entries page slots) :
+    ∃ status layout prepared words,
+      Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame = .ok status ∧
+      page.params.sizes.uncompressed ≤ leafLimits.page.uncompressedBytes ∧
+      ScalarPage.PreparedWire page.params leafLimits.page layout (Leaf.Internal.body bound page.frame) prepared ∧
+      Plain.decodeInt64 (prepared.mask.count true) prepared.scalars = .ok words ∧
+      slots.map Option.isSome = prepared.mask ∧ slots.filterMap id = words := by
+  obtain ⟨status, checkedCRC, _, dictionary | physical⟩ := read
+  · rw [plain] at dictionary
+    exact (different dictionary.1.symm).elim
+  · obtain ⟨prepared, words, body, decoded, mask, signed, _, _⟩ :=
+      ScalarPage.decode_sound physical.2
+    obtain ⟨layout, admitted, wire⟩ := ScalarPage.prepare_sound body
+    exact ⟨status, layout, prepared, words, checkedCRC, Leaf.Dictionary.Snappy.expanded_bound admitted,
+      wire, decoded, mask, signed⟩
 
 theorem plain_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : Array Int64} {page : DataPage} {slots : List (Option Int64)}
@@ -71,22 +98,15 @@ theorem plain_decodes {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limit
       page.params.sizes.uncompressed ≤ leafLimits.page.uncompressedBytes ∧
       ScalarPage.PreparedWire page.params leafLimits.page layout (Leaf.Internal.body bound page.frame) prepared ∧
       Plain.decodeInt64 (prepared.mask.count true) prepared.scalars = .ok words ∧
-      slots.map Option.isSome = prepared.mask ∧ slots.filterMap id = words := by
-  obtain ⟨status, checkedCRC, _, dictionary | physical⟩ := read
-  · rw [plain] at dictionary
-    exact (by decide : ¬ (0 : Int) = 8) dictionary.1 |>.elim
-  · obtain ⟨prepared, words, body, decoded, mask, signed, _, _⟩ :=
-      ScalarPage.decode_sound physical.2
-    obtain ⟨layout, admitted, wire⟩ := ScalarPage.prepare_sound body
-    exact ⟨status, layout, prepared, words, checkedCRC, Leaf.Dictionary.Snappy.expanded_bound admitted,
-      wire, decoded, mask, signed⟩
+      slots.map Option.isSome = prepared.mask ∧ slots.filterMap id = words :=
+  plain_decodesWith (dictionaryTag := 8) (by decide) plain read
 
-private theorem pages_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+private theorem pages_wire {dictionaryTag : Int} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : Array Int64} {pages : List DataPage} {slots : List (List (Option Int64))}
     (reads : List.Forall₂ (fun item output =>
       decodePage limits leafLimits bound entries item.1 item.2 = .ok output) (pages.zipIdx 1) slots)
-    (admitted : ∀ page ∈ pages, Leaf.Fallback.admits page.params.encoding = true) :
-    List.Forall₂ (DataWire limits leafLimits bound entries) pages slots := by
+    (admitted : ∀ page ∈ pages, page.params.encoding = dictionaryTag ∨ page.params.encoding = 0) :
+    List.Forall₂ (DataWireWith dictionaryTag limits leafLimits bound entries) pages slots := by
   have paired : List.Forall₂ (fun page output => ∃ ordinal,
       decodePage limits leafLimits bound entries page ordinal = .ok output) pages slots := by
     rw [← List.zipIdx_map_fst 1 pages, List.forall₂_map_left_iff]
@@ -96,25 +116,23 @@ private theorem pages_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.
   | nil => exact .nil
   | cons head _ ih =>
     obtain ⟨_, decoded⟩ := head
-    exact .cons (decodePage_wire (admitted _ (List.mem_cons_self ..)) decoded)
+    exact .cons (decodePage_wireWith (admitted _ (List.mem_cons_self ..)) decoded)
       (ih fun page member => admitted page (List.mem_cons_of_mem _ member))
-
-theorem readGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
-    {index : Nat} {slots : Slots bound} (read : readGroup limits leafLimits bound index = .ok slots) :
-    ∃ checked pages, checkGroup limits leafLimits bound index = .ok checked ∧
-      List.Forall₂ (DataWire limits leafLimits bound checked.entries.toArray) checked.data pages ∧
+theorem readGroupUsing_wire {dictionaryTag : Int} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {admission : Except Leaf.Error CheckedChunk} {slots : Slots bound}
+    (order : ∀ {checked}, admission = .ok checked → Leaf.Fallback.OrderedWith dictionaryTag checked.data)
+    (read : readGroupUsing limits leafLimits bound admission = .ok slots) :
+    ∃ checked pages, admission = .ok checked ∧
+      List.Forall₂ (DataWireWith dictionaryTag limits leafLimits bound checked.entries.toArray) checked.data pages ∧
       slots = pages.flatten.map (Option.map bound.binding.descriptor.decode) ∧
-      slots.length = checked.chunk.group.numRows.toNat := by
-  unfold readGroup at read
+      slots.length = (checked.data.map (·.params.numValues)).sum := by
+  unfold readGroupUsing at read
   obtain ⟨checked, selected, read⟩ := bind_ok read
   obtain ⟨pages, decoded, read⟩ := bind_ok read
-  obtain ⟨_, _, _, _, _, _, _, _, plans, _, total⟩ := checkGroup_wire selected
-  have admitted : ∀ page ∈ checked.data, Leaf.Fallback.admits page.params.encoding = true := by
-    intro page member
-    exact (Leaf.Dictionary.Snappy.planDataWith_wire (plans page member)).2.2
-  have raw := pages_wire (List.mapM_eq_ok_iff_forall₂.mp decoded) admitted
+  have raw := pages_wire (List.mapM_eq_ok_iff_forall₂.mp decoded)
+    (fun _ member => (order selected).tags member)
   have sizes : pages.map List.length = checked.data.map (·.params.numValues) := by
-    clear read decoded admitted total plans
+    clear read decoded order selected
     generalize checked.data = data at raw ⊢
     induction raw with
     | nil => rfl
@@ -123,7 +141,32 @@ theorem readGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limi
       exact congrArg₂ List.cons size rest
   have mapped := (Except.ok.inj read).symm
   refine ⟨checked, pages, selected, raw, mapped, ?_⟩
-  rw [mapped, List.length_map, List.length_flatten, sizes, total]
+  rw [mapped, List.length_map, List.length_flatten, sizes]
+
+theorem readGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {index : Nat} {slots : Slots bound} (read : readGroup limits leafLimits bound index = .ok slots) :
+    ∃ checked pages, checkGroup limits leafLimits bound index = .ok checked ∧
+      List.Forall₂ (DataWire limits leafLimits bound checked.entries.toArray) checked.data pages ∧
+      slots = pages.flatten.map (Option.map bound.binding.descriptor.decode) ∧
+      slots.length = checked.chunk.group.numRows.toNat := by
+  have order {checked} (admitted : checkGroup limits leafLimits bound index = .ok checked) :
+      Leaf.Fallback.OrderedWith 8 checked.data := by
+    obtain ⟨_, _, _, _, _, _, _, _, _, phase, _⟩ := checkGroup_wire admitted
+    exact phase
+  obtain ⟨checked, pages, admitted, decoded, mapped, count⟩ := readGroupUsing_wire order read
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, rows⟩ := checkGroup_wire admitted
+  exact ⟨checked, pages, admitted, decoded, mapped, count.trans rows⟩
+
+theorem readGroupUsing_first_page_error {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
+    {bound : Bound} {ordinal : Nat} {admission : Except Leaf.Error CheckedChunk} {checked : CheckedChunk} {page : DataPage}
+    {before after : List (DataPage × Nat)} {outputs : List (List (Option Int64))} {cause : Leaf.Error}
+    (admitted : admission = .ok checked)
+    (split : checked.data.zipIdx 1 = before ++ (page, ordinal) :: after)
+    (earlier : before.mapM (fun (item, i) =>
+      decodePage limits leafLimits bound checked.entries.toArray item i) = .ok outputs)
+    (failed : decodePage limits leafLimits bound checked.entries.toArray page ordinal = .error cause) :
+    readGroupUsing limits leafLimits bound admission = .error cause := by
+  simp [readGroupUsing, admitted, split, earlier, failed, Bind.bind, Except.bind]
 
 theorem readGroup_first_page_error {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
     {bound : Bound} {index ordinal : Nat} {checked : CheckedChunk} {page : DataPage}
@@ -133,7 +176,7 @@ theorem readGroup_first_page_error {limits : Leaf.Dictionary.Limits} {leafLimits
     (earlier : before.mapM (fun (item, i) =>
       decodePage limits leafLimits bound checked.entries.toArray item i) = .ok outputs)
     (failed : decodePage limits leafLimits bound checked.entries.toArray page ordinal = .error cause) :
-    readGroup limits leafLimits bound index = .error cause := by
-  simp [readGroup, admitted, split, earlier, failed, Bind.bind, Except.bind]
+    readGroup limits leafLimits bound index = .error cause :=
+  readGroupUsing_first_page_error admitted split earlier failed
 
 end Silmaril.Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy

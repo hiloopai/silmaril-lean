@@ -34,6 +34,14 @@ theorem checkGroup_wire {limits : Dictionary.Limits} {leafLimits : Leaf.Limits} 
       (checked.data.map (·.params.numValues)).sum = checked.chunk.group.numRows.toNat :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy.checkGroup_wire accepted
 
+/-- The original stored payload passes CRC verification before the chosen tag is decoded. -/
+theorem decodePage_wireWith {dictionaryTag : Int} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : Array Int64} {page : DataPage} {ordinal : Nat} {slots : List (Option Int64)}
+    (admitted : page.params.encoding = dictionaryTag ∨ page.params.encoding = 0)
+    (read : decodePage limits leafLimits bound entries page ordinal = .ok slots) :
+    DataWireWith dictionaryTag limits leafLimits bound entries page slots :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy.decodePage_wireWith admitted read
+
 /-- The checked header selects the exact physical decoder for that payload. -/
 theorem decodePage_wire {limits : Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : Array Int64} {page : DataPage} {ordinal : Nat} {slots : List (Option Int64)}
@@ -52,6 +60,19 @@ theorem dictionary_decodes {limits : Dictionary.Limits} {leafLimits : Leaf.Limit
   · exact ⟨status, verified, references.2⟩
   · exact (by decide : ¬ (8 : Int) = 0) (tag.symm.trans plain.1) |>.elim
 
+/-- The PLAIN branch exposes exact level and value extents and signed words. -/
+theorem plain_decodesWith {dictionaryTag : Int} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : Array Int64} {page : DataPage} {slots : List (Option Int64)}
+    (different : dictionaryTag ≠ 0) (plain : page.params.encoding = 0)
+    (read : DataWireWith dictionaryTag limits leafLimits bound entries page slots) :
+    ∃ status layout prepared words,
+      Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame = .ok status ∧
+      page.params.sizes.uncompressed ≤ leafLimits.page.uncompressedBytes ∧
+      ScalarPage.PreparedWire page.params leafLimits.page layout (Leaf.Internal.body bound page.frame) prepared ∧
+      Plain.decodeInt64 (prepared.mask.count true) prepared.scalars = .ok words ∧
+      slots.map Option.isSome = prepared.mask ∧ slots.filterMap id = words :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy.plain_decodesWith different plain read
+
 /-- The PLAIN branch supplies the exact bounded V1 or V2 scalar layout and
 decodes one signed word for every present slot. -/
 theorem plain_decodes {limits : Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
@@ -65,6 +86,17 @@ theorem plain_decodes {limits : Dictionary.Limits} {leafLimits : Leaf.Limits} {b
       slots.map Option.isSome = prepared.mask ∧ slots.filterMap id = words :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy.plain_decodes plain read
 
+/-- Bind every successful page to the admitted phase order and exact declared slot total. -/
+theorem readGroupUsing_wire {dictionaryTag : Int} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {admission : Except Leaf.Error CheckedChunk} {slots : Slots bound}
+    (order : ∀ {checked}, admission = .ok checked → Leaf.Fallback.OrderedWith dictionaryTag checked.data)
+    (read : readGroupUsing limits leafLimits bound admission = .ok slots) :
+    ∃ checked pages, admission = .ok checked ∧
+      List.Forall₂ (DataWireWith dictionaryTag limits leafLimits bound checked.entries.toArray) checked.data pages ∧
+      slots = pages.flatten.map (Option.map bound.binding.descriptor.decode) ∧
+      slots.length = (checked.data.map (·.params.numValues)).sum :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy.readGroupUsing_wire order read
+
 /-- The group concatenates the two data segments in wire order, retaining the
 selected descriptor and the declared number of nullable signed slots. -/
 theorem readGroup_wire {limits : Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
@@ -74,6 +106,18 @@ theorem readGroup_wire {limits : Dictionary.Limits} {leafLimits : Leaf.Limits} {
       slots = pages.flatten.map (Option.map bound.binding.descriptor.decode) ∧
       slots.length = checked.chunk.group.numRows.toNat :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy.readGroup_wire read
+
+/-- The first failing data-page decode retains its typed context. -/
+theorem readGroupUsing_first_page_error {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
+    {bound : Bound} {ordinal : Nat} {admission : Except Leaf.Error CheckedChunk} {checked : CheckedChunk} {page : DataPage}
+    {before after : List (DataPage × Nat)} {outputs : List (List (Option Int64))} {cause : Leaf.Error}
+    (admitted : admission = .ok checked)
+    (split : checked.data.zipIdx 1 = before ++ (page, ordinal) :: after)
+    (earlier : before.mapM (fun (item, i) =>
+      decodePage limits leafLimits bound checked.entries.toArray item i) = .ok outputs)
+    (failed : decodePage limits leafLimits bound checked.entries.toArray page ordinal = .error cause) :
+    readGroupUsing limits leafLimits bound admission = .error cause :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy.readGroupUsing_first_page_error admitted split earlier failed
 
 /-- Once planning succeeds, the original error at the first failing
 data page is returned after the preceding pages decode. -/

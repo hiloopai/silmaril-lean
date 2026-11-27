@@ -13,25 +13,32 @@ open Dictionary (DataPage CheckedChunk atFrame)
 def admits (encoding : Int) : Bool :=
   encoding == 8 || encoding == 0
 
+def isDictionaryWith (dictionaryTag : Int) (page : DataPage) : Bool :=
+  page.params.encoding == dictionaryTag
+
 def isDictionary (page : DataPage) : Bool :=
   page.params.encoding == 8
 
 /-- Only a nonempty dictionary prefix followed by a nonempty PLAIN suffix
 constitutes fallback. The leading dictionary frame is outside this list. -/
-def Ordered (data : List DataPage) : Prop :=
+def OrderedWith (dictionaryTag : Int) (data : List DataPage) : Prop :=
   ∃ references plain, data = references ++ plain ∧ references ≠ [] ∧ plain ≠ [] ∧
-    (∀ page ∈ references, page.params.encoding = 8) ∧
+    (∀ page ∈ references, page.params.encoding = dictionaryTag) ∧
     (∀ page ∈ plain, page.params.encoding = 0)
 
-def checkSequence (data : List DataPage) : Except Leaf.Error Unit := do
+def Ordered := OrderedWith 8
+
+def checkSequenceWith (dictionaryTag : Int) (data : List DataPage) : Except Leaf.Error Unit := do
   let first :: _ := data | throw .dictionaryMissingData
-  if !isDictionary first then throw (atFrame 1 first.frame (.encoding first.params.encoding))
-  let suffix := data.dropWhile isDictionary
+  if !isDictionaryWith dictionaryTag first then throw (atFrame 1 first.frame (.encoding first.params.encoding))
+  let suffix := data.dropWhile (isDictionaryWith dictionaryTag)
   if suffix.isEmpty then throw .dictionaryMissingFallback
   let start := data.length - suffix.length + 1
   match (suffix.zipIdx start).find? (fun (page, _) => page.params.encoding != 0) with
   | none => return ()
   | some (page, index) => throw (atFrame index page.frame .dictionaryAfterFallback)
+
+def checkSequence := checkSequenceWith 8
 
 /-- Reuse the checked original chunk, dictionary frame, offsets and byte/row bounds. -/
 def checkGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
@@ -49,14 +56,16 @@ def decodePage (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : 
   else Dictionary.decodePage limits leafLimits bound entries page ordinal
 
 /-- Exact nullable INT64 slots from the admitted branch on the original payload. -/
-def PageWire (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+def PageWireWith (dictionaryTag : Int) (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
     (entries : Array Int64) (page : DataPage) (slots : List (Option Int64)) : Prop :=
   slots.length = page.params.numValues ∧
-    ((page.params.encoding = 8 ∧
+    ((page.params.encoding = dictionaryTag ∧
       DictionaryIndex.decode entries page.params leafLimits.page limits.indices
         (Internal.body bound page.frame) = .ok slots) ∨
      (page.params.encoding = 0 ∧
       ScalarPage.decode .int64 page.params leafLimits.page (Internal.body bound page.frame) = .ok slots))
+
+def PageWire := PageWireWith 8
 
 def readGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :
     Except Leaf.Error (Slots bound) := do

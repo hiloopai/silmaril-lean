@@ -27,19 +27,26 @@ def decodePage (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : 
 
 /-- The stored payload is verified and the original header selects a single
 physical decoder. -/
-def DataWire (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+def DataWireWith (dictionaryTag : Int) (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
     (entries : Array Int64) (page : DataPage) (slots : List (Option Int64)) : Prop :=
   ∃ status,
     Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame = .ok status ∧
-    Fallback.PageWire limits leafLimits bound entries page slots
+    Fallback.PageWireWith dictionaryTag limits leafLimits bound entries page slots
 
-def readGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
-    (index : Nat) : Except Leaf.Error (Slots bound) := do
-  let checked ← checkGroup limits leafLimits bound index
+def DataWire := DataWireWith 8
+
+/-- Decode an admitted chunk using its original CRC-verified data pages. -/
+def readGroupUsing (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+    (admission : Except Leaf.Error CheckedChunk) : Except Leaf.Error (Slots bound) := do
+  let checked ← admission
   let entries := checked.entries.toArray
   let pages ← (checked.data.zipIdx 1).mapM fun (page, ordinal) =>
     decodePage limits leafLimits bound entries page ordinal
   return pages.flatten.map (Option.map bound.binding.descriptor.decode)
+
+def readGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound)
+    (index : Nat) : Except Leaf.Error (Slots bound) :=
+  readGroupUsing limits leafLimits bound (checkGroup limits leafLimits bound index)
 
 def readBound (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) :
     Events.ToIpc.Source :=

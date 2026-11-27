@@ -28,18 +28,18 @@ private theorem bind_ok {α β ε : Type} {input : Except ε α} {next : α → 
   | error => contradiction
   | ok value => exact ⟨value, rfl, h⟩
 
-theorem checkSequence_wire {data : List DataPage} (checked : checkSequence data = .ok ()) :
-    Ordered data := by
+theorem checkSequenceWith_wire {dictionaryTag : Int} {data : List DataPage}
+    (checked : checkSequenceWith dictionaryTag data = .ok ()) : OrderedWith dictionaryTag data := by
   cases data with
   | nil => contradiction
   | cons first rest =>
-    simp only [checkSequence] at checked
+    simp only [checkSequenceWith] at checked
     split at checked
     · contradiction
     rename_i firstIsDictionary
     let data := first :: rest
-    let referencePages := data.takeWhile isDictionary
-    let suffix := data.dropWhile isDictionary
+    let referencePages := data.takeWhile (isDictionaryWith dictionaryTag)
+    let suffix := data.dropWhile (isDictionaryWith dictionaryTag)
     let start := data.length - suffix.length + 1
     change (if suffix.isEmpty then Except.error _ else
       match (suffix.zipIdx start).find? (fun (page, _) => page.params.encoding != 0) with
@@ -50,13 +50,13 @@ theorem checkSequence_wire {data : List DataPage} (checked : checkSequence data 
     rename_i nonempty
     split at checked
     · rename_i found
-      have firstOk : isDictionary first = true := by simpa using firstIsDictionary
+      have firstOk : isDictionaryWith dictionaryTag first = true := by simpa using firstIsDictionary
       have before : referencePages ≠ [] := by simp [referencePages, data, firstOk]
       refine ⟨referencePages, suffix, List.takeWhile_append_dropWhile.symm, before,
         fun empty => nonempty (List.isEmpty_iff.mpr empty), ?_, ?_⟩
       · intro page member
         have yes := List.mem_takeWhile_imp member
-        simpa only [isDictionary, beq_iff_eq] using yes
+        simpa only [isDictionaryWith, beq_iff_eq] using yes
       · intro page member
         have inMap : page ∈ (suffix.zipIdx start).map Prod.fst := by
           simpa only [List.zipIdx_map_fst] using member
@@ -64,6 +64,10 @@ theorem checkSequence_wire {data : List DataPage} (checked : checkSequence data 
         have valid := List.find?_eq_none.mp found (item, ordinal) zipped
         simpa using valid
     · contradiction
+
+theorem checkSequence_wire {data : List DataPage} (checked : checkSequence data = .ok ()) :
+    Ordered data :=
+  checkSequenceWith_wire checked
 
 theorem checkGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {index : Nat} {checked : CheckedChunk} (accepted : checkGroup limits leafLimits bound index = .ok checked) :
@@ -83,17 +87,25 @@ theorem checkGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Lim
   exact ⟨selection, cap, frames, chain, dictionary, data, entries, pages,
     checkSequence_wire sequence, rows⟩
 
+theorem decodePage_wireWith {dictionaryTag : Int} {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : Array Int64} {page : DataPage} {ordinal : Nat} {slots : List (Option Int64)}
+    (admitted : page.params.encoding = dictionaryTag ∨ page.params.encoding = 0)
+    (read : decodePage limits leafLimits bound entries page ordinal = .ok slots) :
+    PageWireWith dictionaryTag limits leafLimits bound entries page slots := by
+  by_cases plain : page.params.encoding = 0
+  · have decoded := mapError_ok (by simpa only [decodePage, plain, ite_true] using read)
+    exact ⟨(ScalarPage.decode_counts decoded).1, .inr ⟨plain, decoded⟩⟩
+  · have encoding := admitted.resolve_right plain
+    have decoded := mapError_ok (by simpa only [decodePage, plain, ite_false, Leaf.Dictionary.decodePage] using read)
+    exact ⟨(DictionaryIndex.decode_counts decoded).1, .inl ⟨encoding, decoded⟩⟩
+
 theorem decodePage_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : Array Int64} {page : DataPage} {ordinal : Nat} {slots : List (Option Int64)}
     (admitted : admits page.params.encoding = true)
     (read : decodePage limits leafLimits bound entries page ordinal = .ok slots) :
     PageWire limits leafLimits bound entries page slots := by
-  by_cases plain : page.params.encoding = 0
-  · have decoded := mapError_ok (by simpa only [decodePage, plain, ite_true] using read)
-    exact ⟨(ScalarPage.decode_counts decoded).1, .inr ⟨plain, decoded⟩⟩
-  · have encoding : page.params.encoding = 8 := by simpa [admits, plain] using admitted
-    have decoded := mapError_ok (by simpa only [decodePage, plain, ite_false, Leaf.Dictionary.decodePage] using read)
-    exact ⟨(DictionaryIndex.decode_counts decoded).1, .inl ⟨encoding, decoded⟩⟩
+  apply decodePage_wireWith (dictionaryTag := 8) _ read
+  simpa [admits] using admitted
 
 private theorem pages_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : Array Int64} {pages : List DataPage} {slots : List (List (Option Int64))}

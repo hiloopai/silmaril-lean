@@ -13,11 +13,22 @@ open Silmaril.Relational
 open Silmaril.Numeric.Timestamp (Ticks)
 open Dictionary (DataPage CheckedChunk)
 
+/-- A chosen dictionary tag occupies one nonempty prefix before all PLAIN pages. -/
+theorem checkSequenceWith_wire {dictionaryTag : Int} {data : List DataPage}
+    (checked : checkSequenceWith dictionaryTag data = .ok ()) : OrderedWith dictionaryTag data :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.checkSequenceWith_wire checked
+
 /-- The admitted data frames have a nonempty RLE_DICTIONARY prefix
 and a nonempty PLAIN suffix. -/
 theorem checkSequence_wire {data : List DataPage} (checked : checkSequence data = .ok ()) :
     Ordered data :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.checkSequence_wire checked
+
+theorem OrderedWith.tags {dictionaryTag : Int} {data : List DataPage} {page : DataPage}
+    (ordered : OrderedWith dictionaryTag data) (member : page ∈ data) :
+    page.params.encoding = dictionaryTag ∨ page.params.encoding = 0 := by
+  obtain ⟨_, _, rfl, _, _, reference, plain⟩ := ordered
+  exact (List.mem_append.mp member).imp (reference page) (plain page)
 
 /-- The leading dictionary and both data segments use the original contiguous
 frames and the original footer offsets and counts. -/
@@ -35,6 +46,13 @@ theorem checkGroup_wire {limits : Dictionary.Limits} {leafLimits : Leaf.Limits} 
       Ordered checked.data ∧
       (checked.data.map (·.params.numValues)).sum = checked.chunk.group.numRows.toNat :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.checkGroup_wire accepted
+
+theorem decodePage_wireWith {dictionaryTag : Int} {limits : Dictionary.Limits} {leafLimits : Leaf.Limits}
+    {bound : Bound} {entries : Array Int64} {page : DataPage} {ordinal : Nat} {slots : List (Option Int64)}
+    (admitted : page.params.encoding = dictionaryTag ∨ page.params.encoding = 0)
+    (read : decodePage limits leafLimits bound entries page ordinal = .ok slots) :
+    PageWireWith dictionaryTag limits leafLimits bound entries page slots :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Fallback.decodePage_wireWith admitted read
 
 /-- The checked header selects the exact physical decoder for that payload. -/
 theorem decodePage_wire {limits : Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}

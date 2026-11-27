@@ -27,12 +27,13 @@ inductive ChunkEncoding where
   | dictionary
   | snappyDictionary
   | snappyLegacyDictionaryV1
+  | snappyLegacyFallbackV1
 
 @[expose] def ChunkEncoding.admitsCodec (encoding : ChunkEncoding) (limits : Limits) (code : Int) : Bool :=
   match encoding with
   | .plain => limits.admitsCodec code
   | .dictionary => code == 0
-  | .snappyDictionary | .snappyLegacyDictionaryV1 => code == 1
+  | .snappyDictionary | .snappyLegacyDictionaryV1 | .snappyLegacyFallbackV1 => code == 1
 
 private def dictionaryMetadata (metadata : Footer.ColumnMetadata) : Bool :=
   metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 8 &&
@@ -50,6 +51,9 @@ def ChunkEncoding.admitsMetadata (encoding : ChunkEncoding) (metadata : Footer.C
     | .snappyLegacyDictionaryV1 =>
         metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 2 &&
           metadata.encodings.all (fun id => id == 2 || id == 3 || id == 4)
+    | .snappyLegacyFallbackV1 =>
+        metadata.dictionaryPageOffset.isSome && metadata.encodings.contains 2 &&
+          metadata.encodings.contains 0 && metadata.encodings.all (fun id => id == 0 || id == 2 || id == 3 || id == 4)
 
 inductive DictionaryPageError where
   | expectedDictionary

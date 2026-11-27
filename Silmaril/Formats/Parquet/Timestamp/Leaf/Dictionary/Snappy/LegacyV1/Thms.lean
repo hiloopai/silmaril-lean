@@ -13,6 +13,15 @@ namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.LegacyV1
 open Silmaril.Relational
 open Silmaril.Numeric.Timestamp (Ticks)
 
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧ ∃ info, frame.value.kind = .dataV1 info ∧ admits info.encoding = true ∧
+      page.params = ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, bound.levels,
+        info.numValues, Payload.Codec.snappy.id, info.encoding, .v1
+          (DictionaryChunk.Internal.levelTag bound.levels.maxDefinition info.definitionLevelEncoding)
+          (DictionaryChunk.Internal.levelTag bound.levels.maxRepetition info.repetitionLevelEncoding)⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.LegacyV1.planDataWith_wire planned
+
 /-- Bind the deprecated encoding and the checked level tags to the original V1 frame. -/
 theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :

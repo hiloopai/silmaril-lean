@@ -71,3 +71,56 @@ python3 -m venv /tmp/parquet-timestamp-snappy-fallback
 /tmp/parquet-timestamp-snappy-fallback/bin/pip install --no-deps --require-hashes -r tests/formats/columnar-timestamp-wire/requirements.txt
 /tmp/parquet-timestamp-snappy-fallback/bin/python -I scripts/parquet-timestamp-snappy-fallback-oracle/check.py
 ```
+
+## Snappy V1 fallback with deprecated dictionary tags
+
+`Timestamp.Leaf.Fallback.Snappy.LegacyV1.convert` selects a modern flat
+INT64 TIMESTAMP leaf in an original parquet-java `PARQUET_1_0` file.
+Each selected codec-1 chunk contains one leading tag-2 dictionary, a
+nonempty run of tag-2 V1 data pages, and a nonempty suffix of tag-0 PLAIN
+V1 data pages. The checked phase witness connects this split to the
+original frame order and declared slot total. The existing modern
+fallback and legacy dictionary-only entry points retain their policies.
+
+The legacy V1 planner preserves the original frame and scalar encoding.
+It normalizes a BIT_PACKED level tag only for an absent section at maximum
+level zero. An optional definition-level stream uses RLE. CRC verification
+covers the exact original stored body. Bounded Snappy expansion supplies
+the full V1 body to the existing level and reference or PLAIN decoder.
+All successful output slots retain their exact signed counts.
+
+The frame and event laws preserve the complete earlier groups and carry
+the first selected group error before IPC writer admission. Within a group,
+frame and phase planning precede body decoding. Successful planning then
+allows the first failed data-page decode to retain its original ordinal,
+absolute header offset and typed cause. Native IPC readback through EOS
+preserves the original descriptor and one batch per footer group.
+
+The pinned fixture is unmodified parquet-java 1.16.0 output. Both footer
+groups contain a nullable local micros leaf and a required UTC nanos leaf,
+with separate dictionaries and five tag-2 data pages before five PLAIN
+pages per leaf. Thrift, zlib and PyArrow check the stored spans, CRCs,
+definition masks and signed values independently. PyArrow also checks
+both Lean-emitted IPC streams. Deterministic controls corrupt a later
+dictionary or PLAIN payload, remove either phase, or return to tag 2
+after the first PLAIN page. A damaged unselected leaf leaves the other
+leaf's complete IPC output intact.
+
+[Theorem header](../../Silmaril/Formats/Parquet/Timestamp/Leaf/Fallback/Snappy/LegacyV1/Thms.lean) ·
+[parquet-java producer](../../scripts/parquet-timestamp-snappy-legacy-fallback-oracle/Write.java) ·
+[Comparator](../../scripts/parquet-timestamp-snappy-legacy-fallback-oracle/check.py) ·
+[Fixture hashes](../../scripts/parquet-timestamp-snappy-legacy-fallback-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Timestamp.Leaf.Fallback.Snappy.LegacyV1.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-timestamp-snappy-legacy-fallback-oracle/Axioms.lean
+/tmp/parquet-timestamp-snappy-fallback/bin/python -I scripts/parquet-timestamp-snappy-legacy-fallback-oracle/check.py
+
+fixture_tmp=$(mktemp -d)
+mvn -B -q -f scripts/parquet-dictionary-chunk/pom.xml \
+  org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath \
+  -Dmdep.outputFile="$fixture_tmp/classpath"
+java -cp "$(cat "$fixture_tmp/classpath")" \
+  scripts/parquet-timestamp-snappy-legacy-fallback-oracle/Write.java "$fixture_tmp"
+sha256sum "$fixture_tmp/fallback.parquet"
+```

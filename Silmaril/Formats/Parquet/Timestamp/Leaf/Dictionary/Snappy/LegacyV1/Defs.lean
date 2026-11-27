@@ -9,15 +9,17 @@ public import Silmaril.Formats.Parquet.DictionaryChunk.Defs
 
 namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.LegacyV1
 
-/-- Retain the original tag 2 and normalize the BIT_PACKED tag only for an
+/-- Retain the original encoding and normalize the BIT_PACKED tag only for an
 absent level section. Optional definition levels still use RLE. -/
-def planData (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
+def planDataWith (admits : Int → Bool) (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
   if let .dictionary _ := frame.value.kind then throw .misplacedDictionary
   let .dataV1 info := frame.value.kind | throw (.parameters .unsupportedPage)
-  let page ← Snappy.planDataWith (· == 2) bound frame
+  let page ← Snappy.planDataWith admits bound frame
   let defTag := DictionaryChunk.Internal.levelTag bound.levels.maxDefinition info.definitionLevelEncoding
   let repTag := DictionaryChunk.Internal.levelTag bound.levels.maxRepetition info.repetitionLevelEncoding
   return {page with params.version := .v1 defTag repTag}
+
+def planData := planDataWith (· == 2)
 
 /-- Require one leading tag-2 dictionary and only tag-2 V1 data pages. -/
 def checkGroup (limits : Dictionary.Limits) (leafLimits : Leaf.Limits) (bound : Bound) (index : Nat) :

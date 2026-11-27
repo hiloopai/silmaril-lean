@@ -15,6 +15,30 @@ open Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary (DataPage CheckedChunk)
 open Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Snappy.LegacyV1
 open Silmaril.Numeric.Timestamp (Ticks)
 
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧ ∃ info, frame.value.kind = .dataV1 info ∧ admits info.encoding = true ∧
+      page.params = ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, bound.levels,
+        info.numValues, Payload.Codec.snappy.id, info.encoding, .v1
+          (DictionaryChunk.Internal.levelTag bound.levels.maxDefinition info.definitionLevelEncoding)
+          (DictionaryChunk.Internal.levelTag bound.levels.maxRepetition info.repetitionLevelEncoding)⟩ := by
+  cases kind : frame.value.kind with
+  | dataV1 info =>
+    cases checked : Leaf.Dictionary.Snappy.planDataWith admits bound frame with
+    | error cause => simp [planDataWith, kind, checked, Bind.bind, Except.bind] at planned
+    | ok original =>
+      obtain ⟨source, params, encoding⟩ := Leaf.Dictionary.Snappy.planDataWith_wire checked
+      unfold Timestamp.Page.parameters at params
+      split at params
+      · simp only [kind, Except.ok.injEq] at params
+        have tag : admits info.encoding = true := by simpa [← params] using encoding
+        simp only [planDataWith, kind, checked, Bind.bind, Except.bind, Except.ok.injEq,
+          pure, Except.pure] at planned
+        subst page
+        exact ⟨source, info, rfl, tag, by simp [← params]⟩
+      · contradiction
+  | dataV2 _ | dictionary _ | skipped _ => simp [planDataWith, kind, Bind.bind, Except.bind] at planned
+
 theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :
     page.frame = frame ∧ ∃ info, frame.value.kind = .dataV1 info ∧ info.encoding = 2 ∧
@@ -22,22 +46,9 @@ theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataP
         info.numValues, Payload.Codec.snappy.id, 2, .v1
           (DictionaryChunk.Internal.levelTag bound.levels.maxDefinition info.definitionLevelEncoding)
           (DictionaryChunk.Internal.levelTag bound.levels.maxRepetition info.repetitionLevelEncoding)⟩ := by
-  cases kind : frame.value.kind with
-  | dataV1 info =>
-    cases checked : Leaf.Dictionary.Snappy.planDataWith (· == 2) bound frame with
-    | error cause => simp [planData, kind, checked, Bind.bind, Except.bind] at planned
-    | ok original =>
-      obtain ⟨source, params, encoding⟩ := Leaf.Dictionary.Snappy.planDataWith_wire checked
-      unfold Timestamp.Page.parameters at params
-      split at params
-      · simp only [kind, Except.ok.injEq] at params
-        have tag : info.encoding = 2 := by simpa [← params] using encoding
-        simp only [planData, kind, checked, Bind.bind, Except.bind, Except.ok.injEq,
-          pure, Except.pure] at planned
-        subst page
-        exact ⟨source, info, rfl, tag, by simp [← params, tag]⟩
-      · contradiction
-  | dataV2 _ | dictionary _ | skipped _ => simp [planData, kind, Bind.bind, Except.bind] at planned
+  obtain ⟨same, info, kind, tag, params⟩ := planDataWith_wire (admits := (· == 2)) planned
+  have encoding : info.encoding = 2 := by simpa using tag
+  exact ⟨same, info, kind, encoding, by simpa [encoding] using params⟩
 
 theorem checkGroup_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits}
     {bound : Bound} {index : Nat} {checked : CheckedChunk}
