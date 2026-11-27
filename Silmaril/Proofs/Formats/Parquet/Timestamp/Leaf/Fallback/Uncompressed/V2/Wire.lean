@@ -93,7 +93,7 @@ theorem readGroup_phase_error {limits : Leaf.Dictionary.Limits} {leafLimits : Le
     (failed : Leaf.Fallback.checkSequence pages = .error cause) :
     readGroup limits leafLimits bound index = .error cause := by
   simp [readGroup, checkGroup, Leaf.Fallback.Snappy.readGroupUsing, Leaf.Dictionary.checkGroupUsing,
-    Leaf.Dictionary.checkFramedUsing, framedOk, planned, failed, Bind.bind, Except.bind]
+    Leaf.Dictionary.checkFramedUsing, Leaf.Dictionary.checkPlannedUsing, framedOk, planned, failed, Bind.bind, Except.bind]
 
 theorem references_wire {limits : Leaf.Dictionary.Limits} {leafLimits : Leaf.Limits} {bound : Bound}
     {entries : Array Int64} {page : DataPage} {slots : List (Option Int64)}

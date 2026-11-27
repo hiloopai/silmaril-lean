@@ -81,6 +81,18 @@ def frameGroupUsing (encoding : Leaf.ChunkEncoding) (limits : Limits) (leafLimit
     throw (atFrame 1 first .dataOffset)
   return ⟨chunk, dictionary, first, following⟩
 
+/-- Finish a framed dictionary chunk whose data headers have already been planned. -/
+def checkPlannedUsing (framed : FramedChunk) (data : List DataPage)
+    (validate : List DataPage → Except Leaf.Error Unit)
+    (read : Parquet.Page.Frame → Except DictionaryPageError (List Int64)) :
+    Except Leaf.Error CheckedChunk := do
+  validate data
+  let expected := framed.chunk.group.numRows.toNat
+  let actual := (data.map (·.params.numValues)).sum
+  if actual ≠ expected then throw (.rowCount expected actual)
+  let entries ← (read framed.dictionary).mapError (atFrame 0 framed.dictionary)
+  return ⟨framed.chunk, framed.dictionary, entries, data⟩
+
 /-- Check the selected profile's headers and row total before decoding the
 leading dictionary. -/
 def checkFramedUsing (framed : FramedChunk)
@@ -90,12 +102,7 @@ def checkFramedUsing (framed : FramedChunk)
     Except Leaf.Error CheckedChunk := do
   let data ← (framed.data.zipIdx 1).mapM fun (frame, ordinal) =>
     (plan frame).mapError (atFrame ordinal frame)
-  validate data
-  let expected := framed.chunk.group.numRows.toNat
-  let actual := (data.map (·.params.numValues)).sum
-  if actual ≠ expected then throw (.rowCount expected actual)
-  let entries ← (read framed.dictionary).mapError (atFrame 0 framed.dictionary)
-  return ⟨framed.chunk, framed.dictionary, entries, data⟩
+  checkPlannedUsing framed data validate read
 
 /-- Share the original checked dictionary framing between data profiles. -/
 def checkGroupUsing (encoding : Leaf.ChunkEncoding) (limits : Limits) (leafLimits : Leaf.Limits)

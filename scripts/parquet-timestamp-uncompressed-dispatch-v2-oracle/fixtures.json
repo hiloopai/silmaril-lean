@@ -1,0 +1,23 @@
+{
+  "native_utc_plain": "ddee615df1ff2d0dd7d46657dbd8a02fb9e2fd7c138361e12ac1e245be90f792",
+  "native_utc_references": "ffaae691fa017ea05209b6b63fe4cf9c029b406d9d3e6fe5fc0154affb08b924",
+  "native_utc_fallback": "72c816385703a4b2398cff5a0ecf8d33da4d84adce5ec6d9b29cac18dde750b9",
+  "assembled_utc": "d06f230d2f69c70551bc0cf2a463799b8b366fa56fda54d3eef2962f4c6322ee",
+  "native_local_plain": "50e02adb95da867f739b9e827286e5af691244b93c87314c664e4c0473ce0605",
+  "native_local_references": "bcb3a7f86e756d731bd4a3d315c2ff6b684326cd440259b329ab599f6b1b0876",
+  "native_local_fallback": "8689dfc0b765ee2b7edff23f9d3a9eeaee0062f4c5e3061ad836e31a3e500f88",
+  "assembled_local": "5504c85930ba8e2748840f9a732da598d527e9af8bac83bb0f6e7f2e37e763af",
+  "mutated_plain_crc": "22a58465f2daa3a99a02c8d52d638013e9f4db0fd2a589129e2d4c677466fd65",
+  "mutated_dictionary_crc": "482c75b3ab0b935f4c85255749ce8f4619c55b3c223d22ec24cf05873374058b",
+  "mutated_reference_crc": "28049f506b0db13725944ef1564bdfff72bbbe09fa49cb63670ac3cace41d217",
+  "mutated_fallback_crc": "a9314b928848470f95ecf7e74781ea22ffc333faa75e7a271baf88cad978cf1c",
+  "mutated_competing_crc": "2a2d6db8c649c8ecf019a123f587155b3854771214f03054299c02623cfbb2ba",
+  "mutated_reentry": "f2d883a14b167702c7be2b78589b6909401cfe7d4377107962fe4cf648286e5e",
+  "mutated_early_header": "91354806a6fc659fbe56b5acb651662de894854029f62a84f2006aca740d2bdc",
+  "mutated_reference_header": "af5e2f31b132938efeb362765a93fb3fa5e64f0de926d2ebcdb8d7000809f5a0",
+  "native_v1_component": "396b816ccf3dd50cc710170c21039833b3f24f8a879f55239a5d9b11bc9da329",
+  "assembled_v1": "d6f94667fc06b62ea20f8f56cb0223b6bb28d72f90366a3b6f4799ed2d82e25e",
+  "mutated_data_offset": "31c17d31e50f60aef42f8b40728fd489bbc7ab89ee335b00bcdf29c57ba8d594",
+  "native_snappy_dictionary": "affe73e5712f00e5e1b421167a662dea6011b7b9a31491f362b181b51c8fc3d3",
+  "native_snappy_plain": "88810c6c15b1ae2c657dee1ff3db465917eb1270cf914068e6886b13aea689ae"
+}
