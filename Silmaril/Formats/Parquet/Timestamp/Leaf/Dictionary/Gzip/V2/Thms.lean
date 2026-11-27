@@ -13,6 +13,14 @@ namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.V2
 open Silmaril.Relational
 open Silmaril.Numeric.Timestamp (Ticks)
 
+theorem planDataWith_wire {admits : Int → Bool} {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
+    (planned : planDataWith admits bound frame = .ok page) :
+    page.frame = frame ∧ ∃ header, frame.value.kind = .dataV2 header ∧ admits header.encoding = true ∧
+      page.params = ⟨⟨frame.value.compressedSize, frame.value.uncompressedSize⟩, bound.levels,
+        header.numValues, Payload.Codec.gzip.id, header.encoding, .v2 header.numNulls header.numRows
+          header.repetitionBytes header.definitionBytes (some header.isCompressed)⟩ :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.V2.planDataWith_wire planned
+
 /-- The original V2 header fixes the codec, flag, counts and level extents. -/
 theorem planData_wire {bound : Bound} {frame : Parquet.Page.Frame} {page : DataPage}
     (planned : planData bound frame = .ok page) :
@@ -38,6 +46,38 @@ theorem checkGroup_wire {limits : Limits} {leafLimits : Leaf.Limits}
       (∀ page ∈ checked.data, planData bound page.frame = .ok page) ∧
       (checked.data.map (·.params.numValues)).sum = checked.chunk.group.numRows.toNat :=
   Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.V2.checkGroup_wire admitted
+
+/-- Recover the raw definition prefix and the exact flag-selected suffix. -/
+theorem prepared_wire {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {admits : Int → Bool} {page : DataPage} {encoding : Int}
+    {status : Parquet.Page.Checksum.Status} {prepared : ScalarPage.Prepared}
+    (planned : planDataWith admits bound page.frame = .ok page)
+    (verified : Parquet.Page.Checksum.verify leafLimits.page.compressedBytes bound.snapshot.bytes page.frame =
+      .ok status)
+    (preparedOk : ScalarPage.prepareFor encoding page.params (limits.withFuel leafLimits).page
+      (Leaf.Internal.body bound page.frame) = .ok prepared) :
+    ∃ header layout definitions storedValues,
+      page.frame.value.kind = .dataV2 header ∧ header.numRows = header.numValues ∧
+      BodyWire bound page.frame leafLimits.page header definitions storedValues prepared.scalars.toList ∧
+      FlatPage.readMask layout header.numValues leafLimits.page.levels definitions = .ok prepared.mask ∧
+      prepared.mask.count true = header.numValues - header.numNulls :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.V2.prepared_wire (leafLimits := leafLimits) planned verified preparedOk
+
+theorem data_decodesWith {admits : Int → Bool} {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}
+    {entries : List Int64} {page : DataPage} {slots : List (Option Int64)}
+    (planned : planDataWith admits bound page.frame = .ok page)
+    (read : Leaf.Dictionary.Snappy.DataWire limits.dictionary (limits.withFuel leafLimits)
+      bound entries.toArray page slots) :
+    ∃ header layout definitions storedValues, ∃ prepared : ScalarPage.Prepared, ∃ width runs indices,
+      page.frame.value.kind = .dataV2 header ∧ header.numRows = header.numValues ∧
+      BodyWire bound page.frame leafLimits.page header definitions storedValues prepared.scalars.toList ∧
+      FlatPage.readMask layout header.numValues leafLimits.page.levels definitions = .ok prepared.mask ∧
+      prepared.mask.count true = header.numValues - header.numNulls ∧
+      prepared.scalars.toList = width :: runs ∧
+      Hybrid.Wire width.toNat (prepared.mask.count true) runs indices ∧
+      slots.map Option.isSome = prepared.mask ∧
+      indices.map (fun index => entries.toArray[index]?) = (slots.filterMap id).map some :=
+  Proofs.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.V2.data_decodesWith planned read
 
 /-- Raw levels and the flag-selected value suffix preserve exact signed dictionary lookups. -/
 theorem data_decodes {limits : Limits} {leafLimits : Leaf.Limits} {bound : Bound}

@@ -10,14 +10,18 @@ namespace Silmaril.Formats.Parquet.Timestamp.Leaf.Dictionary.Gzip.V2
 
 abbrev Limits := Gzip.Limits
 
-/-- Admit the original dictionary-encoded V2 header and retain its storage flag. -/
-def planData (bound : Bound) (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
+/-- Retain the original V2 header and its storage flag under an explicit tag predicate. -/
+def planDataWith (admits : Int → Bool) (bound : Bound)
+    (frame : Parquet.Page.Frame) : Except DictionaryPageError DataPage := do
   if let .dictionary _ := frame.value.kind then throw .misplacedDictionary
   let .dataV2 header := frame.value.kind | throw (.parameters .unsupportedPage)
-  if header.encoding ≠ 8 then throw (.encoding header.encoding)
+  if !admits header.encoding then throw (.encoding header.encoding)
   let params ← (Timestamp.Page.parameters bound.binding.leaf bound.levels
     Payload.Codec.gzip.id frame.value).mapError .parameters
   return ⟨frame, params⟩
+
+/-- Admit only RLE_DICTIONARY V2 data pages. -/
+def planData := planDataWith (· == 8)
 
 def checkGroup (limits : Limits) (leafLimits : Leaf.Limits) (bound : Bound)
     (index : Nat) : Except Leaf.Error CheckedChunk :=
