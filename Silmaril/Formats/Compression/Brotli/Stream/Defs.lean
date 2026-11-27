@@ -145,6 +145,48 @@ def Wire (input : List UInt8) (window : Nat) (chunks : List (List UInt8)) (final
   ∃ code blocks, WindowWire window code ∧ bytesBits input = code ++ blocks ∧
     BlocksWire window code.length Execute.State.start blocks chunks final
 
+/-- The accepted compressed payload, after its complete checked table header. -/
+abbrev PayloadWire :=
+  CompressedHeader.Header → Execute.Block → Execute.State → List Bool → List UInt8 → Execute.State → Prop
+
+inductive BodyWireWith (payload : PayloadWire) (window position : Nat) :
+    Header → Execute.State → List Bool → List UInt8 → Execute.State → Prop where
+  | terminal (initial : Execute.State) : BodyWireWith payload window position .terminal initial [] [] initial
+  | raw {length : RawLength} {initial : Execute.State} {bytes : List UInt8} :
+      bytes.length = length.size →
+      BodyWireWith payload window position (.raw length) initial (padding position ++ bytesBits bytes)
+        bytes { initial with output := initial.output ++ bytes.toArray }
+  | metadata {last : Bool} {length : MetadataLength} (initial : Execute.State)
+      {bytes : List UInt8} : bytes.length = length.size →
+      BodyWireWith payload window position (.metadata last length) initial (padding position ++ bytesBits bytes) [] initial
+  | compressed {last : Bool} {length : RawLength} {header : CompressedHeader.Header}
+      {work : Nat} {initial final : Execute.State} {tableBits commandBits : List Bool} {chunk : List UInt8} :
+      CompressedHeader.Wire work tableBits header →
+      payload header ⟨window, initial.output.size, length.size⟩ initial commandBits chunk final →
+      BodyWireWith payload window position (.compressed last length) initial (tableBits ++ commandBits) chunk final
+
+/-- The common exact envelope: ordered blocks through the first last flag,
+    followed by the unique final alignment fill. -/
+inductive EnvelopeWire (payload : PayloadWire) (window : Nat) :
+    Nat → Execute.State → List Bool → List (List UInt8) → Execute.State → Prop where
+  | last {position : Nat} {initial final : Execute.State} {header : Header}
+      {body : List Bool} {chunk : List UInt8} :
+      header.Valid → header.last = true →
+      BodyWireWith payload window (position + header.bits.length) header initial body chunk final →
+      EnvelopeWire payload window position initial
+        (header.bits ++ body ++ padding (position + header.bits.length + body.length)) [chunk] final
+  | more {position : Nat} {initial next final : Execute.State} {header : Header}
+      {body tail : List Bool} {chunk : List UInt8} {chunks : List (List UInt8)} :
+      header.Valid → header.last = false →
+      BodyWireWith payload window (position + header.bits.length) header initial body chunk next →
+      EnvelopeWire payload window (position + header.bits.length + body.length) next tail chunks final →
+      EnvelopeWire payload window position initial (header.bits ++ body ++ tail) (chunk :: chunks) final
+
+def WireWith (payload : PayloadWire) (input : List UInt8) (window : Nat)
+    (chunks : List (List UInt8)) (final : Execute.State) : Prop :=
+  ∃ code blocks, WindowWire window code ∧ bytesBits input = code ++ blocks ∧
+    EnvelopeWire payload window code.length Execute.State.start blocks chunks final
+
 namespace Internal
 
 open Brotli.Internal (start take readWindow alignZero takeBody)
@@ -207,59 +249,98 @@ def runCommands (limits : Limits) (header : CompressedHeader.Header) (block : Ex
         initial before).mapError (fun cause => ⟨before.totalRead, some index, some command, .command cause⟩)
       runCommands limits header block index fuel (command + 1) result.state after
 
-def readBody (limits : Limits) (window index : Nat) (header : Header)
-    (initial : Execute.State) (before : LSBReader) : Except Error (Execute.State × LSBReader) := do
-  let failure : Cause → Error := fun cause => ⟨before.totalRead, some index, none, cause⟩
-  match header with
-  | .terminal => pure (initial, before)
-  | .metadata _ length =>
-    let (_, after) ← (alignedBody limits length.size before).mapError failure
-    pure (initial, after)
-  | .raw length =>
-    if limits.output < initial.output.size + length.size then .error (failure (.framing .outputLimit))
-    else
-      let (bytes, after) ← (alignedBody limits length.size before).mapError failure
-      pure ({ initial with output := initial.output ++ bytes.toArray }, after)
-  | .compressed _ length =>
-    if limits.output < initial.output.size + length.size then .error (failure (.framing .outputLimit))
-    else
-      let (parsed, payload) ← (CompressedHeader.read
-        ⟨limits.mapEntries, limits.trees, limits.bits - before.totalRead⟩ before).mapError
-          (fun reason => failure (.header reason))
-      if !Execute.oneType parsed then .error (failure (.command .blockTypes))
-      else runCommands limits parsed ⟨window, initial.output.size, length.size⟩ index length.size 0 initial payload
+/-- The payload reader receives the compressed header's original start
+    bit as well as the checked cursor immediately after that header. -/
+abbrev ReadPayload (ε : Type) :=
+  Limits → Nat → Nat → CompressedHeader.Header → Execute.Block → Execute.State → LSBReader →
+    Except ε (Execute.State × LSBReader)
+
+abbrev ReadBody (ε : Type) :=
+  Limits → Nat → Nat → Header → Execute.State → LSBReader → Except ε (Execute.State × LSBReader)
+
+def readBodyWith {ε : Type} (onError : Error → ε) (compressed : ReadPayload ε) : ReadBody ε :=
+  fun limits window index header initial before => do
+    let failure : Cause → ε := fun cause => onError ⟨before.totalRead, some index, none, cause⟩
+    match header with
+    | .terminal => pure (initial, before)
+    | .metadata _ length =>
+      let (_, after) ← (alignedBody limits length.size before).mapError failure
+      pure (initial, after)
+    | .raw length =>
+      if limits.output < initial.output.size + length.size then .error (failure (.framing .outputLimit))
+      else
+        let (bytes, after) ← (alignedBody limits length.size before).mapError failure
+        pure ({ initial with output := initial.output ++ bytes.toArray }, after)
+    | .compressed _ length =>
+      if limits.output < initial.output.size + length.size then .error (failure (.framing .outputLimit))
+      else
+        let (parsed, payload) ← (CompressedHeader.read
+          ⟨limits.mapEntries, limits.trees, limits.bits - before.totalRead⟩ before).mapError
+            (fun reason => failure (.header reason))
+        compressed limits index before.totalRead parsed ⟨window, initial.output.size, length.size⟩ initial payload
+
+def readSinglePayload : ReadPayload Error :=
+  fun limits index headerBit header block initial before =>
+    if !Execute.oneType header then .error ⟨headerBit, some index, none, .command .blockTypes⟩
+    else runCommands limits header block index block.length 0 initial before
+
+def readBody : ReadBody Error := readBodyWith id readSinglePayload
+
+def PayloadSound {ε : Type} (read : ReadPayload ε) (wire : PayloadWire) : Prop :=
+  ∀ {limits index headerBit header block initial final before after input},
+    Brotli.Internal.Cursor before input → initial.output.size ≤ limits.output →
+    before.totalRead ≤ limits.bits →
+    read limits index headerBit header block initial before = .ok (final, after) →
+    final.output.size ≤ limits.output ∧ after.totalRead ≤ limits.bits ∧
+    ∃ used suffix chunk, wire header block initial used chunk final ∧
+      input = used ++ suffix ∧ Brotli.Internal.Cursor after suffix ∧ after.totalRead = before.totalRead + used.length
+
+def BodySound {ε : Type} (read : ReadBody ε) (wire : PayloadWire) : Prop :=
+  ∀ {limits window index header initial final before after input},
+    Brotli.Internal.Cursor before input → initial.output.size ≤ limits.output →
+    before.totalRead ≤ limits.bits →
+    read limits window index header initial before = .ok (final, after) →
+    final.output.size ≤ limits.output ∧ after.totalRead ≤ limits.bits ∧
+    ∃ used suffix chunk, BodyWireWith wire window before.totalRead header initial used chunk final ∧
+      input = used ++ suffix ∧ Brotli.Internal.Cursor after suffix ∧ after.totalRead = before.totalRead + used.length
 
 def finish (limits : Limits) (before : LSBReader) : Except Cause LSBReader := do
   let aligned ← (alignZero before).mapError Cause.framing
   withinBits limits aligned
   if aligned.input.isEmpty then .ok aligned else .error (.framing .trailingInput)
 
-def readBlocks (limits : Limits) (window : Nat) :
-    Nat → Nat → Execute.State → LSBReader → Except Error Execute.State
-  | 0, index, _, before => .error ⟨before.totalRead, some index, none, .framing .stepLimit⟩
+def readBlocksWith {ε : Type} (onError : Error → ε) (body : ReadBody ε) (limits : Limits) (window : Nat) :
+    Nat → Nat → Execute.State → LSBReader → Except ε Execute.State
+  | 0, index, _, before => .error (onError ⟨before.totalRead, some index, none, .framing .stepLimit⟩)
   | fuel + 1, index, initial, before => do
-    let failure : Cause → Error := fun cause => ⟨before.totalRead, some index, none, cause⟩
+    let failure : Cause → ε := fun cause => onError ⟨before.totalRead, some index, none, cause⟩
     let (header, payload) ← (readHeader before).mapError (failure ∘ Cause.framing)
     (withinBits limits payload).mapError failure
-    let (next, after) ← readBody limits window index header initial payload
+    let (next, after) ← body limits window index header initial payload
     if header.last then
-      let _ ← (finish limits after).mapError (fun cause => ⟨after.totalRead, some index, none, cause⟩)
+      let _ ← (finish limits after).mapError (fun cause => onError ⟨after.totalRead, some index, none, cause⟩)
       return next
-    else readBlocks limits window fuel (index + 1) next after
+    else readBlocksWith onError body limits window fuel (index + 1) next after
+
+def readBlocks : Limits → Nat → Nat → Nat → Execute.State → LSBReader → Except Error Execute.State :=
+  readBlocksWith id readBody
+
+def decodeWith {ε : Type} (onError : Error → ε) (body : ReadBody ε)
+    (limits : Limits) (input : List UInt8) : Except ε Execute.State := do
+  let failure : Cause → ε := fun cause => onError ⟨0, none, none, cause⟩
+  if limits.input < input.length then .error (failure (.framing .inputLimit))
+  else
+    let (window, reader) ← (readWindow (start input)).mapError (failure ∘ Cause.framing)
+    (withinBits limits reader).mapError failure
+    if limits.window < windowSize window then .error (failure (.framing .windowLimit))
+    else readBlocksWith onError body limits window limits.blocks 0 Execute.State.start reader
 
 end Internal
 
 /-- Decode one exact dictionary-free standard-window stream.
     There is no returned partial state on failure. -/
-def decode (limits : Limits) (input : List UInt8) : Except Error Execute.State := do
-  let failure : Cause → Error := fun cause => ⟨0, none, none, cause⟩
-  if limits.input < input.length then .error (failure (.framing .inputLimit))
-  else
-    let (window, reader) ← (Brotli.Internal.readWindow (Brotli.Internal.start input)).mapError
-      (failure ∘ Cause.framing)
-    (Internal.withinBits limits reader).mapError failure
-    if limits.window < windowSize window then .error (failure (.framing .windowLimit))
-    else Internal.readBlocks limits window limits.blocks 0 Execute.State.start reader
+def decode : Limits → List UInt8 → Except Error Execute.State :=
+  Internal.decodeWith id Internal.readBody
 
 /-- The lower operation that produced a failure, at its actual start cursor.
     A caller cap or an unsupported profile branch has its own guard witness. -/

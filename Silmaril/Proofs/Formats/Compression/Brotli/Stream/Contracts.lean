@@ -113,6 +113,83 @@ private theorem runCommands_sound {limits : Stream.Limits} {header : CompressedH
       · rw [split, restBits, List.append_assoc]
       · rw [finalPosition, position, List.length_append, Nat.add_assoc]
 
+theorem readBodyWith_sound {ε : Type} {onError : Stream.Error → ε} {compressed : ReadPayload ε}
+    {wire : PayloadWire} (payloadSound : PayloadSound compressed wire) :
+    BodySound (readBodyWith onError compressed) wire := by
+  intro limits window index header initial final before after input cursor outFits bitFits parsed
+  cases header with
+  | terminal =>
+    cases parsed
+    exact ⟨outFits, bitFits, [], input, [], .terminal initial, rfl, cursor, by simp⟩
+  | metadata last length =>
+    unfold readBodyWith at parsed
+    obtain ⟨⟨bytes, stop⟩, bodyRead, done⟩ := bind_mapped_ok parsed
+    cases done
+    obtain ⟨suffix, extent, bits, next, position, fits⟩ := alignedBody_sound cursor bodyRead
+    exact ⟨outFits, fits, _, suffix, [], .metadata initial extent, bits, next, position⟩
+  | raw length =>
+    unfold readBodyWith at parsed
+    dsimp only at parsed
+    split at parsed
+    · contradiction
+    rename_i fits
+    obtain ⟨⟨bytes, stop⟩, bodyRead, done⟩ := bind_mapped_ok parsed
+    cases done
+    obtain ⟨suffix, extent, bits, next, position, bitCap⟩ := alignedBody_sound cursor bodyRead
+    refine ⟨?_, bitCap, _, suffix, bytes, .raw extent, bits, next, position⟩
+    simpa [extent] using Nat.le_of_not_gt fits
+  | compressed last length =>
+    unfold readBodyWith at parsed
+    dsimp only at parsed
+    split at parsed
+    · contradiction
+    obtain ⟨⟨header, payload⟩, headerRead, read⟩ := bind_mapped_ok parsed
+    obtain ⟨_, _, work, used, tail, _, tables, split, rep, count, position, bits⟩ :=
+      CompressedHeader.read_sound cursor.1 cursor.2.1 headerRead
+    change used.length ≤ limits.bits - before.totalRead at bits
+    have payloadCursor := cursor_advance cursor split rep count position
+    have payloadFits : payload.totalRead ≤ limits.bits := by omega
+    obtain ⟨outFit, finalFit, commands, suffix, chunk, chain, tailSplit, finalCursor, afterPos⟩ :=
+      payloadSound payloadCursor outFits payloadFits read
+    refine ⟨outFit, finalFit, used ++ commands, suffix, chunk, .compressed tables chain,
+      ?_, finalCursor, ?_⟩
+    · rw [split, tailSplit, List.append_assoc]
+    · rw [afterPos, position, List.length_append, Nat.add_assoc]
+
+private def SingleWire : PayloadWire :=
+  fun header block initial bits chunk final => Execute.oneType header = true ∧
+    ∃ chunks, CommandsWire header block initial bits chunks final ∧ chunk = chunks.flatten
+
+private theorem readSinglePayload_sound : PayloadSound readSinglePayload SingleWire := by
+  intro limits index headerBit header block initial final before after input cursor outFits bitFits read
+  unfold readSinglePayload at read
+  split at read
+  · contradiction
+  · rename_i profile
+    obtain ⟨outFit, finalFit, commands, suffix, chunks, chain, _, tailSplit, finalCursor, afterPos⟩ :=
+      runCommands_sound cursor outFits bitFits read
+    exact ⟨outFit, finalFit, commands, suffix, chunks.flatten, ⟨by simpa using profile, chunks, chain, rfl⟩,
+      tailSplit, finalCursor, afterPos⟩
+
+private theorem BodyWireWith.toLegacy {window position : Nat} {header : Header} {initial final : Execute.State}
+    {bits : List Bool} {chunk : List UInt8} (h : BodyWireWith SingleWire window position header initial bits chunk final) :
+    BodyWire window position header initial bits chunk final := by
+  cases h with
+  | terminal => exact .terminal initial
+  | raw size => exact .raw size
+  | metadata => exact .metadata initial (by assumption)
+  | compressed tables step =>
+    obtain ⟨profile, _, chain, rfl⟩ := step
+    exact .compressed tables profile chain
+
+private theorem EnvelopeWire.toLegacy {window position : Nat} {initial final : Execute.State}
+    {bits : List Bool} {chunks : List (List UInt8)}
+    (wire : EnvelopeWire SingleWire window position initial bits chunks final) :
+    BlocksWire window position initial bits chunks final := by
+  induction wire with
+  | last valid last body => exact .last valid last (BodyWireWith.toLegacy body)
+  | more valid more body _ ih => exact .more valid more (BodyWireWith.toLegacy body) ih
+
 theorem readBody_sound {limits : Stream.Limits} {window index : Nat} {header : Header}
     {initial final : Execute.State} {before after : LSBReader} {input : List Bool}
     (cursor : Cursor before input) (outFits : initial.output.size ≤ limits.output)
@@ -121,68 +198,68 @@ theorem readBody_sound {limits : Stream.Limits} {window index : Nat} {header : H
     final.output.size ≤ limits.output ∧ after.totalRead ≤ limits.bits ∧
     ∃ used suffix chunk, BodyWire window before.totalRead header initial used chunk final ∧
       input = used ++ suffix ∧ Cursor after suffix ∧ after.totalRead = before.totalRead + used.length := by
-  cases header with
-  | terminal =>
-    cases read
-    exact ⟨outFits, bitFits, [], input, [], .terminal initial, rfl, cursor, by simp⟩
-  | metadata last length =>
-    unfold readBody at read
-    obtain ⟨⟨bytes, stop⟩, bodyRead, done⟩ := bind_mapped_ok read
-    cases done
-    obtain ⟨suffix, extent, bits, next, position, fits⟩ := alignedBody_sound cursor bodyRead
-    exact ⟨outFits, fits, _, suffix, [], .metadata initial extent, bits, next, position⟩
-  | raw length =>
-    unfold readBody at read
-    dsimp only at read
-    split at read
-    · contradiction
-    rename_i fits
-    obtain ⟨⟨bytes, stop⟩, bodyRead, done⟩ := bind_mapped_ok read
-    cases done
-    obtain ⟨suffix, extent, bits, next, position, bitCap⟩ := alignedBody_sound cursor bodyRead
-    refine ⟨?_, bitCap, _, suffix, bytes, .raw extent, bits, next, position⟩
-    simpa [extent] using Nat.le_of_not_gt fits
-  | compressed last length =>
-    unfold readBody at read
-    dsimp only at read
-    split at read
-    · contradiction
-    obtain ⟨⟨parsed, payload⟩, headerRead, read⟩ := bind_mapped_ok read
-    obtain ⟨_, _, work, used, tail, _, tables, split, rep, count, position, bits⟩ :=
-      CompressedHeader.read_sound cursor.1 cursor.2.1 headerRead
-    dsimp only at read
-    split at read
-    · contradiction
-    rename_i profile
-    change used.length ≤ limits.bits - before.totalRead at bits
-    have payloadCursor := cursor_advance cursor split rep count position
-    have payloadFits : payload.totalRead ≤ limits.bits := by omega
-    obtain ⟨outFit, finalFit, commands, suffix, chunks, chain, _, tailSplit, finalCursor, afterPos⟩ :=
-      runCommands_sound payloadCursor outFits payloadFits read
-    have one : Execute.oneType parsed = true := by simpa using profile
-    refine ⟨outFit, finalFit, used ++ commands, suffix, chunks.flatten, .compressed tables one chain,
-      ?_, finalCursor, ?_⟩
-    · rw [split, tailSplit, List.append_assoc]
-    · rw [afterPos, position, List.length_append, Nat.add_assoc]
+  obtain ⟨out, bits, used, suffix, chunk, body, split, next, pos⟩ :=
+    readBodyWith_sound (onError := id) (compressed := readSinglePayload) (wire := SingleWire)
+      readSinglePayload_sound cursor outFits bitFits read
+  exact ⟨out, bits, used, suffix, chunk, BodyWireWith.toLegacy body, split, next, pos⟩
 
-private theorem readBlocks_sound {limits : Stream.Limits} {window fuel index : Nat}
+theorem BodyWireWith.output {payload : PayloadWire} {window position : Nat} {header : Header}
+    {initial final : Execute.State} {bits : List Bool} {chunk : List UInt8}
+    (output : ∀ {header block initial bits chunk final}, block.start = initial.output.size →
+      payload header block initial bits chunk final →
+      final.output.toList = initial.output.toList ++ chunk ∧ chunk.length = block.length)
+    (wire : BodyWireWith payload window position header initial bits chunk final) :
+    final.output.toList = initial.output.toList ++ chunk ∧ chunk.length = header.outputSize := by
+  cases wire with
+  | raw length => exact ⟨by simp, length⟩
+  | terminal | metadata => simp [Header.outputSize]
+  | compressed _ step => exact output rfl step
+
+theorem EnvelopeWire.output {payload : PayloadWire} {window position : Nat} {initial final : Execute.State}
+    {bits : List Bool} {chunks : List (List UInt8)}
+    (output : ∀ {header block initial bits chunk final}, block.start = initial.output.size →
+      payload header block initial bits chunk final →
+      final.output.toList = initial.output.toList ++ chunk ∧ chunk.length = block.length)
+    (wire : EnvelopeWire payload window position initial bits chunks final) :
+    final.output.toList = initial.output.toList ++ chunks.flatten := by
+  induction wire with
+  | last _ _ body => simp [(BodyWireWith.output output body).1]
+  | more _ _ body _ ih => simp [ih, (BodyWireWith.output output body).1, List.append_assoc]
+
+theorem EnvelopeWire.progress {payload : PayloadWire} {window position : Nat} {initial final : Execute.State}
+    {bits : List Bool} {chunks : List (List UInt8)} (wire : EnvelopeWire payload window position initial bits chunks final) :
+    0 < chunks.length ∧ chunks.length ≤ bits.length := by
+  induction wire with
+  | @last _ _ _ header _ _ _ _ _ =>
+    have consumed := header_progress header
+    simp only [List.length_cons, List.length_nil, List.length_append]
+    omega
+  | @more _ _ _ _ header _ _ _ _ _ _ _ _ ih =>
+    have consumed := header_progress header
+    obtain ⟨nonempty, count⟩ := ih
+    simp only [List.length_cons, List.length_append]
+    omega
+
+private theorem readBlocksWith_sound {ε : Type} {onError : Stream.Error → ε} {body : ReadBody ε}
+    {wire : PayloadWire} (bodySound : BodySound body wire)
+    {limits : Stream.Limits} {window fuel index : Nat}
     {initial final : Execute.State} {before : LSBReader} {input : List Bool}
     (cursor : Cursor before input) (outFits : initial.output.size ≤ limits.output)
-    (read : readBlocks limits window fuel index initial before = .ok final) :
+    (read : readBlocksWith onError body limits window fuel index initial before = .ok final) :
     final.output.size ≤ limits.output ∧ before.totalRead + input.length ≤ limits.bits ∧
-    ∃ chunks, BlocksWire window before.totalRead initial input chunks final ∧ chunks.length ≤ fuel := by
+    ∃ chunks, EnvelopeWire wire window before.totalRead initial input chunks final ∧ chunks.length ≤ fuel := by
   induction fuel generalizing index initial before input with
   | zero => contradiction
   | succ fuel ih =>
-    unfold readBlocks at read
+    unfold readBlocksWith at read
     obtain ⟨⟨header, payload⟩, headRead, read⟩ := bind_mapped_ok read
     obtain ⟨tail, valid, headBits, next, position⟩ := readHeader_sound cursor headRead
     obtain ⟨⟨⟩, within, read⟩ := bind_mapped_ok read
     obtain ⟨⟨stepped, after⟩, bodyRead, read⟩ := bind_ok read
-    obtain ⟨fits, _, body, suffix, chunk, bodyWire, bodyBits, nextCursor, bodyPos⟩ :=
-      readBody_sound next outFits (withinBits_ok within) bodyRead
+    obtain ⟨fits, _, used, suffix, chunk, bodyWire, bodyBits, nextCursor, bodyPos⟩ :=
+      bodySound next outFits (withinBits_ok within) bodyRead
     dsimp only at read
-    have stop : after.totalRead = before.totalRead + header.bits.length + body.length := by
+    have stop : after.totalRead = before.totalRead + header.bits.length + used.length := by
       rw [bodyPos, position]
     split at read
     · rename_i last
@@ -194,7 +271,7 @@ private theorem readBlocks_sound {limits : Stream.Limits} {window fuel index : N
         omega
       · rw [headBits, bodyBits, finalBits, stop]
         rw [position] at bodyWire
-        simpa only [List.append_assoc] using BlocksWire.last valid last bodyWire
+        simpa only [List.append_assoc] using EnvelopeWire.last valid last bodyWire
     · rename_i more
       have notLast : header.last = false := by simpa using more
       obtain ⟨finalFits, finalBits, chunks, chain, steps⟩ := ih nextCursor fits read
@@ -204,14 +281,16 @@ private theorem readBlocks_sound {limits : Stream.Limits} {window fuel index : N
       · simp only [headBits, bodyBits, List.length_append]
         omega
       · rw [headBits, bodyBits]
-        simpa only [List.append_assoc] using BlocksWire.more valid notLast bodyWire chain
+        simpa only [List.append_assoc] using EnvelopeWire.more valid notLast bodyWire chain
 
-theorem decode_sound {limits : Stream.Limits} {input : List UInt8} {final : Execute.State}
-    (read : Stream.decode limits input = .ok final) :
+theorem decodeWith_sound {ε : Type} {onError : Stream.Error → ε} {body : ReadBody ε}
+    {wire : PayloadWire} (bodySound : BodySound body wire)
+    {limits : Stream.Limits} {input : List UInt8} {final : Execute.State}
+    (read : decodeWith onError body limits input = .ok final) :
     input.length ≤ limits.input ∧ 8 * input.length ≤ limits.bits ∧ final.output.size ≤ limits.output ∧
-    ∃ window chunks, Wire input window chunks final ∧ 10 ≤ window ∧ window ≤ 24 ∧
-      windowSize window ≤ limits.window ∧ chunks.length ≤ limits.blocks ∧ final.output.toList = chunks.flatten := by
-  unfold Stream.decode at read
+    ∃ window chunks, WireWith wire input window chunks final ∧ 10 ≤ window ∧ window ≤ 24 ∧
+      windowSize window ≤ limits.window ∧ chunks.length ≤ limits.blocks := by
+  unfold decodeWith at read
   dsimp only at read
   split at read
   · contradiction
@@ -225,14 +304,28 @@ theorem decode_sound {limits : Stream.Limits} {input : List UInt8} {final : Exec
   split at read
   · contradiction
   rename_i windowFits
-  obtain ⟨outFit, bitFit, chunks, chain, steps⟩ := readBlocks_sound next (Nat.zero_le _) read
+  obtain ⟨outFit, bitFit, chunks, chain, steps⟩ :=
+    readBlocksWith_sound bodySound next (Nat.zero_le _) read
   have pos : reader.totalRead = code.length := by simpa [start] using position
   have length := congrArg List.length split
   simp only [bytes_length, List.length_append] at length
   obtain ⟨lower, upper⟩ := WindowWire.range windowWire
   rw [pos] at chain
-  refine ⟨Nat.le_of_not_gt inputFits, by omega, outFit, window, chunks,
-    ⟨code, tail, windowWire, split, chain⟩, lower, upper, Nat.le_of_not_gt windowFits, steps, ?_⟩
-  simpa [Execute.State.start] using BlocksWire.output chain
+  exact ⟨Nat.le_of_not_gt inputFits, by omega, outFit, window, chunks,
+    ⟨code, tail, windowWire, split, chain⟩, lower, upper, Nat.le_of_not_gt windowFits, steps⟩
+
+theorem decode_sound {limits : Stream.Limits} {input : List UInt8} {final : Execute.State}
+    (read : Stream.decode limits input = .ok final) :
+    input.length ≤ limits.input ∧ 8 * input.length ≤ limits.bits ∧ final.output.size ≤ limits.output ∧
+    ∃ window chunks, Wire input window chunks final ∧ 10 ≤ window ∧ window ≤ 24 ∧
+      windowSize window ≤ limits.window ∧ chunks.length ≤ limits.blocks ∧ final.output.toList = chunks.flatten := by
+  obtain ⟨inputFit, bitFit, outputFit, window, chunks, ⟨code, tail, windowWire, split, chain⟩, lower, upper, winFit, steps⟩ :=
+    decodeWith_sound (onError := id) (body := readBody) (wire := SingleWire)
+      (readBodyWith_sound (onError := id) (compressed := readSinglePayload) (wire := SingleWire)
+        readSinglePayload_sound) read
+  have legacy := EnvelopeWire.toLegacy chain
+  refine ⟨inputFit, bitFit, outputFit, window, chunks, ⟨code, tail, windowWire, split, legacy⟩,
+    lower, upper, winFit, steps, ?_⟩
+  simpa [Execute.State.start] using BlocksWire.output legacy
 
 end Silmaril.Proofs.Formats.Compression.Brotli.Stream

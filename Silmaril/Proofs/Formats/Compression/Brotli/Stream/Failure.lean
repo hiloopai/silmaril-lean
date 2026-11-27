@@ -78,7 +78,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat} {he
   cases header with
   | terminal => contradiction
   | metadata last length =>
-    unfold readBody at read
+    unfold readBody readBodyWith at read
     cases body : alignedBody limits length.size before with
     | ok pair => obtain ⟨_, _⟩ := pair; simp only [body, Except.mapError, bind, Except.bind] at read; cases read
     | error reason =>
@@ -86,7 +86,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat} {he
       cases read
       exact ⟨here cursor (.byteBody body), rfl, by simp⟩
   | raw length =>
-    unfold readBody at read
+    unfold readBody readBodyWith at read
     dsimp only at read
     split at read
     · rename_i excess
@@ -99,7 +99,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat} {he
         cases read
         exact ⟨here cursor (.byteBody body), rfl, by simp⟩
   | compressed last length =>
-    unfold readBody at read
+    unfold readBody readBodyWith at read
     dsimp only at read
     split at read
     · rename_i excess
@@ -114,6 +114,7 @@ private theorem readBody_error {limits : Stream.Limits} {window index : Nat} {he
       | ok pair =>
         obtain ⟨header, after⟩ := pair
         simp only [head, Except.mapError, bind, Except.bind] at read
+        unfold readSinglePayload at read
         split at read
         · rename_i omitted
           cases read
@@ -142,7 +143,7 @@ private theorem readBlocks_error {limits : Stream.Limits} {window fuel index : N
     exact ⟨here cursor (.stepLimit before), ⟨0, Nat.le_refl _, by simp⟩,
       index, initial, before, .none _ _ _, rfl, by simp⟩
   | succ fuel ih =>
-    unfold readBlocks at read
+    unfold readBlocks readBlocksWith at read
     cases head : readHeader before with
     | error reason =>
       simp only [head, Except.mapError, bind, Except.bind, Function.comp_apply] at read
@@ -236,7 +237,7 @@ theorem decode_error {limits : Stream.Limits} {bytes : List UInt8} {error : Stre
           Brotli.Internal.readWindow (start bytes) = .ok (window, reader) ∧
           IndexedFailure limits window 0 Execute.State.start reader error) from
     ⟨found.1, found.2, noFuel found.1⟩
-  unfold Stream.decode at read
+  unfold Stream.decode decodeWith at read
   dsimp only at read
   split at read
   · rename_i excess

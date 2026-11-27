@@ -41,6 +41,11 @@ def header(mlen, count, type_symbols):
     bits.code("010")  # Window 16, ISLAST, ISLASTEMPTY=0.
     bits.integer(0, 2)
     bits.integer(mlen - 1, 16)
+    payload_header(bits, count, type_symbols)
+    return bits
+
+
+def payload_header(bits, count, type_symbols, commands=(136, 2)):
     bits.code("0")  # NBLTYPESL=1.
     bits.code("1000")  # NBLTYPESI=2.
     bits.simple(4, type_symbols)
@@ -52,10 +57,9 @@ def header(mlen, count, type_symbols):
     bits.integer(0, 2)  # Literal context mode LSB6.
     bits.code("00")  # The two implicit one-tree context maps.
     bits.simple(256, [65, 66])  # A and B, one bit each.
-    bits.simple(704, [136])  # Type 0 inserts one literal, then explicitly copies two.
-    bits.simple(704, [2])  # Type 1 copies four using the last distance.
+    for command in commands:
+        bits.simple(704, [command])
     bits.simple(65, [16])  # Explicit distance 1.
-    return bits
 
 
 def assemble():
