@@ -6,9 +6,11 @@ import Silmaril.Formats.Hive.Manifest.ParquetSnapshot.Int32ByteArray.Ingress.Def
 import Silmaril.Formats.Hive.Manifest.Inventory.Thms
 import Silmaril.Formats.Hive.PartitionPath.Positional.Render.Thms
 import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.Thms
+import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.ToCsv.Thms
 import Silmaril.Formats.Relational.NamedTable.Thms
 meta import Silmaril.Data.IncludeBytes
 meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.Defs
+meta import Silmaril.Formats.Relational.NamedTable.FromRenderedPositional.ToCsv.Defs
 meta import Silmaril.Formats.Hive.Manifest.ParquetSnapshot.Int32ByteArray.RenderedPositional.Defs
 meta import Silmaril.Formats.Hive.Manifest.ParquetSnapshot.Int32ByteArray.Ingress.Defs
 
@@ -219,4 +221,85 @@ private def otherPreserved (loaded : Database String) : Bool :=
 #print axioms NamedTable.FromRenderedPositional.importScan_observe
 #print axioms NamedTable.FromRenderedPositional.importScan_eq_reference
 
+
+open NamedTable.FromRenderedPositional
+
+private def exportCsv (selected : Scan.Projection (partitions.extend physical))
+    (budget maxBytes : Nat) (paths : List String) :=
+  ToCsv.convert (int32 := ordinal) (byteArray := payload) database "dest" maxBytes admission
+    renderLimits.maxDirectoryBytes keys .uri {} Int32ByteArray.Ingress.convert paths {} lookup selected keep budget
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv projection 20 4096 paths | return false
+  let schema := ToCsv.csvSchema projection.schema
+  let .ok decoded := Csv.Typed.Utf8.decode schema ToCsv.codecs result.wire | return false
+  return List.ofFn result.schema.kind == List.ofFn schema.kind &&
+    projectedRows decoded == rows && otherPreserved result.db
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv zero 20 4096 paths | return false
+  let .ok decoded := Csv.Typed.Utf8.decode (ToCsv.csvSchema zero.schema) ToCsv.codecs result.wire | return false
+  return result.schema.width == 0 && decoded.length == 20 &&
+    result.wire == (List.replicate 21 ("\"\"\r\n".toUTF8.data.toList)).flatten
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .error (.input .closed) := exportCsv projection 19 4096 paths | return false
+  return true
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .error (.input (.readError (.runtime cause))) :=
+    exportCsv projection 24 4096 (paths ++ [late]) | return false
+  return decide (cause = lateCause)
+
+#guard
+  let bad := "apart/not-int/skip.parquet"
+  match exportCsv projection 0 4096 [controls, bad] with
+  | .error (.input (.openError (.admission reason))) =>
+    reason == .entry 1 (.binding bad (.conversion "year" (.invalidInt32 "not-int")))
+  | _ => false
+
+#guard Id.run do
+  let .ok paths := listing | return false
+  let .ok result := exportCsv zero 20 4096 paths | return false
+  let .ok exactFit := exportCsv zero 20 result.wire.length paths | return false
+  let .error (.byteLimit maximum actual) :=
+    exportCsv zero 20 (result.wire.length - 1) paths | return false
+  return exactFit.wire == result.wire && maximum == 83 && actual == 84
+
+#guard
+  let badSchema : Scan.Schema String Kind := ⟨1, fun _ => ("a\tb", .int32 .optional)⟩
+  let imported : Except (NamedTable.ImportError Unit) (Database String) :=
+    .ok (fun _ => some ⟨badSchema, []⟩)
+  match ToCsv.exportImported "dest" 4096 imported with
+  | .error (.output (.encodeError .unrepresentableWire)) => true
+  | _ => false
+
+#guard (ToCsv.bytesCodec.parse "%ff%00".toUTF8.data.toList).isNone
+
+#print axioms ToCsv.csvSchema_label
+#print axioms ToCsv.codecs_parsePrint
+#print axioms ToCsv.exportImported_input_error
+#print axioms ToCsv.convert_roundTrip
+#print axioms ToCsv.convert_eq_reference
+
+/-- Emit the actual converted bytes for the independent CSV reader. -/
+public def emitCsv (projectedFile zeroFile : System.FilePath) : IO Unit := do
+  let .ok paths := listing | throw (IO.userError "positional fixture rendering failed")
+  let .ok projected := exportCsv projection 20 4096 paths |
+    throw (IO.userError "projected CSV conversion failed")
+  let .ok emptyColumns := exportCsv zero 20 4096 paths |
+    throw (IO.userError "zero-column CSV conversion failed")
+  IO.FS.writeBinFile projectedFile projected.wire.toByteArray
+  IO.FS.writeBinFile zeroFile emptyColumns.wire.toByteArray
+
 end Silmaril.Formats.Hive.Manifest.RenderedPositional
+
+public def main (args : List String) : IO Unit :=
+  match args with
+  | [projectedFile, zeroFile] =>
+    Silmaril.Formats.Hive.Manifest.RenderedPositional.emitCsv projectedFile zeroFile
+  | _ => throw (IO.userError "expected projected and zero-column CSV output paths")

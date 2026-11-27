@@ -184,3 +184,45 @@ zero-column count against the same expectations as the pinned PyArrow
 oracle. They also load an empty manifest at zero budget and verify
 conflict, indexed admission failure, cutoff just before EOS, and a
 retained read failure after emitted groups.
+
+## Typed UTF-8 CSV export
+
+[`NamedTable.FromRenderedPositional.ToCsv.convert`](../../Silmaril/Formats/Relational/NamedTable/FromRenderedPositional/ToCsv/Defs.lean)
+exports the installed name through the shared UTF-8 named-table writer.
+It returns the updated database, ordered typed CSV schema and bytes
+together after observed EOS and a successful byte-count check. The
+database retains its original String labels. The CSV view uses the exact
+UTF-8 bytes of each projected label in position order, including repeated
+labels. The CSV grammar can refuse unrepresentable labels.
+
+The paired profile supports signed Int32 as canonical decimal and opaque
+BYTE_ARRAY as the existing uppercase percent escaping of octets.
+Unreserved ASCII bytes stay literal. The decoder requires canonical
+escape spelling and recovers the original bytes, including invalid UTF-8
+and NUL. The shared typed CSV tags distinguish `N` for null from `T`
+for a present empty byte string. At width zero the shared marker emits
+one quoted empty field for the header and one per data row. The schema
+accompanying the bytes declares width zero.
+
+`convert_roundTrip` proves that successful readback recovers every
+projected row in order with its exact nullable cells. The result records
+the single-name update and the output bound. `convert_eq_reference`
+lifts the full original-render-entry scan and import law, including
+indexed admission errors, late retained failure, and cutoff before
+explicit EOS. Those errors propagate without a CSV or database result.
+CSV encoding and oversize output have separate typed errors. The CSV
+cap applies to the completed output length, including headers and
+framing.
+
+The independent oracle reads the actual Lean-produced CSV with CPython's
+CSV reader and compares each tagged field to PyArrow's ordered rows from
+the same sorted and pruned Parquet listing. The fixture covers repeated
+columns, duplicate file occurrences, non-ASCII partition bytes, nullable
+opaque payloads and width zero.
+
+```sh
+lake build --wfail +Silmaril.Formats.Hive.Manifest.ParquetSnapshot.Int32ByteArray.RenderedPositional.Checks
+lake env lean --run scripts/hive-positional-path-oracle/Generate.lean --scan > /tmp/positional-scan-directories.txt
+lake env lean --run Silmaril/Formats/Hive/Manifest/ParquetSnapshot/Int32ByteArray/RenderedPositional/Checks.lean /tmp/positional.csv /tmp/positional-zero.csv
+python -I scripts/hive-positional-path-oracle/Oracle.py data/parquet-int32-byte-array-file/empty-middle-v2.parquet /tmp/positional-scan-directories.txt /tmp/positional.csv /tmp/positional-zero.csv
+```

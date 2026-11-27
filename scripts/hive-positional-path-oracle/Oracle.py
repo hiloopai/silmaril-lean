@@ -1,8 +1,10 @@
 """Replay exact-arity positional file paths and PyArrow's broader behavior."""
+import csv
 import hashlib
 from pathlib import Path
 import sys
 import tempfile
+from urllib.parse import quote_from_bytes, unquote_to_bytes
 
 import numpy as np
 import pyarrow as pa
@@ -157,3 +159,35 @@ if len(sys.argv) > 2:
             zero = dataset.to_table(columns=[], filter=predicate, use_threads=False)
             assert zero.num_columns == 0 and zero.num_rows == 20
             print("Ordered positional scan: five data occurrences, four retained, twenty projected rows.")
+
+            if len(sys.argv) > 3:
+                projected_file, zero_file = (Path(arg) for arg in sys.argv[3:])
+                with projected_file.open(encoding="utf-8", newline="") as source:
+                    header, *records = csv.reader(source, strict=True)
+                assert header == columns
+
+                def typed_cell(field, index):
+                    if field == "N":
+                        return None
+                    assert field.startswith("T"), (index, field)
+                    text = field[1:]
+                    if index in (1, 2):
+                        value = int(text)
+                        assert str(value) == text
+                        return value
+                    value = unquote_to_bytes(text)
+                    assert quote_from_bytes(value, safe="-._~") == text
+                    return value
+
+                assert all(len(record) == len(columns) for record in records)
+                csv_rows = [tuple(typed_cell(field, i) for i, field in enumerate(record))
+                            for record in records]
+                arrow_rows = [
+                    (region.encode("utf-8"), ordinal, year, repeated.encode("utf-8"), value)
+                    for region, ordinal, year, repeated, value in
+                    zip(*(column.to_pylist() for column in projected.columns), strict=True)
+                ]
+                assert csv_rows == arrow_rows
+                with zero_file.open(encoding="utf-8", newline="") as source:
+                    assert list(csv.reader(source, strict=True)) == [[""]] * (zero.num_rows + 1)
+                print("CPython CSV readback matches PyArrow rows, duplicate headers, and zero-width count.")
