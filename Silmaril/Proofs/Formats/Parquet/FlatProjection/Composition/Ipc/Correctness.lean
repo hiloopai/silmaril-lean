@@ -85,6 +85,14 @@ theorem read_emitted {limits : Arrow.MixedFlat.Limits} {fields : List Field}
   simp [readEvents, complete, pulled, eos, Arrow.MixedFlat.Events.schema, observeSource, ← values,
     observeBatches_eq agrees]
 
+theorem read_emittedWith {limits : Arrow.MixedFlat.Limits} {fields : List Field}
+    {batches : List OrderedWriter.BatchInput} {admit : List Field → Bool} {wire : KBytes}
+    (emitted : OrderedWriter.emitWith limits fields batches admit = .ok wire) :
+    readEvents limits wire = observeSource ⟨fields, batches.map OrderedWriter.BatchInput.observe⟩ := by
+  obtain ⟨decoded, trace, _, _, values, pulled, eos, agrees⟩ := OrderedWriter.emitWith_pull_exact emitted
+  simp [readEvents, complete, pulled, eos, Arrow.MixedFlat.Events.schema, observeSource, ← values,
+    observeBatches_eq agrees]
+
 private theorem project_observeBatch {positions : List Nat} {wide direct : StreamWriter.BatchObservation}
     (projected : projectBatch positions wide = some direct) :
     ∃ wideEvent directEvent, observeSourceBatch wide = some wideEvent ∧

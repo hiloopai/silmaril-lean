@@ -21,6 +21,13 @@ theorem read_emitted {limits : Arrow.MixedFlat.Limits} {fields : List Field}
         trace.termination = .eos :=
   Proofs.Formats.Parquet.FlatProjection.Composition.Ipc.read_emitted emitted
 
+/-- The exact-EOS pull observation also agrees under an explicit writer profile. -/
+theorem read_emittedWith {limits : Arrow.MixedFlat.Limits} {fields : List Field}
+    {batches : List OrderedWriter.BatchInput} {admit : List Field → Bool} {wire : KBytes}
+    (emitted : OrderedWriter.emitWith limits fields batches admit = .ok wire) :
+    readEvents limits wire = observeSource ⟨fields, batches.map OrderedWriter.BatchInput.observe⟩ :=
+  Proofs.Formats.Parquet.FlatProjection.Composition.Ipc.read_emittedWith emitted
+
 /-- Source selection and native event selection agree in the common octet model. -/
 theorem project_source {positions : List Nat} {wide direct : Observation}
     (projected : project positions wide = some direct) :

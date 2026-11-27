@@ -48,38 +48,35 @@ theorem materialize_rowCount (observed : EventObservation) (aligned : Aligned ob
       rfl
   exact counts (signature := schema observed.fields) observed.batches aligned
 
-private def packBatch {signature : Schema} (columns : Columns signature) : BatchObservation :=
-  (columns.rowCount, List.ofFn columns.values)
-
-private theorem packBatch_aligned {signature : Schema} (columns : Columns signature) :
-    BatchAligned signature.width (packBatch columns) := by
-  refine ⟨by simp [packBatch], ?_⟩
+private theorem observeColumns_aligned {signature : Schema} (columns : Columns signature) :
+    BatchAligned signature.width (observeColumns columns) := by
+  refine ⟨by simp [observeColumns], ?_⟩
   intro column hc
   obtain ⟨i, rfl⟩ := List.mem_ofFn.mp hc
   exact columns.length_eq i
 
 private theorem unpack_batch {signature : Schema} (columns : Columns signature)
-    (aligned : BatchAligned signature.width (packBatch columns)) :
-    batchColumns signature (packBatch columns) aligned = columns := by
+    (aligned : BatchAligned signature.width (observeColumns columns)) :
+    batchColumns signature (observeColumns columns) aligned = columns := by
   refine AlignedColumns.ext ?_ ?_
   · rfl
   · funext i
-    simp [batchColumns, packBatch]
+    simp [batchColumns, observeColumns]
 
 private theorem unpack_batches {signature : Schema} (batches : List (Columns signature))
-    (aligned : ∀ b ∈ batches.map packBatch, BatchAligned signature.width b) :
-    alignedBatches signature (batches.map packBatch) aligned = batches := by
+    (aligned : ∀ b ∈ batches.map observeColumns, BatchAligned signature.width b) :
+    alignedBatches signature (batches.map observeColumns) aligned = batches := by
   induction batches with
   | nil => rfl
   | cons head tail ih =>
-    change batchColumns signature (packBatch head) _ :: alignedBatches signature (tail.map packBatch) _ =
+    change batchColumns signature (observeColumns head) _ :: alignedBatches signature (tail.map observeColumns) _ =
       head :: tail
     rw [unpack_batch, ih]
 
 private theorem materialize_packed {signature : Schema} {fields : List Arrow.MixedFlat.Field}
     (same : schema fields = signature) (batches : List (Columns signature))
-    (aligned : Aligned ⟨fields, batches.map packBatch⟩) :
-    materialize ⟨fields, batches.map packBatch⟩ aligned =
+    (aligned : Aligned ⟨fields, batches.map observeColumns⟩) :
+    materialize ⟨fields, batches.map observeColumns⟩ aligned =
       ⟨signature, batches.flatMap AlignedColumns.toRows⟩ := by
   subst signature
   unfold materialize
@@ -104,6 +101,18 @@ private theorem schema_ofFn (signature : Schema) :
       rfl
     · exact Subsingleton.elim _ _
 
+theorem toTable_columns (signature : Schema) (batches : List (Columns signature)) :
+    toTable ⟨List.ofFn (fun i => (signature.kind i).1), batches.map observeColumns⟩ =
+      some (⟨signature, batches.flatMap AlignedColumns.toRows⟩ : Table) := by
+  let fields := List.ofFn (fun i => (signature.kind i).1)
+  have aligned : Aligned ⟨fields, batches.map observeColumns⟩ := by
+    intro batch member
+    obtain ⟨columns, _, rfl⟩ := List.mem_map.mp member
+    simpa [fields] using observeColumns_aligned columns
+  change toTable ⟨fields, batches.map observeColumns⟩ = _
+  rw [toTable, dite_eq_left aligned]
+  exact congrArg some (materialize_packed (schema_ofFn signature) batches aligned)
+
 private theorem select_ofFn {α : Type} {n w : Nat} (values : List α) (length : values.length = w)
     (indices : Fin n → Fin w) :
     select (List.ofFn fun i => (indices i).val) values =
@@ -118,7 +127,7 @@ private theorem select_ofFn {α : Type} {n w : Nat} (values : List α) (length :
 private theorem project_batch {signature : Schema} (projection : Scan.Projection signature)
     (batch : BatchObservation) (aligned : BatchAligned signature.width batch) :
     projectEventBatch (positions projection) batch =
-      some (packBatch (projection.projectColumns (batchColumns signature batch aligned))) := by
+      some (observeColumns (projection.projectColumns (batchColumns signature batch aligned))) := by
   unfold projectEventBatch positions
   rw [select_ofFn _ aligned.1 projection.index]
   rfl
@@ -126,13 +135,13 @@ private theorem project_batch {signature : Schema} (projection : Scan.Projection
 private theorem project_batches {signature : Schema} (projection : Scan.Projection signature)
     (batches : List BatchObservation) (aligned : ∀ b ∈ batches, BatchAligned signature.width b) :
     batches.mapM (projectEventBatch (positions projection)) =
-      some ((alignedBatches signature batches aligned).map (packBatch ∘ projection.projectColumns)) := by
+      some ((alignedBatches signature batches aligned).map (observeColumns ∘ projection.projectColumns)) := by
   induction batches with
   | nil => rfl
   | cons head rest ih =>
     change (head :: rest).mapM (projectEventBatch (positions projection)) =
-      some (packBatch (projection.projectColumns (batchColumns signature head _)) ::
-        (alignedBatches signature rest _).map (packBatch ∘ projection.projectColumns))
+      some (observeColumns (projection.projectColumns (batchColumns signature head _)) ::
+        (alignedBatches signature rest _).map (observeColumns ∘ projection.projectColumns))
     rw [List.mapM_cons, project_batch projection head (aligned head (by simp)), ih]
     rfl
 
@@ -145,11 +154,11 @@ theorem materialize_project (observed : EventObservation) (aligned : Aligned obs
   let fields := List.ofFn fun i => (projection.schema.kind i).1
   let original := alignedBatches (schema observed.fields) observed.batches aligned
   let projected := original.map projection.projectColumns
-  let output : EventObservation := ⟨fields, projected.map packBatch⟩
+  let output : EventObservation := ⟨fields, projected.map observeColumns⟩
   have alignedOutput : Aligned output := by
     intro batch member
     obtain ⟨columns, _, rfl⟩ := List.mem_map.mp member
-    simpa [output, fields] using packBatch_aligned columns
+    simpa [output, fields] using observeColumns_aligned columns
   refine ⟨output, alignedOutput, ?_, ?_⟩
   · have fieldPick : select (positions projection) observed.fields = some fields :=
       select_ofFn _ rfl projection.index
@@ -157,7 +166,7 @@ theorem materialize_project (observed : EventObservation) (aligned : Aligned obs
     simp [projectEvents, fieldPick, batchPick, output, projected, original,
       List.map_map, Bind.bind, Option.bind, pure]
   · have sameSchema : schema fields = projection.schema := schema_ofFn _
-    change materialize ⟨fields, projected.map packBatch⟩ alignedOutput = _
+    change materialize ⟨fields, projected.map observeColumns⟩ alignedOutput = _
     rw [materialize_packed sameSchema]
     change Scan.Observation.mk projection.schema
       ((original.map projection.projectColumns).flatMap AlignedColumns.toRows) =

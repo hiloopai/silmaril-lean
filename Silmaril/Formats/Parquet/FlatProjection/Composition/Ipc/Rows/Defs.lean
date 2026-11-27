@@ -32,6 +32,10 @@ instance (observation : EventObservation) : Decidable (Aligned observation) := b
   unfold Aligned
   infer_instance
 
+/-- Record aligned Scan columns without altering their explicit row count. -/
+def observeColumns {signature : Schema} (columns : Columns signature) : BatchObservation :=
+  (columns.rowCount, List.ofFn columns.values)
+
 def batchColumns (signature : Schema) (batch : BatchObservation)
     (aligned : BatchAligned signature.width batch) : Columns signature where
   rowCount := batch.1

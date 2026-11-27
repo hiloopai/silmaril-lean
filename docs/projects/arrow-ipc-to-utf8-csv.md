@@ -70,3 +70,21 @@ round trips, including duplicate names, an empty middle batch, schema-only
 input, and zero-width rows.
 [Direct bridge laws](../../Silmaril/Formats/Csv/Typed/Utf8/MixedIpc/Thms.lean) ·
 [Comparator](../../scripts/arrow-mixed-scan-csv-oracle/check.py)
+
+### Checked single-batch native export
+
+`Csv.Typed.Utf8.MixedIpc.ToIpc.convert` takes the explicit ordered Arrow
+descriptor and bounded typed CSV. It finishes source import before
+invoking the opt-in mixed IPC V5 writer for INT32, UTF8, and Utf8View.
+The writer applies its own admission limits. Each successful output
+has one RecordBatch and exact EOS. Header-only input emits a zero-row
+batch, and a positive-row zero-width table retains its row count.
+
+`convert_readback` recovers the exact dependent Scan table, including
+all field descriptors, nullability flags, repeated names, and ordered
+nullable cells. `encoded_readback` applies the same law to a table
+exported by the typed CSV encoder when native output succeeds. The
+independent comparator reads the four actual Lean streams in PyArrow,
+including both header-only forms and positive-row zero width.
+[Reverse bridge laws](../../Silmaril/Formats/Csv/Typed/Utf8/MixedIpc/ToIpc/Thms.lean) ·
+[Comparator](../../scripts/typed-csv-to-mixed-ipc-oracle/check.py)

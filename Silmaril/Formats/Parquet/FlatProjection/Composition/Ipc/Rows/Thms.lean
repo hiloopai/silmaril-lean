@@ -33,6 +33,12 @@ theorem batchRows_cell (signature : Schema) (batch : BatchObservation)
         (row.cast (aligned.2 _ (List.getElem_mem _)).symm) :=
   Proofs.Formats.Parquet.FlatProjection.Composition.Ipc.Rows.batchRows_cell signature batch aligned row column
 
+/-- Materializing aligned batch observations concatenates exactly their Scan rows. -/
+theorem toTable_columns (signature : Schema) (batches : List (Columns signature)) :
+    toTable ⟨List.ofFn (fun i => (signature.kind i).1), batches.map observeColumns⟩ =
+      some (⟨signature, batches.flatMap AlignedColumns.toRows⟩ : Table) :=
+  Proofs.Formats.Parquet.FlatProjection.Composition.Ipc.Rows.toTable_columns signature batches
+
 /-- A typed Scan projection and its raw position list yield the same
 dependent schema and ordered rows. The list may repeat positions or be empty. -/
 theorem materialize_project (observed : EventObservation) (aligned : Aligned observed)
