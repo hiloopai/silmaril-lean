@@ -27,6 +27,8 @@ import Silmaril.Languages.Starlark.Frontend.Module.TupleDisplayChecks
 meta import Silmaril.Languages.Starlark.Frontend.Module.TupleDisplayChecks
 import Silmaril.Languages.Starlark.Frontend.Module.Loader.Checks
 meta import Silmaril.Languages.Starlark.Frontend.Module.Loader.Checks
+import Silmaril.Languages.Starlark.Frontend.Module.Loader.KeywordOnlyChecks
+meta import Silmaril.Languages.Starlark.Frontend.Module.Loader.KeywordOnlyChecks
 
 open Lean Silmaril.Languages.Starlark.Frontend
 open Silmaril.Languages.Starlark.Frontend.Module
@@ -53,6 +55,12 @@ private def moduleObservation (expected : Observation) : Json :=
 private def spanCoordinates (spans : List Span) : Json :=
   toJson (spans.map fun span => [span.start.line, span.start.column, span.stop.line, span.stop.column])
 
+private def loaderObservation (phase want marker wrapper : String) (sources : List (String × String))
+    (requests : List String) : Json :=
+  Json.mkObj [("phase", toJson phase), ("want", toJson want), ("marker", toJson marker),
+    ("wrapper", toJson wrapper), ("sources", Json.mkObj (sources.map fun (label, source) =>
+      (label, toJson source))), ("requests", toJson requests)]
+
 private def loaderFixture (control : Silmaril.Languages.Starlark.Frontend.Module.Loader.Control) : Json :=
   let label := Silmaril.Languages.Starlark.Frontend.Module.Loader.label
   let producer := Silmaril.Languages.Starlark.Frontend.Module.Loader.producer
@@ -67,10 +75,32 @@ private def loaderFixture (control : Silmaril.Languages.Starlark.Frontend.Module
   let wrapper := match control.expected with
     | .wrapperExportedInt _ => "relay"
     | _ => ""
-  let loader := Json.mkObj [("phase", toJson phase), ("want", toJson want),
-    ("marker", toJson marker), ("label", toJson label), ("producer", toJson producer), ("wrapper", toJson wrapper)]
+  let loader := loaderObservation phase want marker wrapper [(label, producer)] [label]
   Json.mkObj [("name", toJson control.name), ("source", toJson control.source),
     ("accepts", toJson (phase != "parse")), ("loader", loader)]
+
+open Silmaril.Languages.Starlark.Frontend.Module.Loader
+  (KeywordControl HeaderControl keywordProducerLabel keywordWrapperLabel keywordProducer keywordWrapper
+    keywordOnlyControls headerControls headerSpanSource headerFormalSpans requiredOnlySource)
+
+private def keywordLoaderFixture (control : KeywordControl) : Json :=
+  let (phase, want) := match control.expected with
+    | .exported value => ("publication", toString value)
+    | .missing name => ("runtime", s!"missing 1 argument ({name})")
+    | .positionalOverflow capacity count => ("runtime", s!"{capacity} positional argument ({count} given)")
+  let loader := loaderObservation phase want "" ""
+    [(keywordProducerLabel, keywordProducer), (keywordWrapperLabel, keywordWrapper)]
+    [keywordWrapperLabel, keywordProducerLabel]
+  Json.mkObj [("name", toJson control.name), ("source", toJson control.source),
+    ("accepts", toJson true), ("loader", loader)]
+
+private def headerFixture (control : HeaderControl) : Json :=
+  let fields := [("name", toJson control.name), ("source", toJson control.source),
+    ("accepts", toJson control.goAccepts)]
+  match control.goValidationError with
+  | none => Json.mkObj fields
+  | some message => Json.mkObj (fields ++ [("module",
+      Json.mkObj [("phase", toJson "validation"), ("want", toJson message)])])
 
 public def main (args : List String) : IO Unit := do
   let [output] := args | throw (IO.userError "expected one fixture output path")
@@ -83,7 +113,8 @@ public def main (args : List String) : IO Unit := do
   let modules := moduleControls.toArray.map fun control =>
     Json.mkObj [("name", toJson control.name), ("source", toJson control.source),
       ("accepts", toJson true), ("module", moduleObservation control.expected)]
-  let loaders := Silmaril.Languages.Starlark.Frontend.Module.Loader.controls.toArray.map loaderFixture
+  let loaders := Silmaril.Languages.Starlark.Frontend.Module.Loader.controls.toArray.map loaderFixture ++
+    keywordOnlyControls.toArray.map keywordLoaderFixture
   let moduleSyntax := (branchSyntaxControls ++ listSyntaxControls ++ tupleSyntaxControls).toArray.map
     fun (name, source, _, accepts) =>
       Json.mkObj [("name", toJson name), ("source", toJson source), ("accepts", toJson accepts)]
@@ -96,5 +127,12 @@ public def main (args : List String) : IO Unit := do
   let tupleSpans := Json.mkObj [("name", toJson "utf8-tuple-display-spans"),
     ("source", toJson tupleSpanSource), ("accepts", toJson true),
     ("tupleDisplays", spanCoordinates tupleDisplaySpans)]
+  let headerSpans := Json.mkObj [("name", toJson "utf8-keyword-only-formal-spans"),
+    ("source", toJson headerSpanSource), ("accepts", toJson true),
+    ("headerFormals", spanCoordinates headerFormalSpans)]
+  let requiredOnly := Json.mkObj [("name", toJson "go-required-only-bare-star"),
+    ("source", toJson requiredOnlySource), ("accepts", toJson true),
+    ("module", moduleObservation (.exportedInt 7))]
   IO.FS.writeFile output
-    (Json.arr (entries ++ modules ++ loaders ++ moduleSyntax ++ #[branchSpans, listSpans, tupleSpans])).compress
+    (Json.arr (entries ++ modules ++ loaders ++ moduleSyntax ++ headerControls.toArray.map headerFixture ++
+      #[branchSpans, listSpans, tupleSpans, headerSpans, requiredOnly])).compress

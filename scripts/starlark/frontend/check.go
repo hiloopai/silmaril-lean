@@ -21,6 +21,7 @@ type fixture struct {
 	BranchTests   [][4]int32
 	ListDisplays  [][4]int32
 	TupleDisplays [][4]int32
+	HeaderFormals [][4]int32
 }
 
 type moduleControl struct {
@@ -32,8 +33,8 @@ type moduleControl struct {
 type loaderControl struct {
 	Phase    string
 	Want     string
-	Label    string
-	Producer string
+	Sources  map[string]string
+	Requests []string
 	Marker   string
 	Wrapper  string
 }
@@ -65,6 +66,17 @@ func checkNodeSpans(file *syntax.File, want [][4]int32, locate func(syntax.Node)
 func branchTestNodes(node syntax.Node) []syntax.Node {
 	if branch, ok := node.(*syntax.IfStmt); ok {
 		return []syntax.Node{branch.Cond}
+	}
+	return nil
+}
+
+func formalNodes(node syntax.Node) []syntax.Node {
+	if function, ok := node.(*syntax.DefStmt); ok {
+		nodes := make([]syntax.Node, 0, len(function.Params))
+		for _, parameter := range function.Params {
+			nodes = append(nodes, parameter)
+		}
+		return nodes
 	}
 	return nil
 }
@@ -162,17 +174,19 @@ func checkLoader(file *syntax.File, parseError error, control loaderControl) err
 	}
 
 	var requested []string
-	thread := &starlark.Thread{Load: func(_ *starlark.Thread, label string) (starlark.StringDict, error) {
+	var load func(*starlark.Thread, string) (starlark.StringDict, error)
+	load = func(_ *starlark.Thread, label string) (starlark.StringDict, error) {
 		requested = append(requested, label)
-		if label != control.Label {
+		source, ok := control.Sources[label]
+		if !ok {
 			return nil, fmt.Errorf("unexpected label %q", label)
 		}
-		return starlark.ExecFileOptions(&syntax.FileOptions{}, new(starlark.Thread),
-			"producer.star", []byte(control.Producer), nil)
-	}}
-	globals, err := program.Init(thread, nil)
-	if len(requested) != 1 || requested[0] != control.Label {
-		return fmt.Errorf("want one request for %q, got %v", control.Label, requested)
+		return starlark.ExecFileOptions(&syntax.FileOptions{}, &starlark.Thread{Load: load},
+			label+".star", []byte(source), nil)
+	}
+	globals, err := program.Init(&starlark.Thread{Load: load}, nil)
+	if !slices.Equal(requested, control.Requests) {
+		return fmt.Errorf("want load order %v, got %v", control.Requests, requested)
 	}
 	if control.Phase == "runtime" {
 		marker := globals["marker"]
@@ -256,6 +270,12 @@ func main() {
 		}
 		if f.TupleDisplays != nil {
 			if err := checkNodeSpans(file, f.TupleDisplays, tupleDisplayNodes); err != nil {
+				fmt.Fprintf(os.Stderr, "%s: %v\n", f.Name, err)
+				failed = true
+			}
+		}
+		if f.HeaderFormals != nil {
+			if err := checkNodeSpans(file, f.HeaderFormals, formalNodes); err != nil {
 				fmt.Fprintf(os.Stderr, "%s: %v\n", f.Name, err)
 				failed = true
 			}

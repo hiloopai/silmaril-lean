@@ -54,7 +54,7 @@ retain their existing types. Parser soundness and completeness remain open.
 `Frontend.Module.parseUtf8` and `Frontend.Module.parse` lower complete files
 to located `Modules.Resolve.Command`s. The module profile accepts top-level
 scalar assignments and expression statements, multiline `def` declarations
-with positional parameters and optional scalar defaults, postfix call
+with positional and bare-star keyword-only parameters and scalar defaults, postfix call
 assignments and expression statements, and leading load statements. Top-level name assignments also accept the collection displays
 of the call profile. An application chain starts with a bare identifier or a
 parenthesized scalar expression. Module-function returns, name assignments,
@@ -86,10 +86,10 @@ function parser. Its expressions, defaults, and call operands use integer
 literals, names, `and`, `or`, and conditional expressions. Unary and binary
 operators produce an unsupported diagnostic spanning the containing statement,
 default, or argument. Module functions admit calls at the root of a return,
-name assignment RHS, or expression statement. Other body expression positions,
-keyword-only parameters, and variadic parameters remain outside this profile.
+name assignment RHS, or expression statement. Named variadic formals remain
+outside this profile.
 
-### Defaults and call operands
+### Scalar defaults
 
 ```starlark
 # 雪
@@ -104,6 +104,38 @@ The default reads the defining module's `seed` when `pick` is installed. The
 module publishes `out = 7` and `override = 9`. A separate control puts the
 assignment to `seed` after `def` and supplies an explicit named override. It
 still fails on the uninitialized default read at definition time.
+
+### Bare-star keyword-only formals
+
+In a module function header, a bare `*` separates ordinary positional
+formals from keyword-only formals. The suffix can mix required and
+defaulted formals in declaration order, including a required formal
+after a defaulted keyword-only formal. The positional prefix can be
+empty. Defaults use the existing scalar grammar. The source tree
+retains the separator, whole-formal, name, and default spans. Lowering
+passes the two ordered groups to the existing normalized signature.
+
+The pinned core and Lean's validator require at least one optional
+formal after the bare star. The parser recognizes a required-only suffix
+and passes it to validation, which reports `bareStarWithoutOptional`.
+Pinned Go also accepts and executes that spelling. Empty and repeated
+separators and duplicate names receive spanned frontend diagnostics.
+The Go comparison checks its corresponding syntax or validation stage.
+Named `*args` and `**kwargs` formals and call-bearing defaults remain
+outside this grammar.
+
+The shared three-file fixture loads an exported wrapper that calls its
+own captured import. It checks omission and override of a saved
+keyword-only default, a saved positional default, omission of a required
+keyword, and rejection of positional supply beyond the positional
+prefix. Lean inspects the reached closure, saved-default order, and
+published dependencies. The pinned Go oracle checks the same exports,
+errors and load order, plus formal and separator locations on the CRLF
+span fixture. The standalone scalar function parser retains its header
+grammar.
+[Keyword-only checks](../../Silmaril/Languages/Starlark/Frontend/Module/Loader/KeywordOnlyChecks.lean) · [Pinned spec](https://github.com/bazelbuild/starlark/blob/c0af0ea03dc90d3bbc021394b693e6957cc15030/spec.md#functions)
+
+### Call arguments
 
 Call arguments use the order positional, named, optional `*`, then optional
 `**`. Operands use the module expression grammar, including scalar
@@ -534,6 +566,7 @@ length and token count.
 lake build --wfail +Silmaril.Languages.Starlark.Frontend.Checks \
   +Silmaril.Languages.Starlark.Frontend.Module.Checks \
   +Silmaril.Languages.Starlark.Frontend.Module.Loader.Checks \
+  +Silmaril.Languages.Starlark.Frontend.Module.Loader.KeywordOnlyChecks \
   +Silmaril.Languages.Starlark.Frontend.Module.SpreadChecks \
   +Silmaril.Languages.Starlark.Frontend.Module.ComputedCallChecks \
   +Silmaril.Languages.Starlark.Frontend.Module.ReturnCallChecks \
@@ -583,8 +616,8 @@ reports those errors at its source boundary.
 ## Next parser boundary
 
 - Add inline suites and use the layout tokens for `for` and nested definitions.
-  Extend the normalized module adapter with keyword-only and variadic
-  parameters and additional call positions. Broader load spellings and
+  Extend the normalized module adapter with named variadic parameters
+  and additional call positions. Broader load spellings and
   positions can extend the leading-load profile.
 - Extend expressions with tuple and collection displays, calls, attributes,
   indexing and slices. Add membership, the remaining operator levels,

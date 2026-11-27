@@ -244,8 +244,10 @@ decreasing_by all_goals (simp_all <;> omega)
 private def lowerFunction (fn : LocatedFunction FunctionStmt) :
     Except Diagnostic (Modules.Resolve.Command × List ApplicationSpans) := do
   let positional ← fn.parameters.mapM lowerParameter
+  let keywordOnly ← (fn.keywordOnly.map LocatedKeywordOnly.parameters |>.getD []).mapM lowerParameter
   let body ← fn.body.mapM fun stmt => lowerBodyStmt stmt.span stmt.stmt
-  return (.define fn.name { positional } (LoweredBody.sequence body), body.flatMap LoweredBody.applications)
+  return (.define fn.name { positional, keywordOnly } (LoweredBody.sequence body),
+    body.flatMap LoweredBody.applications)
 
 private def lowerCommand (source : LocatedFileCommand) :
     Except Diagnostic (Option LocatedCommand) := do

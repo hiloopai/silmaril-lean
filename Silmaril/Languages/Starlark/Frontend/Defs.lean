@@ -35,12 +35,18 @@ structure LocatedParameter where
   span : Span
   name : String
   defaultValue : Option LocatedArgument
+  nameSpan : Span := span
+
+structure LocatedKeywordOnly where
+  separator : Span
+  parameters : List LocatedParameter
 
 structure LocatedFunction (Stmt : Type := SourceStmt) where
   name : String
   parameters : List LocatedParameter
   span : Span
   body : List (LocatedStmt Stmt)
+  keywordOnly : Option LocatedKeywordOnly := none
 
 structure LocatedNamedArgument (Operand : Type := LocatedArgument) where
   nameSpan : Span
@@ -452,36 +458,57 @@ private def parseLocatedExpr (exprFuel : Nat) (s : Stream) :
   let (expr, rest) ← parseExpr exprFuel 0 s
   return (⟨⟨s.peek.span.start, rest.lastEnd⟩, expr⟩, rest)
 
-private def parseParameters (exprFuel : Nat) (allowDefaults : Bool) :
-    Nat → Stream → List LocatedParameter → Except Diagnostic (List LocatedParameter × Stream)
-  | 0, s, _ => failAt .exhausted s
-  | fuel + 1, s, parameters => do
+private def parseParameters (exprFuel : Nat) (moduleHeader : Bool) :
+    Nat → Stream → List LocatedParameter → Option LocatedKeywordOnly →
+      Except Diagnostic (List LocatedParameter × Option LocatedKeywordOnly × Stream)
+  | 0, s, _, _ => failAt .exhausted s
+  | fuel + 1, s, positional, keywordOnly => do
     match s.peek.kind with
-    | .symbol ")" => return (parameters.reverse, s.pop)
-    | .symbol "*" | .symbol "**" => failAt (.unsupported .parameters) s
+    | .symbol ")" =>
+      if let some group := keywordOnly then
+        if group.parameters.isEmpty then
+          return ← .error ⟨.expected "a keyword-only parameter after '*'", group.separator⟩
+      return (positional.reverse,
+        keywordOnly.map (fun group => { group with parameters := group.parameters.reverse }), s.pop)
+    | .symbol "*" =>
+      unless moduleHeader do return ← failAt (.unsupported .parameters) s
+      if keywordOnly.isSome then return ← expect "a single bare '*' separator" s
+      let next := s.pop
+      match next.peek.kind with
+      | .symbol "," => parseParameters exprFuel moduleHeader fuel next.pop positional (some ⟨s.peek.span, []⟩)
+      | .symbol ")" => expect "a keyword-only parameter after '*'" s
+      | .name _ | .outside .nonAsciiName => failAt (.unsupported .parameters) s
+      | _ => expect "',' after '*'" next
+    | .symbol "**" => failAt (.unsupported .parameters) s
     | _ =>
       let (name, rest) ← parseName s
-      if parameters.any (fun parameter => parameter.name == name) then
+      let sameName := fun (parameter : LocatedParameter) => parameter.name == name
+      if positional.any sameName || keywordOnly.any (fun group => group.parameters.any sameName) then
         return ← failAt (.duplicateParameter name) s
       let (value, rest) ← if rest.peek.kind = .symbol "=" then do
-          unless allowDefaults do return ← failAt (.unsupported .parameters) rest
+          unless moduleHeader do return ← failAt (.unsupported .parameters) rest
           let (expr, rest) ← parseLocatedExpr exprFuel rest.pop
           pure (some expr, rest)
         else pure (none, rest)
-      let parameters := ⟨⟨s.peek.span.start, rest.lastEnd⟩, name, value⟩ :: parameters
-      match rest.peek.kind with
-      | .symbol "," => parseParameters exprFuel allowDefaults fuel rest.pop parameters
-      | .symbol ")" => return (parameters.reverse, rest.pop)
-      | _ => expect "',' or ')'" rest
+      let parameter := ⟨⟨s.peek.span.start, rest.lastEnd⟩, name, value, s.peek.span⟩
+      let next ← match rest.peek.kind with
+        | .symbol "," => pure rest.pop
+        | .symbol ")" => pure rest
+        | _ => expect "',' or ')'" rest
+      match keywordOnly with
+      | none => parseParameters exprFuel moduleHeader fuel next (parameter :: positional) none
+      | some group =>
+        parseParameters exprFuel moduleHeader fuel next positional
+          (some { group with parameters := parameter :: group.parameters })
 
 private def parseFunctionAt {Stmt Test : Type} (grammar : SuiteGrammar Stmt Test)
-    (fuel : Nat) (allowDefaults : Bool) (s : Stream) :
+    (fuel : Nat) (moduleHeader : Bool) (s : Stream) :
     Except Diagnostic (LocatedFunction Stmt × Stream) := do
   unless s.peek.kind = .keyword "def" do return ← expect "'def'" s
   let (name, rest) ← parseName s.pop
-  let (parameters, rest) ← parseParameters fuel allowDefaults fuel (← consumeSymbol "(" rest) []
+  let (parameters, keywordOnly, rest) ← parseParameters fuel moduleHeader fuel (← consumeSymbol "(" rest) [] none
   let (body, rest) ← parseSuite grammar fuel fuel (← consumeSymbol ":" rest)
-  return (⟨name, parameters, ⟨s.peek.span.start, rest.lastEnd⟩, body⟩, rest)
+  return (⟨name, parameters, ⟨s.peek.span.start, rest.lastEnd⟩, body, keywordOnly⟩, rest)
 
 private def parseFunctionTokens (tokens : List Token) : Except Diagnostic ParsedFunction := do
   let (fn, rest) ← parseFunctionAt scalarSuite (parserFuel tokens) false ⟨tokens, {}⟩

@@ -9,6 +9,7 @@ trap 'rm -rf "$oracle"' EXIT
 lake build --wfail +Silmaril.Languages.Starlark.Frontend.Checks \
   +Silmaril.Languages.Starlark.Frontend.Module.Checks \
   +Silmaril.Languages.Starlark.Frontend.Module.Loader.Checks \
+  +Silmaril.Languages.Starlark.Frontend.Module.Loader.KeywordOnlyChecks \
   +Silmaril.Languages.Starlark.Frontend.Module.SpreadChecks \
   +Silmaril.Languages.Starlark.Frontend.Module.ComputedCallChecks \
   +Silmaril.Languages.Starlark.Frontend.Module.ReturnCallChecks \
