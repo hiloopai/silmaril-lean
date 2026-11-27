@@ -157,3 +157,54 @@ docker run --rm --network host -v "$PWD/scripts/hive-write-plan-oracle/Oracle.py
 diff -r tools/parquet-flat-scan/fixtures/hive-write-plan "$tmp/fixtures/data"
 lake build --wfail +Silmaril.Formats.Hive.WritePlan.Checks +Silmaril.Formats.Hive.WritePlan.Restore.Checks
 ```
+
+## Checked native files from a named table
+
+[`WritePlan.FlatInt32.emit`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/Defs.lean)
+takes a packed named nullable Int32 table with one selected physical
+leaf followed by the declared typed partition fields. It matches the
+full ordered schema and runs the existing Hive write plan, keeping
+its schema, key, marker, and first indexed row errors. Only after
+routing succeeds does it validate the literal paths and emit a native
+Parquet file for each bucket. The optional unannotated INT32 leaf is
+written as one uncompressed PLAIN V1 page in one row group, using the
+existing writer's page and file caps.
+
+Each bucket uses `part-0.parquet` under its checked directory, or at
+the root if there are no partition keys. The manifest is an ordered
+list of relative paths, physical row counts, and complete bytes.
+Its order is first directory occurrence. Within each file, duplicate
+and null payloads retain their source-relative positions. No rows
+produce an empty manifest after schema admission. A later path or
+writer failure returns its typed cause without a manifest. The API
+constructs pure bytes and paths.
+
+[`restore`](../../Silmaril/Formats/Hive/WritePlan/FlatInt32/Defs.lean)
+reads each supplied path in manifest order and checks its lexical
+shape and leaf spelling. The native snapshot reader must reach EOS
+with the requested INT32 field, one batch and the declared row count.
+After all physical reads succeed, the existing typed Hive restoration
+binds the directories and reconstructs the full rows. The same path
+options are used in both directions. Null partition cells use the
+configured marker, and a present value that encodes to the marker
+is refused by the existing planner.
+
+`emit_eq_reference` identifies the exact result of named admission and
+the independent routing reference. `restore_emit` proves that the
+actual emitted bytes and paths restore the original full rows grouped
+in first-seen directory order and stable within each bucket, under
+the existing successful-cell encoder/decoder left inverse.
+It also pins the ordered manifest paths and per-file row counts.
+
+[The PyArrow oracle](../../scripts/hive-native-int32-oracle/Oracle.py)
+reads four actual Lean-emitted files through Hive partitioning in the
+manifest's explicit order. It confirms eight nullable rows, the
+schema and physical group counts, and that exactly the listed files
+were emitted. Use the existing CPython, PyArrow, and NumPy pins
+listed above.
+
+```sh
+lake build --wfail +Silmaril.Formats.Hive.WritePlan.FlatInt32.Checks
+lake env lean --run Silmaril/Formats/Hive/WritePlan/FlatInt32/Checks.lean /tmp/hive-native-int32
+python -I scripts/hive-native-int32-oracle/Oracle.py /tmp/hive-native-int32
+```
