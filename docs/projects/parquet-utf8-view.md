@@ -137,6 +137,47 @@ lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Dictionary.Che
 python3 scripts/parquet-dictionary-utf8-view-oracle/check.py "$(mktemp -d)"
 ```
 
+## Opt-in uncompressed dictionary-to-PLAIN STRING
+
+`Parquet.Plain.ByteArray.Utf8.Fallback.convert` selects one named flat
+optional BYTE_ARRAY leaf with the checked STRING/UTF8 annotation. Its
+codec-0 V1/V2 chunks require one leading PLAIN dictionary (tag 0), a
+nonempty prefix of RLE_DICTIONARY data pages (tag 8), and a nonempty
+suffix of PLAIN data pages (tag 0). It checks the original header
+sequence before decoding bodies. A return to tag 8 reports that page's
+original ordinal and header offset. A missing phase is an encoding
+refusal at the selected column. CRC, compressed chunks and legacy
+dictionary tags are outside this profile.
+
+The reader uses the shared checked traversal, validates every dictionary
+entry with the strict STRING dictionary reader, then decodes data from
+the original frame and tag. Each present PLAIN slot is checked as strict
+UTF-8 and errors name its zero-based logical slot, including any preceding
+nulls. `readGroup_wire` ties both nonempty phases to the original selected
+chunk, dictionary, definition masks, and nullable octets. `convert_readback`
+retains the ordered batches through native IPC EOS. The complete source
+must succeed before the writer applies IPC limits.
+
+PyArrow 26.0.1 produces both positive files directly. Thrift 0.25.0
+observes five tag-8 pages followed by three PLAIN pages in each of two
+64-row groups for both V1 and V2. PyArrow compares the original file with
+the Lean-emitted Utf8View IPC, including nulls, empty values, repeated text
+and distinct composed and decomposed spellings. The V2 negative controls
+edit the second group. One changes the sole reference to entry 4 and then
+corrupts that now-unused entry. One corrupts PLAIN logical slot 4 after a
+null without changing its length. The transition control swaps two complete
+producer frames and independently checks both intact bodies in their new
+order. Separate PLAIN-only and dictionary-only files exercise missing phases.
+
+[Definitions](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Fallback/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/Plain/ByteArray/Utf8/Fallback/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-fallback-utf8-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.Plain.ByteArray.Utf8.Fallback.Checks
+python3 scripts/parquet-fallback-utf8-view-oracle/check.py "$(mktemp -d)"
+```
+
 ## Native Utf8View to Parquet STRING
 
 `Parquet.Plain.ByteArray.Utf8.FromIpc.convert` reads one explicitly
