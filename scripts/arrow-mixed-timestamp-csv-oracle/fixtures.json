@@ -1,0 +1,14 @@
+{
+  "pyarrow": "26.0.1",
+  "python": "3.13.5",
+  "sha256": {
+    "control_byte.arrow": "82c7de1d167dd313493b8763071882809afa90e507578e6401e98028cd682f64",
+    "header_only.arrow": "21d658dfc767befe15fbb396d5eef9545f79b06a4cd380796353cf197d223447",
+    "header_only.csv": "d13443d620dd69662b2ae5354ad25f331893199c03014cc1c986ddb437b0b1dd",
+    "mixed.arrow": "5f201a180aaaf307ac51bc15f2c1ab45bd9eae4ea2529c895adbf9db07fdcf49",
+    "mixed.csv": "674ca70cf5239a444d7b880259e34d93cec2a91fd7b4153ca1fd9f8a8e0cd670",
+    "mutated_late.arrow": "b9280502c4b17b07232c7ccec96c77f910584838a1eade7a84522e8e5a2d790a",
+    "zero_width.arrow": "e0dba8ad66569f6db1914596ad397b12db5d72b91f633b315dc23534fb161bd7",
+    "zero_width.csv": "cd8e834907c8bd962fdf9ad70d710d5ee1c218699f0f649f32bcf62a55f2fe65"
+  }
+}

@@ -12,6 +12,12 @@ namespace Silmaril.Formats.Csv.Typed
 variable {Kind : Type*} {Value : Kind → Type*} {schema : Schema Kind}
 variable {codecs : (kind : Kind) → CellCodec (Value kind)}
 
+/-- A successful dependent traversal retains the result at each original position. -/
+theorem collect_ok {E : Type*} {n : Nat} {α : Fin n → Type*}
+    (f : (i : Fin n) → Except E (α i)) (values : (i : Fin n) → α i) :
+    Internal.collect f = .ok values ↔ ∀ i, f i = .ok (values i) :=
+  Proofs.Formats.Csv.Typed.collect_ok f values
+
 /-- Successful lexical export and import recover the ordered typed table. -/
 theorem importRows_exportRows (law : ∀ k, (codecs k).ParsePrint)
     {table : Table schema Value} {rows : Rows} (h : exportRows schema codecs table = .ok rows) :

@@ -25,7 +25,7 @@ universe u v
 @[local simp] private theorem error_bind {E : Type u} {α β : Type v} (e : E) (f : α → Except E β) :
     ((.error e : Except E α) >>= f) = .error e := rfl
 
-private theorem collect_ok {E : Type*} {n : Nat} {α : Fin n → Type*}
+theorem collect_ok {E : Type*} {n : Nat} {α : Fin n → Type*}
     (f : (i : Fin n) → Except E (α i)) (v : (i : Fin n) → α i) :
     collect f = .ok v ↔ ∀ i, f i = .ok (v i) := by
   induction n with
