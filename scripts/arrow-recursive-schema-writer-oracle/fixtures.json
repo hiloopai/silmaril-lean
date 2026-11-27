@@ -1,0 +1,58 @@
+{
+  "description": "Schema-only Arrow IPC producers, labeled absent-name source, and emitted Lean IPC",
+  "fixture_license": "MIT",
+  "producer": {
+    "cpython": "3.13.5",
+    "cpython_commit": "6cb20a219a860eaf687b2d968b41c480c7461909",
+    "pyarrow": "26.0.1",
+    "arrow_commit": "9e5d6978e9acf372cc989aaaf94e863fe8582c90",
+    "wheel": "pyarrow-26.0.1-cp313-cp313-manylinux_2_28_x86_64.whl",
+    "wheel_sha256": "f71221bbc7707e3fad920d0478db9350791d4714ec445299ee0d56559fbc156c"
+  },
+  "genuine_ipc": {
+    "four_level": {
+      "bytes": 632,
+      "sha256": "35e6ec6169c6719c86777d63a04ab16011ad1ffe0c3d26d1eca6fbfbbef544c0"
+    },
+    "empty_name": {
+      "bytes": 440,
+      "sha256": "5ba911ce258778386f068f5d99b51a8c46653df42c28ed069e922c48ed8368e2"
+    },
+    "zero_width": {
+      "bytes": 64,
+      "sha256": "6664aa09a0ed75fadf7d69595d4a1b0af8f81605f3c244753545049a9d2720dc"
+    },
+    "repeated_children": {
+      "bytes": 288,
+      "sha256": "aad9cf1314ef08d23c18bd63c5a353c23a71325afbb85862b3f45462a0b3b997"
+    }
+  },
+  "labeled_edits": {
+    "absent_name": {
+      "bytes": 440,
+      "sha256": "aec3049510e4592896e89d15076dbff1f77db75c1e1760b365b0939245c86048"
+    }
+  },
+  "lean_ipc": {
+    "four_level": {
+      "bytes": 1080,
+      "sha256": "4c15e8c95112ed0351818db400a0891afbbc9e8da0df7d20599df4575fa59dee"
+    },
+    "empty_name": {
+      "bytes": 264,
+      "sha256": "912c1af9fb946e563370489f5a7fbb68b6848074d2a5074c40c3bcb336b452ee"
+    },
+    "zero_width": {
+      "bytes": 88,
+      "sha256": "430ccde83f3bc79bdafa7e33ad1d036202805b067dc58e59f63cf87e44a817e2"
+    },
+    "repeated_children": {
+      "bytes": 432,
+      "sha256": "a087c8339b783032dd56b3cd8845571874c7131bad28350c0dfccdc677e9cb28"
+    },
+    "absent_name": {
+      "bytes": 256,
+      "sha256": "3cb92ae91495c8e1297f24e3192d40e970f28b24d53170efefbfebae940ada3d"
+    }
+  }
+}
