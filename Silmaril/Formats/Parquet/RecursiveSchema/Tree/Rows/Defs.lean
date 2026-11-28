@@ -176,7 +176,7 @@ including repetitions, definitions, and exact signed words. -/
     compiled.schema.fields admission.value.numRows.toNat (tapes inputs)).mapError (Error.join ∘ Subtype.val)
   return ⟨admission, inputs, observation, exact⟩
 
-public def readGroup {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+@[expose] public def readGroup {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (compiled : Compiled schemaLimits snapshot) (limits : Limits) (group : Nat) : Except Error Observation :=
   (readGroupChecked compiled limits group).map GroupResult.observation
 

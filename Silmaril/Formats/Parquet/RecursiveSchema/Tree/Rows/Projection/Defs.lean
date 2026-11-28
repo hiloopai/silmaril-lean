@@ -22,15 +22,15 @@ abbrev Traces := Array (List Atom)
 
 end
 
-private def emit (columns : Traces) (atColumn : Nat) (atom : Atom) : Option Traces :=
+public def emit (columns : Traces) (atColumn : Nat) (atom : Atom) : Option Traces :=
   if atColumn < columns.size then some (columns.modify atColumn (atom :: ·)) else none
 
-private def markers (atom : Atom) : Nat → Nat → Traces → Option Traces
+public def markers (atom : Atom) : Nat → Nat → Traces → Option Traces
   | 0, _, columns => some columns
   | count + 1, atColumn, columns => do
     markers atom count (atColumn + 1) (← emit columns atColumn atom)
 
-private def fields (project : Repeated.Field → Nat → Cell → Traces → Option Traces)
+@[expose] public def fields (project : Repeated.Field → Nat → Cell → Traces → Option Traces)
     (widths : Array Nat) : List Repeated.Field → List Cell → Nat → Traces → Option Traces
   | [], [], _, columns => some columns
   | field :: tail, value :: rest, atColumn, columns => do
@@ -38,7 +38,7 @@ private def fields (project : Repeated.Field → Nat → Cell → Traces → Opt
     fields project widths tail rest (atColumn + width widths field) projected
   | _, _, _, _ => none
 
-private def cell (widths : Array Nat) :
+@[expose] public def cell (widths : Array Nat) :
     Nat → Levels → Repeated.Field → Nat → Cell → Traces → Option Traces
   | 0, _, _, _, _, _ => none
   | fuel + 1, levels, field, atColumn, value, columns => do
@@ -77,7 +77,7 @@ private def cell (widths : Array Nat) :
 
 /-- Regenerate every leaf trace from the logical shape and cells alone.
 The original decoder's atoms and addresses are absent from this input. -/
-public def trace (widths : Array Nat) (fieldCount depth : Nat) (schema : List Repeated.Field)
+@[expose] public def trace (widths : Array Nat) (fieldCount depth : Nat) (schema : List Repeated.Field)
     (rows : List Row) : Option Traces := do
   let reversed ← rows.foldlM
     (fun columns row => fields (cell widths depth {}) widths schema row 0 columns)
