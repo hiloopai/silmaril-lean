@@ -32,6 +32,26 @@ theorem readColumn_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Ch
     ColumnWire limits binding out :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.column_wire read
 
+theorem ColumnBinding.codec_exact {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} (binding : ColumnBinding schema bound side) :
+    RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId binding.column.metadata.codec = some binding.codec.column :=
+  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.codec_exact binding
+
+/-- Recover the original V1 frame and the full-body wire witness for its codec. -/
+theorem ColumnWire.v1_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
+    {out : RecursiveSchema.ListPath.Chunk.Observation} {page : RecursiveSchema.ListPath.Chunk.ObservedPage}
+    {info : Page.DataV1} (wire : ColumnWire limits binding out) (member : page ∈ out.pages)
+    (version : page.frame.value.kind = .dataV1 info) :
+    let carrier := carrierOf binding
+    Page.readPage limits.framing carrier.source carrier.span page.frame.header.start = .ok page.frame ∧
+    RecursiveSchema.ListPath.Chunk.PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
+      carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
+      carrier.codec .plain :=
+  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.column_v1_page wire member version
+
 /-- Recover the original V2 header and the shared wire witness for its
 raw level lengths, slot, row and null counts, and closed boundaries. -/
 theorem ColumnWire.v2_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
@@ -44,7 +64,7 @@ theorem ColumnWire.v2_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
     Page.readPage limits.framing carrier.source carrier.span page.frame.header.start = .ok page.frame ∧
     RecursiveSchema.ListPath.Chunk.V2PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
       carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
-      .uncompressed .plain :=
+      carrier.codec .plain :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.column_v2_page wire member version
 
 theorem readColumn_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
