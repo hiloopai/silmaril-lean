@@ -1,0 +1,45 @@
+;;; Read only after the logical machine is loaded and the local formula is proved.
+(in-package "ACL2")
+
+(defun c3-export-tlb (root output root-sha commit tree state-book state-sha
+                      tlb-book tlb-sha axioms-sha ihs-sha bitops-sha fty-sha)
+  (let* ((state *the-live-state*)
+         (world (w state))
+         (samples (f-get-global 'c3-tlb-samples state))
+         (keys (f-get-global 'c3-tlb-key-samples state))
+         (arithmetic (f-get-global 'c3-tlb-arithmetic-samples state))
+         (functions '(x86isa::tlbp x86isa::tlb-entryp x86isa::good-tlb-key-p x86isa::tlb-key-p
+                      x86isa::tlb-key-fix x86isa::tlb-key->r-w-x$inline bitops::part-select-width-low$inline
+                      loghead$inline logtail$inline ifloor$inline imod$inline expt2$inline
+                      floor mod nonnegative-integer-quotient ifix nfix unsigned-byte-p integer-range-p)))
+    (c3-logical-certificate root state)
+    (c3-logical-certificate state-book state)
+    (c3-logical-certificate tlb-book state)
+    (unless (and samples keys arithmetic) (error "Missing TLB observations"))
+    (with-open-file (out output :direction :output :if-exists :error :external-format :utf-8)
+      (format out "{~%")
+      (loop for (key value) in
+            `(("schema" 1)
+              ("acl2_commit" ,commit)
+              ("acl2_tree" ,tree)
+              ("x86isa_exec" "nil")
+              ("source_sha256" (("axioms.lisp" ,axioms-sha)
+                                ("books/ihs/basic-definitions.lisp" ,ihs-sha)
+                                ("books/centaur/bitops/part-select.lisp" ,bitops-sha)
+                                ("books/centaur/fty/bitstruct.lisp" ,fty-sha)
+                                ("books/projects/x86isa/machine/state.lisp" ,state-sha)
+                                ("books/projects/x86isa/machine/tlb.lisp" ,tlb-sha)
+                                ("books/projects/x86isa/machine/x86.lisp" ,root-sha)))
+              ("functions" ,(mapcar (lambda (name) (c3-status-function name world)) functions))
+              ("arities" ,(mapcar (lambda (name) (list name (arity name world)))
+                                  '(equal consp car cdr binary-+ binary-* unary-- unary-/
+                                    integerp not < = expt numerator denominator)))
+              ("theorems" ,(mapcar (lambda (name) (list name (c3-property name 'theorem world)))
+                                   '(x86isa::tlb-key-fix-when-tlb-key-p x86isa::c3-rwx-floor-mod)))
+              ("termination" ,(mapcar (lambda (name) (list name (termination-theorem name world)))
+                                      '(x86isa::tlbp nonnegative-integer-quotient)))
+              ("arithmetic_observations" ,arithmetic)
+              ("key_observations" ,keys))
+            do (c3-field key value out) (format out ",~%"))
+      (c3-field "observations" samples out)
+      (format out "~%}~%"))))

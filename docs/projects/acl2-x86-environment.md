@@ -61,6 +61,9 @@ slice leaves `TLBP` explicit.
 [Pinned TLB predicates][tlb] · [Pinned bit selection][bits] ·
 [Pinned integer arithmetic helpers][ihs]
 
+The [TLB follow-up](acl2-x86-tlb.md) checks that arithmetic path and
+supplies the remaining field predicate.
+
 ## Reproduce
 
 Use the [pinned certified checkout](acl2-x86-run.md#reproduce).
