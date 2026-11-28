@@ -23,6 +23,7 @@ def main():
     mode.add_argument("--status-accessors", action="store_true", help="export FAULT and MS")
     mode.add_argument("--object-order", action="store_true", help="export ACL2 order and record recognition")
     mode.add_argument("--environment", action="store_true", help="export the logical environment recognizer")
+    mode.add_argument("--tlb", action="store_true", help="export the logical TLB recognizer and arithmetic")
     args = parser.parse_args()
     checkout = args.checkout.resolve()
     commit, tree = subprocess.check_output(
@@ -51,7 +52,7 @@ def main():
         operands = [source, export, digest(source), commit, tree]
         before_exit, support = "", ""
         driver = "c3-export-x86-run"
-        if args.status_accessors or args.object_order or args.environment:
+        if args.status_accessors or args.object_order or args.environment or args.tlb:
             state_book = project / "machine/state.lisp"
             operands += [state_book, digest(state_book)]
             support = f'  (load {lisp_string(tools / "status-accessors.lisp")})\n'
@@ -69,6 +70,15 @@ def main():
             support += f'  (load {lisp_string(tools / "environment.lisp")})\n'
             operands += [digest(checkout / "axioms.lisp")]
             driver = "c3-export-environment"
+        if args.tlb:
+            tlb_book = project / "machine/tlb.lisp"
+            before_exit = (tools / "tlb-samples.lisp").read_text()
+            support += f'  (load {lisp_string(tools / "tlb.lisp")})\n'
+            operands += [tlb_book, digest(tlb_book), digest(checkout / "axioms.lisp"),
+                         digest(books / "ihs/basic-definitions.lisp"),
+                         digest(books / "centaur/bitops/part-select.lisp"),
+                         digest(books / "centaur/fty/bitstruct.lisp")]
+            driver = "c3-export-tlb"
         raw_arguments = " ".join(map(lisp_string, operands))
         commands = (
             "(set-ld-error-action '(:exit 1) state)\n"
