@@ -34,11 +34,11 @@ private theorem fit_elements {field : Silmaril.Formats.Arrow.RecursiveSchema.Fie
   | cons first rest ih =>
     exact .cons (fits first (by simp)) (ih (fun value member => fits value (by simp [member])))
 
-private theorem fields_typed {project : Repeated.Field → Nat → Cell → Traces → Option Traces}
+private theorem fields_typed {State : Type} {project : Repeated.Field → Nat → Cell → State → Option State}
     (one : ∀ field atColumn value input output,
       project field atColumn value input = some output → CellFits field.arrow value)
     {widths : Array Nat} {shape : List Repeated.Field} {row : Row}
-    {atColumn : Nat} {input output : Traces}
+    {atColumn : Nat} {input output : State}
     (accepted : fields project widths shape row atColumn input = some output) :
     RowFits (shape.map Repeated.Field.arrow) row := by
   induction shape generalizing row atColumn input with
@@ -69,9 +69,9 @@ private theorem leaf_typed {plan : Repeated.Leaf} {value : Cell}
       rw [Repeated.Field.arrow, Kind.arrow]
       first | exact .int32 | exact .int64
 
-private theorem cell_typed (widths : Array Nat) (depth : Nat) (levels : Levels)
-    (field : Repeated.Field) (atColumn : Nat) (value : Cell) (input output : Traces)
-    (accepted : cell widths depth levels field atColumn value input = some output) :
+private theorem cell_typed {State : Type} (append : Push State) (widths : Array Nat) (depth : Nat) (levels : Levels)
+    (field : Repeated.Field) (atColumn : Nat) (value : Cell) (input output : State)
+    (accepted : cell append widths depth levels field atColumn value input = some output) :
     CellFits field.arrow value := by
   induction depth generalizing levels field atColumn value input output with
   | zero => simp [cell] at accepted
@@ -117,11 +117,11 @@ private theorem cell_typed (widths : Array Nat) (depth : Nat) (levels : Levels)
         | nil => exact CellFits.list (elements := []) .nil
         | cons first tail =>
           let inside : Levels := ⟨levels.definition + site.nullable.toNat + 1, levels.repetition, levels.depth + 1⟩
-          change ((cell widths depth inside element atColumn first input).bind fun initial =>
+          change ((cell append widths depth inside element atColumn first input).bind fun initial =>
             tail.foldlM (fun traced value =>
-              cell widths depth { inside with repetition := inside.depth } element atColumn value traced) initial) =
+              cell append widths depth { inside with repetition := inside.depth } element atColumn value traced) initial) =
               some output at accepted
-          cases head : cell widths depth inside element atColumn first input with
+          cases head : cell append widths depth inside element atColumn first input with
           | none => simp [head, Option.bind] at accepted
           | some initial =>
             simp only [head, Option.bind] at accepted
@@ -131,12 +131,12 @@ private theorem cell_typed (widths : Array Nat) (depth : Nat) (levels : Levels)
 public theorem trace_typed {widths : Array Nat} {fieldCount depth : Nat} {schema : List Repeated.Field}
     {rows : List Row} {out : Traces} (accepted : trace widths fieldCount depth schema rows = some out) :
     ∀ row ∈ rows, RowFits (schema.map Repeated.Field.arrow) row := by
-  unfold trace at accepted
-  cases folded : rows.foldlM (fun columns row => fields (cell widths depth {}) widths schema row 0 columns)
+  unfold trace fold at accepted
+  cases folded : rows.foldlM (fun columns row => fields (cell emit widths depth {}) widths schema row 0 columns)
       (Array.replicate fieldCount []) with
   | none => simp [folded, bind, Option.bind] at accepted
   | some traces =>
     exact fold_typed (fun _ _ _ read => fields_typed
-      (fun _ _ _ _ _ projected => cell_typed _ _ _ _ _ _ _ _ projected) read) folded
+      (fun _ _ _ _ _ projected => cell_typed emit _ _ _ _ _ _ _ _ projected) read) folded
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Tree.Rows

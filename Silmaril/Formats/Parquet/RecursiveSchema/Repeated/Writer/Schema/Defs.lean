@@ -72,7 +72,7 @@ where
       let (tail, remaining) ← go rest remaining (names.insert name)
       return (first ++ tail, remaining)
 
-def planField (nameBytes : Nat) :
+def planFieldWith (nameBytes : Nat) (allowNested : Bool) :
     Nat → Bool → List String → Arrow.RecursiveSchema.Field → Nat → Except Error (List Entry × Nat)
   | 0, _, parent, _, _ => .error (.depth parent)
   | _ + 1, _, _, _, 0 => .error .fieldLimit
@@ -86,27 +86,32 @@ def planField (nameBytes : Nat) :
       return ([.leaf name nullable (if kind == .int32 then .int32 else .int64)], remaining)
     | .struct =>
       if children.isEmpty then throw (.arity path kind 0)
-      let (entries, remaining) ← planSiblings path (planField nameBytes depth repeated path)
+      let (entries, remaining) ← planSiblings path (planFieldWith nameBytes allowNested depth repeated path)
         children remaining
       return (.struct name nullable children.length :: entries, remaining)
     | .list =>
-      if repeated then throw (.nestedList path)
+      if repeated && !allowNested then throw (.nestedList path)
       let [child] := children | throw (.arity path kind children.length)
       let depth + 1 := depth | throw (.depth path)
       let remaining + 1 := remaining | throw .fieldLimit
-      let (entries, remaining) ← planField nameBytes depth true (path ++ ["list"]) child remaining
+      let (entries, remaining) ← planFieldWith nameBytes allowNested depth true (path ++ ["list"]) child remaining
       return (.list name nullable :: .wrapper :: entries, remaining)
 
-def plan (limits : Limits) (schema : Arrow.RecursiveSchema.Schema) : Except Error Plan := do
+def planField (nameBytes : Nat) := planFieldWith nameBytes false
+
+def planWith (limits : Limits) (allowNested : Bool) (schema : Arrow.RecursiveSchema.Schema) : Except Error Plan := do
   if schema.fields.isEmpty then throw .emptyRoot
   let compact := limits.snapshot.footer.compact
   let names := compact.maxBinaryBytes
   if names < "schema".utf8ByteSize then throw (.nameBudget [])
   let budget := min limits.maxFields compact.maxCollectionSize
   if budget = 0 then throw .fieldLimit
-  let (entries, _) ← planSiblings [] (planField names (limits.snapshot.maxSchemaDepth - 1) false [])
+  let (entries, _) ← planSiblings [] (planFieldWith names allowNested (limits.snapshot.maxSchemaDepth - 1) false [])
     schema.fields (budget - 1)
   return ⟨schema.fields.length, entries⟩
+
+def plan (limits : Limits) (schema : Arrow.RecursiveSchema.Schema) : Except Error Plan :=
+  planWith limits false schema
 
 /-- Only actual emitted chunk extents are supplied by the file writer. -/
 structure ColumnIndex where

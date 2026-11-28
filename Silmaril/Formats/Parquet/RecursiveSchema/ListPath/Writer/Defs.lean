@@ -96,14 +96,36 @@ def slotBudget (limits : Limits) : Nat :=
 def frameBudget (limits : Limits) (offset : Nat) : Nat :=
   min limits.chunk.maxChunkBytes (limits.schema.fileBytes - offset - 8)
 
-def body (plan : Plan) (atoms : List Rows.Atom) : Bytes :=
-  let reps := encodeSection plan.shape.repetitions (atoms.map (·.repetition))
-  let defs := encodeSection plan.shape.definitions (atoms.map (·.definition))
+def bodyForShape (shape : Shape) (atoms : List Rows.Atom) : Bytes :=
+  let reps := encodeSection shape.repetitions (atoms.map (·.repetition))
+  let defs := encodeSection shape.definitions (atoms.map (·.definition))
   (reps.append defs).append (Plain.encodeWords wordOctets (atoms.filterMap (·.word)))
+
+def body (plan : Plan) (atoms : List Rows.Atom) : Bytes :=
+  bodyForShape plan.shape atoms
 
 def pageHeader (checksum : Bool) (count : Nat) (body : Bytes) : Page.Header :=
   ⟨body.length, body.length, if checksum then some (Compression.Checksum.crc32.digest body.toList) else none,
     .dataV1 ⟨count, 0, 3, 3⟩⟩
+
+def frameSize (page : PlainV1Writer.Encoded) : Nat :=
+  page.headerBytes.length + page.body.length
+
+theorem frameSize_exact (page : PlainV1Writer.Encoded) : frameSize page = page.wire.length := by
+  simp [frameSize, PlainV1Writer.Encoded.wire]
+
+def LevelsFit (limits : Limits) (shape : Shape) (slots : Nat) : Prop :=
+  max (sectionSize shape.repetitions slots) (sectionSize shape.definitions slots) ≤ 4 + limits.chunk.levels.bytes
+
+structure FrameWire (limits : Limits) (checksum : Bool) (shape : Shape) (offset : Nat)
+    (atoms : List Rows.Atom) (page : PlainV1Writer.Encoded) : Prop where
+  body : page.body = bodyForShape shape atoms
+  header : page.header = pageHeader checksum atoms.length page.body
+  compact : PlainV1Writer.encodeHeaderWithChecksum atoms.length page.body.length
+    page.header.crc = some page.headerBytes
+  bodyCap : page.body.length < 2^31 ∧ page.body.length ≤ limits.chunk.maxBodyBytes
+  headerCap : page.headerBytes.length ≤ limits.chunk.framing.maxHeaderBytes
+  frameCap : frameSize page ≤ frameBudget limits offset
 
 structure WrittenGroup where
   offset : Nat
@@ -156,6 +178,33 @@ private def checked {α ε : Type} (result : Except ε α) (report : ε → Erro
   | .ok value => .ok ⟨value, rfl⟩
   | .error cause => .error (report cause)
 
+public def checkLevels (limits : Limits) (shape : Shape) (ordinal slots : Nat) :
+    Except Error (PLift (LevelsFit limits shape slots)) := do
+  if max (Repeated.Chunk.bitWidth shape.repetitions) (Repeated.Chunk.bitWidth shape.definitions) > 32 then
+    throw (.levelLimit ordinal)
+  require (max (sectionSize shape.repetitions slots) (sectionSize shape.definitions slots) ≤
+    4 + limits.chunk.levels.bytes) (.levelLimit ordinal)
+
+/-- Write one complete PLAIN V1 frame from the already checked signed trace. -/
+public def writeFrame (limits : Limits) (checksum : Bool) (shape : Shape) (ordinal offset : Nat)
+    (atoms : List Rows.Atom) : Except Error {page // FrameWire limits checksum shape offset atoms page} := do
+  let slots := atoms.length
+  let words := atoms.countP (fun atom => atom.word.isSome)
+  let size := sectionSize shape.repetitions slots + sectionSize shape.definitions slots +
+    words * RecursiveSchema.Chunk.wordWidth shape.leaf.2
+  let ⟨bodyCap⟩ ← require (size < 2^31 ∧ size ≤ limits.chunk.maxBodyBytes) (.bodyLimit ordinal)
+  if size > frameBudget limits offset then throw (.bodyLimit ordinal)
+  let payload := bodyForShape shape atoms
+  let ⟨measured⟩ ← require (payload.length = size) (.measureMismatch ordinal)
+  let header := pageHeader checksum slots payload
+  match encoded : PlainV1Writer.encodeHeaderWithChecksum slots payload.length header.crc with
+  | none => throw (.headerInteger ordinal)
+  | some headerBytes =>
+    let ⟨headerCap⟩ ← require (headerBytes.length ≤ limits.chunk.framing.maxHeaderBytes) (.headerLimit ordinal)
+    let page : PlainV1Writer.Encoded := ⟨header, headerBytes, payload⟩
+    let ⟨frameCap⟩ ← require (frameSize page ≤ frameBudget limits offset) (.chunkLimit ordinal)
+    return ⟨page, ⟨rfl, rfl, encoded, measured.symm ▸ bodyCap, headerCap, frameCap⟩⟩
+
 /-- Count and check a whole group before allocating its level or word bytes. -/
 public def writeGroup (limits : Limits) (checksum : Bool) (plan : Plan) (ordinal offset priorSlots : Nat)
     (input : Observation) : Except Error {output // GroupWire limits checksum plan offset priorSlots input output} := do
@@ -165,31 +214,15 @@ public def writeGroup (limits : Limits) (checksum : Bool) (plan : Plan) (ordinal
   let slots := Rows.slotDemand plan input.rows
   let ⟨slotCap⟩ ← require (slots ≤ slotBudget limits) (.slotLimit ordinal slots)
   let ⟨totalCap⟩ ← require (priorSlots + slots ≤ limits.maxTotalSlots) (.totalSlotLimit ordinal (priorSlots + slots))
-  let reps := plan.shape.repetitions
-  let defs := plan.shape.definitions
-  let repSize := sectionSize reps slots
-  let defSize := sectionSize defs slots
-  if max (Repeated.Chunk.bitWidth reps) (Repeated.Chunk.bitWidth defs) > 32 then throw (.levelLimit ordinal)
-  let ⟨levelCap⟩ ← require (max repSize defSize ≤ 4 + limits.chunk.levels.bytes) (.levelLimit ordinal)
+  let ⟨levelCap⟩ ← checkLevels limits plan.shape ordinal slots
   match projected : Rows.Projection.trace plan input.rows with
   | none => throw (.projection ordinal)
   | some atoms =>
-    let words := atoms.countP (fun atom => atom.word.isSome)
-    let size := repSize + defSize + words * RecursiveSchema.Chunk.wordWidth plan.shape.leaf.2
-    let ⟨bodyCap⟩ ← require (size < 2 ^ 31 ∧ size ≤ limits.chunk.maxBodyBytes) (.bodyLimit ordinal)
-    if size > frameBudget limits offset then throw (.bodyLimit ordinal)
-    let payload := body plan atoms
-    let ⟨measured⟩ ← require (payload.length = size) (.measureMismatch ordinal)
-    let header := pageHeader checksum slots payload
-    match encoded : PlainV1Writer.encodeHeaderWithChecksum slots payload.length header.crc with
-    | none => throw (.headerInteger ordinal)
-    | some headerBytes =>
-      let ⟨headerCap⟩ ← require (headerBytes.length ≤ limits.chunk.framing.maxHeaderBytes) (.headerLimit ordinal)
-      let page : PlainV1Writer.Encoded := ⟨header, headerBytes, payload⟩
-      let ⟨frameCap⟩ ← require (page.wire.length ≤ frameBudget limits offset) (.chunkLimit ordinal)
-      return ⟨⟨offset, input.rowCount, slots, page⟩, ⟨
-        ⟨atoms, projected, Rows.Relation.slotDemand projected, rfl⟩, rfl, rfl, rowCount, rfl, encoded,
-        pageCap, rowCap, slotCap, totalCap, levelCap, measured.symm ▸ bodyCap, headerCap, frameCap⟩⟩
+    let ⟨page, wire⟩ ← writeFrame limits checksum plan.shape ordinal offset atoms
+    have count : slots = atoms.length := Rows.Relation.slotDemand projected
+    return ⟨⟨offset, input.rowCount, slots, page⟩, ⟨⟨atoms, projected, count, wire.body⟩,
+      rfl, rfl, rowCount, count ▸ wire.header, count ▸ wire.compact, pageCap, rowCap, slotCap,
+      totalCap, levelCap, wire.bodyCap, wire.headerCap, frameSize_exact page ▸ wire.frameCap⟩⟩
 
 private def pack (limits : Limits) (checksum : Bool) (plan : Plan) :
     (inputs : List Observation) → (ordinal offset priorSlots : Nat) →
