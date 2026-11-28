@@ -27,6 +27,9 @@ public theorem steps_length (shape : Shape) (ctx : Context) :
     rw [Shape.steps, ih]
     cases h : node.site.nullable <;>
       simp [Shape.definitions, Parquet.RecursiveSchema.TwoList.ListSite.enter, Context.enterList, h, Nat.add_assoc]
+  | struct site child ih =>
+    rw [Shape.steps, ih]
+    cases h : site.nullable <;> simp [Shape.definitions, Context.enter, h, Nat.add_assoc]
 
 public theorem steps_prefix (shape : Shape) (ctx : Context) :
     ctx.steps <+: shape.steps ctx := by
@@ -38,6 +41,11 @@ public theorem steps_prefix (shape : Shape) (ctx : Context) :
     have parent : ctx.steps <+: (node.enter ctx).steps := by
       cases h : node.site.nullable <;>
         simp [Parquet.RecursiveSchema.TwoList.ListSite.enter, Context.enterList, h, List.append_assoc]
+    exact parent.trans (ih _)
+  | struct site child ih =>
+    rw [Shape.steps]
+    have parent : ctx.steps <+: (ctx.enter site).steps := by
+      cases h : site.nullable <;> simp [Context.enter, h]
     exact parent.trans (ih _)
 
 public theorem list_stops (node : Parquet.RecursiveSchema.TwoList.ListSite) (child : Shape) (ctx : Context) :

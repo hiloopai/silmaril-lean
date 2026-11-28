@@ -9,14 +9,20 @@ open Arrow.RecursiveSchema.Batch.Rows (Observation RowFits)
 
 public section
 
-/-- The first wrapper stops after the optional outer marker. The second
-stops immediately below the shared required Struct. -/
+/-- Both wrapper stops depend on the LIST declarations. The optional
+Struct adds a definition step after the inner wrapper. -/
 theorem Plan.path_levels (plan : Plan) (side : Side) :
     (plan.path side).shape.repetitions = 2 ∧
       (plan.path side).shape.definitions = plan.sharedDefinition + (plan.child side).1.nullable.toNat ∧
       ListPath.Chunk.wrappers (plan.path side) =
-        [plan.outer.site.nullable.toNat, plan.sharedDefinition - 1] :=
+        [plan.outer.site.nullable.toNat, plan.listDefinition - 1] :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.path_levels plan side
+
+/-- Both child paths use the original Struct site for the shared absence step. -/
+theorem Plan.optional_step (plan : Plan) (side : Side) (optional : plan.element.nullable = true) :
+    ((plan.path side).shape.steps {})[plan.listDefinition]? =
+      some (.optional plan.element.location .element) :=
+  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.optional_step plan side optional
 
 theorem readColumn_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}

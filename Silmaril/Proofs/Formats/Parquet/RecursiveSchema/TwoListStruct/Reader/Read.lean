@@ -44,15 +44,26 @@ public theorem path_levels (plan : Plan) (side : Side) :
     (plan.path side).shape.repetitions = 2 ∧
       (plan.path side).shape.definitions = plan.sharedDefinition + (plan.child side).1.nullable.toNat ∧
       RecursiveSchema.ListPath.Chunk.wrappers (plan.path side) =
-        [plan.outer.site.nullable.toNat, plan.sharedDefinition - 1] := by
+        [plan.outer.site.nullable.toNat, plan.listDefinition - 1] := by
   cases outer : plan.outer.site.nullable <;> cases inner : plan.inner.site.nullable <;>
+    cases element : plan.element.nullable <;>
     cases child : (plan.child side).1.nullable <;> cases side <;>
-    simp_all [Plan.path, Plan.child, Side.select, Plan.sharedDefinition,
+    simp_all [Plan.path, Plan.child, Side.select, Plan.sharedDefinition, Plan.listDefinition,
       RecursiveSchema.ListPath.Plan.shape, RecursiveSchema.ListPath.Shape.repetitions,
       RecursiveSchema.ListPath.Shape.definitions, RecursiveSchema.ListPath.Chunk.wrappers,
       RecursiveSchema.ListPath.Shape.steps, RecursiveSchema.TwoList.ListSite.enter,
       RecursiveSchema.Repeated.Context.enterList, RecursiveSchema.Repeated.Context.enter,
       RecursiveSchema.Repeated.Step.wrapper?, List.zipIdx]
+
+public theorem optional_step (plan : Plan) (side : Side) (optional : plan.element.nullable = true) :
+    ((plan.path side).shape.steps {})[plan.listDefinition]? =
+      some (.optional plan.element.location .element) := by
+  cases outer : plan.outer.site.nullable <;> cases inner : plan.inner.site.nullable <;>
+    cases child : (plan.child side).1.nullable <;>
+    simp [Plan.path, Plan.listDefinition, RecursiveSchema.ListPath.Plan.shape,
+      RecursiveSchema.ListPath.Shape.steps, RecursiveSchema.TwoList.ListSite.enter,
+      RecursiveSchema.Repeated.Context.enterList, RecursiveSchema.Repeated.Context.enter,
+      RecursiveSchema.Repeated.Context.role, optional, outer, inner, child]
 
 public theorem column_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}

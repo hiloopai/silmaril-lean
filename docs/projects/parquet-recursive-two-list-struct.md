@@ -1,13 +1,13 @@
 # Two shared Parquet LIST ancestors ending in a Struct
 
 `Parquet.RecursiveSchema.TwoListStruct` checks one canonical
-LIST of LISTs whose innermost element is a required Struct with two
-signed INT32 or INT64 fields. Both LISTs and both children have
-independent required or optional declarations. The checked footer
+LIST of LISTs whose innermost element is a required or optional
+Struct with two signed INT32 or INT64 fields. Both LISTs and both
+children have independent required or optional declarations. The checked footer
 owns eight original SchemaElements. The physical depth budget admits
 the seven entries on each leaf path, including the root and both
-repeated wrappers. The required Struct adds no level increment.
-Each child retains its original path through the Struct.
+repeated wrappers. Each child retains its original path through the
+Struct. An optional Struct adds one shared definition step.
 [Single-leaf LIST paths](parquet-recursive-list-path-v1.md) · [One shared LIST ancestor](parquet-recursive-list-struct.md)
 
 The reader binds exactly two positional chunks in each original row
@@ -22,20 +22,29 @@ the checked nullable declarations.
 
 The topology check compares the complete addressed traces in slot
 order. Repetition distinguishes new rows, new inner LISTs and
-continued innermost elements. Definition levels below the shared
-ceiling preserve the two null and empty container distinctions. Levels
-at or above that ceiling reach the same required Struct, with child
-nullability checked separately. The first mismatch retains the
+continued innermost elements. Write `W` for the definition level after
+both LIST wrappers, including any optional LIST steps. Null and empty
+LISTs have distinct levels below `W`. A required Struct is reached at
+`W`. An optional Struct is null at `W` and present from `W + 1`.
+For an optional signed child, its own null has the Struct's presence
+level, and a signed word has the next level. A required signed child
+has a word at the Struct's presence level. The join clips definition
+at that shared presence level and retains exact repetition. The first mismatch retains the
 column paths, page ordinals, original absolute header offsets and
 chunk slot ordinals of the available slots. The refusal proof
 retains both independent chunk witnesses and the matched prefix.
 
 Both child reconstructions use the existing checked LIST-path
-inverse. Row and LIST merges check equal lengths before pairing.
-Projecting either signed child from the merged rows restores its
+inverse. For an optional element, a unary Struct on each path carries
+its own child separately from shared presence. Merging two present
+unary Structs keeps a present Struct even when both fields are null.
+Row and LIST merges check equal lengths before pairing. Projecting
+either signed child from the merged rows restores its
 entire original ordered trace, including every repetition, definition
 and signed word. The group theorem retains the original row count
 and both original column witnesses. `readAll` keeps footer order.
+Native Events expose both element nullability choices. The native
+writer and strict IPC bridges use the required-element profile.
 [Checked Arrow Events](parquet-recursive-two-list-struct-events.md) · [Native writer](parquet-recursive-two-list-struct-writer.md)
 
 ## Verification
@@ -56,4 +65,19 @@ admission of the required Struct, codec and V1 profile. The oracle checks eleven
 lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Thms
 lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-oracle/Axioms.lean
 python3 scripts/parquet-recursive-two-list-struct-oracle/check.py
+~~~
+
+The optional-element oracle checks all sixteen LIST and child
+nullability choices in genuine PyArrow V1 files. Independent wire
+inspection confirms 188 pages over 17 accepted inputs, including the
+labeled reframe. The late presence control introduces two conflicts
+and verifies the first with both original coordinates and the
+completed group prefix under full and empty Events. The required-only
+writer and IPC gates have separate controls.
+[Optional-element fixture pins](../../scripts/parquet-recursive-two-list-struct-optional-element-oracle/fixtures.json)
+
+~~~sh
+lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-optional-element-oracle/Axioms.lean
+python3 scripts/parquet-recursive-two-list-struct-optional-element-oracle/check.py
 ~~~

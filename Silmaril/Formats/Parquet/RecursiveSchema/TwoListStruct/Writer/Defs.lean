@@ -126,7 +126,7 @@ structure Construction (limits : Limits) (input : Input) (output : Output) : Pro
   original : ∃ declared schemaOnly source groups,
     planSchema limits.schema input.schema = .ok declared ∧
     Schema.wrap limits.schema .empty declared [] = .ok schemaOnly ∧
-    TwoListStruct.openFile limits.schema.snapshot schemaOnly.bytes = .ok source ∧
+    TwoListStruct.openRequired limits.schema.snapshot schemaOnly.bytes = .ok source ∧
     source.schema.plan.arrow = input.schema ∧
     GroupsWire limits input.checksum source.schema.plan 4 0 input.groups groups ∧
     let indices := groups.map (WrittenGroup.index source.schema.plan)
@@ -189,7 +189,7 @@ public def build (limits : Limits) (input : Input) : Except Error {out // Constr
   let ⟨rowCap⟩ ← require (rows < 2 ^ 63 ∧ rows ≤ limits.maxTotalRows) (.totalRowLimit rows)
   let ⟨declared, planned⟩ ← checked (planSchema limits.schema input.schema) id
   let ⟨schemaOnly, envelope⟩ ← checked (Schema.wrap limits.schema .empty declared []) .schema
-  let ⟨source, compiled⟩ ← checked (TwoListStruct.openFile limits.schema.snapshot schemaOnly.bytes) .openReadback
+  let ⟨source, compiled⟩ ← checked (TwoListStruct.openRequired limits.schema.snapshot schemaOnly.bytes) .openReadback
   let ⟨exactSchema⟩ ← require
     (Schema.equal limits.schema.snapshot.maxSchemaDepth source.schema.plan.arrow input.schema = true)
     .readbackMismatch
@@ -213,7 +213,7 @@ def agrees (limits : Limits) (input : Input) (output : Output)
 
 /-- Check the final emitted carrier using both original native chunks. -/
 def certify (limits : Limits) (input : Input) (output : Output) : Except Error Unit := do
-  let source ← (TwoListStruct.openFile limits.schema.snapshot output.bytes).mapError .openReadback
+  let source ← (TwoListStruct.openRequired limits.schema.snapshot output.bytes).mapError .openReadback
   if !agrees limits input output source then throw .readbackMismatch
   let recovered ← (Reader.readAll limits.chunk source.schema).mapError .readback
   let equal := Arrow.RecursiveSchema.Batch.Writer.agrees limits.schema.snapshot.maxSchemaDepth
@@ -226,7 +226,7 @@ def emit (limits : Limits) (input : Input) : Except Error Output := do
 
 structure Readback (limits : Limits) (input : Input) (output : Output) : Prop where
   original : ∃ (source : Source limits.schema.snapshot output.bytes),
-    TwoListStruct.openFile limits.schema.snapshot output.bytes = .ok source ∧
+    TwoListStruct.openRequired limits.schema.snapshot output.bytes = .ok source ∧
     source.snapshot.bytes = output.bytes ∧
     source.snapshot.footer = output.footer ∧ source.snapshot.metadata = output.metadata ∧
     source.schema.plan.arrow = input.schema ∧ source.snapshot.groupCount = input.groups.length ∧

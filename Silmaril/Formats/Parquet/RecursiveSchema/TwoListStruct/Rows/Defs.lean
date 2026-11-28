@@ -5,7 +5,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Rows.Defs
 
 /-! Align original slots across both repeated ancestors before assembling
-a required Struct from the independently checked signed child rows. -/
+a Struct from the independently checked signed child rows. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows
 
@@ -71,33 +71,49 @@ def pairMap {α β γ : Type} (f : α → β → Option γ) (left : List α) (ri
     Option (List γ) :=
   if left.length = right.length then List.zipWithM f left right else none
 
-/-- Both paths have two LIST layers and a common required Struct.
-Retain null and empty LISTs at each layer when merging the signed rows. -/
-def mergeCell : Nat → Cell → Cell → Option Cell
-  | 0, first, other => some (some (.struct [first, other]))
+/-- For an optional element the two unary child projections carry
+presence independently of the nullability of their signed values. -/
+def mergeElement (optional : Bool) (left right : Cell) : Option Cell :=
+  if optional then
+    match left, right with
+    | none, none => some none
+    | some (.struct [first]), some (.struct [other]) => some (some (.struct [first, other]))
+    | _, _ => none
+  else some (some (.struct [left, right]))
+
+def projectElement (side : Side) : Bool → Cell → Option Cell
+  | false, some (.struct [first, other]) => some (side.select first other)
+  | true, some (.struct [first, other]) => some (some (.struct [side.select first other]))
+  | true, none => some none
+  | _, _ => none
+
+def mergeCell (optional : Bool) : Nat → Cell → Cell → Option Cell
+  | 0, first, other => mergeElement optional first other
   | _ + 1, none, none => some none
   | depth + 1, some (.list left), some (.list right) =>
-    (pairMap (mergeCell depth) left right).map (fun cells => some (.list cells))
+    (pairMap (mergeCell optional depth) left right).map (fun cells => some (.list cells))
   | _, _, _ => none
 
-def projectCell (side : Side) : Nat → Cell → Option Cell
-  | 0, some (.struct [first, other]) => some (side.select first other)
+def projectCell (side : Side) (optional : Bool) : Nat → Cell → Option Cell
+  | 0, value => projectElement side optional value
   | _ + 1, none => some none
   | depth + 1, some (.list values) =>
-    (values.mapM (projectCell side depth)).map (fun cells => some (.list cells))
+    (values.mapM (projectCell side optional depth)).map (fun cells => some (.list cells))
   | _, _ => none
 
-def mergeRow : Row → Row → Option Row
-  | [first], [other] => (mergeCell 2 first other).map (fun cell => [cell])
+def mergeRow (optional : Bool) : Row → Row → Option Row
+  | [first], [other] => (mergeCell optional 2 first other).map (fun cell => [cell])
   | _, _ => none
 
-def projectRow (side : Side) : Row → Option Row
-  | [value] => (projectCell side 2 value).map (fun cell => [cell])
+def projectRow (side : Side) (optional : Bool) : Row → Option Row
+  | [value] => (projectCell side optional 2 value).map (fun cell => [cell])
   | _ => none
 
-def mergeRows (left right : List Row) : Option (List Row) := pairMap mergeRow left right
+def mergeRows (left right : List Row) (optional : Bool := false) : Option (List Row) :=
+  pairMap (mergeRow optional) left right
 
-def projectRows (side : Side) (rows : List Row) : Option (List Row) := rows.mapM (projectRow side)
+def projectRows (side : Side) (rows : List Row) (optional : Bool := false) : Option (List Row) :=
+  rows.mapM (projectRow side optional)
 
 end
 

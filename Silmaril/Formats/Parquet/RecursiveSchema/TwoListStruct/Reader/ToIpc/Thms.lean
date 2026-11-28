@@ -4,6 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIp
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Events.Thms
 public import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Events.ToIpc.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Readback
+import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Thms
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc
 
@@ -16,18 +17,30 @@ theorem convert_open_error {schemaLimits : Snapshot.Limits} {limits : Reader.Lim
     {ipc : Arrow.RecursiveSchema.Batch.Limits} {input : Bytes} {selection : Selection}
     {cause : TwoListStruct.Error} (failed : TwoListStruct.openFile schemaLimits input = .error cause) :
     convert schemaLimits limits ipc input selection = .error (.openError (.openError cause)) := by
-  rw [convert, Events.readProjected_open_error failed selection]
-  rfl
+  simp [convert, sourceEvents, TwoListStruct.openRequired, failed,
+    Arrow.RecursiveSchema.Stream.Events.ToIpc.emit]
+
+/-- Optional Struct elements are admitted by native Events. Strict IPC
+export retains its required-element admission gate under both selections. -/
+theorem convert_optional_error {schemaLimits : Snapshot.Limits} {limits : Reader.Limits}
+    {ipc : Arrow.RecursiveSchema.Batch.Limits} {input : Bytes} {selection : Selection}
+    {opened : Source schemaLimits input} (original : TwoListStruct.openFile schemaLimits input = .ok opened)
+    (optional : opened.schema.plan.element.nullable = true) :
+    convert schemaLimits limits ipc input selection = .error (.openError (.openError .structShape)) := by
+  simp [convert, sourceEvents, TwoListStruct.openRequired_of_open original, optional,
+    Arrow.RecursiveSchema.Stream.Events.ToIpc.emit]
 
 /-- The original native error and complete projected prefix take
 precedence under every IPC budget. -/
 theorem convert_source_error {schemaLimits : Snapshot.Limits} {limits : Reader.Limits}
     {ipc : Arrow.RecursiveSchema.Batch.Limits} {input : Bytes} {selection : Selection}
-    {source : Signature} {trace : Events.Trace source} {cause : Events.Error}
+    {opened : Source schemaLimits input} {source : Signature} {trace : Events.Trace source} {cause : Events.Error}
+    (admitted : TwoListStruct.openRequired schemaLimits input = .ok opened)
     (projected : Events.readProjected schemaLimits limits input selection = .ok ⟨source, trace⟩)
     (failed : trace.termination = .readError cause) :
     convert schemaLimits limits ipc input selection = .error (.readError cause (trace.batches.map eraseBatch)) := by
-  rw [convert, projected]
+  rw [convert, Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.sourceEvents_eq admitted,
+    projected]
   exact Arrow.RecursiveSchema.Stream.Events.ToIpc.emit_read_error failed
 
 theorem convert_readback {schemaLimits : Snapshot.Limits} {limits : Reader.Limits}

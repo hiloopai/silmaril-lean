@@ -132,7 +132,7 @@ def readGroup {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (.child leftAddress)
   let rightRows ← (ListPath.Rows.reconstruct limits.logical (plan.path .right) count rightOriginal.atoms).mapError
     (.child rightAddress)
-  let some rows := Rows.mergeRows leftRows.rows rightRows.rows | throw (.reconstruction group)
+  let some rows := Rows.mergeRows leftRows.rows rightRows.rows plan.element.nullable | throw (.reconstruction group)
   return ⟨count, rows⟩
 
 def readAll {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
@@ -155,7 +155,7 @@ structure GroupWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checke
       (Rows.addressed (address schema.plan group .left) lhs)
       (Rows.addressed (address schema.plan group .right) rhs) ∧
     (∀ side, ∃ rows,
-      Rows.projectRows side out.rows = some rows ∧
+      Rows.projectRows side out.rows schema.plan.element.nullable = some rows ∧
       ListPath.Rows.Relation (schema.plan.path side) (side.select lhs rhs).atoms rows)
 
 structure GroupTopologyFailure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}

@@ -3,7 +3,9 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Defs
 
 /-! Canonical LIST paths to a single signed leaf. The schema budget charges
-one level for the root, two per LIST, and one for the signed leaf. -/
+one level for the root, two per LIST, and one for the signed leaf.
+The logical path can also carry a unary Struct projection from a
+multi-leaf schema compiled by a caller. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath
 
@@ -15,27 +17,33 @@ open TwoList (ListSite ListWire SignedWire Root)
 inductive Shape where
   | signed (site : Site) (kind : Kind)
   | list (node : ListSite) (child : Shape)
+  | struct (site : Site) (child : Shape)
   deriving Repr
 
 def Shape.arrow : Shape → Arrow.RecursiveSchema.Field
   | .signed site kind => .node (some site.name) site.nullable kind.arrow []
   | .list node child => .node (some node.site.name) node.site.nullable .list [child.arrow]
+  | .struct site child => .node (some site.name) site.nullable .struct [child.arrow]
 
 def Shape.repetitions : Shape → Nat
   | .signed .. => 0
   | .list _ child => 1 + child.repetitions
+  | .struct _ child => child.repetitions
 
 def Shape.definitions : Shape → Nat
   | .signed site _ => site.nullable.toNat
   | .list node child => node.site.nullable.toNat + 1 + child.definitions
+  | .struct site child => site.nullable.toNat + child.definitions
 
 def Shape.steps (ctx : Repeated.Context) : Shape → List Repeated.Step
   | .signed site _ => (ctx.enter site).steps
   | .list node child => child.steps (node.enter ctx)
+  | .struct site child => child.steps (ctx.enter site)
 
 def Shape.leaf : Shape → Site × Kind
   | .signed site kind => (site, kind)
   | .list _ child => child.leaf
+  | .struct _ child => child.leaf
 
 structure Plan where
   outer : ListSite
@@ -121,7 +129,7 @@ public def compile (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) :
       if rootShape : Root root then
         let parsed ← readPath reader original (limits.maxSchemaDepth - 1) {} 1
         match shape : parsed.shape with
-        | .signed .. => throw (.original (.shape 1))
+        | .signed .. | .struct .. => throw (.original (.shape 1))
         | .list outer child =>
           if exactEnd : parsed.next = original.size then
             return ⟨container, items, ⟨outer, child⟩, found, aligned, ⟨⟨root, foundRoot, rootShape⟩,

@@ -189,6 +189,37 @@ private theorem cell_wire (shape : Shape) (depth rep base : Nat) (value : Cell) 
           refine ⟨rfl, by simp [Projection.marker], Nat.le_add_right .., .list .nil, rfl, rfl, ?_⟩
           cases h : node.site.nullable <;> simp [assemble, Segment.atoms, Projection.marker, h]
         | cons first rest => exact list_many node child depth rep base below first rest part ih accepted
+  | struct site child ih =>
+    match value with
+    | none =>
+      cases optional : site.nullable with
+      | false => simp [Projection.cell, optional] at accepted
+      | true =>
+        have same : Projection.marker rep base = part := by simpa [Projection.cell, optional] using accepted
+        subst part
+        refine ⟨rfl, by simp [Projection.marker], Nat.le_refl _, ?_, rfl, rfl, ?_⟩
+        · rw [Shape.arrow, optional]
+          exact .null
+        · simp [assemble, Segment.atoms, Projection.marker, optional]
+    | some (.struct [cell]) =>
+      have checked := ih depth rep (base + site.nullable.toNat) cell part below accepted
+      have staysPresent : (site.nullable && part.first.definition == base) = false := by
+        cases optional : site.nullable with
+        | false => rfl
+        | true =>
+          have above := checked.definition
+          rw [optional] at above
+          have away : part.first.definition ≠ base := by simp at above; omega
+          simp [away]
+      refine ⟨checked.starts, checked.continues, ?_, .struct (.cons checked.typed .nil),
+        checked.words, checked.demand, ?_⟩
+      · have atChild := checked.definition
+        omega
+      · simp only [Segment.atoms, assemble, staysPresent, Bool.false_eq_true, ↓reduceIte]
+        rw [← Segment.atoms, checked.inverse]
+        rfl
+    | some (.int32 _) | some (.int64 _) | some (.list _) | some (.struct []) |
+        some (.struct (_ :: _ :: _)) => contradiction
 
 /-- Each part comes from one logical row, with its original starts,
 ordered leaves, and a constructive inverse for its full segment. -/

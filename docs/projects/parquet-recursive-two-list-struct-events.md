@@ -2,10 +2,10 @@
 
 `TwoListStruct.Reader.Events` exposes the original native reader as a
 recursive Arrow event stream. It takes one canonical LIST of LISTs of
-required Structs with two signed INT32 or INT64 fields, in unindexed
+required or optional Structs with two signed INT32 or INT64 fields, in unindexed
 PLAIN UNCOMPRESSED V1. The Arrow declaration preserves the original
-outer LIST, inner LIST, Struct and child names and the nullability of
-both LISTs and both signed fields.
+outer LIST, inner LIST, Struct and child names and nullability. An optional Struct can be
+null or present with independently null children.
 [Native profile](parquet-recursive-two-list-struct.md)
 
 `read` emits one batch for each complete original row group, in footer
@@ -32,7 +32,7 @@ V1 pages in total. It covers all sixteen nullability choices, null
 versus empty at both LIST depths, independently null signed children,
 both signed width orders, renamed nested fields and schema-only EOS.
 The labeled reframes exercise differing legal V1 cuts and a physical
-zero-row group between populated groups. Eight typed refusals cover
+zero-row group between populated groups. Seven typed refusals cover
 opening errors, original topology and ancestry errors, and a late CRC
 mismatch in the right original child. The oracle checks direct, full
 and empty events against PyArrow's group observations and the

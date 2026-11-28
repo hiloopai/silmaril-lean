@@ -4,7 +4,8 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.Defs
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows
 
-open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct (Plan)
+open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct (Plan Side)
+open Silmaril.Formats.Parquet.RecursiveSchema.ListPath (Shape)
 open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows
 open Silmaril.Formats.Arrow.RecursiveSchema (Field)
 open Silmaril.Formats.Arrow.RecursiveSchema.Batch.Rows (Cell CellFits Row RowFits)
@@ -62,15 +63,49 @@ private def wrap : List (Option String × Bool) → Field → Field
   | [], field => field
   | (name, nullable) :: rest, field => .node name nullable .list [wrap rest field]
 
-private theorem cell_typed {layers : List (Option String × Bool)} {left right : Field}
-    {structName : Option String} {lhs rhs out : Cell}
-    (merged : mergeCell layers.length lhs rhs = some out)
-    (first : CellFits (wrap layers left) lhs) (other : CellFits (wrap layers right) rhs) :
-    CellFits (wrap layers (.node structName false .struct [left, right])) out := by
-  induction layers generalizing lhs rhs out with
-  | nil =>
+private def childField (name : Option String) (optional : Bool) (field : Field) : Field :=
+  if optional then .node name true .struct [field] else field
+
+private theorem element_typed {left right : Field} {structName : Option String}
+    {optional : Bool} {lhs rhs out : Cell}
+    (merged : mergeElement optional lhs rhs = some out)
+    (first : CellFits (childField structName optional left) lhs)
+    (other : CellFits (childField structName optional right) rhs) :
+    CellFits (.node structName optional .struct [left, right]) out := by
+  cases optional with
+  | false =>
     cases Option.some.inj merged
     exact .struct (.cons first (.cons other .nil))
+  | true =>
+    change CellFits (.node structName true .struct [left]) lhs at first
+    change CellFits (.node structName true .struct [right]) rhs at other
+    cases first with
+    | null =>
+      cases other with
+      | null => cases Option.some.inj merged; exact .null
+      | struct fits => cases fits with
+        | cons _ tail => cases tail; contradiction
+    | struct fits =>
+      cases fits with
+      | cons leftFit leftTail =>
+        cases leftTail
+        cases other with
+        | null => contradiction
+        | struct fits =>
+          cases fits with
+          | cons rightFit rightTail =>
+            cases rightTail
+            cases Option.some.inj merged
+            exact .struct (.cons leftFit (.cons rightFit .nil))
+
+private theorem cell_typed {layers : List (Option String × Bool)} {left right : Field}
+    {structName : Option String} {optional : Bool} {lhs rhs out : Cell}
+    (merged : mergeCell optional layers.length lhs rhs = some out)
+    (first : CellFits (wrap layers (childField structName optional left)) lhs)
+    (other : CellFits (wrap layers (childField structName optional right)) rhs) :
+    CellFits (wrap layers (.node structName optional .struct [left, right])) out := by
+  induction layers generalizing lhs rhs out with
+  | nil => exact element_typed merged first other
   | cons layer rest ih =>
     rcases layer with ⟨name, nullable⟩
     simp only [wrap] at first other ⊢
@@ -89,12 +124,13 @@ private theorem cell_typed {layers : List (Option String × Bool)} {left right :
         obtain ⟨cells, pairs, rfl⟩ := Option.map_eq_some_iff.mp merged
         apply CellFits.list
         apply fits_replicate.mpr
-        exact pairMap_all (f := mergeCell rest.length)
-          (p := CellFits (wrap rest left)) (q := CellFits (wrap rest right))
+        exact pairMap_all (f := mergeCell optional rest.length)
+          (p := CellFits (wrap rest (childField structName optional left)))
+          (q := CellFits (wrap rest (childField structName optional right)))
           (fun read a b => ih read a b) pairs (fits_replicate.mp leftFits) (fits_replicate.mp rightFits)
 
 private theorem row_typed {plan : Plan} {lhs rhs out : Row}
-    (merged : mergeRow lhs rhs = some out)
+    (merged : mergeRow plan.element.nullable lhs rhs = some out)
     (first : RowFits (plan.path .left).arrow.fields lhs)
     (other : RowFits (plan.path .right).arrow.fields rhs) :
     RowFits plan.arrow.fields out := by
@@ -110,15 +146,25 @@ private theorem row_typed {plan : Plan} {lhs rhs out : Row}
       obtain ⟨value, cell, rfl⟩ := Option.map_eq_some_iff.mp merged
       let layers := [(some plan.outer.site.name, plan.outer.site.nullable),
         (some plan.inner.site.name, plan.inner.site.nullable)]
-      have fit := cell_typed (layers := layers) (structName := some plan.element.name) cell
-        (by exact leftFit) (by exact rightFit)
+      have fit := cell_typed (layers := layers) (structName := some plan.element.name)
+        (left := (Shape.signed plan.left.1 plan.left.2).arrow)
+        (right := (Shape.signed plan.right.1 plan.right.2).arrow)
+        cell
+        (by cases h : plan.element.nullable <;>
+          simpa [layers, wrap, childField, Plan.path, Plan.child, Side.select,
+            Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Plan.shape,
+            Shape.arrow, h] using leftFit)
+        (by cases h : plan.element.nullable <;>
+          simpa [layers, wrap, childField, Plan.path, Plan.child, Side.select,
+            Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Plan.shape,
+            Shape.arrow, h] using rightFit)
       exact .cons fit .nil
 
 public theorem mergeRows_typed {plan : Plan} {lhs rhs out : List Row}
-    (merged : mergeRows lhs rhs = some out)
+    (merged : mergeRows lhs rhs plan.element.nullable = some out)
     (first : ∀ row ∈ lhs, RowFits (plan.path .left).arrow.fields row)
     (other : ∀ row ∈ rhs, RowFits (plan.path .right).arrow.fields row) :
     ∀ row ∈ out, RowFits plan.arrow.fields row :=
-  pairMap_all (f := mergeRow) (fun read a b => row_typed (plan := plan) read a b) merged first other
+  pairMap_all (f := mergeRow plan.element.nullable) (fun read a b => row_typed (plan := plan) read a b) merged first other
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows

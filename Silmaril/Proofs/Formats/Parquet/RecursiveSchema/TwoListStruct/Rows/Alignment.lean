@@ -123,13 +123,25 @@ private theorem pairMap_projection {α β : Type} {merge : α → α → Option 
         cases side <;> simp [List.mapM_cons, firstRead, tailRead, Side.select]
       · contradiction
 
-private theorem projectCell_merge (side : Side) {depth : Nat} {lhs rhs out : Cell}
-    (read : mergeCell depth lhs rhs = some out) :
-    projectCell side depth out = some (side.select lhs rhs) := by
-  induction depth generalizing lhs rhs out with
-  | zero =>
+private theorem projectElement_merge (side : Side) {optional : Bool} {lhs rhs out : Cell}
+    (read : mergeElement optional lhs rhs = some out) :
+    projectElement side optional out = some (side.select lhs rhs) := by
+  cases optional with
+  | false =>
     cases Option.some.inj read
     rfl
+  | true =>
+    simp only [mergeElement, ↓reduceIte] at read
+    split at read
+    · cases Option.some.inj read; cases side <;> rfl
+    · cases Option.some.inj read; cases side <;> rfl
+    · contradiction
+
+private theorem projectCell_merge (side : Side) {depth : Nat} {optional : Bool} {lhs rhs out : Cell}
+    (read : mergeCell optional depth lhs rhs = some out) :
+    projectCell side optional depth out = some (side.select lhs rhs) := by
+  induction depth generalizing lhs rhs out with
+  | zero => exact projectElement_merge side read
   | succ depth ih =>
     cases lhs with
     | none =>
@@ -146,8 +158,9 @@ private theorem projectCell_merge (side : Side) {depth : Nat} {lhs rhs out : Cel
         have checked := pairMap_projection (fun accepted => ih accepted) paired
         cases side <;> simp [projectCell, checked, Side.select]
 
-private theorem projectRow_merge (side : Side) {lhs rhs out : Row} (read : mergeRow lhs rhs = some out) :
-    projectRow side out = some (side.select lhs rhs) := by
+private theorem projectRow_merge (side : Side) {optional : Bool} {lhs rhs out : Row}
+    (read : mergeRow optional lhs rhs = some out) :
+    projectRow side optional out = some (side.select lhs rhs) := by
   cases lhs with
   | nil => contradiction
   | cons first rest =>
@@ -164,12 +177,13 @@ private theorem projectRow_merge (side : Side) {lhs rhs out : Row} (read : merge
           have projected := projectCell_merge side merged
           cases side <;> simp [projectRow, projected, Side.select]
 
-public theorem mergeRows_wire {lhs rhs out : List Row} (read : mergeRows lhs rhs = some out) :
-    ∀ side, projectRows side out = some (side.select lhs rhs) :=
+public theorem mergeRows_wire {optional : Bool} {lhs rhs out : List Row}
+    (read : mergeRows lhs rhs optional = some out) :
+    ∀ side, projectRows side out optional = some (side.select lhs rhs) :=
   fun side => pairMap_projection (projectRow_merge side) read
 
-public theorem projectRows_count {side : Side} {rows out : List Row}
-    (read : projectRows side rows = some out) : out.length = rows.length := by
+public theorem projectRows_count {side : Side} {optional : Bool} {rows out : List Row}
+    (read : projectRows side rows optional = some out) : out.length = rows.length := by
   induction rows generalizing out with
   | nil => cases Option.some.inj read; rfl
   | cons first rest ih =>

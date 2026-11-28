@@ -136,7 +136,7 @@ def steps(nullable):
     return outer_empty, inner_empty, inner_empty + 1
 
 
-def trace(rows, nullable, side, names=NAMES):
+def trace(rows, nullable, side, names=NAMES, *, optional_element=False):
     outer, inner = nullable[:2]
     outer_empty, inner_empty, shared = steps(nullable)
     def entries(row):
@@ -155,9 +155,14 @@ def trace(rows, nullable, side, names=NAMES):
                     yield rep, inner_empty, None
                 else:
                     for element, record in enumerate(inner_list):
-                        word = record[names[side]]
-                        level = shared + (int(nullable[2 + side]) if word is not None else 0)
-                        yield (2 if element else rep), level, word
+                        at = 2 if element else rep
+                        if record is None:
+                            assert optional_element
+                            yield at, shared, None
+                        else:
+                            word = record[names[side]]
+                            level = shared + int(optional_element) + (int(nullable[2 + side]) if word is not None else 0)
+                            yield at, level, word
     return [slot for row in rows for slot in entries(row)]
 
 
@@ -171,6 +176,7 @@ def inspect(wire, schema, groups):
     element = inner.type.value_field
     nullable = outer.nullable, inner.nullable, *(child.nullable for child in element.type)
     first_empty, second_empty, shared = steps(nullable)
+    shared += int(element.nullable)
     entries = THRIFT["list_field"](metadata(wire), 2)
     assert len(entries) == 8 and entries[0][5][1] == 1
     for index, optional in ((1, nullable[0]), (3, nullable[1])):
@@ -179,7 +185,7 @@ def inspect(wire, schema, groups):
         assert node[10][1] == {3: (TType.STRUCT, {})}
         assert wrapper[3][1] == 2 and wrapper[4][1] == b"list" and wrapper[5][1] == 1
         assert not (set(wrapper) & {1, 2, 6, 10})
-    assert entries[5][3][1] == 0 and entries[5][5][1] == 2 and not (set(entries[5]) & {1, 2, 6, 10})
+    assert entries[5][3][1] == element.nullable and entries[5][5][1] == 2 and not (set(entries[5]) & {1, 2, 6, 10})
     for side, entry in enumerate(entries[6:]):
         assert entry[1][1] == side + 1 and entry[3][1] == nullable[2 + side]
         assert entry[4][1] == NAMES[side].encode() and not (set(entry) & {2, 6, 10})
@@ -194,7 +200,7 @@ def inspect(wire, schema, groups):
         assert footer[6][1] == footer[7][1] == hi - lo
         assert [piece.decode() for piece in THRIFT["list_field"](footer, 3)] == list(PATH + (NAMES[side],))
         maximum = shared + nullable[2 + side]
-        expected = trace(groups[group], nullable, side)
+        expected = trace(groups[group], nullable, side, optional_element=element.nullable)
         slots, rows, live = 0, 0, 0
         pages = []
         for at, header, body_at, body in FRAMES(wire, lo, hi):
@@ -226,7 +232,7 @@ def inspect(wire, schema, groups):
     assert len(output) == 2 * len(groups)
     for group, rows in enumerate(groups):
         def topology(side):
-            return [(rep, min(definition, shared)) for rep, definition, _ in trace(rows, nullable, side)]
+            return [(rep, min(definition, shared)) for rep, definition, _ in trace(rows, nullable, side, optional_element=element.nullable)]
         assert topology(0) == topology(1)
     return shared, output
 
@@ -361,7 +367,7 @@ def verify(folder):
     span, _ = inspect(genuine["native_1111"], *positives["native_1111"][:2])[1][0, 0]
     limit_span = triple(span)
     code.extend([
-        '  refuse .structShape (openFile {} (← load folder "optional_struct"))',
+        '  refuse .structShape (openRequired {} (← load folder "optional_struct"))',
         '  let source ← take (openFile {} (← load folder "native_1111"))',
         '  refuse (.depth 6) (compile { maxSchemaDepth := 6 } source.snapshot)',
         f'  groupRefusal (← load folder "snappy") 0 {{}} (.binding (.column {address(0, 0)} (.codec 1)))',
