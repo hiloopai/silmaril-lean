@@ -1,5 +1,6 @@
 module
 
+public import Silmaril.Logic.ACL2.Standard.BitSelection.Thms
 public import Silmaril.Logic.ACL2.X86Run.WithStep.Frontier.Defs
 public import Silmaril.Logic.ACL2.X86Run.WithStep.Thms
 
@@ -9,10 +10,11 @@ namespace Silmaril.Logic.ACL2.X86Run.WithStep.Frontier
 
 open Standard
 
-/-- These are the five installed entries of the pinned, arity-indexed step frontier. -/
+/-- These are the six installed entries of the pinned, arity-indexed step frontier. -/
 theorem installed_exact : installedEntries =
-    [(⟨"ACL2", "MV-NTH"⟩, 2), (⟨"COMMON-LISP", "EQL"⟩, 2), (⟨"COMMON-LISP", "NOT"⟩, 1),
-      (⟨"X86ISA", "FAULT"⟩, 1), (⟨"X86ISA", "MS"⟩, 1)] := by decide
+    [(⟨"ACL2", "MV-NTH"⟩, 2), (⟨"BITOPS", "PART-SELECT-LOW-HIGH$INLINE"⟩, 3),
+      (⟨"COMMON-LISP", "EQL"⟩, 2), (⟨"COMMON-LISP", "NOT"⟩, 1), (⟨"X86ISA", "FAULT"⟩, 1),
+      (⟨"X86ISA", "MS"⟩, 1)] := by decide
 
 theorem remaining_exact (entry : Name × Nat) :
     remaining.arity entry.1 = some entry.2 ↔ entry ∈ remainingEntries := by
@@ -25,7 +27,7 @@ theorem remaining_iff (entry : Name × Nat) :
   cases h : fixedBinding entry.1 entry.2 <;>
     simp [remaining_exact, remainingEntries, installedEntries, h]
 
-theorem remaining_count : remainingEntries.length = 28 := by decide
+theorem remaining_count : remainingEntries.length = 27 := by decide
 
 theorem extend_of_fixed (bindings : Bindings) {k : Nat} (f : X86Step.frontier.Symbol k)
     {op : (Fin k → Object) → Object} (h : fixedBinding f.val k = some op) (args : Fin k → Object) :
@@ -49,6 +51,12 @@ theorem ms_agrees (bindings : Bindings) (x86 : Object) :
     extend bindings (⟨msName, by decide⟩ : X86Step.frontier.Symbol 1) (fun _ => x86) =
       (machineBindings bindings).admittedModel.interpret
         (declaration.inclusion.symbol msSymbol) (fun _ => x86) := rfl
+
+/-- The selected declaration agrees with its translated logical body on all arguments. -/
+theorem partSelectLowHigh_agrees (bindings : Bindings) (args : Fin 3 → Object) :
+    extend bindings (⟨partSelectLowHighName, by decide⟩ : X86Step.frontier.Symbol 3) args =
+      BitSelection.Source.partSelectLowHigh (args 0) (args 1) (args 2) :=
+  Object.partSelectLowHigh_source _ _ _
 
 /-- The run model interprets the step as the original checked body with the completed frontier. -/
 theorem step_defining_equation (bindings : Bindings) (x86 : Object) :
