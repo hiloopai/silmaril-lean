@@ -132,6 +132,7 @@ check-runtime: check-runtime-core
 
 check-runtime-core:
 	$(MAKE) process-gates
+	$(if $(filter Silmaril +Silmaril.Logic.ACL2.Packages.% +Silmaril.ProofFormats.ACL2.Packages.%,$(CHECK_TARGETS)),$(MAKE) acl2-package-source-check)
 	$(if $(filter Silmaril +Silmaril.Logic.Temporal.TLA.%,$(CHECK_TARGETS)),$(MAKE) tla-acp-source-check)
 	$(if $(filter Silmaril +Silmaril.Logic.Abstraction +Silmaril.Logic.Abstraction.% +Silmaril.Proofs.Logic.Abstraction.%,$(CHECK_TARGETS)),$(LAKE) build --wfail +Silmaril.Logic.Abstraction && \
 		for suite in Regression Soundness Comparisons; do \
@@ -239,6 +240,12 @@ check-runtime-rvsdg:
 	$(if $(filter Silmaril +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Isomorphism.Tail.Prefix.% +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.Tail.Prefix.% +Silmaril.Proofs.SSA.RVSDG.Interprocedural.Runtime.Isomorphism.Tail.Prefix.% +Silmaril.Proofs.SSA.RVSDG.Interprocedural.Runtime.Recursive.Tail.Prefix.% +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.TailCall.% +Silmaril.Proofs.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.TailCall.%,$(CHECK_TARGETS)),$(LAKE) build --wfail +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Isomorphism.Tail.Prefix.Thms +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.TailCall.Thms && $(LAKE) env lean -DautoImplicit=false -DwarningAsError=true tests/ssa/RVSDGRecursivePrimitivePrefix.lean)
 	$(if $(filter Silmaril +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.% +Silmaril.Proofs.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.%,$(CHECK_TARGETS)),$(LAKE) build --wfail +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.Descent.ThetaReach.Thms && $(LAKE) env lean -DautoImplicit=false -DwarningAsError=true tests/ssa/RVSDGRecursiveContinuations.lean)
 	$(if $(filter Silmaril +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.Descent.% +Silmaril.Proofs.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.Descent.%,$(CHECK_TARGETS)),$(LAKE) build --wfail +Silmaril.SSA.RVSDG.Interprocedural.Runtime.Recursive.Continuation.Descent.Thms && $(LAKE) env lean -DautoImplicit=false -DwarningAsError=true tests/ssa/RVSDGRecursiveDescent.lean)
+
+.PHONY: acl2-package-source-check
+acl2-package-source-check:
+	$(LAKE) build --wfail +Silmaril.ProofFormats.ACL2.Packages.Defs +Silmaril.ProofFormats.ACL2.Defs +Silmaril.Logic.ACL2.Books.Examples
+	$(LAKE) env lean -DautoImplicit=false -DwarningAsError=true --run tests/acl2/CheckPackages.lean
+	$(LAKE) env lean -DautoImplicit=false -DwarningAsError=true --run tests/acl2/CheckSource.lean
 
 tla-acp-source-check:
 	LAKE="$(LAKE)" $(PYTHON) -I tests/semantics/tla-acp-source-acceptance/check.py
