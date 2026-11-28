@@ -18,6 +18,8 @@ pub struct Manifest {
     pub name: Option<String>,
     pub version: Option<String>,
     pub description: Option<String>,
+    /// Optional project-specific help text or relative `.md` path for the explorer's Help dialog.
+    pub help: Option<String>,
     /// Modules the dump imports. Default: the `[[lean_lib]]` names.
     pub modules: Option<Vec<String>>,
     /// Module prefixes that are local. Default: the first components of `modules`.

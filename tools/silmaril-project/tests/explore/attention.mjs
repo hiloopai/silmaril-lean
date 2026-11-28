@@ -48,6 +48,8 @@ try {
   await go("#/summary");
   const cards = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".att a.card")].map((a) =>
     [new URLSearchParams(a.getAttribute("href").split("?")[1]).toString(), Number(a.querySelector("b").textContent)])));
+  const excludedLinks = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".excluded-routes a.excluded-link")].map((a) =>
+    [new URLSearchParams(a.getAttribute("href").split("?")[1]).toString(), Number(a.querySelector("b").textContent)])));
   const idx = await p.evaluate(async () => {
     const idx = await problemIndex();
     const n = { contrary: 0, open: 0, weaker: 0, stronger: 0, deprecated: 0, "expected-open": 0 };
@@ -56,7 +58,8 @@ try {
   });
   check(cards["attention=contrary"] === idx.contrary && cards["attention=open"] === idx.open && cards["attention=weaker"] === idx.weaker &&
     cards["attention=stronger"] === idx.stronger, `attention cards: ${JSON.stringify(cards)}`);
-  check(cards["excluded=deprecated"] >= 1 && cards["excluded=expected-open"] === 1, "deprecated and expected-open problems are counted apart");
+  check(!("excluded=deprecated" in cards) && excludedLinks["excluded=deprecated"] >= 1 && cards["excluded=expected-open"] === 1,
+    "deprecated problems are moved out of the top cards into a quiet secondary route, and expected-open problems are counted apart");
   const openList = await p.evaluate(() => [...document.querySelectorAll("#att-open + p + .tablebox a, #att-open ~ .tablebox a")].map((a) => a.textContent));
   check(!openList.includes(marked), `the expected-open problem ${marked} is not in the open list`);
   const deprecated = await p.evaluate(async () => (await problemIndex()).list.filter((e) => e.st.deprecated).map((e) => e.name));

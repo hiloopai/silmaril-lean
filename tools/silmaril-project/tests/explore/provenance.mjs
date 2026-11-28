@@ -46,7 +46,16 @@ try {
 
   await go("#/summary");
   const docs = p.getByRole("link", { name: "Project documentation", exact: true });
-  if (source?.repo.toLowerCase() === "https://github.com/hiloopai/silmaril-lean") {
+  const hasPackagedDocs = await p.evaluate(() => !!(PROJECT_META && PROJECT_META.docsIndex));
+  if (hasPackagedDocs) {
+    check(await docs.getAttribute("href") === "#/docs/projects/README.md",
+      "the Summary links to the inline project documentation view");
+    if (source?.repo.toLowerCase() === "https://github.com/hiloopai/silmaril-lean") {
+      const gh = p.getByRole("link", { name: "on GitHub", exact: true });
+      check(await gh.getAttribute("href") === `${source.repo}/blob/${source.rev}/docs/projects/README.md`,
+        "the Summary also links to the project documentation on GitHub at the source commit");
+    }
+  } else if (source?.repo.toLowerCase() === "https://github.com/hiloopai/silmaril-lean") {
     check(await docs.getAttribute("href") === `${source.repo}/blob/${source.rev}/docs/projects/README.md`,
       "the Summary links to the project documentation at the source commit");
   } else {

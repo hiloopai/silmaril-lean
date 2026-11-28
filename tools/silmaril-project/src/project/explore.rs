@@ -46,6 +46,8 @@ pub const SCRIPTS: &[(&str, &str)] = &[
     script!("navigation.js"),
     script!("router.js"),
     script!("graphs.js"),
+    script!("docs.js"),
+    script!("views/docs.js"),
     script!("views/summary.js"),
     script!("views/progress.js"),
     script!("views/corpus.js"),
@@ -134,6 +136,18 @@ pub struct SourceMeta {
     pub modules: std::collections::BTreeMap<String, String>,
 }
 
+/// Optional project metadata read from `silmaril.toml` at `explore` generation time: the
+/// description (shown on the front page when the database row lacks one) and optional
+/// project-specific help (inline text or a relative `.md` path packaged under `docs/`).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ProjectMeta {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub help: Option<String>,
+    pub help_doc: Option<String>,
+    pub docs_index: Option<String>,
+}
+
 /// Whether `repo` is a GitHub repository URL the page may link to and read raw files from.
 pub fn source_repo_ok(repo: &str) -> bool {
     let Some(rest) = repo.strip_prefix("https://github.com/") else {
@@ -156,12 +170,14 @@ pub fn source_rev_ok(rev: &str) -> bool {
 
 /// The page titled `title`, which tries `db_urls` (relative to the page) in order; `meta`
 /// describes the first of them, when it was readable at generation time; `source`, when given,
-/// lets the page link declarations to their Lean sources.
+/// lets the page link declarations to their Lean sources; `project`, when given, supplies optional
+/// manifest description, help and packaged documentation entry points.
 pub fn page(
     title: &str,
     db_urls: &[String],
     meta: Option<&DbMeta>,
     source: Option<&SourceMeta>,
+    project: Option<&ProjectMeta>,
 ) -> String {
     let source = source.map_or(
         serde_json::Value::Null,
@@ -171,12 +187,22 @@ pub fn page(
         serde_json::Value::Null,
         |m| serde_json::json!({ "url": db_urls.first(), "size": m.size, "sha256": m.sha256 }),
     );
+    let project = project.map_or(serde_json::Value::Null, |p| {
+        serde_json::json!({
+            "name": p.name,
+            "description": p.description,
+            "help": p.help,
+            "helpDoc": p.help_doc,
+            "docsIndex": p.docs_index,
+        })
+    });
     // The script goes in last, so that no placeholder text inside it is replaced.
     TEMPLATE
         .replace("__TITLE__", &html_escape(title))
         .replace("__DB_URLS__", &script_json(&serde_json::json!(db_urls)))
         .replace("__DB_META__", &script_json(&meta))
         .replace("__SOURCE_META__", &script_json(&source))
+        .replace("__PROJECT_META__", &script_json(&project))
         .replace("__EXPLORE_SHELL_STYLE__", SHELL_STYLE)
         .replace("__EXPLORE_SCRIPT__", &script())
 }
@@ -197,6 +223,206 @@ pub fn relative_url(from: &Path, target: &Path) -> Option<String> {
     let mut parts = vec!["..".to_string(); from.len() - common];
     parts.extend(target[common..].iter().cloned());
     Some(parts.join("/"))
+}
+
+/// Package the project's Markdown guides (`docs/` and any local `.md` files or doc assets they
+/// link to inside the project directory) into `<out_dir>/docs/`, returning `(docs_index, help_doc)`
+/// relative to `<out_dir>/docs/`.
+///
+/// Only constrained relative `.md` files and safe image assets (`.svg`, `.png`, `.jpg`, `.jpeg`,
+/// `.gif`, `.webp`) inside `project_dir` are copied; symlinks, dotfiles, and other files are never
+/// copied.
+pub fn package_project_docs(
+    project_dir: &Path,
+    out_dir: &Path,
+    extra_doc: Option<&str>,
+) -> std::io::Result<(Option<String>, Option<String>)> {
+    let Ok(canon_root) = std::fs::canonicalize(project_dir) else {
+        return Ok((None, None));
+    };
+    let docs_root = project_dir.join("docs");
+    let projects_readme = docs_root.join("projects/README.md");
+    let docs_readme = docs_root.join("README.md");
+    let mut seeds: Vec<std::path::PathBuf> = Vec::new();
+    let index_rel = if projects_readme.is_file() {
+        Some("projects/README.md".to_string())
+    } else if docs_readme.is_file() {
+        Some("README.md".to_string())
+    } else {
+        None
+    };
+
+    fn walk_md(dir: &Path, canon_root: &Path, out: &mut Vec<std::path::PathBuf>) {
+        let Ok(rd) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in rd.flatten() {
+            let name = e.file_name();
+            if name.to_string_lossy().starts_with('.') {
+                continue;
+            }
+            let p = e.path();
+            let Ok(meta) = std::fs::symlink_metadata(&p) else {
+                continue;
+            };
+            if meta.file_type().is_symlink() {
+                continue;
+            }
+            if meta.is_dir() {
+                walk_md(&p, canon_root, out);
+            } else if meta.is_file()
+                && p.extension().is_some_and(|x| x == "md")
+                && std::fs::canonicalize(&p).is_ok_and(|c| c.starts_with(canon_root))
+            {
+                out.push(p);
+            }
+        }
+    }
+
+    if docs_root.is_dir() {
+        walk_md(&docs_root, &canon_root, &mut seeds);
+    }
+
+    let mut help_doc_rel: Option<String> = None;
+    if let Some(h) = extra_doc {
+        let trimmed = h.trim();
+        if trimmed.ends_with(".md")
+            && !trimmed.contains("..")
+            && !trimmed.starts_with('/')
+            && !trimmed.contains('\\')
+        {
+            let candidate = project_dir.join(trimmed);
+            if candidate.is_file()
+                && std::fs::symlink_metadata(&candidate).is_ok_and(|m| !m.file_type().is_symlink())
+                && std::fs::canonicalize(&candidate).is_ok_and(|c| c.starts_with(&canon_root))
+            {
+                seeds.push(candidate);
+                let rel = if let Some(rest) = trimmed.strip_prefix("docs/") {
+                    rest.to_string()
+                } else {
+                    format!("_repo/{trimmed}")
+                };
+                help_doc_rel = Some(rel);
+            }
+        }
+    }
+
+    if seeds.is_empty() {
+        return Ok((None, None));
+    }
+
+    let allowed_ext = |p: &Path| {
+        p.extension().and_then(|x| x.to_str()).is_some_and(|ext| {
+            matches!(
+                ext.to_ascii_lowercase().as_str(),
+                "md" | "svg" | "png" | "jpg" | "jpeg" | "gif" | "webp"
+            )
+        })
+    };
+
+    let mut to_copy: std::collections::BTreeSet<std::path::PathBuf> = seeds.into_iter().collect();
+    let mut queue: Vec<std::path::PathBuf> = to_copy.iter().cloned().collect();
+    while let Some(file) = queue.pop() {
+        if !file.extension().is_some_and(|x| x == "md") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&file) else {
+            continue;
+        };
+        let Some(parent) = file.parent() else {
+            continue;
+        };
+        for target in markdown_local_links(&text) {
+            let Some(joined) = normalize_rel_path(parent, &target) else {
+                continue;
+            };
+            if !joined.starts_with(project_dir) || !allowed_ext(&joined) {
+                continue;
+            }
+            let Ok(meta) = std::fs::symlink_metadata(&joined) else {
+                continue;
+            };
+            if meta.file_type().is_symlink() || !meta.is_file() {
+                continue;
+            }
+            if std::fs::canonicalize(&joined).is_ok_and(|c| c.starts_with(&canon_root))
+                && to_copy.insert(joined.clone())
+            {
+                queue.push(joined);
+            }
+        }
+    }
+
+    let out_docs = out_dir.join("docs");
+    for src in &to_copy {
+        let Ok(rel_to_proj) = src.strip_prefix(project_dir) else {
+            continue;
+        };
+        let dst = if let Ok(under_docs) = rel_to_proj.strip_prefix("docs") {
+            out_docs.join(under_docs)
+        } else {
+            out_docs.join("_repo").join(rel_to_proj)
+        };
+        if let Some(p) = dst.parent() {
+            std::fs::create_dir_all(p)?;
+        }
+        std::fs::copy(src, dst)?;
+    }
+
+    Ok((index_rel, help_doc_rel))
+}
+
+fn markdown_local_links(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b']' && i + 1 < bytes.len() && bytes[i + 1] == b'(' {
+            let start = i + 2;
+            let mut end = start;
+            while end < bytes.len() && bytes[end] != b')' && bytes[end] != b'\n' {
+                end += 1;
+            }
+            if end < bytes.len() && bytes[end] == b')' {
+                let raw = text[start..end].trim();
+                let path = raw.split(['#', '?']).next().unwrap_or("").trim();
+                if !path.is_empty()
+                    && !path.starts_with("http://")
+                    && !path.starts_with("https://")
+                    && !path.starts_with("mailto:")
+                    && !path.starts_with('/')
+                {
+                    out.push(path.to_string());
+                }
+                i = end + 1;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
+fn normalize_rel_path(base: &Path, rel: &str) -> Option<std::path::PathBuf> {
+    let mut out = base.to_path_buf();
+    for comp in Path::new(rel).components() {
+        match comp {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !out.pop() {
+                    return None;
+                }
+            }
+            Component::Normal(s) => {
+                if s.to_string_lossy().starts_with('.') {
+                    return None;
+                }
+                out.push(s);
+            }
+            _ => return None,
+        }
+    }
+    Some(out)
 }
 
 #[cfg(test)]
@@ -250,6 +476,7 @@ mod tests {
                 "__DB_URLS__",
                 "__DB_META__",
                 "__SOURCE_META__",
+                "__PROJECT_META__",
                 "__EXPLORE_SHELL_STYLE__",
                 "__EXPLORE_SCRIPT__",
             ] {
@@ -270,7 +497,7 @@ mod tests {
         ids.dedup();
         assert_eq!(ids.len(), n, "a view id is registered twice");
         assert!(ids.contains(&"summary"), "the default view");
-        let p = page("t", &["project.sqlite".into()], None, None);
+        let p = page("t", &["project.sqlite".into()], None, None, None);
         assert!(p.contains("// ===== explore/main.js ====="));
         assert!(!p.contains("__EXPLORE_SCRIPT__"));
     }
@@ -308,7 +535,7 @@ mod tests {
             rev: "0123456789abcdef".into(),
             modules: [("M.N".to_string(), "x/</script>.lean".to_string())].into(),
         };
-        let p = page("t", &[], None, Some(&s));
+        let p = page("t", &[], None, Some(&s), None);
         assert!(p.contains(r#""rev":"0123456789abcdef""#));
         assert!(!p.contains("x/</script>") && !p.contains("__SOURCE_META__"));
     }
@@ -323,11 +550,44 @@ mod tests {
                 sha256: "ab".into(),
             }),
             None,
+            None,
         );
         assert!(p.contains(r#""size":3"#));
         assert!(p.contains("<title>a&lt;b</title>"));
         assert!(!p.contains("x/</script>"));
         assert!(p.contains(r#"["../x/\u003c/script\u003e.sqlite","project.sqlite"]"#));
-        assert!(!p.contains("__DB_URLS__") && !p.contains("__TITLE__"));
+        assert!(
+            !p.contains("__DB_URLS__")
+                && !p.contains("__TITLE__")
+                && !p.contains("__PROJECT_META__")
+        );
+    }
+
+    #[test]
+    fn package_project_docs_copies_markdown_and_blocks_escapes() {
+        let proj = tempfile::tempdir().unwrap();
+        let out = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(proj.path().join("docs/projects/rvsdg")).unwrap();
+        std::fs::write(
+            proj.path().join("docs/projects/README.md"),
+            "# Index\n[RVSDG](rvsdg/overview.md)\n[Root](../../README.md)\n[Escape](../../../secret.md)\n",
+        )
+        .unwrap();
+        std::fs::write(
+            proj.path().join("docs/projects/rvsdg/overview.md"),
+            "# RVSDG\n",
+        )
+        .unwrap();
+        std::fs::write(proj.path().join("README.md"), "# Repo root\n").unwrap();
+        std::fs::write(proj.path().join("docs/help.md"), "# Custom help\n").unwrap();
+
+        let (idx, help) =
+            package_project_docs(proj.path(), out.path(), Some("docs/help.md")).unwrap();
+        assert_eq!(idx.as_deref(), Some("projects/README.md"));
+        assert_eq!(help.as_deref(), Some("help.md"));
+        assert!(out.path().join("docs/projects/README.md").is_file());
+        assert!(out.path().join("docs/projects/rvsdg/overview.md").is_file());
+        assert!(out.path().join("docs/_repo/README.md").is_file());
+        assert!(out.path().join("docs/help.md").is_file());
     }
 }

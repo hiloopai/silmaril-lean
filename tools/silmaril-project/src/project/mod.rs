@@ -1575,19 +1575,44 @@ pub fn run(command: Command) -> Result<()> {
                 }
                 _ => None,
             };
+            let shown = shown(&dir, &out);
+            let out_path = dir.join(&out);
+            let out_parent = out_path.parent().unwrap_or(Path::new("."));
+            fs::create_dir_all(out_parent).into_diagnostic()?;
+            let manifest_help = p
+                .manifest
+                .as_ref()
+                .and_then(|m| m.help.as_deref())
+                .map(str::trim)
+                .filter(|s| !s.is_empty());
+            let (docs_index, help_doc) =
+                explore::package_project_docs(&dir, out_parent, manifest_help).into_diagnostic()?;
+            let project_meta = explore::ProjectMeta {
+                name: Some(p.name.clone()),
+                description: p
+                    .manifest
+                    .as_ref()
+                    .and_then(|m| m.description.as_deref())
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(String::from),
+                help: if help_doc.is_none() {
+                    manifest_help.map(String::from)
+                } else {
+                    None
+                },
+                help_doc,
+                docs_index,
+            };
             let page = explore::page(
                 &format!("{} · silmaril project", p.name),
                 &urls,
                 meta.as_ref(),
                 source.as_ref(),
+                Some(&project_meta),
             );
-            let shown = shown(&dir, &out);
-            let out = dir.join(out);
-            if let Some(parent) = out.parent() {
-                fs::create_dir_all(parent).into_diagnostic()?;
-            }
-            fs::write(&out, page).into_diagnostic()?;
-            let sw = out.with_file_name(explore::SERVICE_WORKER_NAME);
+            fs::write(&out_path, page).into_diagnostic()?;
+            let sw = out_path.with_file_name(explore::SERVICE_WORKER_NAME);
             fs::write(&sw, explore::SERVICE_WORKER).into_diagnostic()?;
             eprintln!("wrote {shown}; it opens {}", urls.join(", then "));
             if !dir.join(&db).exists() {

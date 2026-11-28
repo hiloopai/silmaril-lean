@@ -66,7 +66,7 @@ async function route() {
     if (e instanceof SourceChanged) { $("#main").innerHTML = changedNotice(e); wireChangedNotice($("#main")); }
     else $("#main").innerHTML = `<p class="err">${esc(e.stack || e.message || e)}</p>`;
   } finally {
-    if (tok === routeTok) { await updateStats(); window.explore.busy = false; }
+    if (tok === routeTok) { await updateStats(); window.explore.hash = location.hash; window.explore.busy = false; }
   }
 }
 window.addEventListener("hashchange", route);

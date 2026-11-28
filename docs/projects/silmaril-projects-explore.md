@@ -81,9 +81,14 @@ what the public repository already contains. GitHub Pages answers Range requests
 identity bytes, so the page reads the database lazily (see below for why it ignores `HEAD`), and
 the deploy job checks a Range request on the deployed file.
 
-When the source repository is `hiloopai/silmaril-lean`, the Summary page links to
-the [project documentation index](README.md) on GitHub at the configured source
-commit.
+When the project directory contains `docs/`, `sil project explore` packages the Markdown
+guides and referenced local image assets into `docs/` next to the output page and links
+**Project documentation** on the Summary page to the inline `#/docs/…` view (with a secondary
+link to the file on GitHub at the configured source commit when the source repository is
+`hiloopai/silmaril-lean`). The `#/docs/<path>` view renders Markdown headings, anchors,
+tables, code blocks and strict Mermaid flowcharts inline, resolves relative cross-doc links
+and section fragments inside the explorer, and resolves repository source links at the pinned
+revision.
 
 To view a local build instead:
 
@@ -342,6 +347,7 @@ The template is `tools/silmaril-project/src/project/explore.html` (the shell and
 | `navigation.js`, `shell.css` | grouped navigation, index links and shell styling |
 | `router.js` | hash routing, per-route query context and the `Explorer` API |
 | `graphs.js` | dominators and dominator trees shared by graph views |
+| `docs.js` | sanitized Markdown and strict Mermaid SVG renderer for packaged project guides |
 | `views/*.js` | the views, each registering itself |
 | `main.js` | start the shell after all views register |
 

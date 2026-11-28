@@ -13,6 +13,11 @@ const PARAMS = new URLSearchParams(location.search);
 const DB_URLS = JSON.parse(document.getElementById("db-urls").textContent);
 // The size and SHA-256 of the default database when the page was generated (or null).
 const DB_META = JSON.parse(document.getElementById("db-meta").textContent || "null");
+// Optional project metadata from silmaril.toml and packaged docs when the page was generated (or null).
+const PROJECT_META = (() => {
+  const el = document.getElementById("project-meta");
+  try { return el ? JSON.parse(el.textContent || "null") : null; } catch { return null; }
+})();
 let be = null, cy = null;   // the open database (a backend, see below) and the project graph
 let tables = new Set();     // tables and views of the open database
 let indexes = new Set();    // its indexes (`schema::INDEXES` in the checker)
