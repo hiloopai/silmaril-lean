@@ -1,6 +1,6 @@
 module
 
-public import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Defs
+public import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Import.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Writer.Defs
 
 /-! Strict recursive Arrow V5 IPC to the checked canonical LIST-path writer. -/
@@ -28,11 +28,11 @@ def writerInput (source : Trace) (checksum : Bool) : Writer.Input :=
 /-- The original stream reaches exact EOS before the writer sees its
 declaration or batches. A terminal failure returns the original trace. -/
 def convert (limits : Limits) (input : KBytes) (checksum : Bool := false) :
-    Except Error Writer.Output := do
-  let source ← (Arrow.RecursiveSchema.Stream.readTrace limits.ipc input).mapError .openError
-  match source.terminal with
-  | .failed .. => .error (.terminal source)
-  | .eos .. => (Writer.emit limits.parquet (writerInput source checksum)).mapError .writer
+    Except Error Writer.Output :=
+  match Arrow.RecursiveSchema.Stream.Import.admit limits.ipc input with
+  | .error (.openError cause) => .error (.openError cause)
+  | .error (.terminal source) => .error (.terminal source)
+  | .ok source => (Writer.emit limits.parquet (writerInput source checksum)).mapError .writer
 
 structure SourceWire (limits : Arrow.RecursiveSchema.Batch.Limits) (input : KBytes)
     (source : Trace) : Prop where

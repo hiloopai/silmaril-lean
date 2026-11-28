@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Writer.FromIpc.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Reader.ToIpc.Defs
 import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Events.Thms
-import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Thms
+import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Import.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Reader.ToIpc.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Writer.Thms
 
@@ -18,42 +18,32 @@ open Arrow.RecursiveSchema.Stream.Events (Signature declarations eraseBatch)
 public theorem convert_terminal_wire {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (rejected : convert limits input checksum = .error (.terminal source)) :
     TerminalWire limits.ipc input source := by
-  unfold convert at rejected
-  cases decoded : Stream.readTrace limits.ipc input with
-  | error => simp [decoded, Except.mapError, bind, Except.bind] at rejected
+  cases admitted : Stream.Import.admit limits.ipc input with
   | ok trace =>
-    simp only [decoded, Except.mapError, bind, Except.bind] at rejected
-    cases terminal : trace.terminal with
-    | eos =>
-      cases written : Writer.emit limits.parquet (writerInput trace checksum) <;>
-        simp [terminal, written] at rejected
-    | failed ordinal offset cause =>
-      simp only [terminal, Except.error.injEq, Error.terminal.injEq] at rejected
+    cases writer : Writer.emit limits.parquet (writerInput trace checksum) <;>
+      simp [convert, admitted, writer, Except.mapError] at rejected
+  | error cause =>
+    cases cause with
+    | openError => simp [convert, admitted] at rejected
+    | terminal trace =>
+      simp only [convert, admitted, Except.error.injEq, Error.terminal.injEq] at rejected
       subst source
-      obtain ⟨count, remaining, budget, failure⟩ := Stream.readTrace_failure decoded terminal
-      subst ordinal
-      exact ⟨decoded, Stream.readTrace_wire decoded, offset, cause, remaining, terminal, budget, failure⟩
+      obtain ⟨decoded, wire, failed⟩ := Stream.Import.admit_terminal_wire admitted
+      exact ⟨decoded, wire, failed⟩
 
 private theorem writer_result {limits : Limits} {input : KBytes} {checksum : Bool}
     {result : Except Parquet.RecursiveSchema.ListPath.Writer.Error Writer.Output}
     (converted : convert limits input checksum = result.mapError Error.writer) :
     ∃ source, SourceWire limits.ipc input source ∧
       Writer.emit limits.parquet (writerInput source checksum) = result := by
-  unfold convert at converted
-  cases decoded : Stream.readTrace limits.ipc input with
-  | error => cases result <;> simp [decoded, Except.mapError, bind, Except.bind] at converted
+  cases admitted : Stream.Import.admit limits.ipc input with
+  | error cause => cases cause <;> cases result <;> simp [convert, admitted, Except.mapError] at converted
   | ok source =>
-    simp only [decoded, Except.mapError, bind, Except.bind] at converted
-    cases terminal : source.terminal with
-    | failed => cases result <;> simp [terminal] at converted
-    | eos ordinal offset =>
-      have writer : Writer.emit limits.parquet (writerInput source checksum) = result := by
-        cases current : Writer.emit limits.parquet (writerInput source checksum) <;>
-          cases result <;> simp_all
-      obtain ⟨count, envelope, extent⟩ := Stream.readTrace_eos decoded terminal
-      have strict := Stream.read_iff.mpr ⟨decoded, ordinal, offset, terminal⟩
-      subst ordinal
-      exact ⟨source, ⟨strict, Stream.readTrace_wire decoded, offset, terminal, envelope, extent⟩, writer⟩
+    refine ⟨source, ?_, ?_⟩
+    · obtain ⟨checked, wire, eos⟩ := Stream.Import.admit_wire admitted
+      exact ⟨checked, wire, eos⟩
+    · cases current : Writer.emit limits.parquet (writerInput source checksum) <;>
+        cases result <;> simp_all [convert, Except.mapError]
 
 public theorem convert_writer_wire {limits : Limits} {input : KBytes} {checksum : Bool}
     {cause : Parquet.RecursiveSchema.ListPath.Writer.Error} (rejected : convert limits input checksum = .error (.writer cause)) :

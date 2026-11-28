@@ -4,6 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Writer.FromIpc.D
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Reader.ToIpc.Defs
 public import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Events.Defs
 import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Thms
+import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Import.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Writer.FromIpc.Conversion
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Writer.FromIpc
@@ -17,7 +18,7 @@ theorem convert_open_error {limits : Limits} {input : KBytes} {checksum : Bool}
     {cause : Arrow.RecursiveSchema.Error}
     (original : Arrow.RecursiveSchema.readFrame limits.ipc.schema input = .error cause) :
     convert limits input checksum = .error (.openError cause) := by
-  simp [convert, Stream.readTrace_open_error original, Except.mapError, bind, Except.bind]
+  simp [convert, Stream.Import.admit, Stream.readTrace_open_error original]
 
 /-- The first original failure and complete prefix take precedence under
 every Parquet budget. -/
@@ -26,7 +27,7 @@ theorem convert_terminal_error {limits : Limits} {input : KBytes} {checksum : Bo
     (original : Stream.readTrace limits.ipc input = .ok source)
     (failed : source.terminal = .failed ordinal offset cause) :
     convert limits input checksum = .error (.terminal source) := by
-  simp [convert, original, failed, Except.mapError, bind, Except.bind]
+  simp [convert, Stream.Import.admit, original, failed]
 
 theorem convert_terminal_wire {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (rejected : convert limits input checksum = .error (.terminal source)) :
@@ -38,8 +39,7 @@ output or typed cause for the exact source observations. -/
 theorem convert_of_strict {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (strict : Stream.read limits.ipc input = .ok source) :
     convert limits input checksum = (Writer.emit limits.parquet (writerInput source checksum)).mapError .writer := by
-  obtain ⟨original, _, _, eos⟩ := Stream.read_iff.mp strict
-  simp [convert, original, eos, Except.mapError, bind, Except.bind]
+  simp [convert, Stream.Import.admit_iff.mpr strict]
 
 theorem convert_writer_wire {limits : Limits} {input : KBytes} {checksum : Bool}
     {cause : Writer.Error} (rejected : convert limits input checksum = .error (.writer cause)) :

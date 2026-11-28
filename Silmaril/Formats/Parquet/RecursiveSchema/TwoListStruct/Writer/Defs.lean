@@ -37,19 +37,40 @@ inductive Error where
 
 end
 
-private def signedEntry (field : Arrow.RecursiveSchema.Field) : Except Error (String × Bool × Kind) :=
+private structure SignedField where
+  name : String
+  nullable : Bool
+  kind : Kind
+
+private structure Declaration where
+  outer : String
+  outerNullable : Bool
+  inner : String
+  innerNullable : Bool
+  element : String
+  left : SignedField
+  right : SignedField
+
+private def signedField (field : Arrow.RecursiveSchema.Field) : Option SignedField :=
   match field with
-  | .node (some name) nullable .int32 [] => .ok (name, nullable, .int32)
-  | .node (some name) nullable .int64 [] => .ok (name, nullable, .int64)
-  | _ => .error .declaration
+  | .node (some name) nullable .int32 [] => some ⟨name, nullable, .int32⟩
+  | .node (some name) nullable .int64 [] => some ⟨name, nullable, .int64⟩
+  | _ => none
+
+private def declaration (schema : Arrow.RecursiveSchema.Schema) : Option Declaration := do
+  let [.node (some outer) outerNullable .list
+    [.node (some inner) innerNullable .list
+      [.node (some element) false .struct [left, right]]]] := schema.fields | none
+  return ⟨outer, outerNullable, inner, innerNullable, element, ← signedField left, ← signedField right⟩
+
+/-- Decide membership in the writer profile without consulting target budgets. -/
+public def supportsDeclaration (schema : Arrow.RecursiveSchema.Schema) : Bool :=
+  (declaration schema).isSome
 
 public def planSchema (limits : Schema.Limits) (schema : Arrow.RecursiveSchema.Schema) :
     Except Error Schema.Plan := do
-  let [.node (some outer) outerNullable .list
-    [.node (some inner) innerNullable .list
-      [.node (some element) false .struct [left, right]]]] := schema.fields | throw .declaration
-  let (left, leftNullable, leftKind) ← signedEntry left
-  let (right, rightNullable, rightKind) ← signedEntry right
+  let some shape := declaration schema | throw .declaration
+  let ⟨outer, outerNullable, inner, innerNullable, element, left, right⟩ := shape
   let compact := limits.snapshot.footer.compact
   if limits.snapshot.maxSchemaDepth < 7 then throw (.schema (.depth []))
   if min limits.maxFields compact.maxCollectionSize < 8 then throw (.schema .fieldLimit)
@@ -57,10 +78,10 @@ public def planSchema (limits : Schema.Limits) (schema : Arrow.RecursiveSchema.S
   let elementPath := innerPath ++ ["list", element]
   if "schema".utf8ByteSize > compact.maxBinaryBytes then throw (.schema (.nameBudget []))
   for (name, path) in [(outer, [outer]), (inner, innerPath), (element, elementPath),
-      (left, elementPath ++ [left]), (right, elementPath ++ [right])] do
+      (left.name, elementPath ++ [left.name]), (right.name, elementPath ++ [right.name])] do
     if name.utf8ByteSize > compact.maxBinaryBytes then throw (.schema (.nameBudget path))
   return ⟨1, [.list outer outerNullable, .wrapper, .list inner innerNullable, .wrapper,
-    .struct element false 2, .leaf left leftNullable leftKind, .leaf right rightNullable rightKind]⟩
+    .struct element false 2, .leaf left.name left.nullable left.kind, .leaf right.name right.nullable right.kind]⟩
 
 @[expose] public section
 
