@@ -42,6 +42,11 @@ noncomputable def add (policy : Unspecified.{u}) (x y : Value.{u}) : Value.{u} :
   | some a, some b => integer (a + b)
   | _, _ => policy .add [x, y]
 
+noncomputable def sub (policy : Unspecified.{u}) (x y : Value.{u}) : Value.{u} :=
+  match x.asInt, y.asInt with
+  | some a, some b => integer (a - b)
+  | _, _ => policy .sub [x, y]
+
 /-- The reference integer remainder equation applies to positive divisors. -/
 noncomputable def modulo (policy : Unspecified.{u}) (x y : Value.{u}) : Value.{u} :=
   open Classical in

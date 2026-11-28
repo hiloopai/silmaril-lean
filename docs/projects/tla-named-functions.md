@@ -55,16 +55,41 @@ carry their existing unspecified outcomes on malformed operands. The contract is
 [Book Figure 5.5b and §5.6](https://lamport.azurewebsites.net/tla/book-21-07-04.pdf#page=76) ·
 [Pinned WriteThroughCache lines 54–61](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/test-model/examples/SpecifyingSystems/CachingMemory/WriteThroughCache.tla#L54-L61)
 
-The bridge starts at interpreted state values and uses a direct translation
-of this one LET expression. The pinned module parses, while the existing
-resolver reports `.unsupported .functionDefinition` when it reaches a
-named-function declaration. Source lowering would also need a resolved
-primitive contract for binary `-` from `Naturals`. The bridge uses
-integer subtraction only at positive interval keys. Whole-module resolution,
-arbitrary named-function bodies and INSTANCE replay of this form are outside
-the fragment.
-[Resolver scope](tla-module-resolution.md#boundaries-and-checks) ·
-[Pinned Naturals](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/src/tla2sany/StandardModules/Naturals.tla)
+## Source profile
+
+`NamedFunctions.Source.check` resolves a projected module against the pinned
+Naturals and Sequences signatures, checks the levels, and selects a nullary
+state operator with one named-function LET declaration. The function name is
+in scope in its recursive body and the IN expression. The single index binder
+is in scope in the function body. The declared domain uses the preceding
+scope. The level checker infers the named value's level with self at constant
+level, then checks the body again with self at the inferred level.
+[Source checker](../../Silmaril/Logic/Temporal/TLA/DataElab/NamedFunctions/Source/Defs.lean)
+
+Ordinary collection lowering supplies the bound, function body and IN
+expression. The checker matches their expanded shape and verifies the exact
+resolved identities of `..`, binary `-` and `Len`, the two state variables,
+and all recursive and index witness uses. It admits the zero/read/write
+shape in the table above, including renaming of the lexical binders. The
+certificate ties the inspected syntax to the evaluator term. At every
+positive integer key in the interval, `predecessor_key` proves that the
+checked subtraction yields a smaller key still in the interval.
+[Pinned Naturals](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/src/tla2sany/StandardModules/Naturals.tla) · [Pinned Sequences](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/src/tla2sany/StandardModules/Sequences.tla)
+
+The collection evaluator runs the resulting anonymous function under CHOOSE
+and applies the chosen graph in IN. With a tuple-valued source queue,
+`CheckedVMem.eval_eq_choose_apply_len` identifies the predicate for every
+candidate, and `CheckedVMem.eval_eq_vmem` applies the existing uniqueness
+theorem. Both state inputs come from the source valuation at their resolved
+IDs. The theorem allows an arbitrary target valuation. The depth bound
+limits ordinary syntax expansion. The predecessor computation uses the
+checked decreasing index.
+[Source theorem API](../../Silmaril/Logic/Temporal/TLA/DataElab/NamedFunctions/Source/Thms.lean)
+
+The source gate projects the original `vmem` unit with its `wmem` and `memQ`
+inputs and its two standard imports. Whole-module composition, primed or
+action-level uses of this named definition, top-level named functions,
+other recursive bodies, and INSTANCE replay remain open.
 
 ## Checks
 
@@ -72,11 +97,11 @@ the fragment.
 python3 -I tests/semantics/tla-named-functions/check.py
 ```
 
-The check builds the Lean examples with `--wfail`, verifies the upstream
-module SHA-256
-`d63221a21377ee59c707dcf1ec05dd73be7616674343052a2b0d794b0c0526a2`,
-and compares the parsed `vmem` body against the full LET expression used
-to derive the bridge. The examples cover the empty queue, reads interleaved
-with repeated writes, and rejection of a candidate with the wrong domain.
-[Checked examples](../../Silmaril/Logic/Temporal/TLA/DataElab/NamedFunctions/Examples.lean) ·
-[Pinned-source check](../../tests/semantics/tla-named-functions/WriteThroughCache.lean)
+The gate verifies SHA-256 pins for WriteThroughCache, Naturals and Sequences
+at the same upstream revision. It parses the intact WriteThroughCache module
+and runs the source checker on the original LET. Controls cover alpha-renaming,
+an index that does not decrease, the wrong resolved primitive, same-spelled
+local operators, and lexical scope. The Lean value examples cover the empty
+queue, reads interleaved with repeated writes, and a candidate with the wrong
+domain.
+[Checked examples](../../Silmaril/Logic/Temporal/TLA/DataElab/NamedFunctions/Examples.lean) · [Pinned-source check](../../tests/semantics/tla-named-functions/check.py)

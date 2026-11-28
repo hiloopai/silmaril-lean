@@ -199,7 +199,7 @@ private def positionalArguments (site : Site) (child : Nat → Step) (args : Lis
 private def formalId (site : Site) (index : Nat) : BindingId :=
   .declared (site.child (.parameter index))
 
-private def checkDefinition (visit : Site → Expr → CheckM Analysis) (site : Site)
+private def checkOperatorDefinition (visit : Site → Expr → CheckM Analysis) (site : Site)
     (definition : Definition) : CheckM OperatorSummary := do
   let .operator _ head body := definition | failAt site (.unsupported .declaration)
   let arity ← match head with
@@ -231,6 +231,25 @@ private def checkBounded (visit : Site → Expr → CheckM Analysis) (site : Sit
     for (domain, range) in ranges do
       result ← addCondition result domain (.temporalQuantifierBound checkedBody.term range.term)
   return result
+
+-- Calculate the body's level with self at the bottom, then recheck its uses at
+-- the inferred level. Level propagation consists of joins and fixed weights.
+private def checkDefinition (visit : Site → Expr → CheckM Analysis) (site : Site)
+    (definition : Definition) : CheckM OperatorSummary := do
+  let .function _ _ [bound@⟨.names [_], _⟩] body := definition
+    | checkOperatorDefinition visit site definition
+  let before ← get
+  let bindSelf (term : LevelTerm) : CheckM Unit :=
+    modify fun state => { state with operators := (.declared site, ⟨[], term, []⟩) :: state.operators }
+  bindSelf (.fixed .constant)
+  let initial ← checkBounded visit site [bound] body .action
+  set before
+  bindSelf initial.term
+  let result ← checkBounded visit site [bound] body .action
+  let summary : OperatorSummary := ⟨[], result.term, result.requirements⟩
+  modify fun state =>
+    { state with operators := (.declared site, summary) :: state.operators.filter (·.1 ≠ .declared site) }
+  return summary
 
 private instance : Inhabited (CheckM Analysis) :=
   ⟨failAt ⟨"", []⟩ (.unsupported .expression)⟩

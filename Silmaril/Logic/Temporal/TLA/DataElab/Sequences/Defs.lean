@@ -3,7 +3,7 @@ module
 public import Silmaril.Logic.Temporal.TLA.Data.Tagged.Sequences.Thms
 public import Silmaril.Logic.Temporal.TLA.DataElab.Collections.Tagged
 
-/-! A signature-only interpretation of the standard operators used by BoundedQueue. -/
+/-! A signature-only interpretation of the standard operators used by the sequence and named-function source profiles. -/
 
 namespace Silmaril.Logic.Temporal.TLA.DataElab.Sequences
 
@@ -29,7 +29,8 @@ def Operator.arity (op : Operator) : Nat :=
 def modules : List (ModuleId × String × List (Name × Operator)) :=
   [(naturalsId, "Naturals",
       [(.ident "Nat", .inl .naturals), (.symbol .infix "<", .inl .lt),
-       (.symbol .infix "\\leq", .inl .le)]),
+       (.symbol .infix "\\leq", .inl .le), (.symbol .infix "..", .inl .interval),
+       (.symbol .infix "-", .inl .sub)]),
     (sequencesId, "Sequences",
       [(.ident "Seq", .inr .seq), (.ident "Len", .inr .len), (.ident "Append", .inr .append),
        (.ident "Head", .inr .head), (.ident "Tail", .inr .tail)])]

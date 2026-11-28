@@ -51,12 +51,12 @@ def Policy.booleans (policy : Policy.{u}) : Booleans Value.{u} where
   invalid := policy.invalidBoolean
 
 inductive NumericPrimitive where
-  | interval | add | modulo | le | lt | naturals | integers
+  | interval | add | sub | modulo | le | lt | naturals | integers
   deriving DecidableEq, Repr
 
 def NumericPrimitive.arity : NumericPrimitive → Nat
   | .naturals | .integers => 0
-  | .interval | .add | .modulo | .le | .lt => 2
+  | .interval | .add | .sub | .modulo | .le | .lt => 2
 
 /-- The caller selects the admitted declarations by resolved identity. -/
 def numericSignature (table : BindingId → Option NumericPrimitive) : ExternalSignature :=
@@ -94,6 +94,8 @@ noncomputable def Policy.primitive (policy : Policy.{u}) :
       (Value.interval_integer policy.numeric)
   | .add => integerBinary (Value.add policy.numeric)
       (fun a b result => result = Value.integer (a + b)) (Value.add_integer policy.numeric)
+  | .sub => integerBinary (Value.sub policy.numeric)
+      (fun a b result => result = Value.integer (a - b)) (Value.sub_integer policy.numeric)
   | .modulo => integerBinary (Value.modulo policy.numeric)
       (fun a b result => 0 < b → result = Value.integer (a % b)) (Value.modulo_integer policy.numeric)
   | .le => integerBinary (Value.le policy.numeric)

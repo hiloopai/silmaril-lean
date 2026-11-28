@@ -114,6 +114,13 @@ about element values, function domains or record meanings. Intact HourClock,
 DieHard and WriteThroughCache are parser fixtures and include forms this
 resolver diagnoses as unsupported.
 
+The opt-in `namedFunctionSyntax` profile resolves local function declarations
+with one identifier in one bounded group. The local name is visible in its
+own body and to subsequent LET declarations and IN. The index is visible in
+its own body. Both bindings use declaration sites, and the domain is
+resolved in the preceding scope.
+[Named predecessor source profile](tla-named-functions.md#source-profile)
+
 ```sh
 lake build --wfail +Silmaril.Logic.Temporal.TLA.Resolution.Defs \
   +Silmaril.Logic.Temporal.TLA.Resolution.Examples

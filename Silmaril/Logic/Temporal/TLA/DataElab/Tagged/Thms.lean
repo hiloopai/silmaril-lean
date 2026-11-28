@@ -90,6 +90,9 @@ theorem Policy.external_apply (table : BindingId → Option NumericPrimitive)
 @[simp] theorem Policy.add_apply (x y : Value.{u}) :
     (policy.primitive .add).apply [x, y] = Value.add policy.numeric x y := by rfl
 
+@[simp] theorem Policy.sub_apply (x y : Value.{u}) :
+    (policy.primitive .sub).apply [x, y] = Value.sub policy.numeric x y := by rfl
+
 @[simp] theorem Policy.modulo_apply (x y : Value.{u}) :
     (policy.primitive .modulo).apply [x, y] = Value.modulo policy.numeric x y := by rfl
 

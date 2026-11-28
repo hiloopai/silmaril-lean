@@ -81,6 +81,9 @@ variable (policy : Unspecified.{u})
 @[simp] theorem add_integer (a b : Int) : add policy (integer a) (integer b) = integer (a + b) := by
   simp [add]
 
+@[simp] theorem sub_integer (a b : Int) : sub policy (integer a) (integer b) = integer (a - b) := by
+  simp [sub]
+
 theorem add_bad_left {x y : Value.{u}} (h : x.asInt = none) : add policy x y = policy .add [x, y] := by
   simp [add, h]
 

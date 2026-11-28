@@ -183,9 +183,10 @@ check the mathematical denotations of in-memory source cases.
 
 The whole-module check without a dependency registry stops at the first
 `EXTENDS` edge, `Naturals`. It requires the imported modules and the
-`InternalMemory` and `Memory` instance dependencies. Lowering `vmem`
-requires recursive LET function support, and checking other collection
-clauses needs sequence primitives and additional set operators.
+`InternalMemory` and `Memory` instance dependencies. The `vmem` projection
+uses a dedicated source checker for its bounded predecessor LET. Other
+collection clauses still need additional primitives.
+[Named predecessor source profile](tla-named-functions.md#source-profile)
 [Pinned module](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/test-model/examples/SpecifyingSystems/CachingMemory/WriteThroughCache.tla) ·
 [Corpus gate](../../tests/semantics/tla-collection-binders/WriteThroughCache.lean) ·
 [Parser hashes](../../tests/semantics/tla-parser/check.py)

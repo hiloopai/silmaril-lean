@@ -84,7 +84,7 @@ noncomputable def SetData.powerset (s : SetData.{u}) : SetData.{u} :=
 
 /-- Operations that can use a model-fixed interpretation on unspecified inputs. -/
 inductive Operation where
-  | add | modulo | le | interval | domain | apply | update
+  | add | sub | modulo | le | interval | domain | apply | update
   deriving DecidableEq
 
 /-- Fix one policy across valuations and steps. It receives the operation and its operands. -/
