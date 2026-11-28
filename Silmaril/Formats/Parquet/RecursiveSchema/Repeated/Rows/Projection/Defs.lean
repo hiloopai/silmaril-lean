@@ -59,15 +59,19 @@ def fields (project : Field → Cell → Option (List (List Atom))) :
     return first ++ tail
   | _, _ => none
 
+def addElement (project : Position → Cell → Option (List (List Atom))) (width : Nat)
+    (columns : List (List Atom)) (indexed : Cell × Nat) : Option (List (List Atom)) := do
+  let (cell, index) := indexed
+  let next ← project ⟨if index = 0 then 0 else 1, .element⟩ cell
+  if next.length = width then
+    return List.zipWith (fun accumulated slots => slots.reverse ++ accumulated) columns next
+  else none
+
 /-- Accumulate in reverse within each physical column. Each element's
 projection is appended in positional leaf order, including null slots. -/
 def elements (project : Position → Cell → Option (List (List Atom))) (width : Nat)
     (cells : List Cell) : Option (List (List Atom)) := do
-  let reversed ← (cells.zipIdx).foldlM (fun columns (cell, index) => do
-    let next ← project ⟨if index = 0 then 0 else 1, .element⟩ cell
-    if next.length = width then
-      return List.zipWith (fun accumulated slots => slots.reverse ++ accumulated) columns next
-    else none) (List.replicate width [])
+  let reversed ← (cells.zipIdx).foldlM (addElement project width) (List.replicate width [])
   return reversed.map List.reverse
 
 def cell : Nat → Position → Field → Cell → Option (List (List Atom))

@@ -1,0 +1,99 @@
+{
+  "authored_parquet": {
+    "earlier_conflict_before_length": {
+      "bytes": 1484,
+      "sha256": "2d8811fc9ebebe819f9af1abb4f809054190485e5f8ad54622390086c637d73e"
+    },
+    "independent_continuations": {
+      "bytes": 1638,
+      "sha256": "4bff979f9f0424fbe09c8a7c8569252c1a4ad46a64e8a29c16c882dc9185c9d6"
+    },
+    "null_struct_present_struct": {
+      "bytes": 1484,
+      "sha256": "382c8cce99dbc94cc99b482f9874925692d60ea1cbb11af97c9ed0e2edecb751"
+    },
+    "outer_null_empty": {
+      "bytes": 1540,
+      "sha256": "112ef5a11f0585a124405b196ac484fee5871dd5f4671cd7b0f7f803b5a4ed03"
+    },
+    "short_sibling": {
+      "bytes": 1484,
+      "sha256": "775a7a45b86d4e07c5f5cfdb073a47c10fdf7e20cb9b8b2572c40e2412abf072"
+    },
+    "swapped_paths": {
+      "bytes": 1465,
+      "sha256": "756a98d4346f28868068a733da4fbf7caa2a160625c7c70c74c3615b252a5a47"
+    }
+  },
+  "genuine_parquet": {
+    "native_0000": {
+      "bytes": 1409,
+      "sha256": "749216467293ee43321dab0d85d7eae4bf56568a1cba924203bfc41e307fe0e6"
+    },
+    "native_0001": {
+      "bytes": 1384,
+      "sha256": "f35366fe664bab0e2ced5a9e510ff16d9aa226fdd4bde6dd33b0d1f3d88d4fe4"
+    },
+    "native_0010": {
+      "bytes": 1398,
+      "sha256": "d1b820d0c722107c8d73444b0fc798e736bcd4898ea025204dfae614dab4641b"
+    },
+    "native_0011": {
+      "bytes": 1373,
+      "sha256": "7a757bcc7d3dd0fe3aa579891d8233f50f621cdbb19f3444018f9e8f77db0458"
+    },
+    "native_0100": {
+      "bytes": 1423,
+      "sha256": "d5f610cb79c13d5073f0f75a12a357581d7e075fca4896e12b62a7750a2c62bb"
+    },
+    "native_0101": {
+      "bytes": 1393,
+      "sha256": "00aa408ab5c9a58ccff4fef0dfaecf6b7470612ef03e4f457e05f27a5428f03b"
+    },
+    "native_0110": {
+      "bytes": 1407,
+      "sha256": "14dcb6bcefd8b36b1122d183848a990ba7880def97fdf122e82e8d39e6c0a5c3"
+    },
+    "native_0111": {
+      "bytes": 1377,
+      "sha256": "45c386e28597c22c5b5fc14589a0a58e3e4f31dee65fd5cafcbaa3a1328704e4"
+    },
+    "native_1000": {
+      "bytes": 1493,
+      "sha256": "ad5d2352f37c0eaccdae6168269f1b5649a347132ee758dce0bc162383b1340a"
+    },
+    "native_1001": {
+      "bytes": 1467,
+      "sha256": "ada0ec02e9dbfca3bd53b57f12f531403eb06375a3228ae5c09976eaf6c14b2a"
+    },
+    "native_1010": {
+      "bytes": 1481,
+      "sha256": "652e2e6b4b7fdd74e453dc343b86590912e5605720d78de9ecdbfbc6e32c8706"
+    },
+    "native_1011": {
+      "bytes": 1455,
+      "sha256": "9f31e9b9cfd642ae5e2f01f10c04e5e52dfe3ff4dd06b1810274ef2899cf2e7d"
+    },
+    "native_1100": {
+      "bytes": 1504,
+      "sha256": "940f15497d606d525549118285590d7d2daa43e564dbb216bac175c17df40227"
+    },
+    "native_1101": {
+      "bytes": 1477,
+      "sha256": "6401775911c93d58fceb1e2c0825a1fcfac4dfc9911a0134496383e088ea782b"
+    },
+    "native_1110": {
+      "bytes": 1492,
+      "sha256": "00dd580b02bbde92ea05632f80ede2881a77c10626bee13d9959842c7b97d3f6"
+    },
+    "native_1111": {
+      "bytes": 1465,
+      "sha256": "83059cfa174b63d76f930e81bf651e10272be1d3abc4bdc6cb2ccbd023c769b4"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}
