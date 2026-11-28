@@ -1,0 +1,25 @@
+{
+  "genuine_parquet": {
+    "branch_v1": {
+      "bytes": 2013,
+      "sha256": "59c17020e6dde0c3fb8b514a3a8577806a6d741ecf1cbb71bfeb6dd054ad62c6"
+    },
+    "branch_v2": {
+      "bytes": 1960,
+      "sha256": "5d5957cf710ff51b27054d4e4aeb7a76f5cedcedf87306ab5db2c5053a82626e"
+    },
+    "leading_struct": {
+      "bytes": 513,
+      "sha256": "77514bd58b585ef12d3840a0588f3e32417a0b341f9e0644462babf92be9fd7f"
+    },
+    "unsupported_double": {
+      "bytes": 894,
+      "sha256": "834da8d3ea9c036c27843cc184d37bf93618cb49627ce4c1c940e90dbfae5ebe"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}
