@@ -111,13 +111,29 @@ theorem Wire.dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Sna
       Repeated.Chunk.DictionaryContentsWire limits.payload schema.plan.shape.leaf.2 snapshot.bytes table :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.dictionary_payload binding.codec_exact wire found
 
+theorem ChainWire.page_of_mem {limits : Limits} {carrier : Carrier} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
+    {start stop : State} {pages : List ObservedPage} {page : ObservedPage}
+    (chain : ChainWire limits carrier dictionary start stop pages) (member : page ∈ pages) :
+    DataPageWire limits carrier.plan (wrappers carrier.plan) carrier.source page.frame page.start
+      (carrier.slots - page.start.slots) carrier.rows page.decoded carrier.codec dictionary :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.chain_page_of_mem chain member
+
+/-- Refusals from the shared original frame and payload reader with no
+extra frame restriction retain the original addressed prefix. -/
+theorem readCarrier_page_failure {limits : Limits} {carrier : Carrier}
+    {encoding : ColumnEncoding carrier.metadata} {address : RecursiveSchema.Chunk.Address}
+    {ordinal byte : Nat} {start : State} {cause : PageCause}
+    (refused : readCarrier limits carrier encoding (fun _ => .ok ()) = .error (.page address ordinal byte start cause)) :
+    PageFailureWire limits carrier address ordinal byte start cause :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.readCarrier_page_failure refused
+
 theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
     {limits : Limits} {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat}
     {start : State} {cause : PageCause}
     (refused : read limits binding = .error (.page address ordinal byte start cause)) :
     PageFailureWire limits (carrierOf binding) address ordinal byte start cause :=
-  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.read_page_failure refused
+  readCarrier_page_failure refused
 
 theorem read_dictionary_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}

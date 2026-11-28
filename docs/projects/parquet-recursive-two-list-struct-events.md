@@ -3,7 +3,7 @@
 `TwoListStruct.Reader.Events` exposes the original native reader as a
 recursive Arrow event stream. It takes one canonical LIST of LISTs of
 required or optional Structs with two signed INT32 or INT64 fields, in unindexed
-PLAIN UNCOMPRESSED V1. The Arrow declaration preserves the original
+PLAIN UNCOMPRESSED V1/V2. The Arrow declaration preserves the original
 outer LIST, inner LIST, Struct and child names and nullability. An optional Struct can be
 null or present with independently null children.
 [Native profile](parquet-recursive-two-list-struct.md)

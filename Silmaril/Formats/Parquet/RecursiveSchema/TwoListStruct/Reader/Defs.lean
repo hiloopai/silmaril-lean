@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.Defs
 
-/-! Checked PLAIN UNCOMPRESSED V1 groups with two original signed
+/-! Checked PLAIN UNCOMPRESSED V1/V2 groups with two original signed
 columns sharing the same two recursive LIST wrappers. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader
@@ -52,15 +52,6 @@ def carrierOf {limits : Snapshot.Limits} {snapshot : Snapshot.Checked} {schema :
     binding.column.metadata.totalCompressedSize, binding.column.metadata.totalUncompressedSize,
     .uncompressed, binding.column.metadata⟩
 
-/-- Admit only original V1 frame headers before interpreting either
-column's selected level or value sections. -/
-def requireV1 (carrier : ListPath.Chunk.Carrier) : List Page.Frame → Nat → Except ListPath.Chunk.Error Unit
-  | [], _ => .ok ()
-  | frame :: rest, ordinal =>
-    match frame.value.kind with
-    | .dataV1 _ => requireV1 carrier rest (ordinal + 1)
-    | kind => .error (.chunk carrier.address carrier.span (.pageVersion ordinal frame.header.start kind))
-
 end
 
 private def lookup {α ε : Type} (option : Option α) (error : ε) :
@@ -102,7 +93,7 @@ def readColumn {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group} {side : Side}
     (limits : Limits) (binding : ColumnBinding schema bound side) : Except ListPath.Chunk.Error ListPath.Chunk.Observation :=
   let carrier := carrierOf binding
-  ListPath.Chunk.readCarrier limits carrier (.plain binding.plain binding.offsets.1) (fun frames => requireV1 carrier frames 0)
+  ListPath.Chunk.readCarrier limits carrier (.plain binding.plain binding.offsets.1) (fun _ => .ok ())
 
 inductive Error where
   | binding (cause : BindError)
@@ -143,7 +134,7 @@ structure ColumnWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group} {side : Side}
     (limits : Limits) (binding : ColumnBinding schema bound side) (observed : ListPath.Chunk.Observation) : Prop where
   original : ListPath.Chunk.Wire limits (carrierOf binding) observed
-  version : ∀ frame ∈ observed.frames, ∃ header, frame.value.kind = .dataV1 header
+  dictionaryFree : observed.dictionary = none
 
 structure GroupWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (limits : Limits) (schema : Compiled schemaLimits snapshot) (group : Nat) (out : Observation) : Prop where

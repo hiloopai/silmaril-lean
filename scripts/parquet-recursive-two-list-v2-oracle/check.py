@@ -140,11 +140,12 @@ def checked_page_term(page, nullable, width, encoding=0):
     return f"{expected[:-1]}, {v2}⟩"
 
 
-def v2_frame(template, trace, *, flag=False, mutation=None, extra_rep=b"", extra_word=b"", crc=True):
+def v2_frame(template, trace, *, width=32, flag=False, mutation=None, extra_rep=b"", extra_word=b"", crc=True):
     header, _ = header_body(template)
     reps = b"".join(bytes([2, rep]) for rep, _, _ in trace) + extra_rep
     defs = b"".join(bytes([2, definition]) for _, definition, _ in trace)
-    words = b"".join(struct.pack("<i", word) for _, _, word in trace if word is not None) + extra_word
+    fmt = "<i" if width == 32 else "<q"
+    words = b"".join(struct.pack(fmt, word) for _, _, word in trace if word is not None) + extra_word
     values = [len(trace), sum(word is None for _, _, word in trace), sum(rep == 0 for rep, _, _ in trace),
               0, len(defs), len(reps)]
     info = {field: (TType.I32, value) for field, value in enumerate(values, 1)}
