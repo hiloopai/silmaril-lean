@@ -1,0 +1,31 @@
+(in-package "ACL2")
+
+(defstobj sil-toy
+  (toy-scalar :type integer :initially -2)
+  (toy-cells :type (array integer (3)) :initially 7))
+
+; Ground theorems exercise the logical bodies on quoted, ordinary data.
+(defthm toy-create (equal (create-sil-toy) '(-2 (7 7 7))) :rule-classes nil)
+(defthm toy-valid (equal (sil-toyp '(-2 (7 8 9))) t) :rule-classes nil)
+(defthm toy-bad-scalar (equal (sil-toyp '(nil (7 8 9))) nil) :rule-classes nil)
+(defthm toy-bad-size (equal (sil-toyp '(-2 (7 8))) nil) :rule-classes nil)
+(defthm toy-long-record (equal (sil-toyp '(-2 (7 8 9) extra)) nil) :rule-classes nil)
+(defthm toy-dotted-cells (equal (sil-toyp '(-2 (7 8 9 . 1))) nil) :rule-classes nil)
+(defthm toy-cell-type (equal (sil-toyp '(-2 (7 nil 9))) nil) :rule-classes nil)
+(defthm toy-read-scalar (equal (toy-scalar '(-2 (7 8 9))) -2) :rule-classes nil)
+(defthm toy-write-scalar (equal (update-toy-scalar 13 '(-2 (7 8 9))) '(13 (7 8 9)))
+  :rule-classes nil)
+(defthm toy-read-index (equal (toy-cellsi 1 '(-2 (7 8 9))) 8) :rule-classes nil)
+(defthm toy-write-index (equal (update-toy-cellsi 1 13 '(-2 (7 8 9))) '(-2 (7 13 9)))
+  :rule-classes nil)
+(defthm toy-read-negative (equal (toy-cellsi -1 '(-2 (7 8 9))) 7) :rule-classes nil)
+(defthm toy-write-noninteger (equal (update-toy-cellsi 3/2 5 '(-2 (7 8 9))) '(-2 (5 8 9)))
+  :rule-classes nil)
+(defthm toy-read-past-end (equal (toy-cellsi 4 '(-2 (7 8 9))) nil) :rule-classes nil)
+(defthm toy-write-past-end
+  (equal (update-toy-cellsi 4 5 '(-2 (7 8 9))) '(-2 (7 8 9 nil 5))) :rule-classes nil)
+(defthm toy-write-atom (equal (update-toy-cellsi "bad" 5 82) '(nil (5))) :rule-classes nil)
+(defthm toy-write-dotted (equal (update-toy-cellsi 0 5 '(-2 (7 . 8))) '(-2 (5 . 8)))
+  :rule-classes nil)
+(defthm toy-write-invalid-type (equal (sil-toyp (update-toy-cellsi 0 nil '(-2 (7 8 9)))) nil)
+  :rule-classes nil)
