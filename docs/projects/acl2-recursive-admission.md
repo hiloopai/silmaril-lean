@@ -110,6 +110,9 @@ provenance or diagnostics.
 
 ## Next step for X86-RUN
 
+The [C3 X86-RUN slice](acl2-x86-run.md) documents the implemented export and
+conditional admission against the pinned ACL2 world.
+
 1. Certify and include the pinned `machine/x86.lisp` and use the C1 world
    export to obtain the translated `X86ISA::X86-RUN`,
    `X86ISA::X86-FETCH-DECODE-EXECUTE`, and `X86ISA::X86-RUN-HALTED` terms.

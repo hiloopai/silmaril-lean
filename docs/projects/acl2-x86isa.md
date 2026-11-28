@@ -134,6 +134,9 @@ a property the book does not export.
 
 ## Checkable target and upstream evidence
 
+The [C3 X86-RUN slice](acl2-x86-run.md) reproduces the certified logical export
+for one declaration and binds the exported body and halted statement in Lean.
+
 1. Export the ordered declaration and constraint closure reachable from the
    translated machine step and run, including the generated dispatcher and
    stobj interface, with book/event origins and pinned input hashes. Expand
