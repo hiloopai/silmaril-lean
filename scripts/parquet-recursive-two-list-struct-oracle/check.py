@@ -166,7 +166,7 @@ def trace(rows, nullable, side, names=NAMES, *, optional_element=False):
     return [slot for row in rows for slot in entries(row)]
 
 
-def inspect(wire, schema, groups, *, checksums=True):
+def inspect(wire, schema, groups, *, checksums=True, versions=(0,)):
     expected_rows = [[{schema.field(0).name: row} for row in group] for group in groups]
     table = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert table.schema_arrow.equals(schema, check_metadata=True)
@@ -208,29 +208,46 @@ def inspect(wire, schema, groups, *, checksums=True):
         slots, rows, live = 0, 0, 0
         pages = []
         for at, header, body_at, body in FRAMES(wire, lo, hi):
-            assert header[1][1] == 0 and header[2][1] == header[3][1] == len(body)
+            version = header[1][1]
+            assert version in versions and header[2][1] == header[3][1] == len(body)
             assert (4 in header) == checksums
             crc = header[4][1] & 0xffffffff if checksums else None
             if checksums:
                 assert crc == zlib.crc32(body)
-            count, *encodings = [header[5][1][key][1] for key in range(1, 5)]
-            assert encodings == [0, 3, 3]
-            reps, rest = LEVEL(body, 2, count)
-            defs, suffix = LEVEL(rest, maximum, count)
+            before = slots, rows, live
+            if version == 3:
+                info = header[8][1]
+                count, nulls, page_rows, enc, dl, rl = (info[i][1] for i in range(1, 7))
+                assert enc == 0 and 0 <= rl and 0 <= dl and rl + dl <= len(body)
+                reps = V2["HYBRID"](body[:rl], 2, count)
+                defs = V2["HYBRID"](body[rl:rl+dl], maximum.bit_length(), count)
+                suffix = body[rl+dl:]
+                assert (not reps or reps[0] == 0) and reps.count(0) == page_rows
+                assert count - defs.count(maximum) == nulls
+                sections = body_at, body_at + rl, body_at + rl + dl, body_at + len(body)
+                live = 0
+            else:
+                count, *encodings = [header[5][1][key][1] for key in range(1, 5)]
+                assert encodings == [0, 3, 3]
+                reps, rest = LEVEL(body, 2, count)
+                defs, suffix = LEVEL(rest, maximum, count)
+                sections = (body_at, body_at + len(body) - len(rest),
+                            body_at + len(body) - len(suffix), body_at + len(body))
+            assert len(reps) == len(defs) == count
             physical = "<i" if widths[side] == 32 else "<q"
             assert len(suffix) == defs.count(maximum) * (widths[side] // 8)
             words = iter(word for word, in struct.iter_unpack(physical, suffix))
             page_trace = [(rep, definition, next(words) if definition == maximum else None)
                           for rep, definition in zip(reps, defs, strict=True)]
             assert page_trace == expected[slots:slots + count]
-            before = slots, rows, live
             for rep, definition, _ in page_trace:
                 reached = int(first_empty < definition) + int(second_empty < definition)
                 assert rep <= min(live, reached)
                 live = reached
                 rows += rep == 0
             slots += count
-            sections = body_at, body_at + len(body) - len(rest), body_at + len(body) - len(suffix), body_at + len(body)
+            if version == 3:
+                live = 0
             pages.append((at, body_at, crc, len(body), sections, before, (slots, rows, live), page_trace))
         assert slots == footer[5][1] == len(expected) and rows == len(groups[group])
         assert pages[-1][1] + pages[-1][3] == hi
@@ -254,7 +271,7 @@ def address(group, side):
 def point(wire, group, side, slot):
     remaining = slot
     for page, (at, header, _, _) in enumerate(frames_in(wire, group, side)):
-        count = header[5][1][1][1]
+        count = header[8 if header[1][1] == 3 else 5][1][1][1]
         if remaining < count:
             return f"⟨{address(group, side)}, {page}, {at}, {slot}⟩"
         remaining -= count
@@ -365,11 +382,13 @@ def verify(folder):
             code.append(f'  groupRefusal (← load folder "{label}") {group} {{}} ({wanted})')
 
     v2 = genuine["v2"]
-    (key, _, lo, hi), = [item for item in V2["columns"](v2) if item[0] == (0, 0)]
-    at, header, _, _ = frames_in(v2, *key)[0]
-    info = header[8][1]
-    fields = ", ".join(str(info[k][1]) for k in range(1, 7))
-    flag = str(info.get(7, (TType.BOOL, True))[1]).lower()
+    ceiling, chunks = inspect(v2, *positives["native_1111"][:2], versions=(3,))
+    for (group, side), ((lo, hi), pages) in chunks.items():
+        headers = [header for _, header, _, _ in frames_in(v2, group, side)]
+        terms = lst(page_term(page, WIDTHS[side], header) for page, header in zip(pages, headers, strict=True))
+        tag = ".left" if side == 0 else ".right"
+        code.append(f'  checkColumn (← load folder "v2") {group} {tag} {path_term(PATH + (NAMES[side],))} '
+                    f'{ceiling} ⟨{lo}, {hi}⟩ {terms}')
     span, _ = inspect(genuine["native_1111"], *positives["native_1111"][:2])[1][0, 0]
     limit_span = triple(span)
     code.extend([
@@ -377,8 +396,6 @@ def verify(folder):
         '  let source ← take (openFile {} (← load folder "native_1111"))',
         '  refuse (.depth 6) (compile { maxSchemaDepth := 6 } source.snapshot)',
         f'  groupRefusal (← load folder "snappy") 0 {{}} (.binding (.column {address(0, 0)} (.codec 1)))',
-        f'  groupRefusal (← load folder "v2") 0 {{}} (.chunk (.chunk {address(0, 0)} ⟨{lo}, {hi}⟩ '
-        f'(.pageVersion 0 {at} (.dataV2 ⟨{fields}, {flag}⟩))))',
         f'  groupRefusal (← load folder "native_1111") 0 {{ maxSlots := 0 }} '
         f'(.chunk (.chunk {address(0, 0)} {limit_span} .slotLimit))',
         f'  groupRefusal (← load folder "native_1111") 0 {{ maxRows := 0 }} '
@@ -388,7 +405,7 @@ def verify(folder):
     driver.write_text("\n".join(code) + "\n", encoding="utf-8")
     subprocess.run(["lake", "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
                     "--run", str(driver), str(folder)], cwd=ROOT, check=True)
-    print(f"Checked {len(positives)} native inputs, {total} original V1 pages and {len(controls) + 6} typed refusals")
+    print(f"Checked {len(positives)} native inputs, {total} original V1 pages and {len(controls) + 5} typed refusals")
     return {"genuine_parquet": fingerprints(genuine), "authored_parquet": fingerprints(authored)}
 
 

@@ -11,14 +11,18 @@ Struct. An optional Struct adds one shared definition step.
 [Single-leaf LIST paths](parquet-recursive-list-path-v1.md) · [One shared LIST ancestor](parquet-recursive-list-struct.md)
 
 The reader binds exactly two positional chunks in each original row
-group. This profile reads unindexed PLAIN UNCOMPRESSED V1. Each
-column keeps the existing byte, page, row and slot bounds. The reader
-checks the selected chunk's original frame versions before decoding
-the payloads. It reuses the LIST-path reader's Compact framing, stored
-CRC, exact prefixed Hybrid spans, signed words and both header-inclusive
-totals. Its depth-two live-ancestry scan permits distinct legal V1
-continuations on the two columns. The wrapper thresholds derive from
-the checked nullable declarations.
+group. This profile reads unindexed PLAIN UNCOMPRESSED V1 and V2.
+Each column keeps the existing byte, page, row and slot bounds and
+reuses the LIST-path reader's Compact framing, stored CRC, exact
+Hybrid and signed word extents, and both header-inclusive totals.
+V1 level sections have length prefixes and may continue live ancestry
+across pages. V2 uses the original raw sections selected by the header's
+repetition and definition lengths. It independently checks slot, row and
+null counts and closes both boundaries, even for a zero-slot page.
+The two columns can use different page versions and row cuts.
+`Reader.ColumnWire.v2_page` recovers the original frame at its absolute
+header offset and exposes the LIST-path V2 wire witness. The native
+writer continues to emit V1.
 
 The topology check compares the complete addressed traces in slot
 order. Repetition distinguishes new rows, new inner LISTs and
@@ -58,7 +62,8 @@ ancestry cursors, exact child slot sequences and reconstructed rows
 across two groups. Four authored topology refusals keep each column
 independently readable. Further controls exercise a closed inner
 continuation, row and slot caps, the physical depth gate, and typed
-admission of the required Struct, codec and V1 profile. The oracle checks eleven typed refusals.
+schema and codec admission. The V2 probe now verifies successful
+reconstruction from its original V2 pages.
 [Producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-oracle/fixtures.json)
 
 ~~~sh
@@ -79,4 +84,22 @@ completed group prefix under full and empty Events.
 lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc.Thms
 lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-optional-element-oracle/Axioms.lean
 python3 scripts/parquet-recursive-two-list-struct-optional-element-oracle/check.py
+~~~
+
+The V2 oracle uses genuine PyArrow inputs for all sixteen LIST and
+child nullability choices with each Struct nullability. Labeled
+reframes exercise different V2 cuts, mixed V1/V2 pages with legal V1
+continuations, and a physical zero-row V2 group. Independent inspection
+checks original CRC, raw level sections, counters and signed slots for
+both children. PyArrow and raw IPC inspection verify native Events
+observations through the strict IPC bridge under both selections.
+The refusal cases check late shared Struct presence, illegal boundary
+transitions, V2 counters and extents, CRC, codec and dictionary admission,
+and output-budget precedence.
+[V2 producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-v2-oracle/fixtures.json)
+
+~~~sh
+lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-v2-oracle/Axioms.lean
+python3 scripts/parquet-recursive-two-list-struct-v2-oracle/check.py
 ~~~

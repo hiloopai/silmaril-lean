@@ -25,21 +25,6 @@ private theorem from_mapError {α ε δ : Type} {first : Except ε α} {wrap : �
   | error => contradiction
   | ok => exact congrArg Except.ok (Except.ok.inj read)
 
-private theorem v1_frames {carrier : RecursiveSchema.ListPath.Chunk.Carrier} {frames : List Page.Frame}
-    {ordinal : Nat} (checked : requireV1 carrier frames ordinal = .ok ()) :
-    ∀ frame ∈ frames, ∃ header, frame.value.kind = .dataV1 header := by
-  induction frames generalizing ordinal with
-  | nil => simp
-  | cons first rest ih =>
-    simp only [requireV1] at checked
-    split at checked
-    · rename_i header found
-      intro frame member
-      rcases List.mem_cons.mp member with rfl | tail
-      · exact ⟨header, found⟩
-      · exact ih checked frame tail
-    · contradiction
-
 public theorem path_levels (plan : Plan) (side : Side) :
     (plan.path side).shape.repetitions = 2 ∧
       (plan.path side).shape.definitions = plan.sharedDefinition + (plan.child side).1.nullable.toNat ∧
@@ -65,13 +50,51 @@ public theorem optional_step (plan : Plan) (side : Side) (optional : plan.elemen
       RecursiveSchema.Repeated.Context.enterList, RecursiveSchema.Repeated.Context.enter,
       RecursiveSchema.Repeated.Context.role, optional, outer, inner, child]
 
+private theorem prefix_plain {limits : Limits} {carrier : RecursiveSchema.ListPath.Chunk.Carrier}
+    {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary} {frames data : List Page.Frame}
+    (leading : RecursiveSchema.ListPath.Chunk.PrefixWire limits carrier dictionary frames data)
+    (absent : carrier.metadata.dictionaryPageOffset = none) : dictionary = none := by
+  cases leading with
+  | plain => rfl
+  | dictionary _ offset =>
+    rw [absent] at offset
+    contradiction
+
 public theorem column_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
     {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
     {out : RecursiveSchema.ListPath.Chunk.Observation} (read : readColumn limits binding = .ok out) :
     ColumnWire limits binding out := by
-  obtain ⟨wire, version⟩ := RecursiveSchema.ListPath.Chunk.readCarrier_wire read
-  exact ⟨wire, v1_frames version⟩
+  have wire := (RecursiveSchema.ListPath.Chunk.readCarrier_wire read).1
+  exact ⟨wire, prefix_plain wire.leading binding.offsets.1⟩
+
+public theorem column_v2_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
+    {out : RecursiveSchema.ListPath.Chunk.Observation} {page : RecursiveSchema.ListPath.Chunk.ObservedPage}
+    {info : Page.DataV2} (wire : ColumnWire limits binding out) (member : page ∈ out.pages)
+    (version : page.frame.value.kind = .dataV2 info) :
+    let carrier := carrierOf binding
+    Page.readPage limits.framing carrier.source carrier.span page.frame.header.start = .ok page.frame ∧
+    RecursiveSchema.ListPath.Chunk.V2PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
+      carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
+      .uncompressed .plain := by
+  have header := wire.original.originalHeader (frame := page.frame) (by
+    simp only [RecursiveSchema.ListPath.Chunk.Observation.frames, wire.dictionaryFree, Option.toList_none,
+      List.map_nil, List.nil_append]
+    exact List.mem_map_of_mem member)
+  refine ⟨header, ?_⟩
+  have pageWire := wire.original.checked.page_of_mem member
+  rw [wire.dictionaryFree] at pageWire
+  cases pageWire with
+  | v1 _ v1 =>
+    obtain ⟨_, _, _, _, kind, _⟩ := v1.original
+    rw [version] at kind
+    contradiction
+  | v2 encoding v2 =>
+    cases encoding with
+    | plain => exact v2
+    | dictionary found => contradiction
 
 public theorem group_checked {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {limits : Limits} {out : Observation}

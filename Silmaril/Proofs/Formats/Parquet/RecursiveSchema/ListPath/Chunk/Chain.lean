@@ -212,12 +212,24 @@ private theorem decodeFrames_failure {limits : Limits} {carrier : Carrier} {fram
       · simp only [List.length_cons]
         omega
 
-public theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
-    {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
-    {limits : Limits} {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat} {start : State} {cause : PageCause}
-    (refused : Parquet.RecursiveSchema.ListPath.Chunk.read limits binding = .error (.page address ordinal byte start cause)) :
-    PageFailureWire limits (carrierOf binding) address ordinal byte start cause := by
-  unfold Parquet.RecursiveSchema.ListPath.Chunk.read readCarrier at refused
+public theorem chain_page_of_mem {limits : Limits} {carrier : Carrier} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
+    {start stop : State} {pages : List ObservedPage} {page : ObservedPage}
+    (chain : ChainWire limits carrier dictionary start stop pages) (member : page ∈ pages) :
+    DataPageWire limits carrier.plan (wrappers carrier.plan) carrier.source page.frame page.start
+      (carrier.slots - page.start.slots) carrier.rows page.decoded carrier.codec dictionary := by
+  induction chain with
+  | nil => simp at member
+  | cons original _ ih =>
+    rcases List.mem_cons.mp member with rfl | tail
+    · exact original
+    · exact ih tail
+
+public theorem readCarrier_page_failure {limits : Limits} {carrier : Carrier}
+    {encoding : ColumnEncoding carrier.metadata} {address : RecursiveSchema.Chunk.Address}
+    {ordinal byte : Nat} {start : State} {cause : PageCause}
+    (refused : readCarrier limits carrier encoding (fun _ => .ok ()) = .error (.page address ordinal byte start cause)) :
+    PageFailureWire limits carrier address ordinal byte start cause := by
+  unfold readCarrier at refused
   dsimp only at refused
   split at refused
   · simp at refused
@@ -225,7 +237,6 @@ public theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Sn
   · simp at refused
   split at refused
   · simp at refused
-  let carrier := carrierOf binding
   change ((Page.readChunk limits.framing carrier.source carrier.span).mapError
     (Error.chunk carrier.address carrier.span ∘ ChunkCause.framing) >>= _) = _ at refused
   cases parsed : Page.readChunk limits.framing carrier.source carrier.span with
@@ -233,8 +244,8 @@ public theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Sn
   | ok frames =>
     simp only [parsed, Except.mapError, Bind.bind, Except.bind] at refused
     let wrap := fun cause : RecursiveSchema.Repeated.Chunk.DictionaryPrefixError => Error.dictionary carrier.address cause.ordinal cause.byte cause.cause
-    change ((readPrefix limits carrier binding.encodings frames).mapError wrap >>= _) = _ at refused
-    cases prefixRead : readPrefix limits carrier binding.encodings frames with
+    change ((readPrefix limits carrier encoding frames).mapError wrap >>= _) = _ at refused
+    cases prefixRead : readPrefix limits carrier encoding frames with
     | error error => simp [prefixRead, wrap, Except.mapError, Bind.bind, Except.bind] at refused
     | ok leadingResult =>
       obtain ⟨dictionary, data⟩ := leadingResult
