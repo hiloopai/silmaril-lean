@@ -6,7 +6,7 @@ and an ordered list of logical Arrow batches. Each field may be optional
 or required. The writer preserves names and nullability, the signed width,
 and the distinction between null lists, empty lists, null leaves, and
 present values.
-[Logical row profile](parquet-recursive-two-list-rows.md)
+[Logical row profile](parquet-recursive-two-list-rows.md) · [Arrow IPC importer](parquet-recursive-two-list-from-ipc.md)
 
 Each batch becomes one row group with one unindexed UNCOMPRESSED PLAIN
 Data Page V1. The page holds complete rows and starts with repetition zero
