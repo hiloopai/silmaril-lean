@@ -24,6 +24,7 @@ def main():
     mode.add_argument("--object-order", action="store_true", help="export ACL2 order and record recognition")
     mode.add_argument("--environment", action="store_true", help="export the logical environment recognizer")
     mode.add_argument("--tlb", action="store_true", help="export the logical TLB recognizer and arithmetic")
+    mode.add_argument("--pure-helpers", action="store_true", help="export logical MV-NTH, EQL and NOT")
     args = parser.parse_args()
     checkout = args.checkout.resolve()
     commit, tree = subprocess.check_output(
@@ -79,6 +80,12 @@ def main():
                          digest(books / "centaur/bitops/part-select.lisp"),
                          digest(books / "centaur/fty/bitstruct.lisp")]
             driver = "c3-export-tlb"
+        if args.pure_helpers:
+            before_exit = (tools / "pure-helper-samples.lisp").read_text()
+            support = (f'  (load {lisp_string(tools / "status-accessors.lisp")})\n'
+                       f'  (load {lisp_string(tools / "pure-helpers.lisp")})\n')
+            operands += [digest(checkout / "axioms.lisp")]
+            driver = "c3-export-pure-helpers"
         raw_arguments = " ".join(map(lisp_string, operands))
         commands = (
             "(set-ld-error-action '(:exit 1) state)\n"
