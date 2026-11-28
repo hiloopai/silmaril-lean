@@ -49,16 +49,22 @@ abbrev Body.Decreases (M : Model S) (rank : Rank M R) (caller : Nat) (env : Env 
     (body : Body S R n) : Prop :=
   body.CallsSatisfy M env (fun state => rank state < caller)
 
-/-- The evaluator can only invoke the recursive continuation at a strictly smaller state. -/
-def Body.eval (M : Model S) (rank : Rank M R) (caller : Nat) (env : Env M n)
-    (recur : ∀ state, rank state < caller → M.primitives.Value) :
-    (body : Body S R n) → body.Decreases M rank caller env → M.primitives.Value
+/-- The evaluator can invoke the continuation only at calls satisfying its precondition. -/
+def Body.evalWith (M : Model S) (env : Env M n) {p : Call R M.primitives.Value → Prop}
+    (recur : ∀ state, p state → M.primitives.Value) :
+    (body : Body S R n) → body.CallsSatisfy M env p → M.primitives.Value
   | .base term, _ => term.eval M env
   | .call f args, h => recur (Call.ofTerms M env f args) h
-  | .apply context args, h => context.eval M (fun i => eval M rank caller env recur (args i) (h i))
+  | .apply context args, h => context.eval M (fun i => evalWith M env recur (args i) (h i))
   | .ite test yes no, h =>
-      if hn : test.eval M env = M.primitives.nil then eval M rank caller env recur no (h.2 hn)
-      else eval M rank caller env recur yes (h.1 hn)
+      if hn : test.eval M env = M.primitives.nil then evalWith M env recur no (h.2 hn)
+      else evalWith M env recur yes (h.1 hn)
+
+/-- The natural-rank evaluator invokes the continuation only at strictly smaller states. -/
+def Body.eval (M : Model S) (rank : Rank M R) (caller : Nat) (env : Env M n)
+    (recur : ∀ state, rank state < caller → M.primitives.Value)
+    (body : Body S R n) (h : body.Decreases M rank caller env) : M.primitives.Value :=
+  body.evalWith M env recur h
 
 /-- A block of simultaneously declared, fresh functions and their typed bodies. -/
 structure Block (S : Signature) where
@@ -82,24 +88,42 @@ def symbol (B : Block S) {k : Nat} (f : B.members.Symbol k) : B.signature.Symbol
   ⟨f.val, by simp [signature, f.property]⟩
 
 /-- Statewise evidence for the actual definition bodies, independent of source admission and guards. -/
-def Terminates (B : Block S) (M : Model S) (rank : Rank M B.members) : Prop :=
-  ∀ state, (B.body state.symbol).Decreases M rank (rank state) state.args
+def TerminatesBy (B : Block S) (M : Model S)
+    (lt : Call B.members M.primitives.Value → Call B.members M.primitives.Value → Prop) : Prop :=
+  ∀ state, (B.body state.symbol).CallsSatisfy M state.args (fun next => lt next state)
 
 /-- Interpret all members together by well-founded recursion on their common state space. -/
-def interpret (B : Block S) (M : Model S) (rank : Rank M B.members)
-    (h : B.Terminates M rank) : Call B.members M.primitives.Value → M.primitives.Value :=
-  (measure rank).wf.fix fun state recur =>
-    (B.body state.symbol).eval M rank (rank state) state.args recur (h state)
+def interpretBy (B : Block S) (M : Model S)
+    {lt : Call B.members M.primitives.Value → Call B.members M.primitives.Value → Prop}
+    (wf : WellFounded lt) (h : B.TerminatesBy M lt) :
+    Call B.members M.primitives.Value → M.primitives.Value :=
+  wf.fix fun state recur =>
+    (B.body state.symbol).evalWith M state.args recur (h state)
 
-/-- Extend the given model with the total recursive interpretations. -/
-def model (B : Block S) (M : Model S) (rank : Rank M B.members)
-    (h : B.Terminates M rank) : Model B.signature where
+/-- Extend the old model using the total interpretations computed by the block. -/
+def modelBy (B : Block S) (M : Model S)
+    {lt : Call B.members M.primitives.Value → Call B.members M.primitives.Value → Prop}
+    (wf : WellFounded lt) (h : B.TerminatesBy M lt) : Model B.signature where
   primitives := M.primitives
   interpret := fun {k} f args =>
-    if hm : B.members.arity f.val = some k then B.interpret M rank h ⟨k, ⟨f.val, hm⟩, args⟩
+    if hm : B.members.arity f.val = some k then B.interpretBy M wf h ⟨k, ⟨f.val, hm⟩, args⟩
     else M.interpret ⟨f.val, by
       have hf := f.property
       cases he : B.members.arity f.val <;> simp_all [signature]⟩ args
+
+/-- Statewise evidence for a strictly decreasing natural rank. -/
+def Terminates (B : Block S) (M : Model S) (rank : Rank M B.members) : Prop :=
+  B.TerminatesBy M (fun next state => rank next < rank state)
+
+/-- Interpret all members together by recursion on their common natural rank. -/
+def interpret (B : Block S) (M : Model S) (rank : Rank M B.members)
+    (h : B.Terminates M rank) : Call B.members M.primitives.Value → M.primitives.Value :=
+  B.interpretBy M (measure rank).wf h
+
+/-- Extend the given model with the natural-rank recursive interpretations. -/
+def model (B : Block S) (M : Model S) (rank : Rank M B.members)
+    (h : B.Terminates M rank) : Model B.signature :=
+  B.modelBy M (measure rank).wf h
 
 end Block
 

@@ -21,6 +21,8 @@ calls selected by the body and its branch tests. These results require neither
 host admission nor any guard hypothesis. Nonrecursive dependencies come from
 the supplied old model.
 
+For the default ACL2 ordinal relation, see [ordinal admission](acl2-ordinal-admission.md).
+
 ## Certificate and value-model interface
 
 The first certificate rule checks a recursive call whose callee's measured
