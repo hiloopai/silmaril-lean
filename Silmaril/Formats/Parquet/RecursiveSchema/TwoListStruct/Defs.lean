@@ -40,6 +40,15 @@ def Plan.elementContext (plan : Plan) : Repeated.Context := plan.innerContext.en
 
 def Plan.child (plan : Plan) (side : Side) : Site × Kind := side.select plan.left plan.right
 
+def Plan.elementField (plan : Plan) : Arrow.RecursiveSchema.Field :=
+  .node (some plan.element.name) false .struct
+    [(ListPath.Shape.signed plan.left.1 plan.left.2).arrow,
+      (ListPath.Shape.signed plan.right.1 plan.right.2).arrow]
+
+def Plan.arrow (plan : Plan) : Arrow.RecursiveSchema.Schema :=
+  ⟨[.node (some plan.outer.site.name) plan.outer.site.nullable .list
+      [.node (some plan.inner.site.name) plan.inner.site.nullable .list [plan.elementField]]]⟩
+
 /-- A required Struct contributes no definition or repetition increment.
 The signed site keeps its original path through that Struct. -/
 def Plan.path (plan : Plan) (side : Side) : ListPath.Plan :=

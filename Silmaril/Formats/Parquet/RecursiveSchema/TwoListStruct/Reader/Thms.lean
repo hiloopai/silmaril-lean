@@ -5,7 +5,7 @@ import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Read
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader
 
-open Arrow.RecursiveSchema.Batch.Rows (Observation)
+open Arrow.RecursiveSchema.Batch.Rows (Observation RowFits)
 
 public section
 
@@ -30,7 +30,13 @@ projects each child back to its exact original signed slot trace. -/
 theorem readGroup_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {limits : Limits} {out : Observation}
     (read : readGroup limits schema group = .ok out) : GroupWire limits schema group out :=
-  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.group_wire read
+  (Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.group_checked read).1
+
+theorem readGroup_typed {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {limits : Limits} {out : Observation}
+    (read : readGroup limits schema group = .ok out) :
+    ∀ row ∈ out.rows, RowFits schema.plan.arrow.fields row :=
+  (Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.group_checked read).2
 
 /-- A topology refusal has two independently checked original chunks
 and reaches the first unmatched slot after their common prefix. -/

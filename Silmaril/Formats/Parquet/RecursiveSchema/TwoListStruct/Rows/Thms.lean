@@ -2,10 +2,11 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.Defs
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.Alignment
+import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.Typing
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows
 
-open Arrow.RecursiveSchema.Batch.Rows (Row)
+open Arrow.RecursiveSchema.Batch.Rows (Row RowFits)
 
 public section
 
@@ -35,6 +36,13 @@ theorem checkTopology_failure {ceiling start : Nat} {left right : RecursiveSchem
 theorem mergeRows_wire {lhs rhs out : List Row} (read : mergeRows lhs rhs = some out) :
     ∀ side, projectRows side out = some (side.select lhs rhs) :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.mergeRows_wire read
+
+theorem mergeRows_typed {plan : Plan} {lhs rhs out : List Row}
+    (merged : mergeRows lhs rhs = some out)
+    (first : ∀ row ∈ lhs, RowFits (plan.path .left).arrow.fields row)
+    (other : ∀ row ∈ rhs, RowFits (plan.path .right).arrow.fields row) :
+    ∀ row ∈ out, RowFits plan.arrow.fields row :=
+  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.mergeRows_typed merged first other
 
 theorem projectRows_count {side : Side} {rows out : List Row}
     (read : projectRows side rows = some out) : out.length = rows.length :=
