@@ -110,6 +110,41 @@ then use the renamed append call as the induction hint for the renamed theorem.
 Admission output, world properties, traces, and native book certificates are
 provenance or diagnostics.
 
+## Connecting admitted blocks to institutions and books
+
+`Silmaril.Logic.ACL2.Recursive.Institution.Thms` puts a block in the existing
+`Presentation`. It uses `Body.toTerm` for the new bodies and translates the
+old ones along `Block.inclusion`. The resulting signature arrow works with
+`inst`, `presentedInst`, `forgetDefinitions`, and the existing syntactic
+`pi`. It preserves the resolved package, spelling, and arity of each old
+symbol. The presented equations are exactly the translated old equations and
+the new members' equations.
+
+`Block.worldExtension` translates the prior theorem table and composes with
+`Book.extension`. It requires the new names to be fresh for the theorem table
+as well as the function table. A checked input theorem table stays checked.
+The recursive block is represented by this world extension. The source-facing
+`Book` events still describe nonrecursive definitions and checked theorem
+events.
+
+The new equations are hypotheses of π-derivations. Separately,
+`Block.modelBy_models` proves that well-founded evaluation satisfies the whole
+extended world, and `Block.modelBy_reduct` recovers the input model. Satisfaction
+of translated old sentences follows by `Sentence.holds_map`. In
+`Block.entails_iff`, reflecting entailment back to the input world uses expansion
+for **every** input-world model. A termination proof on one carrier gives that
+model's expansion.
+
+The regression transcribes pinned `ACL2::TRUE-LISTP` over standard
+`Object`. It checks the positive `CONSP`/CDR certificate and embeds
+`ACL2-COUNT` as a finite ordinal for default `O<`. It uses the admitted
+equation to prove that a singleton is a true list, checks both ordinary
+model reducts, and includes a following theorem book. [Pinned definition][list]
+
+```sh
+lake build --wfail +Silmaril.Logic.ACL2.Recursive.Institution.Tests
+```
+
 ## Next step for X86-RUN
 
 The [C3 X86-RUN slice](acl2-x86-run.md) documents the implemented export and
