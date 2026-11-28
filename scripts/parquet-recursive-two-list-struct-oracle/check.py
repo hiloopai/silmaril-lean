@@ -166,7 +166,7 @@ def trace(rows, nullable, side, names=NAMES, *, optional_element=False):
     return [slot for row in rows for slot in entries(row)]
 
 
-def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block=None):
+def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block=None, dictionaries=None):
     expected_rows = [[{schema.field(0).name: row} for row in group] for group in groups]
     table = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert table.schema_arrow.equals(schema, check_metadata=True)
@@ -199,10 +199,15 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block
 
     output = {}
     for (group, side), footer, lo, hi in V2["columns"](wire):
-        assert set(THRIFT["list_field"](footer, 2)) == {0, 3}
+        dictionary = 11 in footer
+        tags = {0, 3, 8} if dictionary else {0, 3}
         codec = footer[4][1]
+        assert set(THRIFT["list_field"](footer, 2)) == tags
         assert codec == 0 or (codec in (1, 2, 6, 7) and decode_block is not None)
-        assert 11 not in footer and footer[9][1] == lo
+        if dictionary:
+            assert dictionaries is not None and codec == 0 and footer[11][1] == lo
+        else:
+            assert footer[9][1] == lo
         assert footer[7][1] == hi - lo
         assert [piece.decode() for piece in THRIFT["list_field"](footer, 3)] == list(path + (names[side],))
         maximum = shared + nullable[2 + side]
@@ -210,20 +215,31 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block
         slots, rows, live = 0, 0, 0
         raw_total = 0
         pages = []
+        entries = None
+        physical = "<i" if widths[side] == 32 else "<q"
         for at, header, body_at, body in FRAMES(wire, lo, hi):
             version = header[1][1]
             raw_size, stored_size = header[2][1], header[3][1]
-            assert version in versions and stored_size == len(body)
+            assert stored_size == len(body)
             raw_total += body_at - at + raw_size
             assert (4 in header) == checksums
             crc = header[4][1] & 0xffffffff if checksums else None
             if checksums:
                 assert crc == zlib.crc32(body)
+            if version == 2:
+                assert dictionary and at == lo and entries is None
+                assert raw_size == stored_size and footer[9][1] == body_at + stored_size
+                entries = [word for word, in struct.iter_unpack(physical, body)]
+                info = header[7][1]
+                assert info[1][1] == len(entries) and info[2][1] == 0
+                dictionaries[group, side] = (at, header, body_at, body, entries)
+                continue
+            assert version in versions
             before = slots, rows, live
             if version == 3:
                 info = header[8][1]
                 count, nulls, page_rows, enc, dl, rl = (info[i][1] for i in range(1, 7))
-                assert enc == 0 and 0 <= rl and 0 <= dl and rl + dl <= len(body)
+                assert 0 <= rl and 0 <= dl and rl + dl <= len(body)
                 reps = V2["HYBRID"](body[:rl], 2, count)
                 defs = V2["HYBRID"](body[rl:rl+dl], maximum.bit_length(), count)
                 suffix = body[rl+dl:]
@@ -235,8 +251,8 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block
                 sections = body_at, body_at + rl, body_at + rl + dl, body_at + len(body)
                 live = 0
             else:
-                count, *encodings = [header[5][1][key][1] for key in range(1, 5)]
-                assert encodings == [0, 3, 3]
+                count, enc, definition, repetition = (header[5][1][key][1] for key in range(1, 5))
+                assert (definition, repetition) == (3, 3)
                 plain = decode_block(codec, body, raw_size) if codec != 0 else body
                 assert len(plain) == raw_size
                 reps, rest = LEVEL(plain, 2, count)
@@ -244,9 +260,15 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block
                 origin = 0 if codec != 0 else body_at
                 sections = origin, origin + len(plain) - len(rest), origin + len(plain) - len(suffix), origin + len(plain)
             assert len(reps) == len(defs) == count
-            physical = "<i" if widths[side] == 32 else "<q"
-            assert len(suffix) == defs.count(maximum) * (widths[side] // 8)
-            words = iter(word for word, in struct.iter_unpack(physical, suffix))
+            present = defs.count(maximum)
+            if enc == 8:
+                assert entries is not None and suffix and suffix[0] <= 32
+                indices = V2["HYBRID"](suffix[1:], suffix[0], present)
+                assert len(indices) == present and all(index < len(entries) for index in indices)
+                words = iter(entries[index] for index in indices)
+            else:
+                assert enc == 0 and len(suffix) == present * (widths[side] // 8)
+                words = iter(word for word, in struct.iter_unpack(physical, suffix))
             page_trace = [(rep, definition, next(words) if definition == maximum else None)
                           for rep, definition in zip(reps, defs, strict=True)]
             assert page_trace == expected[slots:slots + count]
@@ -260,6 +282,7 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block
                 live = 0
             pages.append((at, body_at, crc, len(body), sections, before, (slots, rows, live), page_trace))
         assert slots == footer[5][1] == len(expected) and rows == len(groups[group])
+        assert (entries is not None) == dictionary and pages[0][0] == footer[9][1]
         assert pages[-1][1] + pages[-1][3] == hi and raw_total == footer[6][1]
         output[group, side] = (lo, hi), pages
     assert len(output) == 2 * len(groups)
@@ -281,6 +304,8 @@ def address(group, side):
 def point(wire, group, side, slot):
     remaining = slot
     for page, (at, header, _, _) in enumerate(frames_in(wire, group, side)):
+        if header[1][1] == 2:
+            continue
         count = header[8 if header[1][1] == 3 else 5][1][1][1]
         if remaining < count:
             return f"⟨{address(group, side)}, {page}, {at}, {slot}⟩"

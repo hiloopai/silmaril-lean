@@ -222,13 +222,9 @@ def verify(folder):
     for label, error in [("late_presence", presence), *refusals]:
         commands.append(f'  groupRefusal (← load folder "{label}") 1 {{}} ({error})')
         commands.append(f'  sourceFailure (← load folder "{label}") {prefix} (.group 1 ({error}))')
-    addr = NATIVE["address"](0, 0)
     batches = IPC["batches_term"](schema, logical)
-    commands.append(f'  checkRows (← load folder "compressed") {batches}')
-    footer = THRIFT["column_metadata"](NATIVE["metadata"](controls["dictionary"]), 0, 0)
-    encodings = lst(map(str, THRIFT["list_field"](footer, 2)))
-    commands.append(f'  groupRefusal (← load folder "dictionary") 0 {{}} '
-                    f'(.binding (.column {addr} (.encodings {encodings})))')
+    for label in ("compressed", "dictionary"):
+        commands.append(f'  checkRows (← load folder "{label}") {batches}')
     for selection in ("field", "empty"):
         commands.append(f'  writerFailure (← load folder "physical_empty") .{selection} '
                         '{ schema.ipc.batches := 2 } (.batchLimit 3 2)')
@@ -248,7 +244,7 @@ def verify(folder):
         for label in ("native_v1", "independent_v2", "mixed_versions"):
             assert ipc[f"{label}_{selection}"] == want
     print(f"Checked {len(positives)} accepted sources, {v1_pages} original V1 and {v2_pages} original V2 pages, "
-          f"{len(ipc)} exact IPC streams and {len(refusals) + 4} typed controls")
+          f"{len(ipc)} exact IPC streams and {len(refusals) + 3} typed controls")
     pins = NATIVE["fingerprints"]
     return {key: pins(data) for key, data in {
         "genuine_parquet": sources, "authored_parquet": authored, "genuine_probes": controls, "lean_ipc": ipc,

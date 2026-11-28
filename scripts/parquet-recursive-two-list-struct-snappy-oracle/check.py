@@ -40,13 +40,13 @@ private def checkPayloads (file : Bytes) (group : Nat) (side : Side) (codec : Re
     throw (IO.userError "original column codec, page count or footer totals differ")
   for (frame, stored, plain) in observed.frames.zip bytes do
     let expanded ← match frame.value.kind with
-      | .dataV1 _ => take (readV1Body limits.payload codec.column file frame)
+      | .dataV1 _ | .dictionary _ => take (readV1Body limits.payload codec.column file frame)
       | .dataV2 info => do
         let some spans := frame.v2Spans | throw (IO.userError "invalid original V2 spans")
         let width := RecursiveSchema.Chunk.wordWidth (source.schema.plan.child side).2
         take (readV2SuffixWith limits.payload codec.column frame info
           (bytesAt file spans.values) (some ((info.numValues - info.numNulls) * width)))
-      | _ => throw (IO.userError "expected a data frame")
+      | .skipped _ => throw (IO.userError "unexpected skipped frame")
     unless (bytesAt file frame.payload).toList == stored.toList && expanded.toList == plain.toList do
       throw (IO.userError "original stored or decoded payload bytes differ")
 
@@ -90,7 +90,7 @@ def decoded(header, stored, codec, decode_block):
     if codec != 0:
         return frame_bytes(header, stored, decode=lambda body, size: decode_block(codec, body, size))
     assert len(stored) == header[2][1]
-    return stored[level_bytes(header):]
+    return stored[level_bytes(header):] if header[1][1] == 3 else stored
 
 
 def fixtures():
@@ -202,11 +202,11 @@ def bytes_term(data):
     return f"(KBytes.leaf {len(data)} {int.from_bytes(data, 'little')})"
 
 
-def source_commands(label, schema, groups, wire, decode_block, *, checksums=True, limits="{}"):
+def source_commands(label, schema, groups, wire, decode_block, *, checksums=True, limits="{}", dictionaries=None):
     commands = []
     counts = {"v1": 0, "v2": 0, "v2_raw_words": 0}
     ceiling, columns = NATIVE["inspect"](wire, schema, groups, versions=(0, 3),
-                                         checksums=checksums, decode_block=decode_block)
+                                         checksums=checksums, decode_block=decode_block, dictionaries=dictionaries)
     logical = EVENTS["pyarrow_groups"](wire, schema, groups)
     outer = schema.field(0)
     inner = outer.type.value_field
@@ -217,7 +217,8 @@ def source_commands(label, schema, groups, wire, decode_block, *, checksums=True
         codec = column_codec(wire, (group, side))
         tag = ".left" if side == 0 else ".right"
         path = [outer.name, "list", inner.name, "list", element.name, element.type[side].name]
-        terms = lst(page_term(page, width, frame[1], codec) for page, frame in zip(pages, frames, strict=True))
+        data_frames = (frame for frame in frames if frame[1][1][1] != 2)
+        terms = lst(page_term(page, width, frame[1], codec) for page, frame in zip(pages, data_frames, strict=True))
         commands.append(f'  checkColumn (← load folder "{label}") {group} {tag} {NATIVE["path_term"](path)} '
                         f'{ceiling} ⟨{lo}, {hi}⟩ {terms}')
         pairs = []
@@ -226,6 +227,8 @@ def source_commands(label, schema, groups, wire, decode_block, *, checksums=True
             plain = decoded(header, stored, codec, decode_block)
             pairs.append(f"({bytes_term(stored)}, {bytes_term(plain)})")
             raw_total += body_at - at + header[2][1]
+            if header[1][1] == 2:
+                continue
             v2 = header[1][1] == 3
             counts["v2" if v2 else "v1"] += 1
             if v2 and codec != 0 and not header[8][1].get(7, (None, True))[1] and plain:

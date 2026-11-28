@@ -165,14 +165,13 @@ public theorem dictionary_anchors {limits : Limits} {carrier : Carrier} {observe
     have header := Page.readChunk_readPage wire.framed table.frame (by simp [originalFrames])
     exact ⟨first, atHead, start ▸ header, start, next, start.symm ▸ offset, next.symm ▸ dataOffset⟩
 
-public theorem dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
-    {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
-    {limits : Limits} {observed : Observation} {table : RecursiveSchema.Repeated.Chunk.Dictionary}
-    (data : RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId binding.column.metadata.codec = some binding.codec.column)
-    (wire : Wire limits (carrierOf binding) observed) (found : observed.dictionary = some table) :
-    RecursiveSchema.Repeated.Chunk.DictionaryCodec.ofId binding.column.metadata.codec = some table.codec ∧
-      table.codec.column = binding.codec.column ∧
-      RecursiveSchema.Repeated.Chunk.DictionaryContentsWire limits.payload schema.plan.shape.leaf.2 snapshot.bytes table := by
+public theorem dictionary_payload {limits : Limits} {carrier : Carrier}
+    {observed : Observation} {table : RecursiveSchema.Repeated.Chunk.Dictionary}
+    (data : RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId carrier.metadata.codec = some carrier.codec.column)
+    (wire : Wire limits carrier observed) (found : observed.dictionary = some table) :
+    RecursiveSchema.Repeated.Chunk.DictionaryCodec.ofId carrier.metadata.codec = some table.codec ∧
+      table.codec.column = carrier.codec.column ∧
+      RecursiveSchema.Repeated.Chunk.DictionaryContentsWire limits.payload carrier.plan.shape.leaf.2 carrier.source table := by
   have originalFrames : observed.frames = table.frame :: observed.pages.map ObservedPage.frame := by
     simp [Observation.frames, found]
   have leading := originalFrames ▸ found ▸ wire.leading
@@ -289,13 +288,12 @@ private theorem decodeFrames_dictionary {limits : Limits} {carrier : Carrier} {a
       simp only [read, Except.mapError, Bind.bind, Except.bind] at refused
       exact ih refused
 
-public theorem read_dictionary_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
-    {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
-    {limits : Limits} {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat}
-    {cause : RecursiveSchema.Repeated.Chunk.PageCause}
-    (refused : Parquet.RecursiveSchema.ListPath.Chunk.read limits binding = .error (.dictionary address ordinal byte cause)) :
-    DictionaryFailureWire limits (carrierOf binding) binding.encodings address ordinal byte cause := by
-  unfold Parquet.RecursiveSchema.ListPath.Chunk.read readCarrier at refused
+public theorem readCarrier_dictionary_failure {limits : Limits} {carrier : Carrier}
+    {encoding : ColumnEncoding carrier.metadata} {address : RecursiveSchema.Chunk.Address}
+    {ordinal byte : Nat} {cause : RecursiveSchema.Repeated.Chunk.PageCause}
+    (refused : readCarrier limits carrier encoding (fun _ => .ok ()) = .error (.dictionary address ordinal byte cause)) :
+    DictionaryFailureWire limits carrier encoding address ordinal byte cause := by
+  unfold readCarrier at refused
   dsimp only at refused
   split at refused
   · simp at refused
@@ -303,7 +301,6 @@ public theorem read_dictionary_failure {schemaLimits : Snapshot.Limits} {snapsho
   · simp at refused
   split at refused
   · simp at refused
-  let carrier := carrierOf binding
   change ((Page.readChunk limits.framing carrier.source carrier.span).mapError
     (Error.chunk carrier.address carrier.span ∘ ChunkCause.framing) >>= _) = _ at refused
   cases parsed : Page.readChunk limits.framing carrier.source carrier.span with
@@ -312,8 +309,8 @@ public theorem read_dictionary_failure {schemaLimits : Snapshot.Limits} {snapsho
     simp only [parsed, Except.mapError, Bind.bind, Except.bind] at refused
     let wrap := fun cause : RecursiveSchema.Repeated.Chunk.DictionaryPrefixError =>
       Error.dictionary carrier.address cause.ordinal cause.byte cause.cause
-    change ((readPrefix limits carrier binding.encodings frames).mapError wrap >>= _) = _ at refused
-    cases checked : readPrefix limits carrier binding.encodings frames with
+    change ((readPrefix limits carrier encoding frames).mapError wrap >>= _) = _ at refused
+    cases checked : readPrefix limits carrier encoding frames with
     | error error =>
       rcases error with ⟨page, offset, reason⟩
       simp [checked, wrap, Except.mapError, Bind.bind, Except.bind] at refused

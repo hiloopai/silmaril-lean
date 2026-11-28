@@ -65,12 +65,12 @@ def suffix_start(header, body):
     return first + 4 + int.from_bytes(body[first:first + 4], "little")
 
 
-def authored_page(template, trace, table, *, encoding, page_version):
+def authored_page(template, trace, table, *, encoding, page_version, width=32):
     if page_version == 1:
-        header, body = header_body(v1_frame(template, trace, 32))
+        header, body = header_body(v1_frame(template, trace, width))
         header[5][1][2] = TType.I32, encoding
     else:
-        header, body = header_body(v2_frame(template, trace, flag=True))
+        header, body = header_body(v2_frame(template, trace, flag=True, width=width))
         header[8][1][4] = TType.I32, encoding
     if encoding == 8:
         selected = (table.index(word) for _, _, word in trace if word is not None)

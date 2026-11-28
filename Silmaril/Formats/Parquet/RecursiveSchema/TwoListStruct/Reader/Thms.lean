@@ -38,6 +38,31 @@ theorem ColumnBinding.codec_exact {schemaLimits : Snapshot.Limits} {snapshot : S
     RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId binding.column.metadata.codec = some binding.codec.column :=
   ListPath.Chunk.Codec.column_ofId binding.originalCodec
 
+/-- The leading frame and first data frame retain their original footer anchors. -/
+theorem ColumnWire.dictionary_anchors {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
+    {out : ListPath.Chunk.Observation} {table : Repeated.Chunk.Dictionary}
+    (wire : ColumnWire limits binding out) (found : out.dictionary = some table) :
+    ∃ first,
+      (out.pages.map ListPath.Chunk.ObservedPage.frame).head? = some first ∧
+      Page.readPage limits.framing snapshot.bytes binding.span binding.span.start = .ok table.frame ∧
+      table.frame.header.start = binding.span.start ∧ first.header.start = table.frame.payload.stop ∧
+      binding.column.metadata.dictionaryPageOffset = some (Int.ofNat table.frame.header.start) ∧
+      binding.column.metadata.dataPageOffset = Int.ofNat first.header.start :=
+  wire.original.dictionary_anchors found
+
+/-- The original dictionary contains the exact checked signed entries. -/
+theorem ColumnWire.dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
+    {out : ListPath.Chunk.Observation} {table : Repeated.Chunk.Dictionary}
+    (wire : ColumnWire limits binding out) (found : out.dictionary = some table) :
+    table.codec = .uncompressed ∧
+      Repeated.Chunk.DictionaryContentsWire limits.payload (schema.plan.path side).shape.leaf.2
+        snapshot.bytes table :=
+  ⟨wire.dictionaryCodec table found, (wire.original.dictionary_payloadOf binding.codec_exact found).2.2⟩
+
 /-- Recover the original V1 frame and the full-body wire witness for its codec. -/
 theorem ColumnWire.v1_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
@@ -47,9 +72,10 @@ theorem ColumnWire.v1_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
     (version : page.frame.value.kind = .dataV1 info) :
     let carrier := carrierOf binding
     Page.readPage limits.framing carrier.source carrier.span page.frame.header.start = .ok page.frame ∧
-    RecursiveSchema.ListPath.Chunk.PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
-      carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
-      carrier.codec .plain :=
+    ∃ encoding, encoding.From out.dictionary ∧
+      RecursiveSchema.ListPath.Chunk.PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
+        carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
+        carrier.codec encoding :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.column_v1_page wire member version
 
 /-- Recover the original V2 header and the shared wire witness for its
@@ -62,9 +88,10 @@ theorem ColumnWire.v2_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
     (version : page.frame.value.kind = .dataV2 info) :
     let carrier := carrierOf binding
     Page.readPage limits.framing carrier.source carrier.span page.frame.header.start = .ok page.frame ∧
-    RecursiveSchema.ListPath.Chunk.V2PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
-      carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
-      carrier.codec .plain :=
+    ∃ encoding, encoding.From out.dictionary ∧
+      RecursiveSchema.ListPath.Chunk.V2PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
+        carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
+        carrier.codec encoding :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.column_v2_page wire member version
 
 theorem readColumn_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
@@ -75,6 +102,14 @@ theorem readColumn_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Sna
     (refused : readColumn limits binding = .error (.page address ordinal byte start cause)) :
     ListPath.Chunk.PageFailureWire limits (carrierOf binding) address ordinal byte start cause :=
   ListPath.Chunk.readCarrier_page_failure refused
+
+theorem readColumn_dictionary_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
+    {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat} {cause : Repeated.Chunk.PageCause}
+    (refused : readColumn limits binding = .error (.dictionary address ordinal byte cause)) :
+    ListPath.Chunk.DictionaryFailureWire limits (carrierOf binding) binding.encodings address ordinal byte cause :=
+  ListPath.Chunk.readCarrier_dictionary_failure refused
 
 /-- Successful reconstruction agrees on all shared ancestors and
 projects each child back to its exact original signed slot trace. -/
