@@ -148,7 +148,7 @@ def chunk(wire, target=position):
     return next((lo, hi) for key, _, lo, hi in V2["columns"](wire) if key == target)
 
 
-def verify(folder):
+def fixtures():
     genuine, positives, authored, genuine_controls = {}, {}, {}, {}
     for width, nullable in CORE["cases"]():
         depth = len(nullable) - 1
@@ -181,7 +181,6 @@ def verify(folder):
     assert pages[3][-2] == pages[4][-3] == pages[4][-2]
     address = "⟨1, 0, " + json.dumps(["chain", "list", "element", "list", "element", "list", "element"]) + "⟩"
     span = f"⟨{lo}, {hi}⟩"
-    code = [LEAN, *V1["ENTRY"]]
     negatives = []
 
     def page_edit(label, ordinal, changed, cause, *, late=False):
@@ -294,6 +293,12 @@ def verify(folder):
         negatives.append(f'  refuse (← load folder "{label}") 0 {{}} '
                          f'(.page ⟨0, 0, {wide_path}⟩ 0 {at} {{}} (.level ({cause})))')
 
+    return genuine, authored, genuine_controls, positives, negatives
+
+
+def verify(folder):
+    genuine, authored, genuine_controls, positives, negatives = fixtures()
+    code = [LEAN, *V1["ENTRY"]]
     files = genuine | authored | genuine_controls
     for label, wire in files.items():
         (folder / f"{label}.parquet").write_bytes(wire)

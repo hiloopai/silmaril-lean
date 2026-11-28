@@ -6,7 +6,7 @@ positive-depth canonical LIST path. Each LIST and the leaf retain their
 original names and independent REQUIRED or OPTIONAL markers. The
 reader returns one logical Arrow observation per original row group,
 in footer order.
-[Schema and logical trace core](parquet-recursive-list-path.md)
+[Schema and logical trace core](parquet-recursive-list-path.md) · [Arrow Events](parquet-recursive-list-path-events.md)
 
 The chunk profile is local, unindexed UNCOMPRESSED PLAIN Data Page V1
 with Hybrid repetition and definition levels. The reader checks the
