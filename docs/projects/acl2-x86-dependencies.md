@@ -61,6 +61,8 @@ targets.
 
 The [frontier audit](acl2-x86-frontier-audit.md) uses this manifest to select
 27 additional roots and checks their immediate logical dependencies.
+The [24-root closure audit](acl2-x86-step-closure.md) traverses the
+remaining named calls after the three projection bindings.
 
 ## Checked slice and limits
 
