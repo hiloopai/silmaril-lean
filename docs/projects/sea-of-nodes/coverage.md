@@ -257,6 +257,15 @@ import Silmaril.SSA.SeaOfNodes.Loop.LambdaSSA.Generic.Thms
   and `Graph.returns_iff_denote` compares the return and entire final heap.
   Allocation, split state and memory motion remain open.
   [Linear theorems][son-memory-thms] · [Forwarding][son-memory-forwarding-thms] · [Linear RVSDG lowering][son-memory-rvsdg-thms] · [Diamond theorems][son-memory-diamond-thms] · [Linear worked example][son-memory] · [#3231][pr-memory] · [#3280][pr-memory-diamond]
+- A separate, more specialized track checks guarded dispatch-family
+  native loops (fixed i64 banks with ordered feedback rows, distinct
+  from the `Loop.Graph` pipeline above) and emits both resized RTL.SSA
+  and typed MLIR CF for them. `Producer.Exit.Inversion.returns_iff`,
+  `cf_returns_iff`, `returns_exists_iff`/`rtl_oracle_iff`/`no_return_iff`
+  and `region_returns_iff`/`region_no_return_iff` give forward/converse
+  finite-return and all-budget-absence equivalences between the two
+  backends and the canonical λSSA Region, for that checked profile only.
+  [Guide and decision table][guarded-feedback-rtl] · [Theorems][son-guarded-exit-inversion-thms]
 
 ## Editions and source boundaries
 
@@ -719,3 +728,6 @@ validation stay open at the boundaries identified above.
 [s28b]: https://github.com/SeaOfNodes/Simple/blob/f0a6c6757a795b8e186de0076836a87acef59fa7/chapter28b/README.md
 [s29]: https://github.com/SeaOfNodes/Simple/blob/f0a6c6757a795b8e186de0076836a87acef59fa7/chapter29/README.md
 [s31]: https://github.com/SeaOfNodes/Simple/blob/f0a6c6757a795b8e186de0076836a87acef59fa7/chapter31/README.md
+
+[guarded-feedback-rtl]: ../sea-of-nodes-guarded-feedback-rows-rtl.md
+[son-guarded-exit-inversion-thms]: ../../../Silmaril/Machine/SeaOfNodes/Loop/RTL/Routing/Guarded/Rows/Native/Preheader/Table/Width/Dispatch/Family/MLIR/Prefix/Producer/Exit/Inversion/Thms.lean

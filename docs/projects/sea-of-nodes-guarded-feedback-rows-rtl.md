@@ -1310,6 +1310,28 @@ In the resized fixture, the mixed run's CF return of `6` at budget nine
 directly supplies the matching bounded RTL return, without separately
 recovering the dispatch route. [Checked regression][table-regression]
 
+### Which checked theorem to use
+
+All of `Producer.Exit.Inversion`'s laws above cover the same checked
+single-exit i64 family: one MLIR CF lowering plus resized RTL.SSA for a
+`Family.Source`/`Compiled` pair. They do not extend to a general SSA,
+RVSDG or unscoped MLIR CF program; for the plain single-latch
+`Loop.Graph` → typed MLIR CF lowering outside this guarded dispatch
+family, see [A pure Sea of Nodes loop in typed MLIR CF][cf-loop-general]
+and [the shared scalar producer bridge][cf-word-ops-general].
+
+| Question | Use | Notes |
+| --- | --- | --- |
+| Does a CF run returning this exact word exist at some budget, and does a matching RTL run too? | `cf_returns_iff` | Both sides `∃ fuel`; preserves the initial memory on the RTL side. Does not recover the dispatch route or costs — use `returns_iff` for those. |
+| I have the dispatch route, costs and `Realized`/`Taken` witnesses already (or want them) | `returns_iff` | Fixes the value on the RTL side and gives the exact CF/RTL costs plus the full witness bundle; the CF component alone is what `cf_returns_iff` abstracts away. |
+| Does *some* word have a bounded CF return, witnessed by the native dispatch route? | `returns_exists_iff` (CF ↔ native route) | Existentially quantifies the word, unlike `cf_returns_iff`. Compares the emitted CF directly with `Source.ReturnsAlong`; it does not by itself relate RTL. |
+| Does the RTL oracle's unbounded native relation agree with that CF existence? | `rtl_oracle_iff` (RTL oracle ↔ CF) | The actual cross-backend bridge, built by composing `returns_exists_iff` with the existing `Family.rtl_return_iff` (RTL oracle ↔ native route). |
+| Does neither backend ever return, at any budget? | `no_return_iff` (RTL oracle ↔ CF) and `region_no_return_iff` (λSSA Region ↔ CF) | Negated existentials throughout; never inferred from one insufficient run. `region_no_return_iff` needs the packed-capture entry side condition below. |
+| I need the canonical λSSA Region's packed-capture return for a fixed word | `region_returns_iff` | Needs `env 0 = packValues (words input)`. Composes `reflect` (CF → Region) with `Phi.region_return_iff` and `Family.rtl_return_iff` (Region → CF via `cf_returns_iff`). |
+
+[cf-loop-general]: sea-of-nodes-loop-mlir-cf.md
+[cf-word-ops-general]: sea-of-nodes-mlir.md
+
 ```sh
 lake build --wfail +Silmaril.Machine.SeaOfNodes.Loop.RTL.Routing.Guarded.Rows.Fuel.Thms \
   +Silmaril.Machine.SeaOfNodes.Loop.RTL.Routing.Guarded.Rows.Native.Preheader.Table.Width.Dispatch.Family.Phi.Thms \
