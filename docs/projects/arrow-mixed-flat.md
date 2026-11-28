@@ -1047,3 +1047,34 @@ lake build --wfail Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Stream.Events.Exam
 python scripts/arrow-mixed-flat/large_utf8_fixtures.py
 python scripts/arrow-mixed-flat/stream_fixtures.py
 ```
+
+### Modern V5 writer
+
+`MixedFlat.LargeUtf8.Writer.emitRecord` writes a checked metadata and
+body pair for an ordered batch. `Writer.emit` writes a complete modern V5
+stream from explicit field declarations and a list of batches. LargeUtf8
+uses tag 20 and three physical buffers with signed little-endian i64
+offsets. The column compiler checks the row count, nullability, and
+UTF-8 byte extent before encoding the text. The shared ordered
+packer checks per-record metadata and padded body sizes and assigns
+variadic count words to view fields. The stream checks the batch count
+and aggregate row and cell budgets.
+
+`Record.readBatch` recovers the exact packed values when paired with a
+schema that admits the batch's fields. `emit_readback` certifies the
+ordered declarations, nullable strings and other cells, explicit row
+counts, original record ranges, and exact modern EOS. An empty batch
+list writes the schema and EOS. A zero-row batch remains a record,
+and a zero-column batch carries its explicit row count. Successful
+emission certifies the materialized stream with the complete reader.
+
+The pinned PyArrow 26.0.1 oracle opens five Lean outputs independently.
+It checks both field orders in a mix of nullable and required LargeUtf8,
+Int32, BinaryView and plain Utf8. It also checks schema-only, empty and
+zero-width cases, exact nodes and view counts, signed i64 byte offsets,
+validity, data and EOS.
+
+```sh
+lake build --wfail Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Writer.Examples Silmaril.Formats.Arrow.MixedFlat.LargeUtf8.Writer.Axioms
+python scripts/arrow-mixed-flat/large_utf8_writer_oracle.py /tmp/mixed-large-utf8-writer
+```
