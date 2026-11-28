@@ -101,12 +101,18 @@ check:
 # its lines in order and owns its outputs. logic-graph-check edits a records file and rebuilds
 # its loader, so it runs alone afterwards. Two slots is the overlap `make check` had before.
 CHECK_JOBS ?= 2
-CHECK_RUNTIME_GROUPS := check-runtime-core check-runtime-rvsdg
 CHECK_INTEGRATION_GROUPS := check-integrations-ssa check-integrations-operational \
 	check-integrations-python check-integrations-python-functions check-integrations-tools
-# The slots take these in order, longest on prove first.
+# Three slots on prove can overlap the RVSDG tail. Other runs keep the original group order.
+ifeq ($(CHECK_JOBS),3)
+CHECK_RUNTIME_GROUPS := check-runtime-core check-runtime-rvsdg
 CHECK_GROUPS := check-runtime-core check-integrations-tools check-integrations-operational \
 	check-runtime-rvsdg check-integrations-ssa check-integrations-python-functions check-integrations-python
+else
+CHECK_RUNTIME_GROUPS := check-runtime
+CHECK_GROUPS := check-runtime check-integrations-tools check-integrations-operational \
+	check-integrations-ssa check-integrations-python check-integrations-python-functions
+endif
 ifneq ($(sort $(CHECK_GROUPS)),$(sort $(CHECK_RUNTIME_GROUPS) $(CHECK_INTEGRATION_GROUPS)))
 $(error CHECK_GROUPS must list the runtime and integration groups)
 endif
@@ -120,9 +126,9 @@ check-prebuild:
 	if [ -n "$$targets" ]; then echo $(LAKE) build --wfail $$targets; $(LAKE) build --wfail $$targets; fi
 
 # Runtime observations read the completed build.
-.PHONY: check-prebuild check-runtime $(CHECK_RUNTIME_GROUPS) check-integrations $(CHECK_INTEGRATION_GROUPS) tla-import-check
-check-runtime:
-	$(MAKE) -j1 $(CHECK_RUNTIME_GROUPS)
+.PHONY: check-prebuild check-runtime check-runtime-core check-runtime-rvsdg check-integrations $(CHECK_INTEGRATION_GROUPS) tla-import-check
+check-runtime: check-runtime-core
+	$(MAKE) check-runtime-rvsdg
 
 check-runtime-core:
 	$(MAKE) process-gates
