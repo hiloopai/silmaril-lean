@@ -1,0 +1,21 @@
+{
+  "emitted_parquet": {
+    "mixed": {
+      "bytes": 2240,
+      "sha256": "c07d872e8d7d8f14cee9d059194e9831e9e822eabf7ba9d9b6007132906f3041"
+    },
+    "nested": {
+      "bytes": 975,
+      "sha256": "a20baa7f0db27f6405031738f12ea9d3c20f34c6900c71b2f7a4f60a0b0f3a80"
+    },
+    "schema_only": {
+      "bytes": 221,
+      "sha256": "cff8d0465cca91f2b9778d2a09090d7ba657096e3b6ca75da6baacf56f6b6b03"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}
