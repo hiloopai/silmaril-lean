@@ -1,0 +1,397 @@
+{
+  "assertion_inventory": {
+    "debug_function_definitions": 2755,
+    "debug_macro_expansions_by_name": {
+      "ALWAYS": 171,
+      "NEVER": 127,
+      "assert": 5701,
+      "testcase": 1045
+    },
+    "matched_release_definitions": 2607
+  },
+  "measurements": {
+    "ambiguous_plain_name_groups": 0,
+    "call_sites": 13749,
+    "call_sites_by_kind": {
+      "compiler_intrinsic": 44,
+      "external_declaration": 685,
+      "indirect": 254,
+      "sqlite_definition": 12766
+    },
+    "call_sites_without_location": 0,
+    "classification_confidence": {
+      "high": 2615
+    },
+    "definitions_without_body_extent": 0,
+    "definitions_without_embedded_file_marker": 1,
+    "definitions_without_source_section": 0,
+    "direct_call_sites_by_region_pair": {
+      "Allocator": {
+        "Allocator": 50,
+        "Concurrency": 15,
+        "Connection and public API": 20,
+        "Utilities and portability": 4
+      },
+      "B-tree": {
+        "Allocator": 36,
+        "B-tree": 537,
+        "Concurrency": 19,
+        "Connection and public API": 125,
+        "Page cache": 5,
+        "Pager and journal": 124,
+        "Planner and SQL code generation": 1,
+        "Utilities and portability": 137,
+        "VFS": 3,
+        "Virtual machine": 5
+      },
+      "Concurrency": {
+        "Allocator": 5,
+        "Concurrency": 5,
+        "Connection and public API": 1,
+        "Utilities and portability": 1
+      },
+      "Connection and public API": {
+        "Allocator": 99,
+        "B-tree": 93,
+        "Concurrency": 147,
+        "Connection and public API": 190,
+        "Name resolution and expressions": 2,
+        "Page cache": 7,
+        "Pager and journal": 35,
+        "Planner and SQL code generation": 25,
+        "SQL builtins": 2,
+        "Tokenizer": 3,
+        "Utilities and portability": 136,
+        "VFS": 12,
+        "Virtual machine": 41,
+        "Virtual tables and extensions": 9
+      },
+      "Name resolution and expressions": {
+        "Allocator": 37,
+        "Connection and public API": 16,
+        "Name resolution and expressions": 568,
+        "Planner and SQL code generation": 57,
+        "Utilities and portability": 95,
+        "Virtual machine": 238,
+        "Virtual tables and extensions": 2
+      },
+      "Page cache": {
+        "Allocator": 14,
+        "Concurrency": 10,
+        "Connection and public API": 7,
+        "Page cache": 52,
+        "Utilities and portability": 6
+      },
+      "Pager and journal": {
+        "Allocator": 36,
+        "Connection and public API": 21,
+        "Page cache": 52,
+        "Pager and journal": 366,
+        "Utilities and portability": 83,
+        "VFS": 150
+      },
+      "Parser": {
+        "Allocator": 8,
+        "Connection and public API": 1,
+        "Name resolution and expressions": 122,
+        "Parser": 48,
+        "Planner and SQL code generation": 154,
+        "Utilities and portability": 17,
+        "Virtual tables and extensions": 5
+      },
+      "Planner and SQL code generation": {
+        "Allocator": 280,
+        "B-tree": 74,
+        "Concurrency": 6,
+        "Connection and public API": 154,
+        "Name resolution and expressions": 839,
+        "Pager and journal": 7,
+        "Planner and SQL code generation": 1709,
+        "SQL builtins": 7,
+        "Tokenizer": 11,
+        "Utilities and portability": 521,
+        "VFS": 3,
+        "Virtual machine": 1675,
+        "Virtual tables and extensions": 21
+      },
+      "SQL builtins": {
+        "Allocator": 44,
+        "Concurrency": 3,
+        "Connection and public API": 14,
+        "Planner and SQL code generation": 2,
+        "SQL builtins": 575,
+        "Utilities and portability": 135,
+        "Virtual machine": 393,
+        "Virtual tables and extensions": 3
+      },
+      "Tokenizer": {
+        "Allocator": 3,
+        "Connection and public API": 2,
+        "Parser": 4,
+        "Planner and SQL code generation": 2,
+        "Tokenizer": 14,
+        "Utilities and portability": 8,
+        "Virtual machine": 4
+      },
+      "Utilities and portability": {
+        "Allocator": 43,
+        "Concurrency": 4,
+        "Connection and public API": 3,
+        "Utilities and portability": 184,
+        "VFS": 3,
+        "Virtual machine": 13
+      },
+      "VFS": {
+        "Allocator": 39,
+        "B-tree": 2,
+        "Concurrency": 60,
+        "Connection and public API": 18,
+        "Pager and journal": 3,
+        "Planner and SQL code generation": 2,
+        "Utilities and portability": 19,
+        "VFS": 173,
+        "Virtual machine": 10
+      },
+      "Virtual machine": {
+        "Allocator": 142,
+        "B-tree": 134,
+        "Concurrency": 49,
+        "Connection and public API": 57,
+        "Pager and journal": 12,
+        "Planner and SQL code generation": 23,
+        "Tokenizer": 1,
+        "Utilities and portability": 173,
+        "VFS": 28,
+        "Virtual machine": 838,
+        "Virtual tables and extensions": 15
+      },
+      "Virtual tables and extensions": {
+        "Allocator": 37,
+        "Concurrency": 9,
+        "Connection and public API": 10,
+        "Name resolution and expressions": 1,
+        "Planner and SQL code generation": 15,
+        "Tokenizer": 2,
+        "Utilities and portability": 25,
+        "Virtual machine": 6,
+        "Virtual tables and extensions": 41
+      }
+    },
+    "fragments": {
+      "object_or_state": 1906,
+      "opaque_boundary": 584,
+      "pointer_or_array": 93,
+      "scalar": 32
+    },
+    "functions_by_call_kind": {
+      "compiler_intrinsic": 23,
+      "external_declaration": 393,
+      "indirect": 190,
+      "sqlite_definition": 2052
+    },
+    "functions_with_header_dependencies": 2594,
+    "inclusion_directives": 325,
+    "indirect_callee_cursor_kinds": {
+      "FieldDecl": 173,
+      "ParmDecl": 20,
+      "VarDecl": 9,
+      "expression_without_referenced_declaration": 52
+    },
+    "indirect_callee_expression_kinds": {
+      "ArraySubscriptExpr": 1,
+      "CStyleCastExpr": 51,
+      "DeclRefExpr": 29,
+      "MemberRefExpr": 173
+    },
+    "linkage": {
+      "external": 274,
+      "internal": 2341
+    },
+    "local_tag_function_counts": {
+      "allocator": 409,
+      "buffer": 1297,
+      "callback": 417,
+      "globals": 349,
+      "locks": 198,
+      "object": 2426,
+      "pure_candidate": 29,
+      "unknown": 584,
+      "vfs": 99
+    },
+    "located_function_declarations_excluding_definitions": 3724,
+    "locationless_function_definitions": 0,
+    "namespace_count": 72,
+    "origin_confidence": {
+      "generated_section": 33,
+      "unique_basename": 2582
+    },
+    "propagated_only_tag_function_counts": {
+      "allocator": 1141,
+      "buffer": 606,
+      "callback": 1457,
+      "globals": 1574,
+      "locks": 1456,
+      "object": 27,
+      "unknown": 1405,
+      "vfs": 404
+    },
+    "public_header_definitions": 274,
+    "reachable_tag_function_counts": {
+      "allocator": 1547,
+      "buffer": 1664,
+      "callback": 1775,
+      "globals": 1810,
+      "locks": 1644,
+      "object": 1952,
+      "unknown": 1839,
+      "vfs": 481
+    },
+    "record_layouts": 288,
+    "record_layouts_without_size": 3,
+    "region": {
+      "Allocator": 53,
+      "B-tree": 214,
+      "Concurrency": 27,
+      "Connection and public API": 194,
+      "Name resolution and expressions": 211,
+      "Page cache": 66,
+      "Pager and journal": 199,
+      "Parser": 25,
+      "Planner and SQL code generation": 665,
+      "SQL builtins": 213,
+      "Tokenizer": 15,
+      "Utilities and portability": 150,
+      "VFS": 151,
+      "Virtual machine": 393,
+      "Virtual tables and extensions": 39
+    },
+    "release_macro_expansions_by_name": {
+      "ALWAYS": 170,
+      "NEVER": 126,
+      "assert": 5417,
+      "testcase": 1041
+    },
+    "release_macros_inside_bodies": 22352,
+    "sqlite_function_definitions": 2615,
+    "system_function_definitions": 26,
+    "unique_sqlite_caller_callee_pairs": 8911
+  },
+  "profile": {
+    "compilers": {
+      "clang": {
+        "final_macro_list_sha256": "6018b9208f07876e93ee08e243e22539ad92c9ca598fdfb1de2fab8613e26052",
+        "flags": [
+          "--target=x86_64-linux-gnu",
+          "-std=gnu11",
+          "-O2",
+          "-fPIC",
+          "-pthread",
+          "-DSQLITE_THREADSAFE=1",
+          "-DSQLITE_OMIT_LOAD_EXTENSION=1",
+          "-DSQLITE_MAX_MMAP_SIZE=0"
+        ],
+        "preprocessed_sha256": "8f0073701fc3ed1363f6ea2a0080fc5138bf2f77bf5f86dc638dc164b9b59b75",
+        "reported_version": "Debian clang version 19.1.7 (3+b1)",
+        "selected_final_macros": {
+          "NDEBUG": "1",
+          "SQLITE_MAX_MMAP_SIZE": "0",
+          "SQLITE_MUTEX_PTHREADS": "",
+          "SQLITE_OMIT_LOAD_EXTENSION": "1",
+          "SQLITE_OS_UNIX": "1",
+          "SQLITE_SYSTEM_MALLOC": "1",
+          "SQLITE_THREADSAFE": "1"
+        },
+        "sqlite3Get4byte_source_branch": "byte_subscripts"
+      },
+      "gcc": {
+        "final_macro_list_sha256": "2c2e4f7276ece23dbfe34c7caef98f7ac3f6aade140b87dae67a37ccc00bb8b9",
+        "flags": [
+          "-std=gnu11",
+          "-O2",
+          "-fPIC",
+          "-pthread",
+          "-DSQLITE_THREADSAFE=1",
+          "-DSQLITE_OMIT_LOAD_EXTENSION=1",
+          "-DSQLITE_MAX_MMAP_SIZE=0"
+        ],
+        "preprocessed_sha256": "58f7d5cdf6573eb0579b66c8f2e9301dbad8219d12f67cf6af2c968b9aa37450",
+        "reported_version": "gcc (Debian 14.2.0-19) 14.2.0",
+        "selected_final_macros": {
+          "NDEBUG": "1",
+          "SQLITE_MAX_MMAP_SIZE": "0",
+          "SQLITE_MUTEX_PTHREADS": "",
+          "SQLITE_OMIT_LOAD_EXTENSION": "1",
+          "SQLITE_OS_UNIX": "1",
+          "SQLITE_SYSTEM_MALLOC": "1",
+          "SQLITE_THREADSAFE": "1"
+        },
+        "sqlite3Get4byte_source_branch": "memcpy_and_bswap"
+      }
+    },
+    "debug_delta_flags": [
+      "-DSQLITE_DEBUG=1"
+    ],
+    "gcc_load_extension_symbols": "absent",
+    "gcc_smoke": "passed",
+    "libc": "glibc 2.41",
+    "libclang_resource_dir": "/usr/lib/llvm-19/lib/clang/19",
+    "target": "x86_64-linux-gnu"
+  },
+  "public_tests": {
+    "by_directory": {
+      "ext/expert": 1,
+      "ext/fts5/test": 148,
+      "ext/intck": 5,
+      "ext/jni/src/tests": 3,
+      "ext/rbu": 44,
+      "ext/recover": 14,
+      "ext/rtree": 27,
+      "ext/session": 44,
+      "ext/vec1/test": 51,
+      "mptest": 5,
+      "test": 1199,
+      "tool": 1
+    },
+    "by_suffix": {
+      ".subtest": 1,
+      ".test": 1541
+    },
+    "denominator": "All .test and .subtest file paths in the public release source ZIP",
+    "executed": false,
+    "first_pass_matches": [
+      "test/varint.test",
+      "test/tokenize.test",
+      "test/select1.test",
+      "test/func.test",
+      "test/btree01.test",
+      "test/pager1.test",
+      "test/wal.test",
+      "test/unixexcl.test"
+    ],
+    "source_id": "2026-10-16 14:45:20 555e07ef33f69a0957d24d8e555b702464a131d6f1607f4c3c1e4551e8e6ca76",
+    "total": 1542
+  },
+  "schema_version": 1,
+  "upstream": {
+    "archives": [
+      {
+        "sha3_256": "92281c86e2957f9b9305890f9ac04204caa7b677cc868dc326d942689df28e30",
+        "url": "https://sqlite.org/2026/sqlite-amalgamation-3540100.zip"
+      },
+      {
+        "sha3_256": "877c6f4996ce7adb368686bce21638de9e3d91534832ad3d9d119037d1bc22ad",
+        "url": "https://sqlite.org/2026/sqlite-src-3540100.zip"
+      },
+      {
+        "sha3_256": "77320e1ed40b7e655f27b97bff9010b3f159800eddfc4f28b9d96254d8a5bd17",
+        "url": "https://sqlite.org/2026/sqlite-preprocessed-3540100.zip"
+      }
+    ],
+    "fossil_source_id": "2026-10-16 14:45:20 555e07ef33f69a0957d24d8e555b702464a131d6f1607f4c3c1e4551e8e6ca76",
+    "inputs_sha256": {
+      "sqlite3.c": "0c657666d819f261cc4007526ad57e1669de9949df7a8ea847aa284a2bf0ee52",
+      "sqlite3.h": "d6c84557261893439b341d2e6c35187ae3ea24fbfd843ad94616f72d89242b8c"
+    },
+    "version": "3.54.1"
+  }
+}
