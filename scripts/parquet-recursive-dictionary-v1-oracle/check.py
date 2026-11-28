@@ -28,11 +28,12 @@ ENTRY = ["public def main (args : List String) : IO Unit := do",
 LEAN = V2["LEAN"] + """\
 
 private def dictionary (file : Bytes) (group column : Nat)
-    (wanted : Option (Nat × Nat × Nat × Option UInt32 × List Word)) (traces : List (List Nat)) :
+    (wanted : Option (Nat × Nat × Nat × Option UInt32 × List Word)) (traces : List (List Nat))
+    (limits : Limits := {}) :
     IO Unit := do
   let source ← take (openFile {} file)
-  let binding ← take (bindChunk source.schema group column)
-  let observed ← take (Parquet.RecursiveSchema.Repeated.Chunk.read {} binding)
+  let binding ← take (bindChunk source.schema group column limits)
+  let observed ← take (Parquet.RecursiveSchema.Repeated.Chunk.read limits binding)
   let actual := observed.dictionary.map fun d =>
     (d.frame.header.start, d.frame.payload.start, d.frame.payload.stop, d.frame.value.crc, d.entries.toList)
   unless actual = wanted do throw (IO.userError "dictionary frame or ordered entries differ")
@@ -43,21 +44,21 @@ private def dictionary (file : Bytes) (group column : Nat)
         | .dataV1 info => do
           if info.encoding ≠ 8 then pure none
           else
-            let body ← take (readV1Body {} binding.codec file page.frame)
-            let reps ← take (readLevels ({} : Limits).levels binding.leaf.maxRepetition info.numValues body)
-            let defs ← take (readLevels ({} : Limits).levels binding.leaf.maxDefinition info.numValues reps.tail)
+            let body ← take (readV1Body limits binding.codec file page.frame)
+            let reps ← take (readLevels limits.levels binding.leaf.maxRepetition info.numValues body)
+            let defs ← take (readLevels limits.levels binding.leaf.maxDefinition info.numValues reps.tail)
             pure (some defs.tail)
         | .dataV2 info => do
           if info.encoding ≠ 8 then pure none
           else
-            let sections ← take (readV2Sections {} binding.leaf file page.frame info)
-            let suffix ← take (readV2SuffixWith {} binding.codec page.frame info
+            let sections ← take (readV2Sections limits binding.leaf file page.frame info)
+            let suffix ← take (readV2SuffixWith limits binding.codec page.frame info
               (bytesAt file sections.spans.values) none)
             pure (some suffix)
         | _ => throw (IO.userError "expected an original V1 or V2 data frame")
       if let some suffix := indices then
         let count := (page.decoded.levels.map LevelSlot.present).count true
-        checked := (← take (Parquet.DictionaryIndex.readIndices ({} : Limits).indices count suffix)) :: checked
+        checked := (← take (Parquet.DictionaryIndex.readIndices limits.indices count suffix)) :: checked
     unless checked.reverse = traces do throw (IO.userError "original index traces differ")
   else unless traces.isEmpty do throw (IO.userError "expected a dictionary")
 """
@@ -155,7 +156,7 @@ def inspect(wire, schema, groups, *, decode_block=None):
         expected = [slot for row in groups[group] for slot in
                     CHUNK["from_arrow"](row[path[0]], schema.field(path[0]), path[1:])]
         codec = metadata[4][1]
-        assert codec == 0 or (codec in (1, 2, 6, 7) and decode_block is not None)
+        assert codec == 0 or (codec in (1, 2, 4, 6, 7) and decode_block is not None)
         assert metadata[7][1] == stop - start
         slot, row, live, raw_total = 0, 0, False, 0
         dictionary, traces, pages, spans = None, [], [], []

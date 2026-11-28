@@ -105,6 +105,7 @@ inductive DictionaryCodec where
   | uncompressed
   | snappy
   | gzip
+  | brotliRaw
   | zstd
   | lz4Raw
   deriving DecidableEq, Repr
@@ -113,6 +114,7 @@ def DictionaryCodec.ofId : Int → Option DictionaryCodec
   | 0 => some .uncompressed
   | 1 => some .snappy
   | 2 => some .gzip
+  | 4 => some .brotliRaw
   | 6 => some .zstd
   | 7 => some .lz4Raw
   | _ => none
@@ -121,6 +123,7 @@ def DictionaryCodec.column : DictionaryCodec → ColumnCodec
   | .uncompressed => .uncompressed
   | .snappy => .snappy
   | .gzip => .gzip
+  | .brotliRaw => .brotliRaw
   | .zstd => .zstd
   | .lz4Raw => .lz4Raw
 

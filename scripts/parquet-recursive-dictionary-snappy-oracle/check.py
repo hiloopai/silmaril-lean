@@ -26,24 +26,24 @@ I64 = TType.I64
 LEAN = V1["LEAN"] + """\
 
 private def rawPayloads (file : Bytes) (group column : Nat) (codec : DictionaryCodec) (dict : Bytes)
-    (data : List Bytes) (storedBytes rawBytes : Nat) : IO Unit := do
+    (data : List Bytes) (storedBytes rawBytes : Nat) (limits : Limits := {}) : IO Unit := do
   let source ← take (openFile {} file)
-  let binding ← take (bindChunk source.schema group column)
-  let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read {} binding)
+  let binding ← take (bindChunk source.schema group column limits)
+  let seen ← take (Parquet.RecursiveSchema.Repeated.Chunk.read limits binding)
   let some original := seen.dictionary | throw (IO.userError "expected leading dictionary")
   unless original.codec = codec ∧ binding.codec = codec.column ∧ binding.chunk.metadata.codec = codec.column.id ∧
-      (← take (readV1Body {} binding.codec file original.frame)) = dict do
+      (← take (readV1Body limits binding.codec file original.frame)) = dict do
     throw (IO.userError "decoded original dictionary differs")
   let mut bodies := []
   for page in seen.pages do
     let body ← match page.frame.value.kind with
-      | .dataV1 _ => take (readV1Body {} binding.codec file page.frame)
+      | .dataV1 _ => take (readV1Body limits binding.codec file page.frame)
       | .dataV2 info => do
-        let sections ← take (readV2Sections {} binding.leaf file page.frame info)
+        let sections ← take (readV2Sections limits binding.leaf file page.frame info)
         let stored := bytesAt file sections.spans.values
         if info.encoding = 0 then
-          take (readV2Suffix {} binding.codec binding.leaf page.frame info stored)
-        else take (readV2SuffixWith {} binding.codec page.frame info stored none)
+          take (readV2Suffix limits binding.codec binding.leaf page.frame info stored)
+        else take (readV2SuffixWith limits binding.codec page.frame info stored none)
       | _ => throw (IO.userError "expected a data page")
     bodies := body :: bodies
   unless bodies.reverse = data ∧ storedChunkBytes seen.frames = storedBytes ∧
