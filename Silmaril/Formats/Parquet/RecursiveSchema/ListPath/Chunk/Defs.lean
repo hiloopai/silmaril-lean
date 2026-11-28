@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Rows.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
-/-! Original unindexed V1/V2 pages for one repeated signed path. -/
+/-! Original unindexed V1/V2 pages for one signed path. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
@@ -134,26 +134,14 @@ public def bind {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
 
 @[expose] public section
 
-/-- The physical scanner accepts exactly the shape information it needs.
-Both level sections are present in this repeated-path profile. -/
+/-- The physical scanner derives its level widths from the original signed path. -/
 class ScanShape (P : Type) where
   shape : P → Shape
-  repeated : ∀ plan, 0 < (shape plan).repetitions
 
-instance : ScanShape Plan where
-  shape := Plan.shape
-  repeated plan := by
-    simp only [Plan.shape, Shape.repetitions]
-    omega
+instance : ScanShape Plan := ⟨Plan.shape⟩
+instance : ScanShape Shape := ⟨id⟩
 
 @[simp] theorem ScanShape.legacy_shape (plan : Plan) : ScanShape.shape plan = plan.shape := rfl
-
-/-- A full unary signed path with at least one original LIST wrapper. -/
-structure RepeatedPath where
-  shape : Shape
-  repeated : 0 < shape.repetitions
-
-instance : ScanShape RepeatedPath := ⟨RepeatedPath.shape, RepeatedPath.repeated⟩
 
 variable {P : Type} [ScanShape P]
 
@@ -391,19 +379,16 @@ structure SlotsWire (plan : P) (wrappers : List Nat) (start : State) (ceiling : 
 
 structure SectionsWire (limits : Hybrid.Limits) (plan : P) (count : Nat) (input : SectionSource)
     (spans : Sections) (repetitions definitions : List Nat) (suffix : Bytes) : Prop where
-  original : ∃ repPrefix defPrefix repBytes defBytes : List UInt8,
-    repPrefix.length = 4 ∧ defPrefix.length = 4 ∧
-    KBytes.leVal repPrefix = repBytes.length ∧ KBytes.leVal defPrefix = defBytes.length ∧
-    repBytes.length ≤ limits.bytes ∧ defBytes.length ≤ limits.bytes ∧
-    Hybrid.Wire (bitWidth (ScanShape.shape plan).repetitions) count repBytes repetitions ∧
-    Hybrid.Wire (bitWidth (ScanShape.shape plan).definitions) count defBytes definitions ∧
+  original : ∃ repBytes defBytes : List UInt8,
+    Repeated.Chunk.LevelWire limits (ScanShape.shape plan).repetitions count
+      (Bytes.ofList repBytes) ⟨repetitions, .empty⟩ ∧
+    Repeated.Chunk.LevelWire limits (ScanShape.shape plan).definitions count
+      (Bytes.ofList defBytes) ⟨definitions, .empty⟩ ∧
     spans.origin = input.origin ∧
     spans.repetition.start = input.span.start ∧ spans.repetition.stop = spans.definition.start ∧
     spans.definition.stop = spans.values.start ∧ spans.values.stop = input.span.stop ∧
-    input.bytes.slice? spans.repetition.start (some spans.repetition.stop) =
-      some (Bytes.ofList (repPrefix ++ repBytes)) ∧
-    input.bytes.slice? spans.definition.start (some spans.definition.stop) =
-      some (Bytes.ofList (defPrefix ++ defBytes)) ∧
+    input.bytes.slice? spans.repetition.start (some spans.repetition.stop) = some (Bytes.ofList repBytes) ∧
+    input.bytes.slice? spans.definition.start (some spans.definition.stop) = some (Bytes.ofList defBytes) ∧
     input.bytes.slice? spans.values.start (some spans.values.stop) = some suffix
 
 structure PageWire (limits : Limits) (plan : P) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)

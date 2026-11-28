@@ -19,19 +19,11 @@ theorem LeafPath.projected_levels {path : LeafPath} {plan : ListPath.Plan}
 
 /-- The checked scanner keeps the complete original signed path and
 every ordered definition transition and repetition threshold. -/
-theorem LeafPath.scan_levels {path : LeafPath} {plan : ListPath.Chunk.RepeatedPath}
-    (projected : path.scanPlan = some plan) :
-    plan.shape = path.shape ∧ plan.shape.leaf = (path.site, path.kind) ∧ plan.shape.steps {} = path.steps ∧
-      plan.shape.definitions = path.maxDefinition ∧ plan.shape.repetitions = path.maxRepetition ∧
+theorem LeafPath.scan_levels {path : LeafPath} {plan : ListPath.Shape} (projected : plan = path.shape) :
+    plan.leaf = (path.site, path.kind) ∧ plan.steps {} = path.steps ∧
+      plan.definitions = path.maxDefinition ∧ plan.repetitions = path.maxRepetition ∧
       ListPath.Chunk.wrappers plan = path.repeated.map (·.emptyLevel) :=
   Proofs.Formats.Parquet.RecursiveSchema.Tree.scan_levels projected
-
-/-- The physical scanner requires a nonzero repetition width. -/
-theorem LeafPath.scanPlan_none_iff (path : LeafPath) :
-    path.scanPlan = none ↔ path.shape.repetitions = 0 := by
-  by_cases zero : path.shape.repetitions = 0
-  · simp [LeafPath.scanPlan, zero]
-  · simp [LeafPath.scanPlan, zero, Nat.pos_of_ne_zero zero]
 
 theorem LeafBinding.read_wire {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {compiled : Compiled limits snapshot} {group column : Nat} {bound : LeafBinding compiled group column}

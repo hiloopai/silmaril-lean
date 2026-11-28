@@ -2,8 +2,8 @@
 
 `Parquet.RecursiveSchema.Tree.Rows.readGroupChecked` takes a checked
 [Tree compiler plan](parquet-recursive-tree-compiler.md) and an original
-row-group ordinal. It admits signed paths that have at least one
-original LIST wrapper, including paths with a leading Struct.
+row-group ordinal. It admits signed paths through LISTs and Structs,
+including [paths with zero repetition](parquet-recursive-tree-scalar.md).
 The adapter retains the original signed INT32 or INT64 column and its
 checked V1 or V2 frames. Its existing codec and encoding rules apply to
 each physical leaf independently. The result includes the original
@@ -68,8 +68,7 @@ shared topology refusal is the assembler's reached failure after
 complete original column reads. Its slot and end coordinates
 resolve to those checked original reads.
 
-Zero-repetition paths have a checked compiler plan and a typed
-adapter refusal. The [native Arrow Events adapter](parquet-recursive-tree-events.md)
+The [native Arrow Events adapter](parquet-recursive-tree-events.md)
 uses the checked group result for its full and projected views.
 
 ## Verification

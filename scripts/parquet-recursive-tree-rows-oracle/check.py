@@ -188,8 +188,8 @@ def inspect(wire, expected, layout=BRANCH_LAYOUT):
             assert header[2][1] == header[3][1] == len(body)
             start = slots, rows, live
             if version == 0:
-                reps, after_reps = LEVEL(body, depth, count)
-                defs, suffix = LEVEL(after_reps, maximum, count)
+                reps, after_reps = LEVEL(body, depth, count) if depth else ([0] * count, body)
+                defs, suffix = LEVEL(after_reps, maximum, count) if maximum else ([0] * count, after_reps)
                 rep_end = len(body) - len(after_reps)
                 def_end = len(body) - len(suffix)
             else:
@@ -197,8 +197,10 @@ def inspect(wire, expected, layout=BRANCH_LAYOUT):
                 info = header[8][1]
                 rep_end = info[6][1]
                 def_end = rep_end + info[5][1]
-                reps = V2["HYBRID"](body[:rep_end], depth.bit_length(), count)
-                defs = V2["HYBRID"](body[rep_end:def_end], maximum.bit_length(), count)
+                assert depth or rep_end == 0
+                assert maximum or def_end == rep_end
+                reps = V2["HYBRID"](body[:rep_end], depth.bit_length(), count) if depth else [0] * count
+                defs = V2["HYBRID"](body[rep_end:def_end], maximum.bit_length(), count) if maximum else [0] * count
                 suffix = body[def_end:]
                 assert (not reps or reps[0] == 0) and reps.count(0) == info[3][1]
                 assert count - defs.count(maximum) == info[2][1]
@@ -319,7 +321,7 @@ def verify(folder, genuine, authored, controls, schema, positives, invalid, chan
         '  refuseGroup (← load folder "branch_v1") 0 { maxSlots := 25 } (.input (.slotLimit 0 26))',
         '  refuseGroup (← load folder "branch_v1") 0 { chunk := { maxRows := 2 } } (.input (.rowLimit 0 3))',
         '  refuseGroup (← load folder "branch_v1") 2 {} (.input (.group 2))',
-        '  refuseGroup (← load folder "leading_struct") 0 {} (.input (.leaf 1 (.representation 1)))',
+        '  refuseGroup (← load folder "leading_struct") 0 { maxColumns := 1 } (.input (.columnLimit 0 2))',
         '  refuse (openFile {} (← load folder "unsupported_double"))',
         '    (.original (.physical ⟨4, ["items", "list", "element", "a"]⟩ .double))',
     ])

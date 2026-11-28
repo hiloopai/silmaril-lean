@@ -1,0 +1,97 @@
+{
+  "authored_parquet": {
+    "late_presence": {
+      "bytes": 5584,
+      "sha256": "15f7a90d6831de941894b96a732e256bb0809e2afe58d7d5a545f8cbd06d2789"
+    },
+    "mixed_versions": {
+      "bytes": 5560,
+      "sha256": "d371ed0f1900c98d58c03480a3d8d204df8955f0250566910a7c42199cc0ee84"
+    },
+    "v1_extra_bytes": {
+      "bytes": 5534,
+      "sha256": "b648c50f2853a8b9e90d562800396cd549bba690ce99b9efa9ce49fcc3b5cc4b"
+    },
+    "v2_definition_bytes": {
+      "bytes": 5542,
+      "sha256": "589767bb7417ca57a99d7850970c3244b33e707d20b1d133138a0e6095b104d6"
+    },
+    "v2_nulls": {
+      "bytes": 5541,
+      "sha256": "a0d522bfb23858ee79e5c7ccd7902afe925c82bcd28e4003fa8462275b9e9bd2"
+    },
+    "v2_repetition_bytes": {
+      "bytes": 5542,
+      "sha256": "18e42833406a8cc4112be44e2a74fdfedfea77419fae9d95221623cac5c0428e"
+    },
+    "v2_rows": {
+      "bytes": 5541,
+      "sha256": "a72cfe61f536992454a410a774b656f675cd5296fb0b34da829d59a6c98afbf6"
+    }
+  },
+  "emitted_ipc": {
+    "mixed_versions_empty": {
+      "bytes": 312,
+      "sha256": "217e93af8f263e1b69efad3927bc171b1dd64da23e527dd0cecae1cd444330ac"
+    },
+    "mixed_versions_first": {
+      "bytes": 576,
+      "sha256": "9b41a52c1b84af112bdb31892f797b00ea2921ed36bfc762291bcb59031b04ac"
+    },
+    "mixed_versions_full": {
+      "bytes": 3160,
+      "sha256": "7fa180054f2836acc66734cb7d811db4ef172b415a6e7fb9643a07c7513d2abe"
+    },
+    "mixed_versions_reverse": {
+      "bytes": 3160,
+      "sha256": "82d4814245a3ea45b706d70e285ac8bceb50c17ac8b474fa108dd4d5657632be"
+    },
+    "scalar_v1_empty": {
+      "bytes": 312,
+      "sha256": "217e93af8f263e1b69efad3927bc171b1dd64da23e527dd0cecae1cd444330ac"
+    },
+    "scalar_v1_first": {
+      "bytes": 576,
+      "sha256": "9b41a52c1b84af112bdb31892f797b00ea2921ed36bfc762291bcb59031b04ac"
+    },
+    "scalar_v1_full": {
+      "bytes": 3160,
+      "sha256": "7fa180054f2836acc66734cb7d811db4ef172b415a6e7fb9643a07c7513d2abe"
+    },
+    "scalar_v1_reverse": {
+      "bytes": 3160,
+      "sha256": "82d4814245a3ea45b706d70e285ac8bceb50c17ac8b474fa108dd4d5657632be"
+    },
+    "scalar_v2_empty": {
+      "bytes": 312,
+      "sha256": "217e93af8f263e1b69efad3927bc171b1dd64da23e527dd0cecae1cd444330ac"
+    },
+    "scalar_v2_first": {
+      "bytes": 576,
+      "sha256": "9b41a52c1b84af112bdb31892f797b00ea2921ed36bfc762291bcb59031b04ac"
+    },
+    "scalar_v2_full": {
+      "bytes": 3160,
+      "sha256": "7fa180054f2836acc66734cb7d811db4ef172b415a6e7fb9643a07c7513d2abe"
+    },
+    "scalar_v2_reverse": {
+      "bytes": 3160,
+      "sha256": "82d4814245a3ea45b706d70e285ac8bceb50c17ac8b474fa108dd4d5657632be"
+    }
+  },
+  "genuine_parquet": {
+    "scalar_v1": {
+      "bytes": 5515,
+      "sha256": "da783a5382767181ca3c87ef872ead38540990c6f168aaec4708a6afd3772fe1"
+    },
+    "scalar_v2": {
+      "bytes": 5572,
+      "sha256": "4184c4fba0db4094568ca56c90cf8b48c62700e76c5917b4df738432158a5430"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}

@@ -109,17 +109,10 @@ public theorem projected_levels {path : LeafPath} {plan : ListPath.Plan} (projec
       rfl
   exact path_levels (path := path) (plan := plan) shape
 
-public theorem scan_levels {path : LeafPath} {plan : ListPath.Chunk.RepeatedPath}
-    (projected : path.scanPlan = some plan) :
-    plan.shape = path.shape ∧ plan.shape.leaf = (path.site, path.kind) ∧ plan.shape.steps {} = path.steps ∧
-      plan.shape.definitions = path.maxDefinition ∧ plan.shape.repetitions = path.maxRepetition ∧
-      ListPath.Chunk.wrappers plan = path.repeated.map (·.emptyLevel) := by
-  have shape : plan.shape = path.shape := by
-    dsimp only [LeafPath.scanPlan] at projected
-    split at projected
-    · cases projected
-      rfl
-    · contradiction
-  exact ⟨shape, path_levels (path := path) (plan := plan) shape⟩
+public theorem scan_levels {path : LeafPath} {plan : ListPath.Shape} (projected : plan = path.shape) :
+    plan.leaf = (path.site, path.kind) ∧ plan.steps {} = path.steps ∧
+      plan.definitions = path.maxDefinition ∧ plan.repetitions = path.maxRepetition ∧
+      ListPath.Chunk.wrappers plan = path.repeated.map (·.emptyLevel) :=
+  path_levels (path := path) (plan := plan) projected
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Tree
