@@ -29,10 +29,9 @@ two inverse laws recover the original rows or trace under the row and
 slot budgets. The proof also establishes Arrow typing, signed-word
 order and exact projected slot demand before trace allocation.
 
-This slice compiles the original footer and processes logical traces.
-Native page decoding, indexes, codecs and writing keep their existing
-profiles. Struct-wrapped paths, sibling leaves and deeper native page
-integration remain outside the slice.
+The footer and logical trace core also serves the bounded native
+unindexed UNCOMPRESSED PLAIN V1 reader.
+[Native V1 reader](parquet-recursive-list-path-v1.md)
 
 ## Verification
 
