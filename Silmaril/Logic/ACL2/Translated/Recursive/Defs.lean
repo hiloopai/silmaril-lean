@@ -9,7 +9,9 @@ namespace Silmaril.Logic.ACL2.Translated.Recursive
 
 def conspName : Name := ⟨"COMMON-LISP", "CONSP"⟩
 def cdrName : Name := ⟨"COMMON-LISP", "CDR"⟩
+def carName : Name := ⟨"COMMON-LISP", "CAR"⟩
 def eqName : Name := ⟨"COMMON-LISP", "EQ"⟩
+def endpName : Name := ⟨"COMMON-LISP", "ENDP"⟩
 
 variable {S : Signature} {scope : List Name}
 
@@ -25,6 +27,7 @@ def oldTerm : {raw : Raw} → Checked S scope raw → Option (Term Signature.emp
       let t ← oldTerm arg
       if name = conspName then some (.consp t)
       else if name = cdrName then some (.cdr t)
+      else if name = carName then some (.car t)
       else none
   | _, .call (name := name) _ (.cons lhs (.cons rhs .nil)) => do
       if name = eqName ∨ name = Primitive.equal.name then
@@ -39,11 +42,24 @@ def oldArgs : {args : RawArgs} → CheckedArgs S scope args →
       return Fin.cases (← oldTerm head) (← oldArgs tail)
 
 /-- Lower the checked term structurally. Calls to new symbols are separated from the
-old terms in the tests and actuals. The member table resolves a call at its original arity. -/
+old terms in the tests and actuals. The member table resolves a call at its original arity.
+A caller using ENDP must establish its logical complement law for CONSP. This lets the
+CDR certificate check the actual recursive branch under a positive CONSP test. -/
 def lowerBody (members : Signature) :
     {raw : Raw} → Checked S scope raw → Option (ACL2.Recursive.Body Signature.empty members scope.length)
+  | _, .ite (.call (name := name) callee (.cons arg .nil)) yes no => do
+      if name = endpName then
+        return .ite (.consp (← oldTerm arg)) (← lowerBody members no) (← lowerBody members yes)
+      else
+        return .ite (← oldTerm (.call callee (.cons arg .nil)))
+          (← lowerBody members yes) (← lowerBody members no)
   | _, .ite test yes no => do
       return .ite (← oldTerm test) (← lowerBody members yes) (← lowerBody members no)
+  | _, .call (.primitive .cons _ _) (.cons head (.cons tail .nil)) => do
+      let left ← lowerBody members head
+      let right ← lowerBody members tail
+      return .apply (.cons (.var (0 : Fin 2)) (.var 1))
+        (Fin.cases left (Fin.cases right Fin.elim0))
   | _, .call (name := name) (actuals := actuals) (.external declared) args =>
       match members.resolve name actuals.arity with
       | some f => ACL2.Recursive.Body.call f <$> oldArgs args

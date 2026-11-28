@@ -8,7 +8,7 @@ import Silmaril.Logic.ACL2.Standard.Objects.CdrSize
 
 namespace Silmaril.ProofFormats.ACL2.TrueListp.Tests
 
-open Silmaril.Logic.ACL2 Silmaril.Logic.ACL2.Standard
+open Silmaril.Logic.ACL2 Silmaril.Logic.ACL2.Standard TranslatedSource
 
 set_option maxRecDepth 8192
 set_option maxHeartbeats 1000000

@@ -189,6 +189,44 @@ lake env lean -DautoImplicit=false -DwarningAsError=true \
   Silmaril/ProofFormats/ACL2/TrueListp/Tests.lean
 ```
 
+## Checking the pinned translated BINARY-APPEND export
+
+The same stock ACL2 8.7 image exports `ACL2::BINARY-APPEND` together with the
+logical bodies of `COMMON-LISP::ENDP`, `COMMON-LISP::ATOM`, and
+`COMMON-LISP::NOT`. The shared reader and typed lowering check qualified
+names, arities and lexical slots. The exported definitions give the
+complement law for `ENDP` and `CONSP` on standard objects. That law justifies
+swapping the conditional branches in the recursive block. Lowering preserves
+the recursive call inside `CONS` and the unchanged second argument.
+[Fixture](../../corpus/acl2/binary-append/acl2-8.7.sexp) · [Pinned source][axioms]
+
+The supplied CDR certificate checks decrease of the exported `ACL2-COUNT X`
+measure under `O<`, using its natural-valued interpretation on standard objects.
+Lean proves the admitted equation agrees pointwise with the checked source
+body and checks the ordinary and presented model reducts. A subsequent theorem
+book derives `BINARY-APPEND NIL Y = Y` from the admitted equation using the
+syntactic calculus and exports it as a π-consequence with no added premises.
+The handwritten admission regression proves the conditional right identity
+`APPEND-TO-NIL` semantically by call induction. Its syntactic derivation remains
+open in this source profile. The regression also checks rejection of a changed
+helper body, recursive call arity and the nondecreasing `ACL2-COUNT Y` measure.
+[Lean regression](../../Silmaril/ProofFormats/ACL2/BinaryAppend/Tests.lean)
+
+Translation, package resolution and world provenance come from the pinned
+image. Lean checks the exported terms, the supplied certificate and the
+authored theorem event. This case establishes neither termination inference
+nor replay of native theorem proofs or book certification.
+
+The committed fixture has SHA-256
+`d72acd889da7fdb1419ca388994851d5c59d57b1db15910d2649da594c0f266a`.
+
+```sh
+python3 -B tools/acl2/export_recursive.py /path/to/acl2 binary-append
+lake build --wfail +Silmaril.ProofFormats.ACL2.BinaryAppend.Tests
+lake env lean -DautoImplicit=false -DwarningAsError=true \
+  Silmaril/ProofFormats/ACL2/BinaryAppend/Tests.lean
+```
+
 ## Next step for X86-RUN
 
 The [C3 X86-RUN slice](acl2-x86-run.md) documents the implemented export and
