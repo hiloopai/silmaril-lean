@@ -1,6 +1,6 @@
 # Logical Arrow batches from checked two-LIST Parquet chunks
 
-The two-LIST V1 reader can reconstruct one logical Arrow batch per original
+The two-LIST reader can reconstruct one logical Arrow batch per original
 row group. The output uses the existing recursive Arrow cells and batch
 observation type. The Arrow schema retains the outer field, inner element
 and signed leaf names and nullability from the checked Parquet plan.
@@ -26,11 +26,12 @@ the original footer.
 The proofs bind each atom to both original level streams and its aligned
 word, establish that successful rows fit the declared Arrow schema and
 preserve the ordered signed words, and tie each batch to its original
-position and row count. For any two accepted V1 page splits of the same
+position and row count. For any two accepted page splits of the same
 ordered trace, both checked row counts are the number of repetition-zero
 atoms and the reconstruction results agree. The existing Events and IPC
 routes retain their current scope. This slice uses the existing
-unindexed UNCOMPRESSED PLAIN V1 geometry and writer policy.
+unindexed UNCOMPRESSED PLAIN geometry and writer policy.
+[Original V1/V2 page checks](parquet-recursive-two-list-v2.md)
 
 ## Fixtures and regressions
 

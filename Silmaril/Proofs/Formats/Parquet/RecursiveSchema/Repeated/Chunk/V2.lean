@@ -73,7 +73,7 @@ private theorem bytesAt_exact {source : Bytes} {span : Footer.Span}
   rw [Bytes.toList_ofList]
   simp [bytesAt, Footer.fileBytes, Bytes.toList, ByteArray.data_extract]
 
-private theorem v2_slices {limits : Limits} {source : Bytes} {frame : Page.Frame} {spans : Page.V2Spans}
+private theorem v2_slices {limits : RecursiveSchema.Chunk.Limits} {source : Bytes} {frame : Page.Frame} {spans : Page.V2Spans}
     {checksum : Page.Checksum.Status}
     (checked : Page.Checksum.verify limits.maxBodyBytes source frame = .ok checksum)
     (split : frame.v2Spans = some spans) :
@@ -89,11 +89,12 @@ private theorem v2_slices {limits : Limits} {source : Bytes} {frame : Page.Frame
   simp only [List.mem_cons, List.not_mem_nil, or_false] at member
   rcases member with rfl | rfl | rfl <;> exact bytesAt_exact (by omega) (by omega)
 
-public theorem readV2Sections_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
+public theorem readV2SectionsWith_wire {limits : RecursiveSchema.Chunk.Limits}
+    {maxRepetition maxDefinition : Nat} {source : Bytes}
     {frame : Page.Frame} {info : Page.DataV2} {sections : V2Sections}
-    (read : readV2Sections limits leaf source frame info = .ok sections) :
-    V2SectionsWire limits leaf source frame info sections := by
-  unfold readV2Sections at read
+    (read : readV2SectionsWith limits maxRepetition maxDefinition source frame info = .ok sections) :
+    V2SectionsWireWith limits maxRepetition maxDefinition source frame info sections := by
+  unfold readV2SectionsWith at read
   obtain ⟨checksum, checked, read⟩ := bind_ok read
   have verified := from_mapError checked
   cases split : frame.v2Spans with
@@ -106,6 +107,13 @@ public theorem readV2Sections_wire {limits : Limits} {leaf : Leaf} {source : Byt
     obtain ⟨defWire, _⟩ := v2_levels_wire (from_mapError defRead)
     cases Except.ok.inj done
     exact ⟨⟨checksum, verified⟩, split, v2_slices verified split, repWire, defWire, repLength⟩
+
+public theorem readV2Sections_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {info : Page.DataV2} {sections : V2Sections}
+    (read : readV2Sections limits leaf source frame info = .ok sections) :
+    V2SectionsWire limits leaf source frame info sections :=
+  let wire := readV2SectionsWith_wire read
+  ⟨wire.checksum, wire.spans, wire.slices, wire.repetitions, wire.definitions, wire.count⟩
 
 public theorem checkV2Slots_wire {start : State} {info : Page.DataV2} {reps : List Nat}
     {decode : Unit → Except PageCause DecodedPage} {decoded : DecodedPage}

@@ -71,6 +71,24 @@ theorem readV2Levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {bytes 
     V2LevelWire limits maximum count bytes levels ∧ levels.length = count :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2_levels_wire read
 
+theorem admitV2Page_wire {codec : ColumnCodec} {frame : Page.Frame} {remaining : Nat}
+    {encoding : Int} {info : Page.DataV2}
+    (read : admitV2Page codec frame remaining encoding = .ok info) :
+    frame.value.kind = .dataV2 info ∧ info.encoding = encoding ∧ info.numValues ≤ remaining ∧
+      (codec.v2 info = 0 → frame.value.uncompressedSize = frame.value.compressedSize) :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.admitV2Page_wire read
+
+theorem readV2SectionsWith_wire {limits : RecursiveSchema.Chunk.Limits}
+    {maxRepetition maxDefinition : Nat} {source : Bytes}
+    {frame : Page.Frame} {info : Page.DataV2} {sections : V2Sections}
+    (read : readV2SectionsWith limits maxRepetition maxDefinition source frame info = .ok sections) :
+    V2SectionsWireWith limits maxRepetition maxDefinition source frame info sections :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readV2SectionsWith_wire read
+
+theorem chain_storedSize {span : Footer.Span} {start stop : Nat} {frames : List Page.Frame}
+    (wire : Page.Chain span start stop frames) : stop = start + storedChunkBytes frames :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.chain_storedSize wire
+
 /-- The original value suffix is used raw or expands by the selected checked
 payload relation, after both header subtractions are shown in bounds. -/
 theorem readV2Suffix_wire {limits : Limits} {codec : ColumnCodec} {leaf : Leaf}

@@ -42,27 +42,27 @@ public theorem decoded_axes {plan : Plan} {ceiling : Nat} {start : Chunk.State} 
   obtain ⟨r, d, w⟩ := zip_axes lengths (after := decoded.after)
   exact ⟨r.trans rep, d.trans defn, w⟩
 
-private theorem repetition_count {plan : Plan} {ceiling : Nat} {start stop : Chunk.State}
-    {reps defs : List Nat} {slots : List Chunk.Slot}
-    (wire : Chunk.SlotsWire plan ceiling start reps defs slots stop) :
-    reps.countP (· == 0) = slots.countP Chunk.Slot.startsRow := by
-  induction wire with
-  | nil => rfl
-  | @cons start slot reps defs tail stop first _ ih =>
-    have same : (slot.repetition == 0) = slot.startsRow := by
-      apply Bool.eq_iff_iff.mpr
-      simpa only [beq_iff_eq] using first.rowStart.symm
-    simp only [List.countP_cons, same, ih]
+private theorem decoded_row_starts {plan : Plan} {source : Silmaril.Formats.Bytes}
+    {start : Chunk.State} {ceiling : Nat} {reps defs : List Nat} {decoded : Chunk.Decoded}
+    (original : Chunk.DecodedWire plan ceiling start reps defs source decoded) :
+    (pageAtoms decoded).countP (fun slot => slot.repetition == 0) =
+      decoded.levels.countP Chunk.Slot.startsRow := by
+  have reps := (decoded_axes original).1
+  have counts := congrArg (List.countP (· == 0)) reps
+  simpa only [List.countP_map, Function.comp_def] using counts.trans (original.levels.repetitionCount)
 
 private theorem page_row_starts {limits : Chunk.Limits} {plan : Plan} {source : Silmaril.Formats.Bytes}
     {frame : Page.Frame} {start : Chunk.State} {remaining ceiling : Nat} {decoded : Chunk.Decoded}
-    (wire : Chunk.PageWire limits plan source frame start remaining ceiling decoded) :
+    (wire : Chunk.DataPageWire limits plan source frame start remaining ceiling decoded) :
     (pageAtoms decoded).countP (fun slot => slot.repetition == 0) =
       decoded.levels.countP Chunk.Slot.startsRow := by
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, original, _⟩ := wire.original
-  have reps := (decoded_axes original).1
-  have counts := congrArg (List.countP (· == 0)) reps
-  simpa only [List.countP_map, Function.comp_def] using counts.trans (repetition_count original.levels)
+  cases wire with
+  | v1 v1 =>
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, original, _⟩ := v1.original
+    exact decoded_row_starts original
+  | v2 v2 =>
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, original, rfl⟩ := v2.original
+    simpa only [Chunk.closeV2, pageAtoms] using decoded_row_starts original
 
 public theorem chain_trace_rows {limits : Chunk.Limits} {carrier : Chunk.Carrier} {start stop : Chunk.State}
     {frames : List Page.Frame} {pages : List Chunk.ObservedPage}

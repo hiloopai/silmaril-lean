@@ -68,7 +68,7 @@ theorem readProjected_preserves {schemaLimits : Snapshot.Limits} {limits : Chunk
     Arrow.RecursiveSchema.Stream.Events.projectTrace_counts _ _, rfl,
     Arrow.RecursiveSchema.Stream.Events.projectTrace_rows _ _⟩
 
-/-- Legal V1 reframings of every original group agree in the shared schema,
+/-- Legal reframings of every original group agree in the shared schema,
 ordered rows and termination observation. The event traces also agree. -/
 theorem readSource_reframe {leftSchemaLimits rightSchemaLimits : Snapshot.Limits}
     {leftSnapshot rightSnapshot : Snapshot.Checked}

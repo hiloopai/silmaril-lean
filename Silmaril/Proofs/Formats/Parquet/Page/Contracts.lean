@@ -115,6 +115,39 @@ public theorem readChunk_chain {limits : Limits} {source : Bytes} {chunk : Foote
   · exact ⟨valid.1, valid.2, go limits.maxPages chunk.start [] (.nil _) (by simpa [readChunk, valid] using parsed)⟩
   · simp [readChunk, valid] at parsed
 
+public theorem readChunk_readPage {limits : Limits} {source : Bytes} {chunk : Footer.Span}
+    {frames : List Frame} (parsed : readChunk limits source chunk = .ok frames) :
+    ∀ frame ∈ frames, readPage limits source chunk frame.header.start = .ok frame := by
+  let Bound (frame : Frame) := readPage limits source chunk frame.header.start = .ok frame
+  have go (budget cursor : Nat) (reversed : List Frame)
+      (prior : ∀ frame ∈ reversed, Bound frame)
+      (scan : readChunk.go limits source chunk budget cursor reversed = .ok frames) :
+      ∀ frame ∈ frames, Bound frame := by
+    induction budget generalizing cursor reversed with
+    | zero =>
+      by_cases last : cursor = chunk.stop
+      · simp [readChunk.go, last] at scan
+        simpa [← scan] using prior
+      · simp [readChunk.go, last] at scan
+    | succ budget ih =>
+      by_cases last : cursor = chunk.stop
+      · simp [readChunk.go, last] at scan
+        simpa [← scan] using prior
+      · cases next : readPage limits source chunk cursor with
+        | error e => simp [readChunk.go, last, next] at scan
+        | ok frame =>
+          apply ih frame.payload.stop (frame :: reversed)
+          · intro member atFrame
+            rcases List.mem_cons.mp atFrame with rfl | rest
+            · change readPage limits source chunk member.header.start = .ok member
+              rw [(readPage_within next).1.headerStart]
+              exact next
+            · exact prior member rest
+          · simpa [readChunk.go, last, next] using scan
+  by_cases valid : chunk.start ≤ chunk.stop ∧ chunk.stop ≤ source.length
+  · exact go limits.maxPages chunk.start [] (by simp) (by simpa [readChunk, valid] using parsed)
+  · simp [readChunk, valid] at parsed
+
 private theorem chain_lower {chunk : Footer.Span} {start stop : Nat} {frames : List Frame}
     (chain : Chain chunk start stop frames) : ∀ frame ∈ frames, start ≤ frame.header.start := by
   induction chain with

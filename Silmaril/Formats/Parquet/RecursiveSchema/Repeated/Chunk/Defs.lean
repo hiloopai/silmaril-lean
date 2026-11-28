@@ -578,15 +578,32 @@ structure V2Sections where
   definitions : List Nat
 
 /-- Check the original stored body CRC before interpreting any of its sections. -/
-def readV2Sections (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
-    (info : Page.DataV2) : Except PageCause V2Sections := do
+def readV2SectionsWith (limits : RecursiveSchema.Chunk.Limits) (maxRepetition maxDefinition : Nat)
+    (source : Bytes) (frame : Page.Frame) (info : Page.DataV2) : Except PageCause V2Sections := do
   let _ ← (Page.Checksum.verify limits.maxBodyBytes source frame).mapError .checksum
   let some spans := frame.v2Spans | throw .v2Extent
-  let reps ← (readV2Levels limits.levels leaf.maxRepetition info.numValues
+  let reps ← (readV2Levels limits.levels maxRepetition info.numValues
     (bytesAt source spans.repetition)).mapError .repetition
-  let defs ← (readV2Levels limits.levels leaf.maxDefinition info.numValues
+  let defs ← (readV2Levels limits.levels maxDefinition info.numValues
     (bytesAt source spans.definition)).mapError .definition
   return ⟨spans, reps, defs⟩
+
+def readV2Sections (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (info : Page.DataV2) : Except PageCause V2Sections :=
+  readV2SectionsWith limits.toLimits leaf.maxRepetition leaf.maxDefinition source frame info
+
+structure V2SectionsWireWith (limits : RecursiveSchema.Chunk.Limits)
+    (maxRepetition maxDefinition : Nat) (source : Bytes) (frame : Page.Frame)
+    (info : Page.DataV2) (sections : V2Sections) : Prop where
+  checksum : ∃ status, Page.Checksum.verify limits.maxBodyBytes source frame = .ok status
+  spans : frame.v2Spans = some sections.spans
+  slices : ∀ span ∈ [sections.spans.repetition, sections.spans.definition, sections.spans.values],
+    source.slice? span.start (some span.stop) = some (bytesAt source span)
+  repetitions : V2LevelWire limits.levels maxRepetition info.numValues
+    (bytesAt source sections.spans.repetition) sections.repetitions
+  definitions : V2LevelWire limits.levels maxDefinition info.numValues
+    (bytesAt source sections.spans.definition) sections.definitions
+  count : sections.repetitions.length = info.numValues
 
 structure V2SectionsWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
     (info : Page.DataV2) (sections : V2Sections) : Prop where

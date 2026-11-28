@@ -1,6 +1,6 @@
 # Arrow events from checked two-LIST Parquet groups
 
-The event adapter opens the existing unindexed UNCOMPRESSED PLAIN V1
+The event adapter opens the existing unindexed UNCOMPRESSED PLAIN V1/V2
 two-LIST profile and exposes its exact recursive Arrow declaration once.
 It uses the shared Parquet reader to emit one complete batch per
 successfully reconstructed original group in footer order. Exhausting

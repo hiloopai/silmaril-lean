@@ -116,4 +116,16 @@ public theorem inner_continue {plan : Plan} {ceiling : Nat} {start : State} {slo
   exact ⟨position, by simpa [position, Position.admits] using wire.incoming,
     by simpa [State.consume, position, Position.admits] using wire.current⟩
 
+public theorem repetition_count {plan : Plan} {ceiling : Nat} {start stop : State}
+    {reps defs : List Nat} {slots : List Slot}
+    (wire : SlotsWire plan ceiling start reps defs slots stop) :
+    reps.countP (· == 0) = slots.countP Slot.startsRow := by
+  induction wire with
+  | nil => rfl
+  | @cons start slot reps defs tail stop first _ ih =>
+    have same : (slot.repetition == 0) = slot.startsRow := by
+      apply Bool.eq_iff_iff.mpr
+      simpa only [beq_iff_eq] using (row_start first).symm
+    simp only [List.countP_cons, same, ih]
+
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk

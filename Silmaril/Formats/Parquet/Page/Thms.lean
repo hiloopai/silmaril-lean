@@ -40,6 +40,12 @@ theorem readChunk_chain {limits : Limits} {source : Bytes} {chunk : Footer.Span}
     chunk.start ≤ chunk.stop ∧ chunk.stop ≤ source.length ∧ Chain chunk chunk.start chunk.stop frames :=
   Proofs.Formats.Parquet.Page.readChunk_chain parsed
 
+/-- Each chunk frame is the original page parse at its absolute header cursor. -/
+theorem readChunk_readPage {limits : Limits} {source : Bytes} {chunk : Footer.Span}
+    {frames : List Frame} (parsed : readChunk limits source chunk = .ok frames) :
+    ∀ frame ∈ frames, readPage limits source chunk frame.header.start = .ok frame :=
+  Proofs.Formats.Parquet.Page.readChunk_readPage parsed
+
 /-- A previous payload ends at or before every subsequent header. -/
 theorem readChunk_payloads_disjoint {limits : Limits} {source : Bytes} {chunk : Footer.Span}
     {frames : List Frame} (parsed : readChunk limits source chunk = .ok frames) :

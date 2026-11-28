@@ -236,7 +236,7 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
     exact ⟨by simp [Observation.levels, slots], by simp [Observation.levels, rows],
       by simp [carrier, Page.columnSpan, Footer.checkDataSpan, bytes]⟩
 
-private theorem chain_storedSize {span : Footer.Span} {start stop : Nat} {frames : List Page.Frame}
+public theorem chain_storedSize {span : Footer.Span} {start stop : Nat} {frames : List Page.Frame}
     (wire : Page.Chain span start stop frames) : stop = start + storedChunkBytes frames := by
   induction wire with
   | nil => simp [storedChunkBytes]

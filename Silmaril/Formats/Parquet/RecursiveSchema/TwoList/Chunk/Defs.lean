@@ -3,8 +3,8 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
-/-! Bounded, unindexed UNCOMPRESSED PLAIN V1 for one two-LIST leaf.
-The cursor carries the deepest live List across consecutive data pages. -/
+/-! Bounded, unindexed UNCOMPRESSED PLAIN V1/V2 for one two-LIST leaf.
+V1 can carry live ancestry across pages. V2 covers complete rows. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Chunk
 
@@ -120,6 +120,7 @@ inductive PageCause where
   | level (original : LevelError)
   | plain (original : Plain.Error)
   | alignment (original : FlatPage.Error)
+  | v2 (original : Repeated.Chunk.PageCause)
   deriving DecidableEq, Repr
 
 structure Decoded where
@@ -147,6 +148,44 @@ def decodePage (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Fr
   let defs ← (Repeated.Chunk.readLevels limits.levels plan.maxDefinition info.numValues reps.tail).mapError .definition
   decodeSlots plan ceiling start reps.levels defs.levels defs.tail
 
+def State.close (state : State) : State := { state with live := .closed }
+
+def closeV2 (decoded : Decoded) : Decoded := { decoded with after := decoded.after.close }
+
+def absentSlots (decoded : Decoded) : Nat :=
+  decoded.levels.countP (fun slot => !slot.present)
+
+/-- V2 begins a new row, so any live ancestry from an earlier V1 page
+is discarded. A V2 page also closes its outgoing cursor, including when
+it has zero slots. -/
+def checkV2Slots (plan : Plan) (info : Page.DataV2) (reps defs : List Nat)
+    (suffix : Bytes) (start : State) (ceiling : Nat) : Except PageCause Decoded := do
+  let first := reps.head?.getD 0
+  let rows := reps.count 0
+  if first ≠ 0 then throw (.v2 (.v2RowBoundary start.slots first))
+  else if rows ≠ info.numRows then throw (.v2 (.v2Rows info.numRows rows))
+  else do
+    let decoded ← decodeSlots plan ceiling start.close reps defs suffix
+    let nulls := absentSlots decoded
+    if nulls ≠ info.numNulls then throw (.v2 (.v2Nulls info.numNulls nulls))
+    else return closeV2 decoded
+
+/-- Both compression flag values resolve to the original raw suffix under
+codec zero. No codec decoder is needed. -/
+def decodeV2Page (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining ceiling : Nat) : Except PageCause Decoded := do
+  let info ← (Repeated.Chunk.admitV2Page .uncompressed frame remaining).mapError .v2
+  let sections ← (Repeated.Chunk.readV2SectionsWith limits.toLimits 2 plan.maxDefinition
+    source frame info).mapError .v2
+  checkV2Slots plan info sections.repetitions sections.definitions
+    (Repeated.Chunk.bytesAt source sections.spans.values) start ceiling
+
+def decodeDataPage (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining ceiling : Nat) : Except PageCause Decoded :=
+  match frame.value.kind with
+  | .dataV2 _ => decodeV2Page limits plan source frame start remaining ceiling
+  | _ => decodePage limits plan source frame start remaining ceiling
+
 structure DecodedWire (plan : Plan) (ceiling : Nat) (start : State) (reps defs : List Nat) (suffix : Bytes)
     (decoded : Decoded) : Prop where
   levels : SlotsWire plan ceiling start reps defs decoded.levels decoded.after
@@ -167,6 +206,24 @@ structure PageWire (limits : Limits) (plan : Plan) (source : Bytes) (frame : Pag
     Repeated.Chunk.LevelWire limits.levels plan.maxDefinition info.numValues reps.tail defs ∧
     DecodedWire plan ceiling start reps.levels defs.levels defs.tail decoded ∧
     decoded.levels.length = info.numValues
+
+structure V2PageWire (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded) : Prop where
+  original : ∃ (info : Page.DataV2) (sections : Repeated.Chunk.V2Sections) (checked : Decoded),
+    frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
+    frame.value.uncompressedSize = frame.value.compressedSize ∧
+    Repeated.Chunk.V2SectionsWireWith limits.toLimits 2 plan.maxDefinition source frame info sections ∧
+    sections.repetitions.head?.getD 0 = 0 ∧ sections.repetitions.count 0 = info.numRows ∧
+    absentSlots decoded = info.numNulls ∧ decoded.levels.length = info.numValues ∧
+    DecodedWire plan ceiling start.close sections.repetitions sections.definitions
+      (Repeated.Chunk.bytesAt source sections.spans.values) checked ∧ decoded = closeV2 checked
+
+inductive DataPageWire (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded) : Prop where
+  | v1 : PageWire limits plan source frame start remaining ceiling decoded →
+      DataPageWire limits plan source frame start remaining ceiling decoded
+  | v2 : V2PageWire limits plan source frame start remaining ceiling decoded →
+      DataPageWire limits plan source frame start remaining ceiling decoded
 
 inductive BindCause where
   | missing | association | pageOffsets | pageIndex | span | counts
@@ -270,13 +327,13 @@ def decodeFrames (limits : Limits) (carrier : Carrier) :
     List Page.Frame → Nat → State → List ObservedPage → Except Error Observation
   | [], _, state, reversed => .ok ⟨reversed.reverse, state⟩
   | frame :: frames, ordinal, start, reversed => do
-    let decoded ← (decodePage limits carrier.plan carrier.source frame start
+    let decoded ← (decodeDataPage limits carrier.plan carrier.source frame start
       (carrier.slots - start.slots) carrier.rows).mapError
         (Error.page carrier.address ordinal frame.header.start start)
     decodeFrames limits carrier frames (ordinal + 1) decoded.after (⟨frame, start, decoded⟩ :: reversed)
 
 /-- Scan the original positive-sized in-file interval and consume each
-framed V1 body in order, keeping separate footer slot and row counts. -/
+framed V1 or V2 body in order, keeping separate footer slot and row counts. -/
 def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat}
     (limits : Limits) (binding : Binding schema group) : Except Error Observation := do
@@ -299,7 +356,7 @@ inductive ChainWire (limits : Limits) (carrier : Carrier) :
     State → List Page.Frame → List ObservedPage → State → Prop where
   | nil (state : State) : ChainWire limits carrier state [] [] state
   | cons {start frame decoded frames pages stop} :
-      PageWire limits carrier.plan carrier.source frame start (carrier.slots - start.slots) carrier.rows decoded →
+      DataPageWire limits carrier.plan carrier.source frame start (carrier.slots - start.slots) carrier.rows decoded →
       ChainWire limits carrier decoded.after frames pages stop →
       ChainWire limits carrier start (frame :: frames) (⟨frame, start, decoded⟩ :: pages) stop
 
