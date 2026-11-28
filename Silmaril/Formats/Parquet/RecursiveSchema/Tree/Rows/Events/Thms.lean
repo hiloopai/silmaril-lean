@@ -53,8 +53,8 @@ theorem erase_projectColumns {source : Signature} (selection : Scan.Projection s
   Proofs.Formats.Parquet.RecursiveSchema.Tree.Rows.Events.erase_projectColumns selection batch
 
 /-- Selection preserves batch boundaries and produces the exact ordered logical views. -/
-theorem projected_observations {source : Signature} (selection : Scan.Projection source)
-    (events : Trace source) :
+theorem projected_observations {source : Signature} {Failure : Type} (selection : Scan.Projection source)
+    (events : Arrow.Events.Trace source Arrow.RecursiveSchema.Stream.Events.Value Failure) :
     (projectTrace selection events).batches.map eraseBatch =
       (events.batches.map eraseBatch).map (projectObservation selection) :=
   Proofs.Formats.Parquet.RecursiveSchema.Tree.Rows.Events.projected_observations selection events

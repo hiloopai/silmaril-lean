@@ -70,8 +70,8 @@ public theorem erase_projectColumns {source : Signature} (selection : Scan.Proje
   simp only [eraseBatch, projectObservation, Scan.Projection.rowCount_projectColumns,
     rows, Scan.Projection.project, List.map_map, Function.comp_def, erase_projectRow]
 
-public theorem projected_observations {source : Signature} (selection : Scan.Projection source)
-    (events : Trace source) :
+public theorem projected_observations {source : Signature} {Failure : Type} (selection : Scan.Projection source)
+    (events : Arrow.Events.Trace source Arrow.RecursiveSchema.Stream.Events.Value Failure) :
     (projectTrace selection events).batches.map eraseBatch =
       (events.batches.map eraseBatch).map (projectObservation selection) := by
   simp only [projectTrace, List.map_map, Function.comp_def, erase_projectColumns]
