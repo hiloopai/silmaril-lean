@@ -37,7 +37,7 @@ theorem convert_terminal_wire {limits : Limits} {input : KBytes} {checksum : Boo
 output or typed cause for the exact source observations. -/
 theorem convert_of_strict {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (strict : Stream.read limits.ipc input = .ok source)
-    (supported : Writer.supportsDeclaration source.schema = true) :
+    (supported : Writer.supportsRequiredDeclaration source.schema = true) :
     convert limits input checksum = (Writer.emit limits.parquet (writerInput source checksum)).mapError .writer := by
   simp [convert, Stream.Import.admit_iff.mpr strict, supported]
 
@@ -45,13 +45,13 @@ theorem convert_of_strict {limits : Limits} {input : KBytes} {checksum : Bool}
 trace before any writer budget is consulted. -/
 theorem convert_declaration_error {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (strict : Stream.read limits.ipc input = .ok source)
-    (unsupported : Writer.supportsDeclaration source.schema = false) :
+    (unsupported : Writer.supportsRequiredDeclaration source.schema = false) :
     convert limits input checksum = .error (.declaration source) := by
   simp [convert, Stream.Import.admit_iff.mpr strict, unsupported]
 
 theorem convert_declaration_wire {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (rejected : convert limits input checksum = .error (.declaration source)) :
-    SourceWire limits.ipc input source ∧ Writer.supportsDeclaration source.schema = false :=
+    SourceWire limits.ipc input source ∧ Writer.supportsRequiredDeclaration source.schema = false :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc.convert_declaration_wire rejected
 
 theorem convert_writer_wire {limits : Limits} {input : KBytes} {checksum : Bool}

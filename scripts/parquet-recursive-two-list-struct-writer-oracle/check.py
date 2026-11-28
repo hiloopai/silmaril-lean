@@ -66,18 +66,25 @@ public def main (args : List String) : IO Unit := do
 """
 
 
-def cases():
+def cases(*, optional_element=False):
     for flags in product((False, True), repeat=4):
-        original, groups, _ = NATIVE["native"](flags)
+        original, groups, _ = NATIVE["native"](flags, struct_nullable=optional_element)
         outer = original.field(0)
         inner = outer.type.value_field
         element = inner.type.value_field
         bits = "".join(str(int(flag)) for flag in flags)
         yield f"32_64_{bits}", original, groups, True
-        swapped = pa.field(element.name, pa.struct(list(reversed(list(element.type)))), False)
+        swapped = pa.field(element.name, pa.struct(list(reversed(list(element.type)))), element.nullable)
         reversed_inner = pa.field(inner.name, pa.list_(swapped), inner.nullable)
         yield f"64_32_{bits}", pa.schema([pa.field(outer.name, pa.list_(reversed_inner), outer.nullable)]), groups, True
     schema, groups, _ = EVENTS["renamed"]()
+    if optional_element:
+        outer = schema.field(0)
+        inner = outer.type.value_field
+        element = inner.type.value_field.with_nullable(True)
+        schema = pa.schema([outer.with_type(pa.list_(inner.with_type(pa.list_(element))))])
+        rows = groups[0]
+        groups = [[*rows[:-1], [*rows[-1][:-1], [None, *rows[-1][-1]]]]]
     yield "renamed_no_crc_empty_group", schema, [groups[0], [], groups[0]], False
     yield "schema_only", schema, [], True
 
@@ -102,7 +109,7 @@ def inspect(wire, schema, groups, crc):
     element = inner.type.value_field
     children = list(element.type)
     nullable = (outer.nullable, inner.nullable, *(child.nullable for child in children))
-    shared = NATIVE["steps"](nullable)[2]
+    shared = NATIVE["steps"](nullable)[2] + int(element.nullable)
     physical = [1 if child.type.bit_width == 32 else 2 for child in children]
     footer = NATIVE["metadata"](wire)
     entries = THRIFT["list_field"](footer, 2)
@@ -117,7 +124,7 @@ def inspect(wire, schema, groups, crc):
         assert wrapper[3][1] == 2 and wrapper[4][1] == b"list" and wrapper[5][1] == 1
     declaration = entries[5]
     assert set(declaration) == {3, 4, 5}
-    assert declaration[3][1] == 0 and declaration[4][1] == element.name.encode() and declaration[5][1] == 2
+    assert declaration[3][1] == element.nullable and declaration[4][1] == element.name.encode() and declaration[5][1] == 2
     for leaf, child, kind in zip(entries[6:], children, physical, strict=True):
         assert set(leaf) == {1, 3, 4}
         assert leaf[1][1] == kind and leaf[3][1] == child.nullable and leaf[4][1] == child.name.encode()
@@ -150,7 +157,8 @@ def inspect(wire, schema, groups, crc):
             if crc:
                 assert header[4][1] & 0xffffffff == zlib.crc32(body)
 
-            expected = NATIVE["trace"](rows, nullable, side, tuple(field.name for field in children))
+            expected = NATIVE["trace"](rows, nullable, side, tuple(field.name for field in children),
+                                       optional_element=element.nullable)
             count = len(expected)
             assert chunk[5][1] == count and [header[5][1][i][1] for i in range(1, 5)] == [count, 0, 3, 3]
             maximum = shared + int(child.nullable)
@@ -174,7 +182,7 @@ def refusals(positives):
     valid = input_term(schema, groups)
     slots = len(NATIVE["trace"](groups[0], (True,) * 4, 0))
     struct_field = schema.field(0).type.value_type.value_field
-    bad_struct = pa.field(struct_field.name, struct_field.type, True)
+    bad_struct = struct_field.with_type(pa.struct([struct_field.type.field(0)]))
     bad_inner = pa.field("element", pa.list_(bad_struct), True)
     invalid = input_term(pa.schema([pa.field("items", pa.list_(bad_inner))]), [])
     return [
@@ -205,10 +213,8 @@ def refusals(positives):
     ]
 
 
-def verify(folder):
-    positives = list(cases())
-    denied = refusals(positives)
-    code = [LEAN]
+def verify_cases(folder, positives, denied, driver_source=LEAN):
+    code = [driver_source]
     for label, schema, groups, crc in positives:
         code.append(f'  write folder "{label}" {input_term(schema, groups, crc)}')
     driver = folder / "TwoListStructWriter.lean"
@@ -223,6 +229,11 @@ def verify(folder):
     pages = 2 * sum(len(groups) for _, _, groups, _ in positives)
     print(f"Checked {len(emitted)} Lean Parquet files, {pages} original V1 pages and {len(denied)} typed refusals")
     return NATIVE["fingerprints"](emitted)
+
+
+def verify(folder):
+    positives = list(cases())
+    return verify_cases(folder, positives, refusals(positives))
 
 
 def producer():

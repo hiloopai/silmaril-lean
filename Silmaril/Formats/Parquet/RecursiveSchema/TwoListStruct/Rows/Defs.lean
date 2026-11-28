@@ -115,6 +115,19 @@ def mergeRows (left right : List Row) (optional : Bool := false) : Option (List 
 def projectRows (side : Side) (rows : List Row) (optional : Bool := false) : Option (List Row) :=
   rows.mapM (projectRow side optional)
 
+/-- Every null or empty LIST marker and every Struct element, including
+a null Struct, contributes one slot to each physical column. -/
+def cellDemand : Nat → Cell → Nat
+  | depth + 1, some (.list (first :: rest)) =>
+    cellDemand depth first + ListPath.Rows.sumDemand (cellDemand depth) rest
+  | _, _ => 1
+
+def rowDemand : Row → Nat
+  | [value] => cellDemand 2 value
+  | _ => 0
+
+def slotDemand (rows : List Row) : Nat := ListPath.Rows.sumDemand rowDemand rows
+
 end
 
 end Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows

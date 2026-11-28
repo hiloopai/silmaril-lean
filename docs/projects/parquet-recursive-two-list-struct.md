@@ -43,8 +43,8 @@ either signed child from the merged rows restores its
 entire original ordered trace, including every repetition, definition
 and signed word. The group theorem retains the original row count
 and both original column witnesses. `readAll` keeps footer order.
-Native Events expose both element nullability choices. The native
-writer and strict IPC bridges use the required-element profile.
+Native Events and the native writer support both element nullability
+choices. The strict IPC bridges use the required-element profile.
 [Checked Arrow Events](parquet-recursive-two-list-struct-events.md) · [Native writer](parquet-recursive-two-list-struct-writer.md)
 
 ## Verification
@@ -72,8 +72,8 @@ nullability choices in genuine PyArrow V1 files. Independent wire
 inspection confirms 188 pages over 17 accepted inputs, including the
 labeled reframe. The late presence control introduces two conflicts
 and verifies the first with both original coordinates and the
-completed group prefix under full and empty Events. The required-only
-writer and IPC gates have separate controls.
+completed group prefix under full and empty Events. The required-only IPC
+gate has a separate control.
 [Optional-element fixture pins](../../scripts/parquet-recursive-two-list-struct-optional-element-oracle/fixtures.json)
 
 ~~~sh

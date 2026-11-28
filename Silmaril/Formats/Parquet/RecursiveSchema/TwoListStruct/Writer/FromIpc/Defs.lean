@@ -34,7 +34,7 @@ def convert (limits : Limits) (input : KBytes) (checksum : Bool := false) :
   | .error (.openError cause) => .error (.openError cause)
   | .error (.terminal source) => .error (.terminal source)
   | .ok source =>
-    if Writer.supportsDeclaration source.schema then
+    if Writer.supportsRequiredDeclaration source.schema then
       (Writer.emit limits.parquet (writerInput source checksum)).mapError .writer
     else .error (.declaration source)
 

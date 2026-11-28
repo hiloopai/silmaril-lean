@@ -2,6 +2,8 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Defs
 import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Thms
+import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.Thms
+import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Rows.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Writer.Schema.Thms
 import Silmaril.Formats.Arrow.RecursiveSchema.Batch.Writer.Thms
@@ -35,6 +37,23 @@ public theorem footer_exact {limits : Limits} {checksum : Bool} {plan : Plan} {o
   refine ⟨_, _, congrArg Int.ofNat first.rows, rfl, congrArg Int.ofNat first.atOffset,
     congrArg Int.ofNat second.atOffset, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
+public theorem slots_exact {limits : Limits} {checksum : Bool} {plan : Plan} {offset priorSlots : Nat}
+    {input : Arrow.RecursiveSchema.Batch.Rows.Observation} {output : WrittenGroup}
+    (wire : GroupWire limits checksum plan offset priorSlots input output) :
+    output.left.slots = RecursiveSchema.TwoListStruct.Rows.slotDemand input.rows ∧
+    output.right.slots = RecursiveSchema.TwoListStruct.Rows.slotDemand input.rows ∧
+    priorSlots + 2 * RecursiveSchema.TwoListStruct.Rows.slotDemand input.rows ≤ limits.maxTotalSlots := by
+  obtain ⟨_, _, leftProjected, rightProjected, leftWire, rightWire⟩ := wire.projected
+  obtain ⟨_, leftTrace, leftSlots, _⟩ := leftWire.canonical
+  obtain ⟨_, rightTrace, rightSlots, _⟩ := rightWire.canonical
+  have left := leftSlots.trans ((RecursiveSchema.ListPath.Rows.Relation.slotDemand leftTrace).symm.trans
+    (RecursiveSchema.TwoListStruct.Rows.projectRows_demand leftProjected))
+  have right := rightSlots.trans ((RecursiveSchema.ListPath.Rows.Relation.slotDemand rightTrace).symm.trans
+    (RecursiveSchema.TwoListStruct.Rows.projectRows_demand rightProjected))
+  have total := rightWire.totalSlotCap
+  rw [right, left] at total
+  exact ⟨left, right, by omega⟩
+
 public theorem serialize_construction {limits : Limits} {input : Input} {output : Output}
     (built : serialize limits input = .ok output) : Construction limits input output := by
   unfold serialize at built
@@ -47,7 +66,7 @@ public theorem serialize_construction {limits : Limits} {input : Input} {output 
 public theorem certify_readback {limits : Limits} {input : Input} {output : Output}
     (accepted : certify limits input output = .ok ()) : Readback limits input output := by
   unfold certify at accepted
-  cases original : Parquet.RecursiveSchema.TwoListStruct.openRequired limits.schema.snapshot output.bytes with
+  cases original : Parquet.RecursiveSchema.TwoListStruct.openFile limits.schema.snapshot output.bytes with
   | error => simp [original, Except.mapError, bind, Except.bind] at accepted
   | ok source =>
     cases same : agrees limits input output source with

@@ -24,10 +24,8 @@ LEAN = NATIVE["LEAN"].replace(
     """import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Defs
 import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Events.Defs
 import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Defs
-import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Defs
 meta import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Events.Defs
 meta import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Defs
-meta import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Defs
 """, 1) + """
 open Arrow.RecursiveSchema (Field)
 open Arrow.RecursiveSchema.Stream.Events (declarations eraseBatch eraseRow)
@@ -46,12 +44,8 @@ private def checkEvents (input : Bytes) (fields : List (Option String × Field))
 
 private def checkRequiredGates (input : Bytes) : IO Unit := do
   let source ← take (openFile {} input)
-  let groups ← take (Reader.readAll {} source.schema)
-  let intended : Writer.Input := ⟨source.schema.plan.arrow, groups, true⟩
-  let original : Writer.Output := ⟨input, source.snapshot.footer, source.snapshot.metadata⟩
+  unless source.schema.plan.element.nullable do throw (IO.userError "expected a compiled optional Struct")
   refuse .structShape (openRequired {} input)
-  refuse .declaration (Writer.emit {} intended)
-  refuse (.openReadback .structShape) (Writer.certify {} intended original)
   for selection in [Selection.field, .empty] do
     let result := Reader.ToIpc.convert {} {} { schema.ipc.batches := 0 } input selection
     let .error (.openError (.openError .structShape)) := result |
@@ -140,7 +134,7 @@ def verify(folder):
     subprocess.run(["lake", "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
                     "--run", str(driver), str(folder)], cwd=ROOT, check=True)
     print(f"Checked {len(positives)} accepted inputs and {pages_total} original V1 pages, "
-          "the late shared presence refusal and the required-only writer and IPC gates")
+          "the late shared presence refusal and the required-only IPC gates")
     fingerprint = NATIVE["fingerprints"]
     return {"genuine_parquet": fingerprint({label: case[2] for label, case in genuine.items()}),
             "authored_parquet": fingerprint(authored)}
