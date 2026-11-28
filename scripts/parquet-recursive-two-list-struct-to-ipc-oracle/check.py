@@ -79,7 +79,7 @@ private def sourceFailure (input : Bytes) (batches : List Observation)
         throw (IO.userError "original failure or complete selected prefix differs")
 
 private def openFailure (input : Bytes) : IO Unit := do
-  let .error wanted := Parquet.RecursiveSchema.TwoListStruct.openRequired {} input |
+  let .error wanted := Parquet.RecursiveSchema.TwoListStruct.openFile {} input |
     throw (IO.userError "expected an original opening refusal")
   for selection in [Selection.field, .empty] do
     let .error (.openError (.openError actual)) := convert {} {} exhausted input selection |
@@ -140,8 +140,7 @@ def verify(folder):
     for label, group, wanted in failures:
         code.append(f'  sourceFailure (← load folder "{label}") {batches_term(schema, groups[:group])} '
                     f'(.group {group} ({wanted}))')
-    for label in ("empty_input", "optional_struct"):
-        code.append(f'  openFailure (← load folder "{label}")')
+    code.append('  openFailure (← load folder "empty_input")')
 
     refusals = []
     for selection in ("field", "empty"):
@@ -172,7 +171,7 @@ def verify(folder):
     for selection in ("field", "empty"):
         assert emitted[f"native_1111_{selection}"] == emitted[f"independent_cuts_{selection}"]
     print(f"Checked {len(positives)} sources, {pages} Parquet pages, {len(emitted)} strict IPC streams, "
-          f"{len(failures) + 2} source refusals and {len(refusals)} writer refusals")
+          f"{len(failures) + 1} source refusals and {len(refusals)} writer refusals")
     return EVENTS["fingerprints"](emitted)
 
 

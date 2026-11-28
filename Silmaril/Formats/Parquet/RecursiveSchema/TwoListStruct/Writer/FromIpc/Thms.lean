@@ -37,7 +37,7 @@ theorem convert_terminal_wire {limits : Limits} {input : KBytes} {checksum : Boo
 output or typed cause for the exact source observations. -/
 theorem convert_of_strict {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (strict : Stream.read limits.ipc input = .ok source)
-    (supported : Writer.supportsRequiredDeclaration source.schema = true) :
+    (supported : Writer.supportsDeclaration source.schema = true) :
     convert limits input checksum = (Writer.emit limits.parquet (writerInput source checksum)).mapError .writer := by
   simp [convert, Stream.Import.admit_iff.mpr strict, supported]
 
@@ -45,13 +45,13 @@ theorem convert_of_strict {limits : Limits} {input : KBytes} {checksum : Bool}
 trace before any writer budget is consulted. -/
 theorem convert_declaration_error {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (strict : Stream.read limits.ipc input = .ok source)
-    (unsupported : Writer.supportsRequiredDeclaration source.schema = false) :
+    (unsupported : Writer.supportsDeclaration source.schema = false) :
     convert limits input checksum = .error (.declaration source) := by
   simp [convert, Stream.Import.admit_iff.mpr strict, unsupported]
 
 theorem convert_declaration_wire {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (rejected : convert limits input checksum = .error (.declaration source)) :
-    SourceWire limits.ipc input source ∧ Writer.supportsRequiredDeclaration source.schema = false :=
+    SourceWire limits.ipc input source ∧ Writer.supportsDeclaration source.schema = false :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc.convert_declaration_wire rejected
 
 theorem convert_writer_wire {limits : Limits} {input : KBytes} {checksum : Bool}
@@ -76,6 +76,20 @@ theorem round_trip {limits : Limits} {input returned : KBytes} {checksum : Bool}
       Stream.Writer.Readback reverse (selection.schema source.schema)
         ((source.batches.map Stream.Completed.observed).map selection.batch) returned :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc.round_trip written forward
+
+/-- Reimporting full-field IPC preserves the declaration and observations
+of the original native groups, with checked witnesses on both carriers. -/
+theorem round_trip_parquet {limits : Limits} {schemaLimits : Snapshot.Limits} {chunk : Reader.Limits}
+    {input : Bytes} {wire : KBytes} {checksum : Bool} {output : Writer.Output}
+    (forward : Reader.ToIpc.convert schemaLimits chunk limits.ipc input .field = .ok wire)
+    (written : convert limits wire checksum = .ok output) :
+    ∃ opened groups,
+      TwoListStruct.openFile schemaLimits input = .ok opened ∧
+      Reader.readAll chunk opened.schema = .ok groups ∧
+      List.Forall₂ (Reader.GroupWire chunk opened.schema) (List.range opened.snapshot.groupCount) groups ∧
+      let model : Writer.Input := ⟨opened.schema.plan.arrow, groups, checksum⟩
+      Writer.Construction limits.parquet model output ∧ Writer.Readback limits.parquet model output :=
+  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc.round_trip_parquet forward written
 
 end
 

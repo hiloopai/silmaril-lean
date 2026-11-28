@@ -23,9 +23,7 @@ LEAN = NATIVE["LEAN"].replace(
     "import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Defs\n",
     """import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Defs
 import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Events.Defs
-import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Defs
 meta import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.Events.Defs
-meta import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Defs
 """, 1) + """
 open Arrow.RecursiveSchema (Field)
 open Arrow.RecursiveSchema.Stream.Events (declarations eraseBatch eraseRow)
@@ -41,15 +39,6 @@ private def checkEvents (input : Bytes) (fields : List (Option String × Field))
     unless declarations source == wanted && trace.batches.map eraseBatch == expected &&
         trace.collect.table.rows.map eraseRow == expected.flatMap (·.rows) && trace.termination == ending do
       throw (IO.userError "selected declaration, complete observations or terminal result differs")
-
-private def checkRequiredGates (input : Bytes) : IO Unit := do
-  let source ← take (openFile {} input)
-  unless source.schema.plan.element.nullable do throw (IO.userError "expected a compiled optional Struct")
-  refuse .structShape (openRequired {} input)
-  for selection in [Selection.field, .empty] do
-    let result := Reader.ToIpc.convert {} {} { schema.ipc.batches := 0 } input selection
-    let .error (.openError (.openError .structShape)) := result |
-      throw (IO.userError "strict IPC accepted or misreported the optional Struct profile")
 
 public def main (args : List String) : IO Unit := do
   let [folder] := args | throw (IO.userError "expected fixture directory")
@@ -127,14 +116,13 @@ def verify(folder):
         f'  inconsistent (← load folder "late_struct_presence") 1 ({cause})',
         f'  checkEvents (← load folder "late_struct_presence") {EVENTS["fields_term"](schema)} '
         f'{prefix} (.readError (.group 1 ({cause})))',
-        '  checkRequiredGates (← load folder "optional_1111")',
     ])
     driver = folder / "OptionalElement.lean"
     driver.write_text("\n".join(code) + "\n", encoding="utf-8")
     subprocess.run(["lake", "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
                     "--run", str(driver), str(folder)], cwd=ROOT, check=True)
     print(f"Checked {len(positives)} accepted inputs and {pages_total} original V1 pages, "
-          "the late shared presence refusal and the required-only IPC gates")
+          "and the late shared presence refusal")
     fingerprint = NATIVE["fingerprints"]
     return {"genuine_parquet": fingerprint({label: case[2] for label, case in genuine.items()}),
             "authored_parquet": fingerprint(authored)}
