@@ -79,7 +79,7 @@ private def sourceFailure (input : Bytes) (batches : List Observation)
         throw (IO.userError "original failure or complete selected prefix differs")
 
 private def openFailure (input : Bytes) : IO Unit := do
-  let .error wanted := Parquet.RecursiveSchema.TwoListStruct.openFile {} input |
+  let .error wanted := Parquet.RecursiveSchema.TwoListStruct.openRequired {} input |
     throw (IO.userError "expected an original opening refusal")
   for selection in [Selection.field, .empty] do
     let .error (.openError (.openError actual)) := convert {} {} exhausted input selection |

@@ -33,19 +33,20 @@ theorem checkTopology_failure {ceiling start : Nat} {left right : RecursiveSchem
     TopologyFailure ceiling left right lhs rhs start cause :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.topology_failure read
 
-theorem mergeRows_wire {lhs rhs out : List Row} (read : mergeRows lhs rhs = some out) :
-    ∀ side, projectRows side out = some (side.select lhs rhs) :=
+theorem mergeRows_wire {optional : Bool} {lhs rhs out : List Row}
+    (read : mergeRows lhs rhs optional = some out) :
+    ∀ side, projectRows side out optional = some (side.select lhs rhs) :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.mergeRows_wire read
 
 theorem mergeRows_typed {plan : Plan} {lhs rhs out : List Row}
-    (merged : mergeRows lhs rhs = some out)
+    (merged : mergeRows lhs rhs plan.element.nullable = some out)
     (first : ∀ row ∈ lhs, RowFits (plan.path .left).arrow.fields row)
     (other : ∀ row ∈ rhs, RowFits (plan.path .right).arrow.fields row) :
     ∀ row ∈ out, RowFits plan.arrow.fields row :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.mergeRows_typed merged first other
 
-theorem projectRows_count {side : Side} {rows out : List Row}
-    (read : projectRows side rows = some out) : out.length = rows.length :=
+theorem projectRows_count {side : Side} {optional : Bool} {rows out : List Row}
+    (read : projectRows side rows optional = some out) : out.length = rows.length :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.projectRows_count read
 
 end

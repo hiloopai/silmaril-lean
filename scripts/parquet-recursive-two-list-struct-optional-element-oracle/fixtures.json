@@ -1,0 +1,83 @@
+{
+  "authored_parquet": {
+    "independent_optional_cuts": {
+      "bytes": 1791,
+      "sha256": "8ca65891d79e09f5a830e3bbb0c742c228a3f7bd369c0a9a98d95d5cc221945d"
+    },
+    "late_struct_presence": {
+      "bytes": 1791,
+      "sha256": "655dba517e4b41a1e3a00d03e52c68f0388f1a2def31529b53f447145778330a"
+    }
+  },
+  "genuine_parquet": {
+    "optional_0000": {
+      "bytes": 1632,
+      "sha256": "20e021808c3716daf9e4b88e2417584c545100c0f873e09841ee0b013b2d6b8b"
+    },
+    "optional_0001": {
+      "bytes": 1540,
+      "sha256": "556f7d8df914d406bc197ab3fb63e4707c147337129ab01216f27aa289422fb3"
+    },
+    "optional_0010": {
+      "bytes": 1584,
+      "sha256": "1e93fb19733096949037ff31937a357379467fce119a3fb91cea42d89f230edd"
+    },
+    "optional_0011": {
+      "bytes": 1492,
+      "sha256": "622ffbcbb11a5345991341f72414f687438e4b7d06afa4cc6ed9eb219b8f1215"
+    },
+    "optional_0100": {
+      "bytes": 1646,
+      "sha256": "bf0f788260292f99d3492b3df97545e6ff441ed3e97db41c294748cf499ddf49"
+    },
+    "optional_0101": {
+      "bytes": 1550,
+      "sha256": "b12c4bfb083d810aaca3c01cb017f7c3075bff1cb272fd944a054b91504b7e2a"
+    },
+    "optional_0110": {
+      "bytes": 1594,
+      "sha256": "94f8f728b26ac24bb5095f2633c3f3ebf5521f3d561be6b2a7eabbd0115caae8"
+    },
+    "optional_0111": {
+      "bytes": 1498,
+      "sha256": "a8b8bf92485dbd4569c74106b8f749cf2f43a3970a6ca0b68bb8d98596f6e4fb"
+    },
+    "optional_1000": {
+      "bytes": 1723,
+      "sha256": "dce100935fb3f7efea24c0e74bd28aa676c886d04e85884c54b1ab1829b54d03"
+    },
+    "optional_1001": {
+      "bytes": 1628,
+      "sha256": "10de5586d3892f0cb2c057ef2014c0b7bcdea42f5de866198adc7f4b863ccda0"
+    },
+    "optional_1010": {
+      "bytes": 1671,
+      "sha256": "6bf1b30b82735a956219cad517356940171f6edec07e9318290227be50e6cda4"
+    },
+    "optional_1011": {
+      "bytes": 1576,
+      "sha256": "4962fe0c54e6d1254737f66de2b69811bba9a4b9e2ae707d8059e19ac0a66a53"
+    },
+    "optional_1100": {
+      "bytes": 1727,
+      "sha256": "97f8b67ecc8f255d6d19e3b1d92af722cac51e3dd32a85f1ebdbdd9fdea6ea14"
+    },
+    "optional_1101": {
+      "bytes": 1631,
+      "sha256": "bcc6ff7ef5087a2aac2e612e11e4938ad2aebc447f43bedbf9b1ea2ef1e541d6"
+    },
+    "optional_1110": {
+      "bytes": 1676,
+      "sha256": "341f13572e59dff50169865b380d27e6c15c1ce7c3fdf9332bfbebad1d604469"
+    },
+    "optional_1111": {
+      "bytes": 1580,
+      "sha256": "10c0336b239dae3eaaadfd894ec8da8cb2fc01a073779f9a4e41e5759fd635a9"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}

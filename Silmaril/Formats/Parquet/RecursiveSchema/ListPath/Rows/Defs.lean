@@ -42,6 +42,7 @@ def signedCell (kind : RecursiveSchema.Kind) (word : Option Word) : Option Cell 
 /-- Ordered leaf values from the logical cells alone. -/
 def words : Shape → Cell → List Word
   | .list _ child, some (.list cells) => cells.flatMap (words child)
+  | .struct _ child, some (.struct [value]) => words child value
   | .signed _ kind, cell => (signedWord kind cell).toList
   | _, _ => []
 
@@ -58,6 +59,11 @@ def cell : Shape → Nat → Nat → Nat → Cell → Option Segment
     | none => if site.nullable then some (marker rep base) else none
     | some _ => (signedWord kind value).map fun word =>
       ⟨⟨rep, base + site.nullable.toNat, some word⟩, []⟩
+  | .struct site child, depth, rep, base, value =>
+    match value with
+    | none => if site.nullable then some (marker rep base) else none
+    | some (.struct [value]) => cell child depth rep (base + site.nullable.toNat) value
+    | _ => none
   | .list node child, depth, rep, base, value => do
     let empty := base + node.site.nullable.toNat
     match value with
@@ -91,6 +97,7 @@ def sumDemand {α : Type} (measure : α → Nat) (values : List α) : Nat :=
 /-- Positive demand for each logical cell, including null or empty ones.
 A malformed cell will subsequently be refused by the projection. -/
 def demand : Shape → Cell → Nat
+  | .struct _ child, some (.struct [value]) => demand child value
   | .list _ child, some (.list (first :: rest)) =>
     demand child first + sumDemand (demand child) rest
   | _, _ => 1
@@ -147,6 +154,12 @@ def assemble : Shape → Nat → Nat → List Atom → Option Cell
     else if atom.definition = base + site.nullable.toNat then signedCell kind atom.word
     else none
   | .signed .., _, _, _ :: _ :: _ => none
+  | .struct site child, depth, base, input@(first :: rest) =>
+    if site.nullable && first.definition == base then
+      if rest.isEmpty && first.word.isNone then some none else none
+    else
+      (assemble child depth (base + site.nullable.toNat) input).map
+        (fun value => some (.struct [value]))
   | .list node child, depth, base, input@(first :: rest) =>
     let empty := base + node.site.nullable.toNat
     if node.site.nullable && first.definition == base then

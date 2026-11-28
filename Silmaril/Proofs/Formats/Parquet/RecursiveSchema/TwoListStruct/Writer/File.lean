@@ -47,7 +47,7 @@ public theorem serialize_construction {limits : Limits} {input : Input} {output 
 public theorem certify_readback {limits : Limits} {input : Input} {output : Output}
     (accepted : certify limits input output = .ok ()) : Readback limits input output := by
   unfold certify at accepted
-  cases original : Parquet.RecursiveSchema.TwoListStruct.openFile limits.schema.snapshot output.bytes with
+  cases original : Parquet.RecursiveSchema.TwoListStruct.openRequired limits.schema.snapshot output.bytes with
   | error => simp [original, Except.mapError, bind, Except.bind] at accepted
   | ok source =>
     cases same : agrees limits input output source with

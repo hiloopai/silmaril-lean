@@ -189,15 +189,14 @@ def verify(folder):
     for label, group, wanted in failures:
         code.append(f'  checkFile (← load folder "{label}") {fields_term(schema)} '
                     f'{batches_term(schema, batches[:group])} (.readError (.group {group} ({wanted})))')
-    for label in ("empty_input", "optional_struct"):
-        code.append(f'  checkOpenError (← load folder "{label}")')
+    code.append('  checkOpenError (← load folder "empty_input")')
 
     driver = folder / "TwoListStructEvents.lean"
     driver.write_text("\n".join(code) + "\n", encoding="utf-8")
     subprocess.run(["lake", "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
                     "--run", str(driver), str(folder)], cwd=ROOT, check=True)
     print(f"Checked {len(positives)} accepted inputs, {pages} original V1 pages "
-          f"and {len(failures) + 2} typed refusals through direct, full and empty Events")
+          f"and {len(failures) + 1} typed refusals through direct, full and empty Events")
 
 
 def main():

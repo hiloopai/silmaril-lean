@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Defs
 
-/-! Original footer admission for two nested LISTs with a required
+/-! Original footer admission for two nested LISTs with a required or optional
 Struct element and two independently required or optional signed children. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct
@@ -41,7 +41,7 @@ def Plan.elementContext (plan : Plan) : Repeated.Context := plan.innerContext.en
 def Plan.child (plan : Plan) (side : Side) : Site × Kind := side.select plan.left plan.right
 
 def Plan.elementField (plan : Plan) : Arrow.RecursiveSchema.Field :=
-  .node (some plan.element.name) false .struct
+  .node (some plan.element.name) plan.element.nullable .struct
     [(ListPath.Shape.signed plan.left.1 plan.left.2).arrow,
       (ListPath.Shape.signed plan.right.1 plan.right.2).arrow]
 
@@ -49,20 +49,25 @@ def Plan.arrow (plan : Plan) : Arrow.RecursiveSchema.Schema :=
   ⟨[.node (some plan.outer.site.name) plan.outer.site.nullable .list
       [.node (some plan.inner.site.name) plan.inner.site.nullable .list [plan.elementField]]]⟩
 
-/-- A required Struct contributes no definition or repetition increment.
-The signed site keeps its original path through that Struct. -/
+/-- The child path retains an optional Struct as a unary Struct so that
+its null marker differs from a present Struct with a null signed child. -/
 def Plan.path (plan : Plan) (side : Side) : ListPath.Plan :=
   let (site, kind) := plan.child side
-  ⟨plan.outer, .list plan.inner (.signed site kind)⟩
+  let leaf := ListPath.Shape.signed site kind
+  let element := if plan.element.nullable then ListPath.Shape.struct plan.element leaf else leaf
+  ⟨plan.outer, .list plan.inner element⟩
+
+def Plan.listDefinition (plan : Plan) : Nat :=
+  plan.outer.site.nullable.toNat + 1 + (plan.inner.site.nullable.toNat + 1)
 
 def Plan.sharedDefinition (plan : Plan) : Nat :=
-  plan.outer.site.nullable.toNat + 1 + (plan.inner.site.nullable.toNat + 1)
+  plan.listDefinition + plan.element.nullable.toNat
 
 structure StructWire (original : Array Entry) (ctx : Repeated.Context) (site : Site) : Prop where
   original : ∃ entry, original[5]? = some entry ∧ Unannotated entry ∧
     entry.1.physicalType = none ∧ entry.1.typeLength = none ∧
-    entry.1.numChildren = some 2 ∧ entry.1.repetition = some .required ∧
-    site = ctx.site 5 entry.1.name false
+    entry.1.numChildren = some 2 ∧ RepetitionWire entry site.nullable ∧
+    site = ctx.site 5 entry.1.name site.nullable
 
 structure SchemaWire (reader : ThriftCompact.Traversal.Reader) (original : Array Entry)
     (plan : Plan) : Prop where
@@ -100,9 +105,11 @@ end
 private def readStruct (original : Array Entry) (ctx : Repeated.Context) :
     Except Error {site // StructWire original ctx site} := do
   let ⟨entry, found⟩ ← (TwoList.entryAt original 5).mapError .original
+  let nullable := decide (entry.1.repetition = some .optional)
   if shape : Unannotated entry ∧ entry.1.physicalType = none ∧ entry.1.typeLength = none ∧
-      entry.1.numChildren = some 2 ∧ entry.1.repetition = some .required then
-    return ⟨ctx.site 5 entry.1.name false, ⟨entry, found, shape.1, shape.2.1, shape.2.2.1,
+      entry.1.numChildren = some 2 ∧
+      entry.1.repetition = some (if nullable then .optional else .required) then
+    return ⟨ctx.site 5 entry.1.name nullable, ⟨entry, found, shape.1, shape.2.1, shape.2.2.1,
       shape.2.2.2.1, shape.2.2.2.2, rfl⟩⟩
   else throw .structShape
 
@@ -134,5 +141,11 @@ public def openFile (limits : Snapshot.Limits) (bytes : Bytes) : Except Error (S
   match original : Snapshot.check (Failure := Unit) limits bytes with
   | .error cause => throw (.original (.snapshot cause))
   | .ok snapshot => return ⟨snapshot, ← compile limits snapshot, original⟩
+
+/-- The native writer and strict IPC export use the required-element profile. -/
+@[expose] public def openRequired (limits : Snapshot.Limits) (bytes : Bytes) : Except Error (Source limits bytes) :=
+  match openFile limits bytes with
+  | .error cause => .error cause
+  | .ok source => if source.schema.plan.element.nullable then .error .structShape else .ok source
 
 end Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct
