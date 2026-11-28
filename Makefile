@@ -88,6 +88,7 @@ CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Run.Status.TlbTests
 CHECK_TARGETS += +Silmaril.Logic.ACL2.Standard.Pure.Tests
 CHECK_TARGETS += +Silmaril.Logic.ACL2.Standard.BitSelection.Tests
 CHECK_TARGETS += +Silmaril.Logic.ACL2.Standard.FixedWidth.Tests
+CHECK_TARGETS += +Silmaril.Logic.ACL2.Standard.FixedLayout.Tests
 
 # The release suites run when CHECK_TARGETS holds the executables. A change scoped to a library
 # that wasm-opt imports puts only wasm-opt in scope, so the other release binaries are built first.
@@ -120,6 +121,8 @@ check:
 	$(PYTHON) -I tests/logic/acl2/test_bit_selection.py
 	$(PYTHON) -I tests/logic/acl2/check_prefixes.py
 	$(PYTHON) -I tests/logic/acl2/test_prefixes.py
+	$(PYTHON) -I tests/logic/acl2/check_toy_defstobj.py
+	$(PYTHON) -I tests/logic/acl2/test_toy_defstobj.py
 	$(if $(filter cexplorer-export CompilesToExamples,$(CHECK_TARGETS)),,$(MAKE) compiler-explorer-unit-check)
 	@if [ -n "$(LAKE_CACHE_RECORD)" ]; then \
 		cov-lake-cache build --repository hiloopai/silmaril-lean --record "$(LAKE_CACHE_RECORD)" -- $(CHECK_TARGETS); \
