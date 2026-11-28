@@ -22,6 +22,7 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--status-accessors", action="store_true", help="export FAULT and MS")
     mode.add_argument("--object-order", action="store_true", help="export ACL2 order and record recognition")
+    mode.add_argument("--environment", action="store_true", help="export the logical environment recognizer")
     args = parser.parse_args()
     checkout = args.checkout.resolve()
     commit, tree = subprocess.check_output(
@@ -50,7 +51,7 @@ def main():
         operands = [source, export, digest(source), commit, tree]
         before_exit, support = "", ""
         driver = "c3-export-x86-run"
-        if args.status_accessors or args.object_order:
+        if args.status_accessors or args.object_order or args.environment:
             state_book = project / "machine/state.lisp"
             operands += [state_book, digest(state_book)]
             support = f'  (load {lisp_string(tools / "status-accessors.lisp")})\n'
@@ -63,6 +64,11 @@ def main():
             operands += [digest(checkout / "axioms.lisp"), digest(books / "misc/total-order.lisp"),
                          digest(project / "machine/tty.lisp")]
             driver = "c3-export-object-order"
+        if args.environment:
+            before_exit = (tools / "environment-samples.lisp").read_text()
+            support += f'  (load {lisp_string(tools / "environment.lisp")})\n'
+            operands += [digest(checkout / "axioms.lisp")]
+            driver = "c3-export-environment"
         raw_arguments = " ".join(map(lisp_string, operands))
         commands = (
             "(set-ld-error-action '(:exit 1) state)\n"
