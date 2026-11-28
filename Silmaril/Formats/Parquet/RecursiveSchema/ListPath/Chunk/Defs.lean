@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Rows.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
-/-! Original unindexed PLAIN V1/V2 with bounded column codecs pages for one canonical LIST path. -/
+/-! Original unindexed V1/V2 pages for one canonical LIST path. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
@@ -14,6 +14,9 @@ open Repeated.Chunk (LevelBlock LevelCause bitWidth)
 
 structure Limits extends RecursiveSchema.Chunk.Limits where
   maxSlots : Nat := 1024 * 1024
+  indices : Hybrid.Limits := ({} : Repeated.Chunk.Limits).indices
+  maxDictionaryEntries : Nat := ({} : Repeated.Chunk.Limits).maxDictionaryEntries
+  maxDictionaryBytes : Nat := ({} : Repeated.Chunk.Limits).maxDictionaryBytes
   /-- Controller calls per reached GZIP member. -/
   gzipCalls : Nat := ({} : Repeated.Chunk.Limits).gzipCalls
   /-- Window and command bounds for one dictionary-free Zstandard frame. -/
@@ -22,7 +25,8 @@ structure Limits extends RecursiveSchema.Chunk.Limits where
 def Limits.logical (limits : Limits) : Rows.Limits := ⟨limits.maxRows, limits.maxSlots⟩
 
 def Limits.payload (limits : Limits) : Repeated.Chunk.Limits :=
-  { toLimits := limits.toLimits, gzipCalls := limits.gzipCalls, zstd := limits.zstd }
+  { toLimits := limits.toLimits, indices := limits.indices, gzipCalls := limits.gzipCalls, zstd := limits.zstd,
+    maxDictionaryEntries := limits.maxDictionaryEntries, maxDictionaryBytes := limits.maxDictionaryBytes }
 
 inductive Codec where
   | uncompressed
@@ -63,6 +67,12 @@ inductive BindError where
   | column (address : Address) (cause : BindCause)
   deriving DecidableEq, Repr
 
+inductive ColumnEncoding (metadata : Footer.ColumnMetadata) where
+  | plain : RecursiveSchema.SupportedEncodings metadata → metadata.dictionaryPageOffset = none →
+      ColumnEncoding metadata
+  | dictionary : Repeated.Chunk.DictionaryEncodings metadata → metadata.codec = 0 →
+      ColumnEncoding metadata
+
 structure Binding {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (schema : Compiled schemaLimits snapshot) (group : Nat) where
   rowGroup : Footer.RowGroup
@@ -74,8 +84,8 @@ structure Binding {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   physical : column.metadata.physicalType = schema.plan.shape.leaf.2.physical
   codec : Codec
   originalCodec : Codec.ofId column.metadata.codec = some codec
-  encodings : RecursiveSchema.SupportedEncodings column.metadata
-  offsets : column.metadata.dictionaryPageOffset = none ∧ column.metadata.indexPageOffset = none
+  encodings : ColumnEncoding column.metadata
+  offsets : column.metadata.indexPageOffset = none
   unindexed : Repeated.Chunk.Unindexed column
   counts : 0 ≤ column.metadata.numValues ∧ 0 ≤ rowGroup.numRows
   originalSpan : Page.columnSpan snapshot.footer.start column.metadata = some span
@@ -94,6 +104,16 @@ private def checked {ε : Type} (condition : Prop) [Decidable condition] (error 
     Except ε (PLift condition) :=
   if yes : condition then .ok ⟨yes⟩ else .error error
 
+private def bindEncoding (metadata : Footer.ColumnMetadata)
+    (fail : BindCause → BindError) : Except BindError (ColumnEncoding metadata) := do
+  if dictionary : Repeated.Chunk.DictionaryEncodings metadata then
+    let ⟨codec⟩ ← checked (metadata.codec = 0) (fail (.codec metadata.codec))
+    return .dictionary dictionary codec
+  else
+    let ⟨plain⟩ ← checked (RecursiveSchema.SupportedEncodings metadata) (fail (.encodings metadata.encodings))
+    let ⟨offset⟩ ← checked (metadata.dictionaryPageOffset = none) (fail .pageOffsets)
+    return .plain plain offset
+
 public def bind {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (schema : Compiled schemaLimits snapshot) (group : Nat) : Except BindError (Binding schema group) := do
   let ⟨rowGroup, atGroup⟩ ← lookup (snapshot.groupAt group) (.group group)
@@ -106,8 +126,8 @@ public def bind {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   let ⟨⟨path, physical⟩⟩ ← checked
     (metadata.pathInSchema = leaf.1.location.path ∧ metadata.physicalType = leaf.2.physical) (fail .association)
   let ⟨codec, originalCodec⟩ ← lookup (Codec.ofId metadata.codec) (fail (.codec metadata.codec))
-  let ⟨encodings⟩ ← checked (RecursiveSchema.SupportedEncodings metadata) (fail (.encodings metadata.encodings))
-  let ⟨offsets⟩ ← checked (metadata.dictionaryPageOffset = none ∧ metadata.indexPageOffset = none) (fail .pageOffsets)
+  let encodings ← bindEncoding metadata fail
+  let ⟨offsets⟩ ← checked (metadata.indexPageOffset = none) (fail .pageOffsets)
   let ⟨unindexed⟩ ← checked (Repeated.Chunk.Unindexed column) (fail .pageIndex)
   let ⟨counts⟩ ← checked (0 ≤ metadata.numValues ∧ 0 ≤ rowGroup.numRows) (fail .counts)
   let ⟨span, originalSpan⟩ ← lookup (Page.columnSpan snapshot.footer.start metadata) (fail .span)
@@ -221,6 +241,8 @@ inductive PageCause where
   | level (cause : LevelError)
   | plain (cause : Plain.Error)
   | alignment (cause : FlatPage.Error)
+  | dictionary (cause : Repeated.Chunk.PageCause)
+  | dictionaryIndices (cause : DictionaryIndex.Error)
   | v1Payload (cause : Repeated.Chunk.PageCause)
   | v2 (cause : Repeated.Chunk.PageCause)
   deriving DecidableEq, Repr
@@ -244,24 +266,52 @@ def atoms (levels : List (Nat × Nat)) (values : List (Option RecursiveSchema.Ch
 def mask (plan : Plan) (definitions : List Nat) : List Bool :=
   definitions.map (· == plan.shape.definitions)
 
-/-- Both page versions use the same ancestry scan and exact signed extent. -/
+inductive ValueEncoding where
+  | plain
+  | dictionary (entries : Array RecursiveSchema.Chunk.Word)
+
+def ValueEncoding.tag : ValueEncoding → Int
+  | .plain => 0
+  | .dictionary _ => 8
+
+def ValueEncoding.read (limits : Limits) (kind : RecursiveSchema.Kind) (count : Nat)
+    (suffix : Bytes) : ValueEncoding → Except PageCause (List RecursiveSchema.Chunk.Word)
+  | .plain => (RecursiveSchema.Chunk.readWords kind count suffix).mapError .plain
+  | .dictionary entries =>
+    (DictionaryIndex.readValues limits.indices entries count suffix).mapError .dictionaryIndices
+
+def ValueEncoding.signedExtent (plan : Plan) (info : Page.DataV2) : ValueEncoding → Option Nat
+  | .plain => some ((info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth plan.shape.leaf.2)
+  | .dictionary _ => none
+
+def ValueEncoding.select (dictionary : Option Repeated.Chunk.Dictionary) (tag : Int) :
+    Except PageCause ValueEncoding :=
+  if tag = 8 then
+    match dictionary with
+    | some table => .ok (.dictionary table.entries)
+    | none => .error (.dictionary .missingDictionary)
+  else .ok .plain
+
+/-- Both page versions scan ancestry independently of the value encoding. -/
 def decodeSlots (plan : Plan) (wrappers : List Nat) (spans : Sections) (start : State)
-    (ceiling : Nat) (reps defs : List Nat) (suffix : Bytes) : Except PageCause Decoded := do
+    (ceiling : Nat) (reps defs : List Nat) (suffix : Bytes) (limits : Limits)
+    (encoding : ValueEncoding := .plain) : Except PageCause Decoded := do
   let levels := reps.zip defs
   let stop ← (scan plan wrappers ceiling levels start).mapError .level
   let present := mask plan defs
-  let words ← (RecursiveSchema.Chunk.readWords plan.shape.leaf.2 (present.count true) suffix).mapError .plain
+  let words ← encoding.read limits plan.shape.leaf.2 (present.count true) suffix
   let aligned ← (FlatPage.reconstruct present words).mapError .alignment
   return ⟨spans, atoms levels aligned, stop⟩
 
 def decodePage (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed) : Except PageCause Decoded := do
-  let info ← (Repeated.Chunk.admitPage frame remaining codec.column).mapError v1Error
+    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed)
+    (encoding : ValueEncoding := .plain) : Except PageCause Decoded := do
+  let info ← (Repeated.Chunk.admitPage frame remaining codec.column encoding.tag).mapError v1Error
   let body ← (Repeated.Chunk.readV1Body limits.payload codec.column source frame).mapError v1Error
   let reps ← (Repeated.Chunk.readLevels limits.levels plan.shape.repetitions info.numValues body).mapError .repetition
   let defs ← (Repeated.Chunk.readLevels limits.levels plan.shape.definitions info.numValues reps.tail).mapError .definition
   decodeSlots plan wrappers (sections (codec.v1Source source frame body) body reps defs)
-    start ceiling reps.levels defs.levels defs.tail
+    start ceiling reps.levels defs.levels defs.tail limits encoding
 
 def Decoded.close (decoded : Decoded) : Decoded := { decoded with after := decoded.after.close }
 
@@ -271,32 +321,51 @@ def absentSlots (decoded : Decoded) : Nat := decoded.atoms.countP (·.word.isNon
 Only the value suffix enters the codec when the original flag is true.
 A V2 page starts and ends with a closed ancestry cursor. -/
 def decodeV2Page (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed) : Except PageCause Decoded := do
-  let info ← (Repeated.Chunk.admitV2Page codec.column frame remaining).mapError .v2
+    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed)
+    (encoding : ValueEncoding := .plain) : Except PageCause Decoded := do
+  let info ← (Repeated.Chunk.admitV2Page codec.column frame remaining encoding.tag).mapError .v2
   let parts ← (Repeated.Chunk.readV2SectionsWith limits.toLimits plan.shape.repetitions
     plan.shape.definitions source frame info).mapError .v2
   let stored := Repeated.Chunk.bytesAt source parts.spans.values
-  let expected := (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth plan.shape.leaf.2
   let suffix ← (Repeated.Chunk.readV2SuffixWith limits.payload codec.column frame info stored
-    (some expected)).mapError .v2
+    (encoding.signedExtent plan info)).mapError .v2
   let decoded ← Repeated.Chunk.checkV2Counts info parts.repetitions start.slots PageCause.v2 absentSlots fun _ =>
-    decodeSlots plan wrappers (.ofV2 parts.spans) start.close ceiling parts.repetitions parts.definitions suffix
+    decodeSlots plan wrappers (.ofV2 parts.spans) start.close ceiling parts.repetitions parts.definitions suffix limits encoding
   return decoded.close
 
 def decodeDataPage (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed) : Except PageCause Decoded :=
+    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed)
+    (dictionary : Option Repeated.Chunk.Dictionary := none) : Except PageCause Decoded :=
   match frame.value.kind with
-  | .dataV2 _ => decodeV2Page limits plan wrappers source frame start remaining ceiling codec
+  | .dataV1 info => do
+    let encoding ← ValueEncoding.select dictionary info.encoding
+    decodePage limits plan wrappers source frame start remaining ceiling codec encoding
+  | .dataV2 info => do
+    let encoding ← ValueEncoding.select dictionary info.encoding
+    decodeV2Page limits plan wrappers source frame start remaining ceiling codec encoding
+  | .dictionary _ => .error (.dictionary .misplacedDictionary)
   | _ => decodePage limits plan wrappers source frame start remaining ceiling codec
 
+def ValueEncoding.Wire (limits : Limits) (kind : RecursiveSchema.Kind) (count : Nat)
+    (suffix : Bytes) (words : List RecursiveSchema.Chunk.Word) : ValueEncoding → Prop
+  | .plain => ∃ physical : List (List UInt8),
+      suffix.toList = physical.flatten ∧ physical.length = count ∧
+      (∀ word ∈ physical, word.length = RecursiveSchema.Chunk.wordWidth kind) ∧
+      words = physical.map (RecursiveSchema.Chunk.readWord kind)
+  | .dictionary entries => DictionaryIndex.ValuesWire limits.indices entries count suffix words
+
+inductive ValueEncoding.From (dictionary : Option Repeated.Chunk.Dictionary) : ValueEncoding → Prop where
+  | plain : From dictionary .plain
+  | dictionary {table : Repeated.Chunk.Dictionary} :
+      dictionary = some table → From dictionary (.dictionary table.entries)
+
 structure SlotsWire (plan : Plan) (wrappers : List Nat) (start : State) (ceiling : Nat)
-    (reps defs : List Nat) (suffix : Bytes) (decoded : Decoded) : Prop where
-  original : ∃ (aligned : List (Option RecursiveSchema.Chunk.Word)) (words : List (List UInt8)),
+    (reps defs : List Nat) (suffix : Bytes) (decoded : Decoded) (limits : Limits)
+    (encoding : ValueEncoding := .plain) : Prop where
+  original : ∃ aligned : List (Option RecursiveSchema.Chunk.Word),
     ScanWire plan wrappers ceiling start (reps.zip defs) decoded.after ∧
-    suffix.toList = words.flatten ∧ words.length = (mask plan defs).count true ∧
-    (∀ word ∈ words, word.length = RecursiveSchema.Chunk.wordWidth plan.shape.leaf.2) ∧
+    encoding.Wire limits plan.shape.leaf.2 ((mask plan defs).count true) suffix (aligned.filterMap id) ∧
     aligned.map Option.isSome = mask plan defs ∧
-    aligned.filterMap id = words.map (RecursiveSchema.Chunk.readWord plan.shape.leaf.2) ∧
     decoded.atoms = atoms (reps.zip defs) aligned
 
 structure SectionsWire (limits : Hybrid.Limits) (plan : Plan) (count : Nat) (input : SectionSource)
@@ -317,21 +386,23 @@ structure SectionsWire (limits : Hybrid.Limits) (plan : Plan) (count : Nat) (inp
     input.bytes.slice? spans.values.start (some spans.values.stop) = some suffix
 
 structure PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed) : Prop where
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed)
+    (encoding : ValueEncoding := .plain) : Prop where
   original : ∃ (info : Page.DataV1) (body : Bytes) (reps defs : LevelBlock),
     frame.value.kind = .dataV1 info ∧
-    (info.encoding = 0 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
+    (info.encoding = encoding.tag ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
     info.numValues ≤ remaining ∧
     Repeated.Chunk.V1BodyWire limits.payload codec.column source frame body ∧
     SectionsWire limits.levels plan info.numValues (codec.v1Source source frame body)
       decoded.sections reps.levels defs.levels defs.tail ∧
     reps.levels.length = info.numValues ∧ defs.levels.length = info.numValues ∧
-    SlotsWire plan wrappers start ceiling reps.levels defs.levels defs.tail decoded
+    SlotsWire plan wrappers start ceiling reps.levels defs.levels defs.tail decoded limits encoding
 
 structure V2PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed) : Prop where
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed)
+    (encoding : ValueEncoding := .plain) : Prop where
   original : ∃ (info : Page.DataV2) (parts : Repeated.Chunk.V2Sections) (suffix : Bytes) (checked : Decoded),
-    frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
+    frame.value.kind = .dataV2 info ∧ info.encoding = encoding.tag ∧ info.numValues ≤ remaining ∧
     (codec.column.v2 info = 0 → frame.value.uncompressedSize = frame.value.compressedSize) ∧
     Repeated.Chunk.V2SectionsWireWith limits.toLimits plan.shape.repetitions plan.shape.definitions
       source frame info parts ∧
@@ -340,15 +411,18 @@ structure V2PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (sour
     Repeated.Chunk.v2LevelBytes info + suffix.length = frame.value.uncompressedSize ∧
     parts.repetitions.head?.getD 0 = 0 ∧ parts.repetitions.count 0 = info.numRows ∧
     absentSlots decoded = info.numNulls ∧ decoded.sections = .ofV2 parts.spans ∧
-    SlotsWire plan wrappers start.close ceiling parts.repetitions parts.definitions suffix checked ∧
+    SlotsWire plan wrappers start.close ceiling parts.repetitions parts.definitions suffix checked limits encoding ∧
     decoded = checked.close
 
 inductive DataPageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed) : Prop where
-  | v1 : PageWire limits plan wrappers source frame start remaining ceiling decoded codec →
-      DataPageWire limits plan wrappers source frame start remaining ceiling decoded codec
-  | v2 : V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec →
-      DataPageWire limits plan wrappers source frame start remaining ceiling decoded codec
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed)
+    (dictionary : Option Repeated.Chunk.Dictionary := none) : Prop where
+  | v1 {encoding : ValueEncoding} : encoding.From dictionary →
+      PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding →
+      DataPageWire limits plan wrappers source frame start remaining ceiling decoded codec dictionary
+  | v2 {encoding : ValueEncoding} : encoding.From dictionary →
+      V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding →
+      DataPageWire limits plan wrappers source frame start remaining ceiling decoded codec dictionary
 
 inductive ChunkCause where
   | chunkLimit
@@ -363,6 +437,7 @@ inductive ChunkCause where
 
 inductive Error where
   | chunk (address : Address) (span : Footer.Span) (cause : ChunkCause)
+  | dictionary (address : Address) (ordinal byte : Nat) (cause : Repeated.Chunk.PageCause)
   | page (address : Address) (ordinal byte : Nat) (start : State) (cause : PageCause)
   deriving DecidableEq, Repr
 
@@ -375,9 +450,11 @@ structure ObservedPage where
 structure Observation where
   pages : List ObservedPage
   stop : State
+  dictionary : Option Repeated.Chunk.Dictionary := none
   deriving Repr
 
-def Observation.frames (observed : Observation) : List Page.Frame := observed.pages.map ObservedPage.frame
+def Observation.frames (observed : Observation) : List Page.Frame :=
+  (observed.dictionary.toList.map (·.frame)) ++ observed.pages.map ObservedPage.frame
 def Observation.atoms (observed : Observation) : List Rows.Atom := observed.pages.flatMap (·.decoded.atoms)
 
 structure Carrier where
@@ -390,21 +467,33 @@ structure Carrier where
   storedSize : Int
   rawSize : Int
   codec : Codec
+  metadata : Footer.ColumnMetadata
 
 def carrierOf {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} (binding : Binding schema group) : Carrier :=
   ⟨schema.plan, snapshot.bytes, binding.span, address schema.plan group, binding.column.metadata.numValues.toNat,
     binding.rowGroup.numRows.toNat, binding.column.metadata.totalCompressedSize,
-    binding.column.metadata.totalUncompressedSize, binding.codec⟩
+    binding.column.metadata.totalUncompressedSize, binding.codec, binding.column.metadata⟩
 
-def decodeFrames (limits : Limits) (carrier : Carrier) (wrappers : List Nat) :
+def readPrefix (limits : Limits) (carrier : Carrier) (encoding : ColumnEncoding carrier.metadata)
+    (frames : List Page.Frame) :
+    Except Repeated.Chunk.DictionaryPrefixError (Option Repeated.Chunk.Dictionary × List Page.Frame) :=
+  match encoding with
+  | .plain _ _ => .ok (none, frames)
+  | .dictionary _ _ => do
+    let (table, rest) ← Repeated.Chunk.readFramedDictionary limits.payload carrier.plan.shape.leaf.2
+      carrier.source carrier.span carrier.metadata frames .uncompressed
+    return (some table, rest)
+
+def decodeFrames (limits : Limits) (carrier : Carrier) (wrappers : List Nat)
+    (dictionary : Option Repeated.Chunk.Dictionary) :
     List Page.Frame → Nat → State → List ObservedPage → Except Error Observation
-  | [], _, finish, reversed => .ok ⟨reversed.reverse, finish⟩
+  | [], _, finish, reversed => .ok ⟨reversed.reverse, finish, dictionary⟩
   | frame :: frames, ordinal, start, reversed => do
     let decoded ← (decodeDataPage limits carrier.plan wrappers carrier.source frame start
-      (carrier.slots - start.slots) carrier.rows carrier.codec).mapError
+      (carrier.slots - start.slots) carrier.rows carrier.codec dictionary).mapError
         (.page carrier.address ordinal frame.header.start start)
-    decodeFrames limits carrier wrappers frames (ordinal + 1) decoded.after (⟨frame, start, decoded⟩ :: reversed)
+    decodeFrames limits carrier wrappers dictionary frames (ordinal + 1) decoded.after (⟨frame, start, decoded⟩ :: reversed)
 
 /-- Counts refer to the complete original frame chain. Both footer
 sizes include each serialized page header. -/
@@ -432,35 +521,63 @@ def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   else if carrier.rows > limits.maxRows then .error (fail .rowLimit)
   else do
     let frames ← (Page.readChunk limits.framing carrier.source carrier.span).mapError (fail ∘ .framing)
-    let observed ← decodeFrames limits carrier (wrappers carrier.plan) frames 0 {} []
+    let (dictionary, data) ← (readPrefix limits carrier binding.encodings frames).mapError fun cause =>
+      Error.dictionary carrier.address cause.ordinal cause.byte cause.cause
+    let observed ← decodeFrames limits carrier (wrappers carrier.plan) dictionary data dictionary.isSome.toNat {} []
     checkTotals carrier frames observed
 
-inductive ChainWire (limits : Limits) (carrier : Carrier) : State → State → List ObservedPage → Prop where
-  | nil (state : State) : ChainWire limits carrier state state []
+inductive ChainWire (limits : Limits) (carrier : Carrier) (dictionary : Option Repeated.Chunk.Dictionary) :
+    State → State → List ObservedPage → Prop where
+  | nil (state : State) : ChainWire limits carrier dictionary state state []
   | cons {start stop frame decoded rest} :
       DataPageWire limits carrier.plan (wrappers carrier.plan) carrier.source frame start
-        (carrier.slots - start.slots) carrier.rows decoded carrier.codec →
-      ChainWire limits carrier decoded.after stop rest →
-      ChainWire limits carrier start stop (⟨frame, start, decoded⟩ :: rest)
+        (carrier.slots - start.slots) carrier.rows decoded carrier.codec dictionary →
+      ChainWire limits carrier dictionary decoded.after stop rest →
+      ChainWire limits carrier dictionary start stop (⟨frame, start, decoded⟩ :: rest)
+
+inductive PrefixWire (limits : Limits) (carrier : Carrier) :
+    Option Repeated.Chunk.Dictionary → List Page.Frame → List Page.Frame → Prop where
+  | plain {frames} : carrier.metadata.dictionaryPageOffset = none →
+      PrefixWire limits carrier none frames frames
+  | dictionary {table : Repeated.Chunk.Dictionary} {frames} :
+      carrier.metadata.codec = 0 →
+      table.codec = .uncompressed →
+      carrier.metadata.dictionaryPageOffset = some (Int.ofNat carrier.span.start) →
+      carrier.metadata.dataPageOffset = Int.ofNat table.frame.payload.stop →
+      table.frame.payload.stop < carrier.span.stop →
+      Repeated.Chunk.DictionaryContentsWire limits.payload carrier.plan.shape.leaf.2 carrier.source table →
+      PrefixWire limits carrier (some table) (table.frame :: frames) frames
 
 /-- A payload or slot refusal comes from the next original frame after
 the complete checked page prefix, with its original absolute header offset. -/
 structure PageFailureWire (limits : Limits) (carrier : Carrier) (address : Address)
     (ordinal byte : Nat) (start : State) (cause : PageCause) : Prop where
   column : address = carrier.address
-  original : ∃ (completed : List ObservedPage) (frame : Page.Frame) (rest : List Page.Frame),
-    Page.readChunk limits.framing carrier.source carrier.span =
-      .ok (completed.map ObservedPage.frame ++ frame :: rest) ∧
+  original : ∃ (dictionary : Option Repeated.Chunk.Dictionary) (frames : List Page.Frame)
+      (completed : List ObservedPage) (frame : Page.Frame) (rest : List Page.Frame),
+    Page.readChunk limits.framing carrier.source carrier.span = .ok frames ∧
+    PrefixWire limits carrier dictionary frames (completed.map ObservedPage.frame ++ frame :: rest) ∧
     Page.readPage limits.framing carrier.source carrier.span byte = .ok frame ∧
-    ChainWire limits carrier {} start completed ∧
-    ordinal = completed.length ∧ byte = frame.header.start ∧
+    ChainWire limits carrier dictionary {} start completed ∧
+    ordinal = dictionary.isSome.toNat + completed.length ∧ byte = frame.header.start ∧
     decodeDataPage limits carrier.plan (wrappers carrier.plan) carrier.source frame start
-      (carrier.slots - start.slots) carrier.rows carrier.codec = .error cause
+      (carrier.slots - start.slots) carrier.rows carrier.codec dictionary = .error cause
+
+/-- A dictionary refusal comes from the original leading frame or its
+metadata anchors, before any data slot is consumed. -/
+structure DictionaryFailureWire (limits : Limits) (carrier : Carrier)
+    (encoding : ColumnEncoding carrier.metadata) (address : Address)
+    (ordinal byte : Nat) (cause : Repeated.Chunk.PageCause) : Prop where
+  column : address = carrier.address
+  original : ∃ frames,
+    Page.readChunk limits.framing carrier.source carrier.span = .ok frames ∧
+    readPrefix limits carrier encoding frames = .error ⟨ordinal, byte, cause⟩
 
 structure Wire (limits : Limits) (carrier : Carrier) (observed : Observation) : Prop where
   framed : Page.readChunk limits.framing carrier.source carrier.span = .ok observed.frames
   pages : Page.Chain carrier.span carrier.span.start carrier.span.stop observed.frames
-  checked : ChainWire limits carrier {} observed.stop observed.pages
+  leading : PrefixWire limits carrier observed.dictionary observed.frames (observed.pages.map ObservedPage.frame)
+  checked : ChainWire limits carrier observed.dictionary {} observed.stop observed.pages
   slotCount : observed.stop.slots = carrier.slots
   rowCount : observed.stop.rows = carrier.rows
   stored : carrier.storedSize = Int.ofNat (Repeated.Chunk.storedChunkBytes observed.frames)

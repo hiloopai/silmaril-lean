@@ -145,7 +145,7 @@ def fixtures():
     patch("late_crc", 4, bad_crc, f".v2 (.checksum (.mismatch {header[4][1] & 0xffffffff} {zlib.crc32(body)}))")
     header, body = header_body(mixed[4])
     header[8][1][4] = TType.I32, 8
-    patch("bad_encoding", 4, encode(header, body), ".v2 (.v2Encoding 8)")
+    patch("bad_encoding", 4, encode(header, body), ".dictionary .missingDictionary")
     header, body = header_body(mixed[4])
     header[2] = TType.I32, len(body) + 1
     patch("size_mismatch", 4, TWO["THRIFT"]["encode"](header) + body,
@@ -215,11 +215,18 @@ def verify(folder):
             code.append(f'  sourceFailure (← load folder "{label}") {EVENTS["declarations"](schema)} '
                         f'{EVENTS["batch_terms"](groups[:1], width)} (.group 1 (.chunk ({error})))')
     address = f'⟨0, 0, {json.dumps(["chain"] + ["list", "element"] * 3)}⟩'
-    dict_encodings = NATIVE["list_field"](next(V2["columns"](controls["dictionary"]))[1], 2)
-    code.extend([
-        f'  refuseBinding (← load folder "compressed") (.column {address} (.codec 4))',
-        f'  refuseBinding (← load folder "dictionary") (.column {address} (.encodings {dict_encodings}))',
-    ])
+    code.append(f'  refuseBinding (← load folder "compressed") (.column {address} (.codec 4))')
+    dict_groups = []
+    dictionary = controls["dictionary"]
+    nullable = positive["native_32_depth_3"][1]
+    for (lo, hi, stop, pages), group in zip(
+            capture(dictionary, schema, nullable, width, groups, dictionaries={}), groups, strict=True):
+        headers = [header for _, header, _, _ in FRAMES(dictionary, lo, hi)][1:]
+        expected = lst(page_term(page, width, header) for page, header in zip(pages, headers, strict=True))
+        dict_groups.append(f"⟨{terms['batch_term'](group, width)}, ⟨{lo}, {hi}⟩, {triple(stop)}, {expected}⟩")
+        total_frames += len(pages)
+    code.append(f'  checkNative (← load folder "dictionary") 3 ⟨[{terms["field_term"](schema.field(0))}]⟩ '
+                f'{lst(dict_groups)}')
     V2["run_lean"](folder, "ListPathV2.lean", code)
 
     emitted = {}
@@ -231,8 +238,8 @@ def verify(folder):
     for selection in ("field", "empty"):
         for label in ("mixed", "omitted_flag", "native_v1"):
             assert emitted[f"{label}_{selection}"] == emitted[f"native_32_depth_3_{selection}"]
-    print(f"Checked {len(positive)} native inputs, {total_frames} original pages, {len(emitted)} IPC streams "
-          f"through exact EOS, and {len(refusals) + 2} typed controls")
+    print(f"Checked {len(positive) + 1} native inputs, {total_frames} original pages, {len(emitted)} IPC streams "
+          f"through exact EOS, and {len(refusals) + 1} typed controls")
     return {kind: fingerprints(values) for kind, values in {
         "genuine_parquet": genuine, "authored_parquet": authored, "genuine_controls": controls, "lean_ipc": emitted,
     }.items()}

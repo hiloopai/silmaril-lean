@@ -63,6 +63,30 @@ public theorem readDictionaryWith_wire {limits : Limits} {physical : RecursiveSc
                 readV1Body_wire rawSize bodyRead, exact, count, width, congrArg List.toArray ordered⟩
   · contradiction
 
+public theorem readFramedDictionary_wire {limits : Limits} {kind : RecursiveSchema.Kind}
+    {source : Bytes} {span : Footer.Span} {metadata : Footer.ColumnMetadata} {frames rest : List Page.Frame}
+    {codec : DictionaryCodec} {table : Dictionary}
+    (read : readFramedDictionary limits kind source span metadata frames codec = .ok (table, rest)) :
+    FramedDictionaryWire limits kind source span metadata frames codec table rest := by
+  unfold readFramedDictionary at read
+  split at read
+  · contradiction
+  · rename_i offset offsetEq
+    split at read
+    · contradiction
+    · rename_i offsetCheck
+      split at read
+      · contradiction
+      · rename_i frame tail
+        obtain ⟨checked, contentsRead, next⟩ := bind_ok read
+        split at next
+        · contradiction
+        · rename_i anchors
+          obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj next)
+          obtain ⟨rfl, originalCodec, contents⟩ := readDictionaryWith_wire (from_mapError contentsRead)
+          exact ⟨rfl, originalCodec, offsetEq.trans (congrArg some (Decidable.not_not.mp offsetCheck)),
+            Decidable.not_not.mp (not_or.mp anchors).1, Nat.lt_of_not_ge (not_or.mp anchors).2, contents⟩
+
 public theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
     {frame : Page.Frame} {dictionary : Dictionary} {codec : DictionaryCodec}
     (read : readDictionary limits leaf source frame codec = .ok dictionary) :

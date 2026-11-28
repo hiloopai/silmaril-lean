@@ -23,26 +23,11 @@ private theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj accepted)
     exact .plain offset
   | dictionary _ =>
-    unfold readPrefix at accepted
-    dsimp only at accepted
-    split at accepted
-    · rename_i offset offsetEq
-      split at accepted
-      · contradiction
-      · rename_i original
-        split at accepted
-        · rename_i frame tail splitFrames
-          obtain ⟨checked, checkedRead, result⟩ := bind_ok accepted
-          split at result
-          · contradiction
-          · rename_i anchors
-            obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj result)
-            obtain ⟨rfl, codec, words⟩ :=
-              RecursiveSchema.Repeated.Chunk.readDictionaryWith_wire (from_mapError checkedRead)
-            exact .dictionary codec
-              (offsetEq.trans (congrArg some (Classical.not_not.mp original))) (by omega) (by omega) words
-        · contradiction
-    · contradiction
+    obtain ⟨⟨table, rest⟩, checked, done⟩ := bind_ok accepted
+    obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj done)
+    obtain ⟨rfl, codec, offset, next, hasData, contents⟩ :=
+      RecursiveSchema.Repeated.Chunk.readFramedDictionary_wire (from_mapError checked)
+    exact .dictionary codec offset next hasData contents
 
 private theorem decodeFrames_wire {limits : Limits} {carrier : Carrier} {frames : List Page.Frame}
     {ordinal : Nat} {state : State}

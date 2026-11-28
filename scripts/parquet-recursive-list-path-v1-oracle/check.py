@@ -81,7 +81,7 @@ set_option maxHeartbeats 4000000
 """
 
 
-def capture(wire, schema, nullable, width, groups, *, codecs=None, expand=None):
+def capture(wire, schema, nullable, width, groups, *, codecs=None, expand=None, dictionaries=None):
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert parquet.schema_arrow.equals(schema, check_metadata=True)
     assert parquet.num_row_groups == len(groups)
@@ -94,23 +94,35 @@ def capture(wire, schema, nullable, width, groups, *, codecs=None, expand=None):
     assert len(codecs) == len(groups)
     for (group, column), footer, lo, hi in V2["columns"](wire):
         codec = codecs[group]
-        assert column == 0 and footer[4][1] == codec and footer[9][1] == lo
+        assert column == 0 and footer[4][1] == codec
+        word_format = "<i" if width == 32 else "<q"
         assert [name.decode() for name in list_field(footer, 3)] == path
         assert parquet.read_row_group(group).column(0).to_pylist() == groups[group]
         assert row_groups[group][3][1] == len(groups[group])
         slots, rows, live = 0, 0, 0
         expected = levels(groups[group], nullable)
         pages, stored, raw = [], 0, 0
+        entries = None
         for header_at, header, body_at, body in FRAMES(wire, lo, hi):
             assert header[3][1] == len(body)
             crc = (header[4][1] & 0xffffffff) if 4 in header else None
             assert crc is None or crc == zlib.crc32(body)
+            stored += body_at - header_at + header[3][1]
+            raw += body_at - header_at + header[2][1]
+            if header[1][1] == 2:
+                assert dictionaries is not None and codec == 0 and entries is None and not pages
+                assert footer[11][1] == header_at == lo and footer[9][1] == body_at + len(body)
+                assert list_field(footer, 2) == [0, 3, 8] and len(body) == header[2][1]
+                entries = [word for word, in struct.iter_unpack(word_format, body)]
+                assert header[7][1][1][1] == len(entries) and header[7][1][2][1] == 0
+                dictionaries[group] = (header_at, body_at, crc, len(body), entries)
+                continue
             is_v2 = header[1][1] == 3
             start = (slots, rows, live)
             if is_v2:
                 info = header[8][1]
                 count, nulls, page_rows, encoding, dl, rl = (info[i][1] for i in range(1, 7))
-                assert encoding == 0 and rl + dl <= len(body)
+                assert rl + dl <= len(body)
                 reps = V2["HYBRID"](body[:rl], depth.bit_length(), count)
                 defs = V2["HYBRID"](body[rl:rl + dl], maximum.bit_length(), count)
                 suffix = body[rl + dl:]
@@ -125,8 +137,8 @@ def capture(wire, schema, nullable, width, groups, *, codecs=None, expand=None):
                 live = 0
             else:
                 assert header[1][1] == 0
-                count, *encodings = (header[5][1][i][1] for i in range(1, 5))
-                assert encodings == [0, 3, 3]
+                count, encoding, def_encoding, rep_encoding = (header[5][1][i][1] for i in range(1, 5))
+                assert (def_encoding, rep_encoding) == (3, 3)
                 decoded = expand(codec, body, header[2][1]) if codec != 0 else body
                 assert len(decoded) == header[2][1]
                 reps, rest = LEVEL(decoded, depth, count)
@@ -135,8 +147,15 @@ def capture(wire, schema, nullable, width, groups, *, codecs=None, expand=None):
                 sections = (origin, origin + len(decoded) - len(rest),
                             origin + len(decoded) - len(suffix), origin + len(decoded))
             assert len(reps) == len(defs) == count
-            assert len(suffix) == defs.count(maximum) * (width // 8)
-            signed = iter(word for word, in struct.iter_unpack("<i" if width == 32 else "<q", suffix))
+            present = defs.count(maximum)
+            if encoding == 8:
+                assert entries is not None and suffix and suffix[0] <= 32
+                indices = V2["HYBRID"](suffix[1:], suffix[0], present)
+                assert len(indices) == present and all(0 <= index < len(entries) for index in indices)
+                signed = iter(entries[index] for index in indices)
+            else:
+                assert encoding == 0 and len(suffix) == present * (width // 8)
+                signed = iter(word for word, in struct.iter_unpack(word_format, suffix))
             trace = [(rep, definition, next(signed) if definition == maximum else None)
                      for rep, definition in zip(reps, defs, strict=True)]
             assert trace == expected[slots:slots + count]
@@ -148,12 +167,11 @@ def capture(wire, schema, nullable, width, groups, *, codecs=None, expand=None):
             slots += count
             if is_v2:
                 live = 0
-            stored += body_at - header_at + header[3][1]
-            raw += body_at - header_at + header[2][1]
             pages.append((header_at, body_at, crc, len(body), sections, start, (slots, rows, live), trace))
         assert slots == footer[5][1] == len(expected) and rows == len(groups[group])
         assert stored == footer[7][1] == hi - lo and raw == footer[6][1]
-        assert pages[0][0] == lo and pages[-1][1] + pages[-1][3] == hi
+        assert pages[0][0] == footer[9][1] and pages[-1][1] + pages[-1][3] == hi
+        assert (11 in footer) == (entries is not None)
         manifest.append((lo, hi, (slots, rows, live), pages))
     assert len(manifest) == len(groups)
     return manifest
@@ -167,7 +185,8 @@ def page_term(page, width, header=None, codec=0):
     at, body, crc, size, sections, start, stop, trace = page
     marker = "none" if crc is None else f"some {crc}"
     lo, p, q, hi = sections
-    kind = f".dataV1 ⟨{len(trace)}, 0, 3, 3⟩"
+    encoding = header[5][1][2][1] if header is not None and header[1][1] == 0 else 0
+    kind = f".dataV1 ⟨{len(trace)}, {encoding}, 3, 3⟩"
     if header is not None and header[1][1] == 3:
         info = header[8][1]
         fields = ", ".join(str(info[i][1]) for i in range(1, 7))
@@ -298,9 +317,7 @@ def fixtures():
     genuine_controls["brotli"] = write(schema, groups, compression="brotli")
     genuine_controls["indexed"] = write(schema, groups, write_page_index=True)
     genuine_controls["dictionary"] = write(schema, groups, use_dictionary=True)
-    dictionary = next(V2["columns"](genuine_controls["dictionary"]))[1]
-    for label, cause in (("brotli", "(.codec 4)"), ("indexed", ".pageIndex"),
-                         ("dictionary", f"(.encodings {list_field(dictionary, 2)})")):
+    for label, cause in (("brotli", "(.codec 4)"), ("indexed", ".pageIndex")):
         negatives.append(f'  refuseBinding (← load folder "{label}") (.column {original_address} {cause})')
 
     wide = "signed_32_depth_4_10"
@@ -345,8 +362,20 @@ def verify(folder):
             expected = lst(f"({batch_term(batch, bits)}, {lst(atom_term(slot, bits) for slot in trace)})"
                            for batch, trace in zip(values, traces, strict=True))
             code.append(f'  checkFile (← load folder "{label}") {depth} ⟨[{field}]⟩ {lst(steps)} {expected}')
+    dictionary = genuine_controls["dictionary"]
+    schema, nullable, width, values = positives["deep_reframed"]
+    dictionary_groups = []
+    for (lo, hi, stop, pages), batch in zip(
+            capture(dictionary, schema, nullable, width, values, dictionaries={}), values, strict=True):
+        headers = [header for _, header, _, _ in FRAMES(dictionary, lo, hi)][1:]
+        terms = lst(page_term(page, width, header) for page, header in zip(pages, headers, strict=True))
+        dictionary_groups.append(f"⟨{batch_term(batch, width)}, ⟨{lo}, {hi}⟩, {triple(stop)}, {terms}⟩")
+        total_frames += len(pages)
+    field = CORE["ROWS"]["field_term"](schema.field(0))
+    depth = len(nullable) - 1
+    code.append(f'  checkNative (← load folder "dictionary") {depth} ⟨[{field}]⟩ {lst(dictionary_groups)}')
     V2["run_lean"](folder, "ListPathV1.lean", code + negatives)
-    print(f"Checked {len(positives)} native files, {total_frames} original pages and {len(negatives)} typed controls")
+    print(f"Checked {len(positives) + 1} native files, {total_frames} original pages and {len(negatives)} typed controls")
     return {kind: fingerprints(items) for kind, items in {
         "genuine_parquet": genuine, "authored_parquet": authored, "genuine_controls": genuine_controls,
     }.items()}
