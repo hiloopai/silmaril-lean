@@ -155,7 +155,7 @@ def inspect(wire, schema, groups, *, decode_block=None):
         expected = [slot for row in groups[group] for slot in
                     CHUNK["from_arrow"](row[path[0]], schema.field(path[0]), path[1:])]
         codec = metadata[4][1]
-        assert codec == 0 or (codec in (1, 2, 7) and decode_block is not None)
+        assert codec == 0 or (codec in (1, 2, 6, 7) and decode_block is not None)
         assert metadata[7][1] == stop - start
         slot, row, live, raw_total = 0, 0, False, 0
         dictionary, traces, pages, spans = None, [], [], []
@@ -349,7 +349,7 @@ def verify(scratch):
     schema, groups = nested_samples()
     native = write(schema, groups)
     mixed = write(schema, groups, use_dictionary=["packet.items.list.élément.lo"])
-    compressed = write(schema, groups, compression="ZSTD")
+    compressed = write(schema, groups, compression="BROTLI")
     genuine = {"native": native, "mixed": mixed, "compressed": compressed}
     key = 1, 0
     edited = negative_files(native, key)
@@ -419,7 +419,7 @@ def verify(scratch):
                 f'(.chunk {address} ⟨{start}, {original_column.stop}⟩ (.uncompressedSize {total + 1} {total}))')
     code.append(f'  refuse (← load folder "wrong_data_offset") {group} {column} {{}} '
                 f'(.page {address} ⟨1, {dictionary[2]}, {{}}⟩ (.dataOffset {dictionary[2] + 1} {dictionary[2]}))')
-    code.append(f'  bindFailure (← load folder "compressed") {group} {column} (.column {address} (.codec 6))')
+    code.append(f'  bindFailure (← load folder "compressed") {group} {column} (.column {address} (.codec 4))')
 
     terminal = f".readError (.group 1 (.chunk ({late})))"
     bridge.extend([

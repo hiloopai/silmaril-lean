@@ -1,0 +1,186 @@
+{
+  "genuine_parquet": {
+    "v1": {
+      "bytes": 4897,
+      "sha256": "893b374fef84305977cff3e3d9b4a8990e5a2726f327bda7caf7cc54191cab69"
+    },
+    "v1_fallback": {
+      "bytes": 5218,
+      "sha256": "b9ab96af4806385455f2074838498cabe4e82f9e1a95f6710e214698061d9180"
+    },
+    "v2": {
+      "bytes": 4466,
+      "sha256": "58c2f191ff6eac951b4ea58deebff509bf203e419024e08deff12a931d2ed0ae"
+    },
+    "v2_compressed_indices": {
+      "bytes": 1908,
+      "sha256": "a2b18c81affd7f365546a6effc4a8468348aa0388bf135123a76a38120eb3aac"
+    },
+    "v2_fallback": {
+      "bytes": 4866,
+      "sha256": "3612b0b537ef19c6b51bfbdc68ee547a3c4494600ed0508445111c7bc07ea08f"
+    }
+  },
+  "labeled_edits": {
+    "compression_dictionary_id": {
+      "bytes": 5226,
+      "sha256": "1a09bc2242b2fd54476c10d971216e9ec66f4f9b8e27699d1d0889ed2228802f"
+    },
+    "dictionary_checksummed": {
+      "bytes": 5229,
+      "sha256": "64d6ff15b5cea00a0ac77fce854abd85074e491478121e76901fb12c78c41dbe"
+    },
+    "dictionary_content_crc": {
+      "bytes": 5229,
+      "sha256": "f5056b8d97047b0104ac7987ca4f45558748a50806ae07d9ed6c7bf5610af0b9"
+    },
+    "dictionary_extent": {
+      "bytes": 5225,
+      "sha256": "8b1a94c64952d84b0f4b0ec7f728f30a32fea11c1098adff8176cb22f4d09482"
+    },
+    "dictionary_second_frame": {
+      "bytes": 5234,
+      "sha256": "4f2140bcc1b4bb60aa59b02df17e0c87f4d9b53917c8a0947f7a166b260bf3cc"
+    },
+    "dictionary_stored_crc": {
+      "bytes": 5225,
+      "sha256": "65ca574985cf415c25a0ff01d18cde3fc7ca2272ad33c58c71bfafb0410872e7"
+    },
+    "dictionary_trailing": {
+      "bytes": 5226,
+      "sha256": "98bde748fc2b5526abdfed8a955afd0ff6a5ca40f34b363c81a1e8bd3c210e43"
+    },
+    "late_v1_indices": {
+      "bytes": 4905,
+      "sha256": "a4463f3963044bca3ab9940702dd711d9b07dc434088d7ba48384bacc1fdd6ba"
+    },
+    "late_v2_indices": {
+      "bytes": 1916,
+      "sha256": "228183aa8319b4f6a7e6714e954926413169cfaa7db3119523199c37ed0cf99d"
+    },
+    "missing_dictionary_from_total": {
+      "bytes": 1908,
+      "sha256": "5c73edc9f3c5c5a48c3e1a74a3405a88d2ceb7864f35802b939e34530fd8ebd9"
+    },
+    "raw_v2_extent": {
+      "bytes": 1918,
+      "sha256": "35b31193e77e6ce204a7a61b5a1698ba4eb01507ccc552ab784a48ebdfcedc5e"
+    },
+    "short_stored_total": {
+      "bytes": 1908,
+      "sha256": "09f820abf201ee23d53dad9fc47d3312d3e58b7592907ec80e295d0257fe47f1"
+    },
+    "truncated_v2_frame": {
+      "bytes": 1914,
+      "sha256": "5a8295b5e713f4a312f5788641f8d30e4f587be8a9a6529db384e3a27a6ba92d"
+    },
+    "v1_checksummed": {
+      "bytes": 4908,
+      "sha256": "44d1e4bbdfbbd49df31ce25f0f654a30f8e1f96c810455e0998b258da84944d7"
+    },
+    "v1_content_crc": {
+      "bytes": 4908,
+      "sha256": "0afb111eed3eb99f67d31bf20644a410979cd1a9bc860e797739a3043fd8f59c"
+    },
+    "v1_extent": {
+      "bytes": 4904,
+      "sha256": "3b76a818dcba2b02950f446c147a53aad3ec376e1efc4160d1ad87929f77d233"
+    },
+    "v1_midrow_fallback": {
+      "bytes": 688,
+      "sha256": "fe76f56effd3e039fc05afb02bee0a71c0dd5311721aaffb947dd965f05e73a1"
+    },
+    "v1_second_frame": {
+      "bytes": 4913,
+      "sha256": "d22c6e48b243834f521f1937e1b40b4a7179e625e4dec7b2d6db1f823bd4869c"
+    },
+    "v1_stored_crc": {
+      "bytes": 4904,
+      "sha256": "65b898ab219ce056fbe2c42a1b69181b6e350ec45ad795a7d6384ef490fc6522"
+    },
+    "v1_trailing": {
+      "bytes": 4905,
+      "sha256": "3431c4d41d8df4b6fa37f12223b0136166c567019c0a69cad79a84361b841139"
+    },
+    "v2_checksummed": {
+      "bytes": 1919,
+      "sha256": "66a3390e68391ca979e1177e01813f5e9576dd08e4f7ab9b289cdd0cf245db18"
+    },
+    "v2_content_crc": {
+      "bytes": 1919,
+      "sha256": "6f9cef3df139ddd7835891a127b32812b05a293cad4f9ae5d7f6f24db99498ae"
+    },
+    "v2_content_size": {
+      "bytes": 1915,
+      "sha256": "a9042cf49db31e1e533c1d76b0cdaa76fc8fa6399d7fd17c30bd748fea3ee684"
+    },
+    "v2_extent": {
+      "bytes": 1915,
+      "sha256": "b77ecdb4a996536067aa88e332aa4860923560a4270a980d8c387b9a60bc9490"
+    },
+    "v2_raw_bypass": {
+      "bytes": 1918,
+      "sha256": "169584a52722f1c4c2f6244d7ac4f7a00dcd3d9f4595ed50860a5991c5cd6414"
+    },
+    "v2_second_frame": {
+      "bytes": 1924,
+      "sha256": "f4bb218a427becc8086ed397b15c3a659c4b28d05f1da05233a9fa8e500480b5"
+    },
+    "v2_stored_crc": {
+      "bytes": 1915,
+      "sha256": "15d734722db01f824224f39792891fc844b855209f57142785ca16085149c8a6"
+    },
+    "v2_trailing": {
+      "bytes": 1916,
+      "sha256": "8b1f4092deba05e7b8224cdcb5d9b30d8eb3ff857320ee0d0e56b4b7f9ae88e4"
+    }
+  },
+  "lean_ipc": {
+    "dictionary_checksummed": {
+      "bytes": 3512,
+      "sha256": "ba8fe32a71bf122c0b73c066554936b97ff591d00fa76b3344ff14d8c628e328"
+    },
+    "v1": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "v1_checksummed": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "v1_fallback": {
+      "bytes": 3512,
+      "sha256": "ba8fe32a71bf122c0b73c066554936b97ff591d00fa76b3344ff14d8c628e328"
+    },
+    "v1_midrow_fallback": {
+      "bytes": 520,
+      "sha256": "e7347a8a4f68583da5d93bdadf75f58aea42b012413fcb0498f66d7fd06951ed"
+    },
+    "v2": {
+      "bytes": 2584,
+      "sha256": "2d369fa6a0f89dcc0ed9957cd77c056496bef88ad1133bd78b07ce3577d0b99d"
+    },
+    "v2_checksummed": {
+      "bytes": 3848,
+      "sha256": "2de43c5f868b02761fd665a1ee86214b1fdbda44f9893f31e33592d829d8150c"
+    },
+    "v2_compressed_indices": {
+      "bytes": 3848,
+      "sha256": "2de43c5f868b02761fd665a1ee86214b1fdbda44f9893f31e33592d829d8150c"
+    },
+    "v2_fallback": {
+      "bytes": 3512,
+      "sha256": "ba8fe32a71bf122c0b73c066554936b97ff591d00fa76b3344ff14d8c628e328"
+    },
+    "v2_raw_bypass": {
+      "bytes": 3848,
+      "sha256": "2de43c5f868b02761fd665a1ee86214b1fdbda44f9893f31e33592d829d8150c"
+    }
+  },
+  "libzstd": "f8745da6ff1ad1e7bab384bd1f9d742439278e99",
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}
