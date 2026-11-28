@@ -70,6 +70,17 @@ def Selection.columns (selection : Selection) (source : Signature) : Scan.Projec
   | .field => Scan.Projection.id source
   | .empty => ⟨0, Fin.elim0⟩
 
+def Selection.schema (selection : Selection) (schema : Arrow.RecursiveSchema.Schema) :
+    Arrow.RecursiveSchema.Schema :=
+  match selection with
+  | .field => schema
+  | .empty => ⟨[]⟩
+
+def Selection.batch (selection : Selection) (batch : Observation) : Observation :=
+  match selection with
+  | .field => batch
+  | .empty => ⟨batch.rowCount, List.replicate batch.rowCount []⟩
+
 end
 
 end Silmaril.Formats.Parquet.Reader.Recursive

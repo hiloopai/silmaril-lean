@@ -1,0 +1,133 @@
+{
+  "authored_controls": {
+    "deep_reframed": {
+      "bytes": 1014,
+      "sha256": "0c13b53d1e710acbd62fea4349487e9818be5fcb6df62eaa879ff69ad0655d62"
+    },
+    "empty_group": {
+      "bytes": 992,
+      "sha256": "8f1ff9e67915765a79a5aabfd4e5286609d52133293ab4c8441d0575cc948d4c"
+    },
+    "empty_input": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "late_crc": {
+      "bytes": 1015,
+      "sha256": "0b99f31f965aa285484412acffac89d06f678167f61645231d1e9ee3380e99ac"
+    },
+    "late_words": {
+      "bytes": 1015,
+      "sha256": "50a33219a250f59af8a4f0f3926812d364baba500d1bede81a0358b52b93d915"
+    }
+  },
+  "genuine_parquet": {
+    "crc_absent": {
+      "bytes": 722,
+      "sha256": "b52cb260f79ac101f6ba842a7982ba9aeda5517c9a2ef55f61b40028cb09fe9e"
+    },
+    "schema_only": {
+      "bytes": 178,
+      "sha256": "a3983c6371aafc525ef19e4f7009de32ef11e3b8378e5f8bb94b2b3e9faebfca"
+    },
+    "signed_32_depth_16_131071": {
+      "bytes": 1800,
+      "sha256": "63e1578fb419f7b226753ea889330be79752c631fbc207beedc036893fb3e247"
+    },
+    "signed_32_depth_3_15": {
+      "bytes": 817,
+      "sha256": "32c6800626dc92b4b4a5684eca1a74315032215a517f4b0b9e6151f9c405e285"
+    },
+    "signed_32_depth_4_10": {
+      "bytes": 838,
+      "sha256": "0fe0db53cb49134681c479ec0566d5394b652718f824d830fa7fc13a856c426a"
+    },
+    "signed_64_depth_3_0": {
+      "bytes": 883,
+      "sha256": "616253afe25c52b56ac175c9ee3f8905819dff26d69ff741089059242cef5727"
+    },
+    "signed_64_depth_6_85": {
+      "bytes": 1143,
+      "sha256": "d5b9362a3b68d955d1569a228f75babfcc01f94067cc957e865787da8e0499f7"
+    }
+  },
+  "lean_ipc": {
+    "crc_absent_empty": {
+      "bytes": 312,
+      "sha256": "6f3c5b71f18e5f22d7c06dca4fdeca73e7bddc42fb087b0ba0f72fcfc0c1a401"
+    },
+    "crc_absent_field": {
+      "bytes": 1280,
+      "sha256": "10306c98a5cba1b74fa96b39faf2d2c3f76204db56d348fc6b3da0874c114e17"
+    },
+    "deep_reframed_empty": {
+      "bytes": 312,
+      "sha256": "6f3c5b71f18e5f22d7c06dca4fdeca73e7bddc42fb087b0ba0f72fcfc0c1a401"
+    },
+    "deep_reframed_field": {
+      "bytes": 1280,
+      "sha256": "10306c98a5cba1b74fa96b39faf2d2c3f76204db56d348fc6b3da0874c114e17"
+    },
+    "empty_group_empty": {
+      "bytes": 424,
+      "sha256": "10f541b031124e7de620500e0f161696cb5b97f0afcf34a0552c4b10f1593679"
+    },
+    "empty_group_field": {
+      "bytes": 1608,
+      "sha256": "e93e50a8ecba086710f0ffc8c40eeb4ec5c149c58e5ab4a81c9090e3feebc3fc"
+    },
+    "schema_only_empty": {
+      "bytes": 88,
+      "sha256": "430ccde83f3bc79bdafa7e33ad1d036202805b067dc58e59f63cf87e44a817e2"
+    },
+    "schema_only_field": {
+      "bytes": 440,
+      "sha256": "381873e6e9b0f2d0daf6e55638782cf943e5fc6ced6aee13b182e4f34ed3c39c"
+    },
+    "signed_32_depth_16_131071_empty": {
+      "bytes": 312,
+      "sha256": "6f3c5b71f18e5f22d7c06dca4fdeca73e7bddc42fb087b0ba0f72fcfc0c1a401"
+    },
+    "signed_32_depth_16_131071_field": {
+      "bytes": 4504,
+      "sha256": "c1800f78020477f6747893cd2802888d71825648894711ea7c2723585ed2734b"
+    },
+    "signed_32_depth_3_15_empty": {
+      "bytes": 312,
+      "sha256": "6f3c5b71f18e5f22d7c06dca4fdeca73e7bddc42fb087b0ba0f72fcfc0c1a401"
+    },
+    "signed_32_depth_3_15_field": {
+      "bytes": 1280,
+      "sha256": "10306c98a5cba1b74fa96b39faf2d2c3f76204db56d348fc6b3da0874c114e17"
+    },
+    "signed_32_depth_4_10_empty": {
+      "bytes": 312,
+      "sha256": "9e1f96f8ac73df8d90f07ead72f0b1dd713e7484d4725b20fc3fa6bb0444eef7"
+    },
+    "signed_32_depth_4_10_field": {
+      "bytes": 1512,
+      "sha256": "b1157a5d963e62771731af68f13f51e7a109d3099b75d42e3633ec65f30fb857"
+    },
+    "signed_64_depth_3_0_empty": {
+      "bytes": 312,
+      "sha256": "9e1f96f8ac73df8d90f07ead72f0b1dd713e7484d4725b20fc3fa6bb0444eef7"
+    },
+    "signed_64_depth_3_0_field": {
+      "bytes": 1296,
+      "sha256": "5d269a1f88e175003784ddc882ef965ca5595c02bbd74986d768f0ca4dfd2a60"
+    },
+    "signed_64_depth_6_85_empty": {
+      "bytes": 312,
+      "sha256": "6f3c5b71f18e5f22d7c06dca4fdeca73e7bddc42fb087b0ba0f72fcfc0c1a401"
+    },
+    "signed_64_depth_6_85_field": {
+      "bytes": 2056,
+      "sha256": "a061dca010f04b94d0b912108e14a776ea5d60ba73fd1c0f31afc25de3acbc38"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}

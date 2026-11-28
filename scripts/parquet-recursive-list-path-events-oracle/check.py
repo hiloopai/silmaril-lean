@@ -18,6 +18,7 @@ NATIVE = runpy.run_path(str(HERE.parent / "parquet-recursive-list-path-v1-oracle
 TWO = NATIVE["TWO"]
 capture, fingerprint, lst = (NATIVE[k] for k in ("capture", "fingerprints", "lst"))
 rows = NATIVE["CORE"]["ROWS"]
+SOURCE = "signed_32_depth_3_15"
 
 LEAN = """\
 module
@@ -99,7 +100,7 @@ def batch_terms(groups, width):
     return lst(rows["batch_term"](group, width) for group in groups)
 
 
-def verify(folder):
+def fixtures():
     generated, controls, _, all_cases, _ = NATIVE["fixtures"]()
     genuine = {}
     for label in ("signed_32_depth_3_15", "signed_64_depth_3_0", "signed_32_depth_4_10",
@@ -107,12 +108,35 @@ def verify(folder):
         genuine[label] = generated[label]
     authored = {label: controls[label] for label in ("deep_reframed", "late_crc", "late_words")}
     authored["empty_input"] = b""
-    source = "signed_32_depth_3_15"
-    schema, nullable, width, groups = all_cases[source]
-    authored["empty_group"] = empty_group(genuine[source], width)
+    schema, nullable, width, groups = all_cases[SOURCE]
+    authored["empty_group"] = empty_group(genuine[SOURCE], width)
     positive = {name: all_cases[name] for name in (*genuine, "deep_reframed")}
     positive["empty_group"] = schema, nullable, width, [groups[0], [], groups[1]]
 
+    return genuine, authored, positive
+
+
+def late_errors(authored, positive):
+    base = capture(authored["deep_reframed"], *positive["deep_reframed"])[1][-1]
+    address = "⟨1, 0, " + json.dumps(["chain"] + ["list", "element"] * 3) + "⟩"
+    for label in ("late_crc", "late_words"):
+        wire = authored[label]
+        at, header, _, body = list(NATIVE["FRAMES"](wire, *NATIVE["chunk"](wire)))[3]
+        if label == "late_crc":
+            declared = header[4][1] & 0xffffffff
+            computed = zlib.crc32(body)
+            assert declared != computed
+            cause = f".checksum (.mismatch {declared} {computed})"
+        else:
+            assert header[4][1] & 0xffffffff == zlib.crc32(body)
+            assert len(body) == base[3][3] + 1
+            cause = ".plain .trailingBytes"
+        state = NATIVE["triple"](base[3][-3])
+        yield label, f".group 1 (.chunk (.page {address} 3 {at} {state} ({cause})))"
+
+
+def verify(folder):
+    genuine, authored, positive = fixtures()
     files = genuine | authored
     for label, wire in files.items():
         (folder / f"{label}.parquet").write_bytes(wire)
@@ -131,25 +155,12 @@ def verify(folder):
     assert len(zero[-1]) == 1 and zero[-1][0][-1] == []
     base = capture(authored["deep_reframed"], *positive["deep_reframed"])[1][-1]
     assert [page[-1][0][0] if page[-1] else None for page in base] == [0, 1, 2, 3, None]
-    code.append(f'  checkReframe (← load folder "{source}") (← load folder "deep_reframed")')
+    code.append(f'  checkReframe (← load folder "{SOURCE}") (← load folder "deep_reframed")')
 
-    address = "⟨1, 0, " + json.dumps(["chain"] + ["list", "element"] * 3) + "⟩"
-    for label in ("late_crc", "late_words"):
-        wire = authored[label]
-        at, header, _, body = list(NATIVE["FRAMES"](wire, *NATIVE["chunk"](wire)))[3]
-        if label == "late_crc":
-            declared = header[4][1] & 0xffffffff
-            computed = zlib.crc32(body)
-            assert declared != computed
-            cause = f".checksum (.mismatch {declared} {computed})"
-        else:
-            assert header[4][1] & 0xffffffff == zlib.crc32(body)
-            assert len(body) == base[3][3] + 1
-            cause = ".plain .trailingBytes"
-        state = NATIVE["triple"](base[3][-3])
-        ending = f".readError (.group 1 (.chunk (.page {address} 3 {at} {state} ({cause}))))"
+    schema, _, width, groups = positive[SOURCE]
+    for label, error in late_errors(authored, positive):
         code.append(f'  checkFile (← load folder "{label}") 3 {declarations(schema)} '
-                    f'{batch_terms(groups[:1], width)} ({ending})')
+                    f'{batch_terms(groups[:1], width)} (.readError ({error}))')
     code.append('  checkOpenError (← load folder "empty_input")')
     NATIVE["V2"]["run_lean"](folder, "ListPathEvents.lean", code)
     print(f"Checked {len(positive)} native sources, {pages} original pages, the empty group, "
