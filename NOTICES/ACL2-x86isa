@@ -11,6 +11,7 @@ The object-order export in corpus/acl2/x86-order and its generated Lean
 terms also derive from that release's axioms.lisp, books/misc/total-order.lisp,
 and books/projects/x86isa/machine/tty.lisp.
 The environment and TLB exports also contain definitions from axioms.lisp.
+The pure helper export in corpus/acl2/pure-helpers derives from axioms.lisp.
 The TLB export in corpus/acl2/x86-tlb derives from that release's
 machine/tlb.lisp and books/ihs/basic-definitions.lisp.
 Copyright (C) 2026, Regents of the University of Texas (axioms.lisp)
