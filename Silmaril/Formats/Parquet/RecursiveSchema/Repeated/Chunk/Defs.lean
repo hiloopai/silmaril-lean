@@ -701,6 +701,39 @@ def DictionaryContentsWire (limits : Limits) (kind : RecursiveSchema.Kind) (sour
     (∀ word ∈ words, word.length = RecursiveSchema.Chunk.wordWidth kind) ∧
     dictionary.entries = (words.map (RecursiveSchema.Chunk.readWord kind)).toArray
 
+structure DictionaryPrefixError where
+  ordinal : Nat
+  byte : Nat
+  cause : PageCause
+
+/-- Consume a leading dictionary from the original frame chain. Its
+successor cursor must equal the original data anchor. -/
+def readFramedDictionary (limits : Limits) (kind : RecursiveSchema.Kind) (source : Bytes)
+    (span : Footer.Span) (metadata : Footer.ColumnMetadata) (frames : List Page.Frame)
+    (codec : DictionaryCodec) : Except DictionaryPrefixError (Dictionary × List Page.Frame) :=
+  let fail := DictionaryPrefixError.mk 0 span.start
+  match metadata.dictionaryPageOffset with
+  | none => .error (fail .missingDictionary)
+  | some offset =>
+    if offset ≠ Int.ofNat span.start then .error (fail (.dictionaryOffset offset))
+    else match frames with
+      | [] => .error (fail .missingDictionary)
+      | frame :: rest => do
+        let table ← (readDictionaryWith limits kind source frame codec).mapError fail
+        if metadata.dataPageOffset ≠ Int.ofNat frame.payload.stop ∨ frame.payload.stop ≥ span.stop then
+          .error ⟨1, frame.payload.stop, .dataOffset metadata.dataPageOffset frame.payload.stop⟩
+        else .ok (table, rest)
+
+structure FramedDictionaryWire (limits : Limits) (kind : RecursiveSchema.Kind) (source : Bytes)
+    (span : Footer.Span) (metadata : Footer.ColumnMetadata) (frames : List Page.Frame)
+    (codec : DictionaryCodec) (table : Dictionary) (rest : List Page.Frame) : Prop where
+  original : frames = table.frame :: rest
+  codecExact : table.codec = codec
+  dictionaryOffset : metadata.dictionaryPageOffset = some (Int.ofNat span.start)
+  dataOffset : metadata.dataPageOffset = Int.ofNat table.frame.payload.stop
+  hasData : table.frame.payload.stop < span.stop
+  contents : DictionaryContentsWire limits kind source table
+
 structure DictionaryWire (limits : Limits) (leaf : Leaf) (source : Bytes)
     (dictionary : Dictionary) : Prop where
   original : DictionaryContentsWire limits leaf.kind source dictionary

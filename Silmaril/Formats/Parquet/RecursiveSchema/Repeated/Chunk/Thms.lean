@@ -178,6 +178,13 @@ theorem readDictionaryWith_wire {limits : Limits} {kind : RecursiveSchema.Kind} 
     dictionary.frame = frame ∧ dictionary.codec = codec ∧ DictionaryContentsWire limits kind source dictionary :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readDictionaryWith_wire read
 
+theorem readFramedDictionary_wire {limits : Limits} {kind : RecursiveSchema.Kind}
+    {source : Bytes} {span : Footer.Span} {metadata : Footer.ColumnMetadata} {frames rest : List Page.Frame}
+    {codec : DictionaryCodec} {table : Dictionary}
+    (read : readFramedDictionary limits kind source span metadata frames codec = .ok (table, rest)) :
+    FramedDictionaryWire limits kind source span metadata frames codec table rest :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readFramedDictionary_wire read
+
 theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
     {frame : Page.Frame} {dictionary : Dictionary} {codec : DictionaryCodec}
     (read : readDictionary limits leaf source frame codec = .ok dictionary) :

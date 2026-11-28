@@ -445,16 +445,10 @@ def readPrefix (limits : Limits) (carrier : Carrier) (encoding : ColumnEncoding 
   match encoding with
   | .plain _ _ => return (none, frames)
   | .dictionary _ =>
-    let fail := Error.page carrier.address 0 carrier.span.start {} ∘ PageCause.dictionary
-    let some offset := carrier.metadata.dictionaryPageOffset | throw (fail .missingDictionary)
-    if offset ≠ Int.ofNat carrier.span.start then throw (fail (.dictionaryOffset offset))
-    let frame :: tail := frames | throw (fail .missingDictionary)
-    let dictionary ← (Repeated.Chunk.readDictionaryWith limits.payload carrier.plan.kind carrier.source
-      frame carrier.codec.dictionary).mapError fail
-    if carrier.metadata.dataPageOffset ≠ Int.ofNat frame.payload.stop ∨ frame.payload.stop ≥ carrier.span.stop then
-      throw (.page carrier.address 1 frame.payload.stop {}
-        (.dictionary (.dataOffset carrier.metadata.dataPageOffset frame.payload.stop)))
-    return (some dictionary, tail)
+    let (dictionary, rest) ← (Repeated.Chunk.readFramedDictionary limits.payload carrier.plan.kind
+      carrier.source carrier.span carrier.metadata frames carrier.codec.dictionary).mapError fun error =>
+        Error.page carrier.address error.ordinal error.byte {} (.dictionary error.cause)
+    return (some dictionary, rest)
 
 def decodeFrames (limits : Limits) (carrier : Carrier) (dictionary : Option Repeated.Chunk.Dictionary) :
     List Page.Frame → Nat → State → List ObservedPage → Except Error Observation
