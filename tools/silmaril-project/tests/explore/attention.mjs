@@ -19,7 +19,12 @@ const check = (ok, what) => { console.log((ok ? "ok   " : "FAIL ") + what); if (
 
 // a copy of the site whose database marks one open problem expected_open
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "attention-"));
-for (const f of fs.readdirSync(site)) if (fs.statSync(path.join(site, f)).isFile()) fs.copyFileSync(path.join(site, f), path.join(tmp, f));
+for (const f of fs.readdirSync(site)) {
+  const src = path.join(site, f);
+  const dst = path.join(tmp, f);
+  if (fs.statSync(src).isFile()) fs.copyFileSync(src, dst);
+  else if (f === "_docs" && fs.statSync(src).isDirectory()) fs.cpSync(src, dst, { recursive: true });
+}
 const py = (code, ...args) => execFileSync("python3", ["-I", "-c", code, ...args], { encoding: "utf8" });
 const marked = py(`
 import sqlite3, sys

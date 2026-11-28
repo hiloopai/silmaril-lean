@@ -81,14 +81,16 @@ what the public repository already contains. GitHub Pages answers Range requests
 identity bytes, so the page reads the database lazily (see below for why it ignores `HEAD`), and
 the deploy job checks a Range request on the deployed file.
 
-When the project directory contains `docs/`, `sil project explore` packages the Markdown
-guides and referenced local image assets into `docs/` next to the output page and links
-**Project documentation** on the Summary page to the inline `#/docs/…` view (with a secondary
-link to the file on GitHub at the configured source commit when the source repository is
-`hiloopai/silmaril-lean`). The `#/docs/<path>` view renders Markdown headings, anchors,
-tables, code blocks and strict Mermaid flowcharts inline, resolves relative cross-doc links
-and section fragments inside the explorer, and resolves repository source links at the pinned
-revision.
+When the project directory contains `docs/`, `sil project explore` packages the tracked
+Markdown guides and referenced local raster image assets from `docs/` into `_docs/` next to
+the output page (and writes `explore-mermaid.js`, a local pinned Mermaid 11.17.2 bundle loaded
+on demand with no runtime CDN dependency) and links **Project documentation** on the Summary
+page to the inline `#/docs/…` view (with a secondary link to the file on GitHub at the
+configured source commit when the source repository is `hiloopai/silmaril-lean`). The
+`#/docs/<path>` view renders standards Markdown (headings, GitHub-compatible anchors,
+reference-style links, tables, code blocks) and strict Mermaid flowcharts inline, resolves
+relative cross-doc links and section fragments inside the explorer, and resolves repository
+source links at the pinned revision.
 
 To view a local build instead:
 

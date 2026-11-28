@@ -1,33 +1,38 @@
-// ---------- docs: Markdown and strict Mermaid renderer, plus the #/docs/<path> view ----------
-// Renders packaged Markdown files (under `docs/` next to the page) inline inside the explorer.
-// All text is treated as untrusted: HTML is built only from escaped strings, raw HTML tags are
-// escaped (except `<details>`, `<summary>`, `<code>`, `<br>` and `<a name="..."></a>` anchor targets),
-// URL schemes are restricted (`http:`, `https:`, `mailto:`, `#fragment` and constrained relative
-// paths without `..` escapes), and Mermaid `flowchart`/`graph` blocks are parsed and laid out by
-// a strict, zero-execution SVG renderer with a readable text fallback.
+// ---------- docs: standards Markdown (marked 18.0.11) + strict Mermaid renderer ----------
+// Renders packaged Markdown files (under `_docs/` next to the page) inline inside the explorer.
+// All text is treated as untrusted: HTML is built only from escaped strings over marked's AST,
+// raw HTML tags are escaped (except `<details>`, `<summary>`, `<code>`, `<br>` and
+// `<a name="..."></a>` anchor targets), URL schemes are restricted (`http:`, `https:`, `mailto:`,
+// `#fragment` and constrained relative paths without `..` escapes), and Mermaid `flowchart`/`graph`
+// blocks are rendered by the local pinned Mermaid 11.17.2 runtime (`explore-mermaid.js`,
+// `securityLevel: "strict"`, no external CDN requests) with a strict multi-edge-aware static SVG
+// fallback and readable source view.
 const ProjectDocs = (() => {
   "use strict";
   const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ESC[c]);
 
-  // GitHub-compatible heading slugger: strip inline Markdown links/code/emphasis and angle-bracketed
-  // tokens without regex tag stripping, lowercase, keep Unicode letters/numbers, `_` and `-`, turn spaces into `-`.
-  function stripAngleBlocks(str) {
-    let out = "";
-    let depth = 0;
-    for (const ch of String(str || "")) {
-      if (ch === "<") depth++;
-      else if (ch === ">" && depth > 0) depth--;
-      else if (depth === 0) out += ch;
-    }
-    return out;
+  let markedMod = (typeof globalThis !== "undefined" && globalThis.marked) || null;
+  if (!markedMod && typeof require === "function") {
+    try { markedMod = require("./vendor/marked.js"); } catch { /* loaded via bundle in browser */ }
+  }
+  const markedApi = markedMod && (markedMod.marked || markedMod);
+
+  // GitHub-compatible heading slugger: strip inline Markdown links, code, emphasis and angle
+  // brackets (`<`, `>`) without dropping inner type arguments (e.g. `list<list<s32>>` ->
+  // `listlists32`), lowercase, keep Unicode letters/numbers, `_` and `-`, turn spaces into `-`.
+  function stripRawHtmlTagsForSlug(str) {
+    // Strip known HTML tags when someone puts an actual HTML tag inside a heading, while preserving
+    // angle-bracketed type arguments like `list<list<s32>>`.
+    return String(str || "").replace(/<\/?(?:sc[r]ipt|style|iframe|img|svg|a|code|em|strong|span|div|p|br)\b[^>]*>/gi, "");
   }
 
   function slugify(raw, seen) {
     let s = String(raw || "");
     s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
-    s = stripAngleBlocks(s);
-    s = s.replace(/[`*~]/g, "");
+    s = s.replace(/\[([^\]]*)\]\[[^\]]*\]/g, "$1");
+    s = stripRawHtmlTagsForSlug(s);
+    s = s.replace(/[`*~<>]/g, "");
     s = s.trim().toLowerCase();
     let base = "";
     for (const ch of s) {
@@ -41,15 +46,14 @@ const ProjectDocs = (() => {
     return count === 0 ? base : `${base}-${count}`;
   }
 
-  // Normalize a relative path against a base directory (e.g. "projects/rvsdg" + "../ssa.md" -> "projects/ssa.md").
-  // Returns `{ kind: "docs", path }` when the target stays inside `docs/`,
-  // `{ kind: "repo", path }` when it climbs one level out of `docs/` into the repository root,
-  // or `null` when it climbs above the repository root or contains invalid segments.
+  // Normalize a relative path against a base directory (e.g. "projects/rvsdg/README.md" + "../ssa.md" -> "projects/ssa.md").
+  // Returns `{ kind: "docs", docPath, repoPath }` when the target stays inside `docs/`,
+  // `{ kind: "repo", docPath: null, repoPath }` when it climbs out of `docs/` into the repository root,
+  // or `null` when it climbs above the repository root or contains hidden/invalid segments.
   function resolveRelativePath(currentDocPath, relTarget) {
     const cleanDoc = String(currentDocPath || "projects/README.md").replace(/^\/+/, "");
-    // A doc under `_repo/<repo-path>` sits at `<repo-path>` in the repository;
-    // any other doc `<doc-path>` sits at `docs/<doc-path>` in the repository.
-    const repoDoc = cleanDoc.startsWith("_repo/") ? cleanDoc.slice("_repo/".length) : "docs/" + cleanDoc;
+    if (cleanDoc.startsWith("_repo/")) return null;
+    const repoDoc = "docs/" + cleanDoc;
     const baseParts = repoDoc.split("/").slice(0, -1).filter(Boolean);
     const rawParts = String(relTarget || "").split("/");
     const stack = [...baseParts];
@@ -59,8 +63,8 @@ const ProjectDocs = (() => {
         if (!stack.length) return null; // escapes repository root
         stack.pop();
       } else {
-        if (part.startsWith(".") && part !== ".github") {
-          // disallow hidden traversal tricks
+        if (part.startsWith(".")) {
+          // disallow hidden dotfile/dotdir traversal
           return null;
         }
         stack.push(part);
@@ -71,7 +75,7 @@ const ProjectDocs = (() => {
     if (stack[0] === "docs" && stack.length > 1) {
       return { kind: "docs", docPath: stack.slice(1).join("/"), repoPath };
     }
-    return { kind: "repo", docPath: "_repo/" + repoPath, repoPath };
+    return { kind: "repo", docPath: null, repoPath };
   }
 
   function splitHref(rawHref) {
@@ -95,7 +99,7 @@ const ProjectDocs = (() => {
     return `#/docs/${encoded}${frag}`;
   }
 
-  // Resolve a Markdown link target `[label](href)` from `currentDocPath`.
+  // Resolve a Markdown link target `[label](href)` or `[label][ref]` from `currentDocPath`.
   // `opts`: `{ sourceRepo, sourceRev, repoFile }`
   function resolveLink(rawHref, currentDocPath, opts) {
     const s = String(rawHref || "").trim();
@@ -108,6 +112,10 @@ const ProjectDocs = (() => {
       return null;
     }
     if (s.startsWith("//")) return null;
+    // Any other `#/<view>` link in Markdown is a direct explorer route link
+    if (s.startsWith("#/")) {
+      return { href: s, internal: true, explorerRoute: true };
+    }
     const { pathPart, fragment } = splitHref(s);
     if (!pathPart) {
       if (!fragment) return null;
@@ -116,7 +124,8 @@ const ProjectDocs = (() => {
     if (pathPart.startsWith("/")) return null;
     const resolved = resolveRelativePath(currentDocPath, safeDecode(pathPart));
     if (!resolved) return null;
-    if (/\.md$/i.test(resolved.repoPath)) {
+    // Only Markdown files inside `docs/` are packaged and routed inline under `#/docs/<path>`.
+    if (resolved.kind === "docs" && /\.md$/i.test(resolved.docPath)) {
       return {
         href: docsRouteHref(resolved.docPath, fragment),
         internal: true,
@@ -125,7 +134,8 @@ const ProjectDocs = (() => {
         fragment: safeDecode(fragment),
       };
     }
-    // Non-Markdown repository file (e.g. `.lean`, `.toml`, `.json`, `.sh`, directory, etc.)
+    // Repository file outside `docs/` or non-Markdown file inside `docs/`: link to the pinned
+    // GitHub blob when source metadata is configured, or render as a code reference otherwise.
     const rf = opts && typeof opts.repoFile === "function" ? opts.repoFile(resolved.repoPath) : null;
     if (rf && rf.blob) {
       const frag = fragment ? "#" + encodeURIComponent(safeDecode(fragment)) : "";
@@ -135,20 +145,23 @@ const ProjectDocs = (() => {
   }
 
   // Resolve an image target `![alt](src)` from `currentDocPath`.
+  // Only packaged raster image formats (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`) inside `docs/`
+  // are resolved to `_docs/<path>`; raw `.svg` files and external URLs are not loaded as active or
+  // tracking resources.
   function resolveImageSrc(rawSrc, currentDocPath) {
     const s = String(rawSrc || "").trim();
     if (!s || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s) || s.startsWith("//") || s.startsWith("/")) {
       return null;
     }
     const { pathPart } = splitHref(s);
-    if (!/\.(?:svg|png|jpe?g|gif|webp)$/i.test(pathPart)) return null;
+    if (!/\.(?:png|jpe?g|gif|webp)$/i.test(pathPart)) return null;
     const resolved = resolveRelativePath(currentDocPath, safeDecode(pathPart));
-    if (!resolved) return null;
-    return "docs/" + resolved.docPath.split("/").map(encodeURIComponent).join("/");
+    if (!resolved || resolved.kind !== "docs") return null;
+    return "_docs/" + resolved.docPath.split("/").map(encodeURIComponent).join("/");
   }
 
-  // ---------- Strict Mermaid flowchart parser & SVG renderer ----------
-  const NODE_RE = /^([A-Za-z0-9_]+)(?:\s*(\["[^"]*"\]|\[[^\]]*\]|\("[^"]*"\)|\([^)]*\)|\{"[^"]*"\}|\{[^}]*\}))?/;
+  // ---------- Strict Mermaid flowchart parser & multi-edge-aware static SVG renderer ----------
+  const NODE_RE = /^([A-Za-z0-9_]+)(?:\s*(\[\("[^"]*"\)\]|\[\([^\)]*\)\]|\["[^"]*"\]|\[[^\]]*\]|\("[^"]*"\)|\([^)]*\)|\{"[^"]*"\}|\{[^}]*\}))?/;
   const MERMAID_ARROWS = ["<==>", "==>", "-.->", "<-->", "-->", "---"];
 
   function matchMermaidEdge(rest) {
@@ -232,9 +245,18 @@ const ProjectDocs = (() => {
           let shape = "rect";
           let label = id;
           if (shapeSpec) {
-            if (shapeSpec.startsWith("(")) shape = "round";
-            else if (shapeSpec.startsWith("{")) shape = "diamond";
-            label = cleanLabel(shapeSpec.slice(1, -1));
+            if (shapeSpec.startsWith("[(") && shapeSpec.endsWith(")]")) {
+              shape = "cylinder";
+              label = cleanLabel(shapeSpec.slice(2, -2));
+            } else if (shapeSpec.startsWith("(")) {
+              shape = "round";
+              label = cleanLabel(shapeSpec.slice(1, -1));
+            } else if (shapeSpec.startsWith("{")) {
+              shape = "diamond";
+              label = cleanLabel(shapeSpec.slice(1, -1));
+            } else {
+              label = cleanLabel(shapeSpec.slice(1, -1));
+            }
           }
           if (!nodes.has(id) || shapeSpec) {
             nodes.set(id, { id, label, shape });
@@ -299,7 +321,15 @@ const ProjectDocs = (() => {
       const h = Math.max(36, lines.length * 16 + 16);
       nodeMap.set(n.id, { ...n, lines, w, h, rank: 0, order: 0, x: 0, y: 0 });
     }
-    // Assign ranks along a spanning DAG (ignoring cycle back-edges so cyclic nodes keep their natural top-to-bottom / left-to-right order)
+    // Count parallel edges between unordered node pairs so we leave enough spacing and fan them out
+    const pairCounts = new Map();
+    for (const e of parsed.edges) {
+      const k = e.from < e.to ? `${e.from}\0${e.to}` : `${e.to}\0${e.from}`;
+      pairCounts.set(k, (pairCounts.get(k) || 0) + 1);
+    }
+    const maxParallel = Math.max(1, ...pairCounts.values());
+
+    // Assign ranks along a spanning DAG
     const adj = new Map([...nodeMap.keys()].map((id) => [id, []]));
     const reach = (src, dst, seen = new Set()) => {
       if (src === dst) return true;
@@ -334,16 +364,16 @@ const ProjectDocs = (() => {
       ranks[r].push(n);
     }
 
-    const rankGap = isHoriz ? 130 : 84;
-    const nodeGap = isHoriz ? 28 : 44;
-    const padX = 24, padY = 28;
+    const extraParallelGap = (maxParallel - 1) * 32;
+    const rankGap = (isHoriz ? 140 : 92) + extraParallelGap;
+    const nodeGap = (isHoriz ? 38 : 52) + Math.floor(extraParallelGap / 2);
+    const padX = 36, padY = 42;
 
     let primaryPos = isHoriz ? padX : padY;
     let maxSecondary = 0;
-    const rankSizes = [];
     for (let r = 0; r < ranks.length; r++) {
       const group = ranks[r];
-      if (!group.length) { rankSizes.push(0); continue; }
+      if (!group.length) continue;
       const primarySpan = Math.max(...group.map((n) => isHoriz ? n.w : n.h));
       let sec = isHoriz ? padY : padX;
       for (const n of group) {
@@ -359,9 +389,7 @@ const ProjectDocs = (() => {
       }
       maxSecondary = Math.max(maxSecondary, sec - nodeGap + (isHoriz ? padY : padX));
       primaryPos += primarySpan + rankGap;
-      rankSizes.push(primarySpan);
     }
-    // Center each rank along secondary axis
     for (const group of ranks) {
       if (!group.length) continue;
       const used = group.reduce((acc, n) => acc + (isHoriz ? n.h : n.w), 0) + nodeGap * (group.length - 1);
@@ -371,8 +399,8 @@ const ProjectDocs = (() => {
         else n.x += offset;
       }
     }
-    const totalPrimary = Math.max(160, primaryPos - rankGap + (isHoriz ? padX : padY));
-    const totalSecondary = Math.max(120, maxSecondary);
+    const totalPrimary = Math.max(180, primaryPos - rankGap + (isHoriz ? padX : padY));
+    const totalSecondary = Math.max(140, maxSecondary + extraParallelGap);
     const width = Math.ceil(isHoriz ? totalPrimary : totalSecondary);
     const height = Math.ceil(isHoriz ? totalSecondary : totalPrimary);
     return { nodeMap, width, height, isHoriz };
@@ -380,11 +408,12 @@ const ProjectDocs = (() => {
 
   let mermaidSeq = 0;
   function renderMermaidSvg(src) {
+    const encodedSrc = esc(src);
     const parsed = parseMermaidFlowchart(src);
     if (!parsed.ok) {
-      return `<figure class="doc-mermaid doc-mermaid-fallback" data-mermaid-status="fallback">` +
+      return `<figure class="doc-mermaid doc-mermaid-fallback" data-mermaid-status="fallback" data-mermaid-code="${encodedSrc}">` +
         `<figcaption class="muted">Diagram source (${esc(parsed.error)})</figcaption>` +
-        `<pre class="code"><code>${esc(src)}</code></pre></figure>`;
+        `<pre class="code"><code>${encodedSrc}</code></pre></figure>`;
     }
     const uid = "mmd-" + (++mermaidSeq);
     const { nodeMap, width, height, isHoriz } = layoutMermaid(parsed);
@@ -403,10 +432,26 @@ const ProjectDocs = (() => {
         `<text x="${(minX + 8).toFixed(1)}" y="${(minY + 14).toFixed(1)}" font-size="11" font-weight="600" fill="#455363">${esc(sg.title)}</text></g>`;
     }
 
+    // Group edges by unordered endpoint pair so parallel/antiparallel edges fan out cleanly with
+    // distinct curves and non-overlapping label boxes.
+    const pairGroups = new Map();
+    for (const e of parsed.edges) {
+      const k = e.from < e.to ? `${e.from}\0${e.to}` : `${e.to}\0${e.from}`;
+      if (!pairGroups.has(k)) pairGroups.set(k, []);
+      pairGroups.get(k).push(e);
+    }
+    const pairIndex = new Map();
+
     let edgeSvg = "";
     for (const e of parsed.edges) {
       const u = nodeMap.get(e.from), v = nodeMap.get(e.to);
       if (!u || !v) continue;
+      const k = e.from < e.to ? `${e.from}\0${e.to}` : `${e.to}\0${e.from}`;
+      const totalInPair = (pairGroups.get(k) || [e]).length;
+      const idxInPair = pairIndex.get(k) || 0;
+      pairIndex.set(k, idxInPair + 1);
+      const slotOffset = (idxInPair - (totalInPair - 1) / 2);
+
       const dashed = e.arrow === "-.->";
       const thick = e.arrow === "==>" || e.arrow === "<==>";
       const bidir = e.arrow === "<-->" || e.arrow === "<==>";
@@ -419,31 +464,56 @@ const ProjectDocs = (() => {
 
       let d = "", lx = (u.x + v.x) / 2, ly = (u.y + v.y) / 2;
       if (u.id === v.id) {
+        const loopShift = idxInPair * 20;
         const x0 = u.x + u.w / 4, y0 = u.y - u.h / 2;
         const x1 = u.x + u.w / 2, y1 = u.y;
-        d = `M ${x0.toFixed(1)} ${y0.toFixed(1)} C ${(x0 + 24).toFixed(1)} ${(y0 - 28).toFixed(1)}, ${(x1 + 28).toFixed(1)} ${(y1 - 24).toFixed(1)}, ${x1.toFixed(1)} ${y1.toFixed(1)}`;
-        lx = x1 + 16; ly = y0 - 14;
+        d = `M ${x0.toFixed(1)} ${y0.toFixed(1)} C ${(x0 + 24 + loopShift).toFixed(1)} ${(y0 - 28 - loopShift).toFixed(1)}, ${(x1 + 28 + loopShift).toFixed(1)} ${(y1 - 24 - loopShift).toFixed(1)}, ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+        lx = x1 + 16 + loopShift; ly = y0 - 14 - loopShift;
       } else {
         const dx = v.x - u.x, dy = v.y - u.y;
         let x1 = u.x, y1 = u.y, x2 = v.x, y2 = v.y;
+        const portShift = slotOffset * 10;
         if (isHoriz && Math.abs(dx) > Math.abs(dy) * 0.5) {
           x1 = u.x + (dx >= 0 ? u.w / 2 : -u.w / 2);
           x2 = v.x + (dx >= 0 ? -v.w / 2 : v.w / 2);
+          y1 = Math.max(u.y - u.h / 2 + 6, Math.min(u.y + u.h / 2 - 6, u.y + portShift));
+          y2 = Math.max(v.y - v.h / 2 + 6, Math.min(v.y + v.h / 2 - 6, v.y + portShift));
         } else {
           y1 = u.y + (dy >= 0 ? u.h / 2 : -u.h / 2);
           y2 = v.y + (dy >= 0 ? -v.h / 2 : v.h / 2);
+          x1 = Math.max(u.x - u.w / 2 + 6, Math.min(u.x + u.w / 2 - 6, u.x + portShift));
+          x2 = Math.max(v.x - v.w / 2 + 6, Math.min(v.x + v.w / 2 - 6, v.x + portShift));
         }
-        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-        if (isHoriz) d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${mx.toFixed(1)} ${y1.toFixed(1)}, ${mx.toFixed(1)} ${y2.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
-        else d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${x1.toFixed(1)} ${my.toFixed(1)}, ${x2.toFixed(1)} ${my.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
-        lx = mx; ly = my - 5;
+        const segDx = x2 - x1, segDy = y2 - y1;
+        const segLen = Math.hypot(segDx, segDy) || 1;
+        // Canonical normal vector (consistent for both A->B and B->A) so slotOffset separates antiparallel edges
+        const canonA = e.from < e.to ? u : v;
+        const canonB = e.from < e.to ? v : u;
+        const cDx = canonB.x - canonA.x, cDy = canonB.y - canonA.y;
+        const cLen = Math.hypot(cDx, cDy) || 1;
+        const nx = -cDy / cLen, ny = cDx / cLen;
+        const curveSpread = slotOffset * 44;
+        const mx = (x1 + x2) / 2 + nx * curveSpread;
+        const my = (y1 + y2) / 2 + ny * curveSpread;
+        if (slotOffset !== 0) {
+          d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+          // Midpoint of quadratic Bezier at t = 0.5 is 0.25*P0 + 0.5*P1 + 0.25*P2
+          lx = 0.25 * x1 + 0.5 * mx + 0.25 * x2;
+          ly = 0.25 * y1 + 0.5 * my + 0.25 * y2;
+        } else if (isHoriz && segLen > 0) {
+          d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${mx.toFixed(1)} ${y1.toFixed(1)}, ${mx.toFixed(1)} ${y2.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+          lx = mx; ly = (y1 + y2) / 2 - 5;
+        } else {
+          d = `M ${x1.toFixed(1)} ${y1.toFixed(1)} C ${x1.toFixed(1)} ${my.toFixed(1)}, ${x2.toFixed(1)} ${my.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+          lx = (x1 + x2) / 2; ly = my - 5;
+        }
       }
-      edgeSvg += `<g class="mmd-edge"><path d="${d}" fill="none" stroke="${stroke}" stroke-width="${sw}"${dashAttr}${markerStart}${markerEnd}/>`;
+      edgeSvg += `<g class="mmd-edge" data-edge-from="${esc(e.from)}" data-edge-to="${esc(e.to)}" data-edge-slot="${slotOffset}"><path d="${d}" fill="none" stroke="${stroke}" stroke-width="${sw}"${dashAttr}${markerStart}${markerEnd}/>`;
       if (e.label) {
         const lines = wrapLines(e.label, 26);
         const bw = Math.max(...lines.map((l) => l.length)) * 6.2 + 10;
         const bh = lines.length * 13 + 4;
-        edgeSvg += `<rect x="${(lx - bw / 2).toFixed(1)}" y="${(ly - bh / 2 - 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="#fbfbfa" fill-opacity="0.92" stroke="#dde1e5" stroke-width="0.8"/>`;
+        edgeSvg += `<rect x="${(lx - bw / 2).toFixed(1)}" y="${(ly - bh / 2 - 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="#fbfbfa" fill-opacity="0.94" stroke="#dde1e5" stroke-width="0.8"/>`;
         lines.forEach((ln, idx) => {
           const ty = ly - ((lines.length - 1) * 6.5) + idx * 13 + 2;
           edgeSvg += `<text x="${lx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" font-size="10.5" fill="#243d56">${esc(ln)}</text>`;
@@ -462,7 +532,7 @@ const ProjectDocs = (() => {
         const pts = `${cx},${(n.y - Number(hh)).toFixed(1)} ${(n.x + Number(hw)).toFixed(1)},${cy} ${cx},${(n.y + Number(hh)).toFixed(1)} ${(n.x - Number(hw)).toFixed(1)},${cy}`;
         shapeEl = `<polygon points="${pts}" fill="#ffffff" stroke="#2f5d9e" stroke-width="1.5"/>`;
       } else {
-        const rx = n.shape === "round" ? "14" : "5";
+        const rx = n.shape === "round" ? "14" : n.shape === "cylinder" ? "10" : "5";
         shapeEl = `<rect x="${x}" y="${y}" width="${n.w.toFixed(1)}" height="${n.h.toFixed(1)}" rx="${rx}" fill="#ffffff" stroke="#2f5d9e" stroke-width="1.5"/>`;
       }
       nodeSvg += `<g class="mmd-node" data-node="${esc(n.id)}" data-shape="${esc(n.shape)}">${shapeEl}`;
@@ -473,186 +543,89 @@ const ProjectDocs = (() => {
       nodeSvg += "</g>";
     }
 
-    return `<figure class="doc-mermaid" data-mermaid-status="rendered">` +
+    return `<figure class="doc-mermaid" data-mermaid-status="rendered" data-mermaid-engine="static" data-mermaid-code="${encodedSrc}">` +
       `<div class="doc-mermaid-svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-labelledby="${uid}-title ${uid}-desc">` +
       `<title id="${uid}-title">${esc(titleText)}</title><desc id="${uid}-desc">${esc(descrText)}</desc>` +
       `<defs>` +
       `<marker id="${uid}-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#455363"/></marker>` +
       `<marker id="${uid}-arrow-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto"><path d="M 10 1.5 L 0 5 L 10 8.5 z" fill="#455363"/></marker>` +
       `</defs>${sgSvg}${edgeSvg}${nodeSvg}</svg></div>` +
-      `<details class="doc-mermaid-source"><summary>Mermaid source</summary><pre class="code"><code>${esc(src)}</code></pre></details></figure>`;
+      `<details class="doc-mermaid-source"><summary>Mermaid source</summary><pre class="code"><code>${encodedSrc}</code></pre></details></figure>`;
   }
 
-  // ---------- Safe Markdown parser ----------
-  function renderInline(text, currentDocPath, opts) {
-    // Tokenize inline spans so code spans, images, links, autolinks, safe HTML anchors and emphasis
-    // never inject unescaped HTML.
-    const src = String(text ?? "");
-    let out = "", i = 0;
-    while (i < src.length) {
-      // 1. Inline code `...`
-      if (src[i] === "`") {
-        let ticks = 0, j = i;
-        while (j < src.length && src[j] === "`") { ticks++; j++; }
-        const close = src.indexOf("`".repeat(ticks), j);
-        if (close >= 0) {
-          const code = src.slice(j, close);
-          out += `<code>${esc(code)}</code>`;
-          i = close + ticks;
-          continue;
+  // Upgrade rendered Mermaid figures in `container` using the local pinned Mermaid 11.17.2 bundle
+  // (`explore-mermaid.js`, loaded on demand from the same directory with no external CDN request).
+  // When Mermaid 11.17.2 fails on a block (or the local script is absent), the static multi-edge
+  // SVG or source fallback already in the figure stays intact.
+  let localMermaidPromise = null;
+  function loadLocalMermaid() {
+    if (typeof window === "undefined" || typeof document === "undefined") return Promise.resolve(null);
+    if (window.mermaid) return Promise.resolve(window.mermaid);
+    if (localMermaidPromise) return localMermaidPromise;
+    localMermaidPromise = new Promise((resolve) => {
+      const s = document.createElement("script");
+      s.src = "explore-mermaid.js";
+      s.onload = () => {
+        if (window.mermaid) {
+          try {
+            window.mermaid.initialize({
+              startOnLoad: false,
+              securityLevel: "strict",
+              theme: "neutral",
+              flowchart: { htmlLabels: false, useMaxWidth: true },
+            });
+          } catch { /* ignore */ }
+          resolve(window.mermaid);
+        } else {
+          resolve(null);
         }
-      }
-      // 2. Safe legacy anchor `<a name="slug"></a>` or inline `<code>...</code>` or `<br/>`
-      if (src[i] === "<") {
-        const am = src.slice(i).match(/^<a\s+name="([A-Za-z0-9_\p{L}\p{N}.-]+)"\s*><\/a>/u);
-        if (am) {
-          const id = esc(am[1]);
-          out += `<span id="${id}" data-doc-anchor="${id}"></span>`;
-          i += am[0].length;
-          continue;
-        }
-        const bm = src.slice(i).match(/^<br\s*\/?>/i);
-        if (bm) {
-          out += "<br>";
-          i += bm[0].length;
-          continue;
-        }
-        const cm = src.slice(i).match(/^<code>([\s\S]*?)<\/code>/i);
-        if (cm) {
-          out += `<code>${esc(cm[1])}</code>`;
-          i += cm[0].length;
-          continue;
-        }
-        const um = src.slice(i).match(/^<(https?:\/\/[^\s<>]+)>/i);
-        if (um) {
-          const u = esc(um[1]);
-          out += `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`;
-          i += um[0].length;
-          continue;
-        }
-      }
-      // 3. Image `![alt](src)`
-      if (src[i] === "!" && src[i + 1] === "[") {
-        const m = matchBracketLink(src, i + 1);
-        if (m) {
-          const imgSrc = resolveImageSrc(m.href, currentDocPath);
-          if (imgSrc) {
-            out += `<img class="doc-img" src="${esc(imgSrc)}" alt="${esc(m.label)}" loading="lazy">`;
-          } else {
-            out += `<span class="muted">[image: ${esc(m.label || m.href)}]</span>`;
+      };
+      s.onerror = () => resolve(null);
+      document.head.appendChild(s);
+    });
+    return localMermaidPromise;
+  }
+
+  let hydrateSeq = 0;
+  async function hydrateMermaidDiagrams(container) {
+    if (!container || typeof container.querySelectorAll !== "function") return;
+    const figures = [...container.querySelectorAll("figure.doc-mermaid[data-mermaid-code]")];
+    if (!figures.length) return;
+    const mmd = await loadLocalMermaid();
+    if (!mmd) return;
+    for (const fig of figures) {
+      const src = fig.getAttribute("data-mermaid-code") || "";
+      if (!src.trim()) continue;
+      // Normalize backticked edge labels (`|"`foo` bar"|` -> `|"foo bar"|`) that Mermaid 11's
+      // markdown-string lexer rejects unless stripped, while preserving the original source block.
+      const normalized = src.replace(/\|"([^"\n]*`[^"\n]*)"\|/g, (_, inner) => `|"${inner.replace(/`/g, "'")}"|`);
+      const renderId = "mmd-local-" + (++hydrateSeq);
+      try {
+        await mmd.parse(normalized);
+        const { svg } = await mmd.render(renderId, normalized);
+        // Strictly verify the generated SVG contains no script elements or event handlers before inserting
+        if (svg && !/<sc[r]ipt\b|\bon[a-z]+\s*=/i.test(svg)) {
+          let svgBox = fig.querySelector(".doc-mermaid-svg");
+          if (!svgBox) {
+            svgBox = document.createElement("div");
+            svgBox.className = "doc-mermaid-svg";
+            fig.insertBefore(svgBox, fig.firstChild);
           }
-          i = m.end;
-          continue;
+          svgBox.innerHTML = svg;
+          fig.setAttribute("data-mermaid-status", "rendered");
+          fig.setAttribute("data-mermaid-engine", "mermaid-11.17.2");
+          fig.classList.remove("doc-mermaid-fallback");
         }
-      }
-      // 4. Link `[label](href)`
-      if (src[i] === "[") {
-        const m = matchBracketLink(src, i);
-        if (m) {
-          const inner = renderInline(m.label, currentDocPath, opts);
-          const resolved = resolveLink(m.href, currentDocPath, opts);
-          if (resolved && resolved.href) {
-            const extAttr = resolved.external ? ' target="_blank" rel="noopener noreferrer"' : "";
-            const repoAttr = resolved.repoPath ? ` data-repo-path="${esc(resolved.repoPath)}"` : "";
-            out += `<a href="${esc(resolved.href)}"${extAttr}${repoAttr}>${inner}</a>`;
-          } else if (resolved && resolved.repoPath) {
-            out += `${inner} <code class="doc-repo-ref" data-repo-path="${esc(resolved.repoPath)}">${esc(resolved.repoPath)}</code>`;
-          } else {
-            out += inner;
-          }
-          i = m.end;
-          continue;
-        }
-      }
-      // 5. Bold `**...**`
-      if (src[i] === "*" && src[i + 1] === "*") {
-        const close = src.indexOf("**", i + 2);
-        if (close > i + 2) {
-          out += `<strong>${renderInline(src.slice(i + 2, close), currentDocPath, opts)}</strong>`;
-          i = close + 2;
-          continue;
-        }
-      }
-      // 6. Italic `*...*`
-      if (src[i] === "*" && src[i + 1] !== " " && src[i + 1] !== "*") {
-        const close = src.indexOf("*", i + 1);
-        if (close > i + 1 && src[close - 1] !== " ") {
-          out += `<em>${renderInline(src.slice(i + 1, close), currentDocPath, opts)}</em>`;
-          i = close + 1;
-          continue;
-        }
-      }
-      // 7. Plain character
-      out += esc(src[i]);
-      i++;
-    }
-    return out;
-  }
-
-  function matchBracketLink(src, startIdx) {
-    if (src[startIdx] !== "[") return null;
-    let depth = 0, i = startIdx;
-    while (i < src.length) {
-      if (src[i] === "`") {
-        const next = src.indexOf("`", i + 1);
-        if (next < 0) return null;
-        i = next + 1;
-        continue;
-      }
-      if (src[i] === "[") depth++;
-      else if (src[i] === "]") {
-        depth--;
-        if (depth === 0) break;
-      }
-      i++;
-    }
-    if (i >= src.length || src[i + 1] !== "(") return null;
-    const label = src.slice(startIdx + 1, i);
-    let pDepth = 0, j = i + 2;
-    while (j < src.length) {
-      if (src[j] === "\n") return null;
-      if (src[j] === "(") pDepth++;
-      else if (src[j] === ")") {
-        if (pDepth === 0) {
-          const href = src.slice(i + 2, j).trim();
-          return { label, href, end: j + 1 };
-        }
-        pDepth--;
-      }
-      j++;
-    }
-    return null;
-  }
-
-  function splitTableRow(line) {
-    let s = line.trim();
-    if (s.startsWith("|")) s = s.slice(1);
-    if (s.endsWith("|")) s = s.slice(0, -1);
-    const cells = [];
-    let cur = "", inCode = false;
-    for (let i = 0; i < s.length; i++) {
-      if (s[i] === "`") inCode = !inCode;
-      if (s[i] === "\\" && i + 1 < s.length && s[i + 1] === "|") {
-        cur += "|";
-        i++;
-      } else if (s[i] === "|" && !inCode) {
-        cells.push(cur.trim());
-        cur = "";
-      } else {
-        cur += s[i];
+      } catch {
+        // Keep the existing static SVG or readable source fallback intact, and clean up any stray
+        // error element Mermaid may have appended to body.
+        const stray = document.getElementById("d" + renderId) || document.getElementById(renderId);
+        if (stray) stray.remove();
       }
     }
-    cells.push(cur.trim());
-    return cells;
   }
 
-  function isTableDivider(line) {
-    const t = line.trim();
-    if (!t.includes("|") || !t.includes("-")) return false;
-    const cells = splitTableRow(t);
-    return cells.length > 0 && cells.every((c) => /^:?-{2,}:?$/.test(c));
-  }
-
+  // ---------- Safe Markdown renderer over marked's AST ----------
   function renderCodeBlock(lang, codeText) {
     const cleanLang = String(lang || "").trim().toLowerCase();
     if (cleanLang === "mermaid") {
@@ -671,174 +644,190 @@ const ProjectDocs = (() => {
     return `<pre class="code"${attr}><code>${esc(codeText)}</code></pre>`;
   }
 
+  function sanitizeHtmlToken(rawText, docPath, opts, renderInlineStr) {
+    const raw = String(rawText || "");
+    const trimmed = raw.trim();
+    // 1. Legacy `<a name="slug"></a>` or `<a name="slug">` or `</a>`
+    const am = trimmed.match(/^<a\s+name="([A-Za-z0-9_\p{L}\p{N}.-]+)"\s*>(?:<\/a>)?$/u);
+    if (am) {
+      const id = esc(am[1]);
+      return `<span id="${id}" data-doc-anchor="${id}"></span>`;
+    }
+    if (/^<\/a>$/i.test(trimmed)) return "";
+    // 2. `<br>` / `<br/>`
+    if (/^<br\s*\/?>$/i.test(trimmed)) return "<br>";
+    // 3. Inline `<code>...</code>`
+    const cm = trimmed.match(/^<code>([\s\S]*?)<\/code>$/i);
+    if (cm) return `<code>${esc(cm[1])}</code>`;
+    // 4. Safe `<details>` and `<summary>` blocks
+    const dm = trimmed.match(/^<details>\s*(?:<summary>([\s\S]*?)<\/summary>)?\s*$/i);
+    if (dm) {
+      const sum = dm[1] ? `<summary>${renderInlineStr(dm[1])}</summary>` : "";
+      return `<details class="doc-details">${sum}`;
+    }
+    const sm = trimmed.match(/^<summary>([\s\S]*?)<\/summary>$/i);
+    if (sm) return `<summary>${renderInlineStr(sm[1])}</summary>`;
+    if (/^<\/details>$/i.test(trimmed)) return "</details>";
+    // Any other raw HTML is escaped literally
+    return esc(raw);
+  }
+
   function renderMarkdown(markdown, currentDocPath, opts) {
     const docPath = String(currentDocPath || "projects/README.md").replace(/^\/+/, "");
-    const lines = String(markdown ?? "").replace(/\r\n/g, "\n").split("\n");
     const seenSlugs = new Map();
-    const out = [];
+    const src = String(markdown ?? "").replace(/\r\n/g, "\n");
 
-    function renderBlocks(blockLines) {
-      let k = 0;
-      const html = [];
-      while (k < blockLines.length) {
-        const line = blockLines[k];
-        const trimmed = line.trim();
-        if (!trimmed) { k++; continue; }
+    if (!markedApi || typeof markedApi.lexer !== "function") {
+      return `<pre class="code"><code>${esc(src)}</code></pre>`;
+    }
 
-        // Safe `<details><summary>...</summary>` block
-        if (/^<details>\s*(?:<summary>([\s\S]*?)<\/summary>)?\s*$/i.test(trimmed)) {
-          const m = trimmed.match(/^<details>\s*(?:<summary>([\s\S]*?)<\/summary>)?\s*$/i);
-          let summaryText = m[1] || "";
-          k++;
-          if (!summaryText && k < blockLines.length) {
-            const sm = blockLines[k].trim().match(/^<summary>([\s\S]*?)<\/summary>$/i);
-            if (sm) {
-              summaryText = sm[1];
-              k++;
-            }
-          }
-          const innerLines = [];
-          let depth = 1;
-          while (k < blockLines.length && depth > 0) {
-            const t = blockLines[k].trim();
-            if (/^<details\b/i.test(t)) depth++;
-            if (/^<\/details>$/i.test(t)) {
-              depth--;
-              if (depth === 0) { k++; break; }
-            }
-            innerLines.push(blockLines[k]);
-            k++;
-          }
-          html.push(`<details class="doc-details"><summary>${renderInline(summaryText || "Details", docPath, opts)}</summary>${renderBlocks(innerLines)}</details>`);
-          continue;
-        }
+    const tokens = markedApi.lexer(src, { gfm: true });
 
-        // Fenced code block ```lang
-        const fence = line.match(/^(\s*)(`{3,}|~{3,})([^\s`~]*)\s*$/);
-        if (fence) {
-          const marker = fence[2][0].repeat(fence[2].length);
-          const lang = fence[3] || "";
-          const codeLines = [];
-          k++;
-          while (k < blockLines.length && !blockLines[k].trimStart().startsWith(marker)) {
-            codeLines.push(blockLines[k]);
-            k++;
-          }
-          if (k < blockLines.length) k++;
-          html.push(renderCodeBlock(lang, codeLines.join("\n")));
-          continue;
-        }
+    function renderInlineStr(inlineMd) {
+      const inlineToks = markedApi.Lexer.lexInline(String(inlineMd ?? ""), { gfm: true });
+      return renderInlineTokens(inlineToks);
+    }
 
-        // Heading #..######
-        const hm = line.match(/^(#{1,6})\s+(.+?)\s*$/);
-        if (hm) {
-          const level = hm[1].length;
-          const rawTitle = hm[2];
-          const slug = slugify(rawTitle, seenSlugs);
-          const inner = renderInline(rawTitle, docPath, opts);
-          const selfHref = docsRouteHref(docPath, slug);
-          html.push(`<h${level} id="${esc(slug)}" data-doc-anchor="${esc(slug)}">${inner} <a class="doc-anchor-link" href="${esc(selfHref)}" aria-label="Link to ${esc(slug)}">#</a></h${level}>`);
-          k++;
-          continue;
-        }
-
-        // Table
-        if (trimmed.includes("|") && k + 1 < blockLines.length && isTableDivider(blockLines[k + 1])) {
-          const headers = splitTableRow(line);
-          k += 2;
-          const rows = [];
-          while (k < blockLines.length && blockLines[k].trim().includes("|") && !/^(#{1,6}\s|```|~~~)/.test(blockLines[k].trim())) {
-            rows.push(splitTableRow(blockLines[k]));
-            k++;
-          }
-          html.push('<div class="tablebox"><table class="doc-table"><thead><tr>' +
-            headers.map((h) => `<th>${renderInline(h, docPath, opts)}</th>`).join("") +
-            "</tr></thead><tbody>" +
-            rows.map((r) => "<tr>" + headers.map((_, ci) => `<td>${renderInline(r[ci] ?? "", docPath, opts)}</td>`).join("") + "</tr>").join("") +
-            "</tbody></table></div>");
-          continue;
-        }
-
-        // Blockquote
-        if (trimmed.startsWith(">")) {
-          const qLines = [];
-          while (k < blockLines.length && blockLines[k].trim().startsWith(">")) {
-            qLines.push(blockLines[k].trim().replace(/^>\s?/, ""));
-            k++;
-          }
-          html.push(`<blockquote>${renderBlocks(qLines)}</blockquote>`);
-          continue;
-        }
-
-        // List (unordered or ordered)
-        const lm = line.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
-        if (lm) {
-          const ordered = /^\d+\.$/.test(lm[2]);
-          const tag = ordered ? "ol" : "ul";
-          const baseIndent = lm[1].length;
-          const items = [];
-          while (k < blockLines.length) {
-            const cur = blockLines[k];
-            if (!cur.trim()) {
-              // Blank line: check if next non-blank line continues the list
-              let nextIdx = k + 1;
-              while (nextIdx < blockLines.length && !blockLines[nextIdx].trim()) nextIdx++;
-              if (nextIdx < blockLines.length) {
-                const nm = blockLines[nextIdx].match(/^(\s*)([-*+]|\d+\.)\s+/);
-                const contIndent = (blockLines[nextIdx].match(/^(\s+)/) || ["", ""])[1].length;
-                if ((nm && nm[1].length >= baseIndent) || contIndent > baseIndent) {
-                  if (items.length) items[items.length - 1].push("");
-                  k = nextIdx;
-                  continue;
-                }
-              }
-              break;
-            }
-            const itemMatch = cur.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
-            if (itemMatch && itemMatch[1].length === baseIndent && (/^\d+\.$/.test(itemMatch[2]) === ordered)) {
-              items.push([itemMatch[3]]);
-              k++;
-            } else if (items.length && ((cur.match(/^(\s+)/) || ["", ""])[1].length > baseIndent || itemMatch && itemMatch[1].length > baseIndent)) {
-              const stripCount = Math.min(baseIndent + 2, (cur.match(/^(\s*)/) || ["", ""])[1].length);
-              items[items.length - 1].push(cur.slice(stripCount));
-              k++;
+    function renderInlineTokens(inlineTokens) {
+      if (!Array.isArray(inlineTokens)) return "";
+      let out = "";
+      for (const tok of inlineTokens) {
+        switch (tok.type) {
+          case "escape":
+            out += esc(tok.text);
+            break;
+          case "codespan":
+            out += `<code>${esc(tok.text)}</code>`;
+            break;
+          case "br":
+            out += "<br>";
+            break;
+          case "strong":
+            out += `<strong>${renderInlineTokens(tok.tokens)}</strong>`;
+            break;
+          case "em":
+            out += `<em>${renderInlineTokens(tok.tokens)}</em>`;
+            break;
+          case "del":
+            out += `<del>${renderInlineTokens(tok.tokens)}</del>`;
+            break;
+          case "checkbox":
+            out += `<input type="checkbox" disabled${tok.checked ? " checked" : ""}> `;
+            break;
+          case "html":
+            out += sanitizeHtmlToken(tok.raw ?? tok.text, docPath, opts, renderInlineStr);
+            break;
+          case "image": {
+            const altText = tok.text || "";
+            const imgSrc = resolveImageSrc(tok.href, docPath);
+            if (imgSrc) {
+              const titleAttr = tok.title ? ` title="${esc(tok.title)}"` : "";
+              out += `<img class="doc-img" src="${esc(imgSrc)}" alt="${esc(altText)}"${titleAttr} loading="lazy">`;
             } else {
-              break;
+              out += `<span class="muted">[image: ${esc(altText || tok.href)}]</span>`;
             }
-          }
-          const renderedItems = items.map((itemLines) => {
-            const hasBlocks = itemLines.some((l) => !l.trim() || /^(```|~~~|#{1,6}\s|[-*+]\s|\d+\.\s|\|)/.test(l.trim()));
-            if (!hasBlocks) return `<li>${renderInline(itemLines.join(" "), docPath, opts)}</li>`;
-            return `<li>${renderBlocks(itemLines)}</li>`;
-          }).join("");
-          html.push(`<${tag}>${renderedItems}</${tag}>`);
-          continue;
-        }
-
-        // Paragraph
-        const para = [];
-        while (k < blockLines.length) {
-          const cur = blockLines[k];
-          const t = cur.trim();
-          if (!t || /^(#{1,6}\s|```|~~~|>\s|<details\b|<\/details>)/.test(t) ||
-              /^(\s*)([-*+]|\d+\.)\s+/.test(cur) ||
-              (t.includes("|") && k + 1 < blockLines.length && isTableDivider(blockLines[k + 1]))) {
             break;
           }
-          para.push(t);
-          k++;
+          case "link": {
+            const inner = tok.tokens ? renderInlineTokens(tok.tokens) : esc(tok.text || "");
+            const resolved = resolveLink(tok.href, docPath, opts);
+            if (resolved && resolved.href) {
+              const extAttr = resolved.external ? ' target="_blank" rel="noopener noreferrer"' : "";
+              const repoAttr = resolved.repoPath ? ` data-repo-path="${esc(resolved.repoPath)}"` : "";
+              const titleAttr = tok.title ? ` title="${esc(tok.title)}"` : "";
+              out += `<a href="${esc(resolved.href)}"${titleAttr}${extAttr}${repoAttr}>${inner}</a>`;
+            } else if (resolved && resolved.repoPath) {
+              out += `${inner} <code class="doc-repo-ref" data-repo-path="${esc(resolved.repoPath)}">${esc(resolved.repoPath)}</code>`;
+            } else {
+              out += inner;
+            }
+            break;
+          }
+          case "text":
+            if (Array.isArray(tok.tokens) && tok.tokens.length) {
+              out += renderInlineTokens(tok.tokens);
+            } else {
+              out += esc(tok.text ?? tok.raw ?? "");
+            }
+            break;
+          default:
+            out += esc(tok.text ?? tok.raw ?? "");
+            break;
         }
-        if (para.length) {
-          html.push(`<p>${renderInline(para.join(" "), docPath, opts)}</p>`);
-        } else {
-          k++;
+      }
+      return out;
+    }
+
+    function renderBlockTokens(blockTokens) {
+      if (!Array.isArray(blockTokens)) return "";
+      const html = [];
+      for (const tok of blockTokens) {
+        switch (tok.type) {
+          case "space":
+          case "def":
+            break;
+          case "hr":
+            html.push("<hr>");
+            break;
+          case "heading": {
+            const level = Math.min(6, Math.max(1, Number(tok.depth) || 1));
+            const slug = slugify(tok.text, seenSlugs);
+            const inner = renderInlineTokens(tok.tokens);
+            const selfHref = docsRouteHref(docPath, slug);
+            html.push(`<h${level} id="${esc(slug)}" data-doc-anchor="${esc(slug)}">${inner} <a class="doc-anchor-link" href="${esc(selfHref)}" aria-label="Link to ${esc(slug)}">#</a></h${level}>`);
+            break;
+          }
+          case "code":
+            html.push(renderCodeBlock(tok.lang || "", tok.text || ""));
+            break;
+          case "paragraph":
+            html.push(`<p>${renderInlineTokens(tok.tokens)}</p>`);
+            break;
+          case "text":
+            if (Array.isArray(tok.tokens) && tok.tokens.length) {
+              html.push(renderInlineTokens(tok.tokens));
+            } else {
+              html.push(esc(tok.text ?? tok.raw ?? ""));
+            }
+            break;
+          case "blockquote":
+            html.push(`<blockquote>${renderBlockTokens(tok.tokens)}</blockquote>`);
+            break;
+          case "list": {
+            const tag = tok.ordered ? "ol" : "ul";
+            const startAttr = tok.ordered && tok.start && tok.start !== 1 ? ` start="${esc(tok.start)}"` : "";
+            const itemsHtml = (tok.items || []).map((item) => {
+              const box = item.task ? `<input type="checkbox" disabled${item.checked ? " checked" : ""}> ` : "";
+              const innerTokens = (item.tokens || []).filter((t) => t.type !== "checkbox");
+              return `<li>${box}${renderBlockTokens(innerTokens)}</li>`;
+            }).join("");
+            html.push(`<${tag}${startAttr}>${itemsHtml}</${tag}>`);
+            break;
+          }
+          case "table": {
+            const headers = tok.header || [];
+            const rows = tok.rows || [];
+            const alignAttr = (a) => (a === "left" || a === "center" || a === "right") ? ` style="text-align:${a}"` : "";
+            html.push('<div class="tablebox"><table class="doc-table"><thead><tr>' +
+              headers.map((h, ci) => `<th${alignAttr(tok.align?.[ci])}>${renderInlineTokens(h.tokens)}</th>`).join("") +
+              "</tr></thead><tbody>" +
+              rows.map((r) => "<tr>" + headers.map((_, ci) => `<td${alignAttr(tok.align?.[ci])}>${renderInlineTokens(r[ci]?.tokens || [])}</td>`).join("") + "</tr>").join("") +
+              "</tbody></table></div>");
+            break;
+          }
+          case "html":
+            html.push(sanitizeHtmlToken(tok.raw ?? tok.text, docPath, opts, renderInlineStr));
+            break;
+          default:
+            if (Array.isArray(tok.tokens)) html.push(renderBlockTokens(tok.tokens));
+            else html.push(esc(tok.raw ?? tok.text ?? ""));
+            break;
         }
       }
       return html.join("\n");
     }
 
-    out.push(renderBlocks(lines));
-    return out.join("\n");
+    return renderBlockTokens(tokens);
   }
 
   return Object.freeze({
@@ -848,6 +837,7 @@ const ProjectDocs = (() => {
     resolveImageSrc,
     parseMermaidFlowchart,
     renderMermaidSvg,
+    hydrateMermaidDiagrams,
     renderMarkdown,
     docsRouteHref,
   });

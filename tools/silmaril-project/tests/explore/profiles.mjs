@@ -72,11 +72,14 @@ with sqlite3.connect(db) as c:
     "explore", "--db", db, "--out", path.join(site, "index.html"),
     "--source-url", "https://github.com/hiloopai/silmaril-lean", "--source-rev", rev,
   ]);
-  // Add a packaged SVG asset under docs/projects/ to test relative image asset rendering inside the subpath.
-  fs.writeFileSync(path.join(site, "docs/projects/fixture-badge.svg"),
-    '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="16"><rect width="40" height="16" fill="#2f5d9e"/></svg>');
-  fs.writeFileSync(path.join(site, "docs/projects/fixture-guide.md"),
-    `# Fixture guide\n\n![Fixture badge](fixture-badge.svg)\n\n\`\`\`mermaid\nflowchart LR\n  A[Start] --> B[Finish]\n\`\`\`\n\n\`\`\`mermaid\nsequenceDiagram\n  A->>B: Fallback\n\`\`\`\n`);
+  // Add a packaged PNG raster asset under _docs/projects/ to test relative image asset rendering inside the subpath.
+  const tinyPng = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==",
+    "base64"
+  );
+  fs.writeFileSync(path.join(site, "_docs/projects/fixture-badge.png"), tinyPng);
+  fs.writeFileSync(path.join(site, "_docs/projects/fixture-guide.md"),
+    `# Fixture guide\n\n![Fixture badge](fixture-badge.png)\n\n\`\`\`mermaid\nflowchart LR\n  A[Start] --> B[Finish]\n\`\`\`\n\n\`\`\`mermaid\nnotADiagram\n  :::bad\n\`\`\`\n`);
 
   // Also generate a custom project fixture (with project-specific help in silmaril.toml) and a no-docs/no-description project fixture.
   const customProj = path.join(siteRoot, "custom-proj");
@@ -87,7 +90,7 @@ with sqlite3.connect(db) as c:
   fs.writeFileSync(path.join(customProj, "silmaril.toml"),
     `schema = "silmaril.project.v0.1"\nsid = "${"2".repeat(64)}"\nname = "custom-demo"\ndescription = "Manifest description fallback"\nhelp = "docs/custom-help.md"\n`);
   fs.writeFileSync(path.join(customProj, "docs/custom-help.md"),
-    `# Custom Project Help\n\nUse \`sil project check\` to verify **custom-demo**.\n`);
+    `# Custom Project Help\n\nJump to [verification commands](#verification-commands) or open [the status codes](#/statuses).\n\n## Verification commands\n\nUse \`sil project check\` to verify **custom-demo**.\n`);
   execFileSync(binary, [
     "explore", "--dir", customProj, "--db", path.join(customSite, "project.sqlite"),
     "--out", path.join(customSite, "index.html"),
@@ -204,12 +207,53 @@ with sqlite3.connect(db) as c:
   await settle(desktop, "docs");
   assert.equal(await desktop.evaluate(() => location.hash), "#/docs/projects/rvsdg/overview.md#coloured-firing-semantics");
   assert.equal(await desktop.locator("#doc-content #coloured-firing-semantics").count(), 1);
-  // Navigate to nested Sea of Nodes topic index and a leaf guide
+  // Navigate to nested Sea of Nodes topic index and a leaf guide with reference-style links
   await open(desktop, "docs/projects/sea-of-nodes/README.md", "docs");
   assert.match(await desktop.locator("#doc-content h1").innerText(), /Sea of Nodes/);
   await desktop.locator("#doc-content").getByRole("link", { name: "source-to-Lean coverage ledger", exact: true }).click();
   await settle(desktop, "docs");
   assert.equal(await desktop.evaluate(() => location.hash), "#/docs/projects/sea-of-nodes/coverage.md");
+  // Verify reference-style links in Sea of Nodes coverage resolve to inline docs and pinned GitHub blobs
+  assert.equal(
+    await desktop.locator("#doc-content").getByRole("link", { name: "Worked example", exact: true }).first().getAttribute("href"),
+    "#/docs/projects/sea-of-nodes/sea-of-nodes-pure.md"
+  );
+  assert.equal(
+    await desktop.locator("#doc-content").getByRole("link", { name: "Theorems", exact: true }).first().getAttribute("href"),
+    `https://github.com/hiloopai/silmaril-lean/blob/${rev}/Silmaril/SSA/SeaOfNodes/Pure/Thms.lean`
+  );
+  // Click a reference-style cross-doc link in coverage.md (`[Worked example][son-pure]`) and verify breadcrumb
+  await desktop.locator("#doc-content").getByRole("link", { name: "Worked example", exact: true }).first().click();
+  await settle(desktop, "docs");
+  assert.equal(await desktop.evaluate(() => location.hash), "#/docs/projects/sea-of-nodes/sea-of-nodes-pure.md");
+  // Navigate to a leaf under a subdirectory without its own README.md (`rvsdg/semantics/rvsdg-categorical.md`)
+  // and verify that `semantics` is rendered as a non-link span while `rvsdg` and `projects` link to their READMEs.
+  await open(desktop, "docs/projects/rvsdg/semantics/rvsdg-categorical.md", "docs");
+  assert.equal(await desktop.locator(".doc-crumbs a").count(), 4); // Docs, projects, rvsdg, and Source on GitHub
+  assert.equal(await desktop.locator(".doc-crumbs span.muted").innerText(), "semantics");
+  // Verify acceptor-checklist heading fragment navigation (`list<list<s32>>` slug in consequence.md)
+  await open(desktop, "docs/projects/acceptor-checklist.md", "docs");
+  await desktop.locator("#doc-content").getByRole("link", { name: "consequence.md", exact: true }).click();
+  await settle(desktop, "docs");
+  assert.equal(await desktop.evaluate(() => location.hash), "#/docs/projects/consequence.md#word-carriers-listlists32-and-zero-terminated-lists32");
+  assert.equal(await desktop.locator("#doc-content #word-carriers-listlists32-and-zero-terminated-lists32").count(), 1);
+  // Real document with parallel Mermaid edges (`ssa.md`): local Mermaid 11.17.2 renders distinct non-overlapping paths
+  await open(desktop, "docs/projects/ssa.md#the-calculi-and-translations", "docs");
+  assert.equal(await desktop.locator("#doc-content figure.doc-mermaid[data-mermaid-engine='mermaid-11.17.2'] svg").count(), 1);
+  const ssaEdgeCheck = await desktop.evaluate(() => {
+    const svg = document.querySelector("#doc-content figure.doc-mermaid svg");
+    const labels = [...svg.querySelectorAll(".edgeLabel")].map((el) => ({
+      text: el.textContent.trim(),
+      rect: el.getBoundingClientRect(),
+    })).filter((l) => l.text.includes("SeqCase") || l.text.includes("seqCaseCoHom") || l.text.includes("CaseIter") || l.text.includes("caseIterCoHom"));
+    const paths = [...svg.querySelectorAll("path.flowchart-link, .edgePaths path")].map((p) => p.getAttribute("d"));
+    return { labelCount: labels.length, labels, uniquePaths: new Set(paths).size, totalPaths: paths.length };
+  });
+  assert.equal(ssaEdgeCheck.labelCount, 4);
+  assert.equal(ssaEdgeCheck.uniquePaths, ssaEdgeCheck.totalPaths);
+  const seqRaw = ssaEdgeCheck.labels.find((l) => l.text.includes("SeqCase"));
+  const seqCoHom = ssaEdgeCheck.labels.find((l) => l.text.includes("seqCaseCoHom"));
+  assert.ok(Math.abs(seqRaw.rect.top - seqCoHom.rect.top) > 10, "parallel edge labels in ssa.md must not overlap vertically");
   // Real document with Mermaid diagram, repo source links and external links
   await open(desktop, "docs/projects/sqlite-track-d/README.md#observation-maps-and-their-limits", "docs");
   assert.equal(await desktop.locator("#doc-content figure.doc-mermaid[data-mermaid-status='rendered'] svg").count(), 2);
@@ -221,18 +265,18 @@ with sqlite3.connect(db) as c:
   // Browser back and reload preserve the deep link and re-render
   await desktop.goBack();
   await settle(desktop, "docs");
-  assert.equal(await desktop.evaluate(() => location.hash), "#/docs/projects/sea-of-nodes/coverage.md");
+  assert.equal(await desktop.evaluate(() => location.hash), "#/docs/projects/ssa.md#the-calculi-and-translations");
   await desktop.reload();
   await settle(desktop, "docs");
-  assert.match(await desktop.locator("#doc-content h1").innerText(), /Sea of Nodes/);
-  // Fixture guide with local SVG image, Mermaid diagram and Mermaid fallback
+  assert.match(await desktop.locator("#doc-content h1").innerText(), /SSA calculi/);
+  // Fixture guide with local PNG image, Mermaid diagram and Mermaid fallback
   await open(desktop, "docs/projects/fixture-guide.md", "docs");
-  assert.equal(await desktop.locator("#doc-content img.doc-img").getAttribute("src"), "docs/projects/fixture-badge.svg");
+  assert.equal(await desktop.locator("#doc-content img.doc-img").getAttribute("src"), "_docs/projects/fixture-badge.png");
   assert.equal(await desktop.locator("#doc-content figure[data-mermaid-status='rendered'] svg").count(), 1);
   assert.equal(await desktop.locator("#doc-content figure[data-mermaid-status='fallback'] pre.code").count(), 1);
   await shot(desktop, "desktop-docs");
 
-  // Custom project fixture: manifest description fallback and project-specific help doc
+  // Custom project fixture: manifest description fallback and project-specific help doc with inline anchor + route link
   await desktop.goto(`http://127.0.0.1:${port}/custom-site/index.html#/summary`);
   await settle(desktop, "summary");
   assert.equal(await desktop.locator(".project-description").innerText(), "Manifest description fallback");
@@ -240,13 +284,25 @@ with sqlite3.connect(db) as c:
   await desktop.waitForSelector("dialog.dlg[open]");
   assert.equal(await desktop.locator("dialog.dlg [data-project-help='doc']").count(), 1);
   assert.match(await desktop.locator("dialog.dlg").innerText(), /Custom Project Help/);
-  await desktop.keyboard.press("Escape");
+  // Click same-doc section anchor inside Help dialog: dialog stays open and does not navigate away
+  await desktop.locator("dialog.dlg").getByRole("link", { name: "verification commands", exact: true }).click();
+  assert.equal(await desktop.locator("dialog.dlg[open]").count(), 1);
+  assert.equal(await desktop.evaluate(() => location.hash), "#/summary");
+  // Click explorer route link (`#/statuses`) in the general Help section: dialog closes and navigates to `#/statuses`
+  await desktop.locator("dialog.dlg").getByRole("link", { name: "What the codes mean", exact: true }).click();
+  await settle(desktop, "statuses");
+  assert.equal(await desktop.locator("dialog.dlg").count(), 0);
+  assert.equal(await desktop.evaluate(() => location.hash), "#/statuses");
 
   // Bare project fixture: no description placeholder, no docs link, general help only, missing doc fallback
   await desktop.goto(`http://127.0.0.1:${port}/bare-site/index.html#/summary`);
   await settle(desktop, "summary");
   assert.equal(await desktop.locator(".project-description").count(), 0);
   assert.equal(await desktop.locator(".index-docs").count(), 0);
+  // Verify oversized DB problem counts do not display "0" in the stats strip when problemIndex() returns tooLarge
+  const oversizedFact = await desktop.evaluate(() => projectFactsBar([], { deprecated: [], "expected-open": [] }, 0, 5, 12, 60000));
+  assert.match(oversizedFact, /<dt>Problems<\/dt><dd><b>60000<\/b>/);
+  assert.ok(!oversizedFact.includes("<b>0</b>"));
   await desktop.click("#help-btn");
   await desktop.waitForSelector("dialog.dlg[open]");
   assert.equal(await desktop.locator("dialog.dlg [data-project-help]").count(), 0);

@@ -63,16 +63,22 @@ async function problemRows(list, limit, existingTitles) {
 }
 
 // Compact project facts bar from actual database rows, respecting active vs excluded problem counts.
-function projectFactsBar(problemsOnly, excluded, groupsCount, artifactCount, answerCount) {
-  const active = problemsOnly.filter((e) => !e.st.deprecated);
-  let holds = 0, fails = 0, open = 0;
-  for (const e of active) {
-    if (e.row.verdict === "holds") holds++;
-    else if (e.row.verdict === "fails") fails++;
-    else open++;
+function projectFactsBar(problemsOnly, excluded, groupsCount, artifactCount, answerCount, tooLargeCount) {
+  let problemItem;
+  if (tooLargeCount) {
+    problemItem = ["Problems", `${tooLargeCount}`, "use Problems & SQL (above index limit)"];
+  } else {
+    const active = problemsOnly.filter((e) => !e.st.deprecated);
+    let holds = 0, fails = 0, open = 0;
+    for (const e of active) {
+      if (e.row.verdict === "holds") holds++;
+      else if (e.row.verdict === "fails") fails++;
+      else open++;
+    }
+    problemItem = ["Active problems", `${active.length}`, `${holds} holds · ${fails} fails · ${open} open`];
   }
   const items = [
-    ["Active problems", `${active.length}`, `${holds} holds · ${fails} fails · ${open} open`],
+    problemItem,
     ["Solutions / answers", `${answerCount}`, groupsCount ? `${groupsCount} problem group${groupsCount === 1 ? "" : "s"}` : "recorded theorems"],
     ["Artifacts", `${artifactCount}`, excluded.deprecated.length ? `${excluded.deprecated.length} deprecated excluded` : "registered blobs"],
   ];
@@ -87,10 +93,11 @@ async function openHelpDialog() {
   const local = proj[0] || null;
   const projName = (local && local.name) || (PROJECT_META && PROJECT_META.name) || "this project";
   const projDesc = (local && local.description) || (PROJECT_META && PROJECT_META.description) || "";
+  const helpContextDoc = (PROJECT_META && PROJECT_META.helpDoc) || (PROJECT_META && PROJECT_META.docsIndex) || "projects/README.md";
   let projectSpecificHtml = "";
   if (PROJECT_META && PROJECT_META.helpDoc) {
     try {
-      const r = await fetch("docs/" + PROJECT_META.helpDoc.split("/").map(encodeURIComponent).join("/"));
+      const r = await fetch("_docs/" + PROJECT_META.helpDoc.split("/").map(encodeURIComponent).join("/"));
       if (r.ok) {
         const md = await r.text();
         projectSpecificHtml = `<section class="help-project-section" data-project-help="doc"><h3>Project help (${esc(projName)})</h3>` +
@@ -103,7 +110,7 @@ async function openHelpDialog() {
     } catch { /* fall back gracefully */ }
   } else if (PROJECT_META && PROJECT_META.help) {
     projectSpecificHtml = `<section class="help-project-section" data-project-help="inline"><h3>Project help (${esc(projName)})</h3>` +
-      `<div class="doc-body">${ProjectDocs.renderMarkdown(PROJECT_META.help, "README.md", {
+      `<div class="doc-body">${ProjectDocs.renderMarkdown(PROJECT_META.help, helpContextDoc, {
         sourceRepo: SOURCE && SOURCE.repo,
         sourceRev: SOURCE && SOURCE.rev,
         repoFile: typeof repoFile === "function" ? repoFile : null,
@@ -128,8 +135,37 @@ async function openHelpDialog() {
     `</ul></section>`;
   const d = dialog({ title: "Silmaril Projects Help", body });
   d.el.classList.add("dlg-wide");
-  for (const a of d.el.querySelectorAll("a[href^='#/']")) {
-    a.addEventListener("click", () => d.close());
+  let closeTargetHash = null;
+  d.el.addEventListener("close", () => {
+    if (closeTargetHash && location.hash !== closeTargetHash) {
+      location.hash = closeTargetHash;
+    }
+  });
+  if (typeof ProjectDocs.hydrateMermaidDiagrams === "function") {
+    ProjectDocs.hydrateMermaidDiagrams(d.el).catch(() => {});
+  }
+  const helpRoutePrefix = `#/docs/${helpContextDoc.split("/").map(encodeURIComponent).join("/")}#`;
+  for (const a of d.el.querySelectorAll("a[href^='#']")) {
+    a.addEventListener("click", (ev) => {
+      const hrefAttr = a.getAttribute("href") || "";
+      if (hrefAttr.startsWith(helpRoutePrefix)) {
+        const rawFrag = hrefAttr.slice(helpRoutePrefix.length);
+        let frag = rawFrag;
+        try { frag = decodeURIComponent(rawFrag); } catch { /* keep raw */ }
+        for (const el of d.el.querySelectorAll("[data-doc-anchor], [id]")) {
+          if (el.getAttribute("data-doc-anchor") === frag || el.id === frag) {
+            ev.preventDefault();
+            el.scrollIntoView({ block: "start" });
+            return;
+          }
+        }
+      }
+      if (hrefAttr.startsWith("#/")) {
+        ev.preventDefault();
+        closeTargetHash = hrefAttr;
+        d.close();
+      }
+    });
   }
 }
 
@@ -175,8 +211,8 @@ async function summary() {
   ]);
   const artifactCount = (artifactRows[0] && artifactRows[0].n) || 0;
   const answerCount = (answerRows[0] && answerRows[0].n) || 0;
-  if (problemsOnly.length || artifactCount || answerCount) {
-    h += projectFactsBar(problemsOnly, excluded, groupsCount, artifactCount, answerCount);
+  if (problemsOnly.length || idx.tooLarge || artifactCount || answerCount) {
+    h += projectFactsBar(problemsOnly, excluded, groupsCount, artifactCount, answerCount, idx.tooLarge);
   }
   h += explorerIndex();
   // within a list: closed problems first (they are single questions), then by name

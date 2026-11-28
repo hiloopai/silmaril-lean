@@ -1585,7 +1585,7 @@ pub fn run(command: Command) -> Result<()> {
                 .and_then(|m| m.help.as_deref())
                 .map(str::trim)
                 .filter(|s| !s.is_empty());
-            let (docs_index, help_doc) =
+            let (docs_index, help_doc, docs_dirs) =
                 explore::package_project_docs(&dir, out_parent, manifest_help).into_diagnostic()?;
             let project_meta = explore::ProjectMeta {
                 name: Some(p.name.clone()),
@@ -1603,6 +1603,7 @@ pub fn run(command: Command) -> Result<()> {
                 },
                 help_doc,
                 docs_index,
+                docs_dirs,
             };
             let page = explore::page(
                 &format!("{} · silmaril project", p.name),
@@ -1611,9 +1612,18 @@ pub fn run(command: Command) -> Result<()> {
                 source.as_ref(),
                 Some(&project_meta),
             );
-            fs::write(&out_path, page).into_diagnostic()?;
+            explore::write_regular_file_bounded(out_parent, &out_path, page.as_bytes())
+                .into_diagnostic()?;
             let sw = out_path.with_file_name(explore::SERVICE_WORKER_NAME);
-            fs::write(&sw, explore::SERVICE_WORKER).into_diagnostic()?;
+            explore::write_regular_file_bounded(
+                out_parent,
+                &sw,
+                explore::SERVICE_WORKER.as_bytes(),
+            )
+            .into_diagnostic()?;
+            let mmd = out_path.with_file_name(explore::MERMAID_BUNDLE_NAME);
+            explore::write_regular_file_bounded(out_parent, &mmd, explore::MERMAID_BUNDLE)
+                .into_diagnostic()?;
             eprintln!("wrote {shown}; it opens {}", urls.join(", then "));
             if !dir.join(&db).exists() {
                 eprintln!(

@@ -548,3 +548,54 @@ fn marking_queries() {
         "{out}"
     );
 }
+
+#[test]
+fn explore_root_output_isolates_docs_and_refuses_symlinks() {
+    let tmp = tempfile::tempdir().unwrap();
+    let d = tmp.path();
+    fs::write(d.join("lakefile.toml"), "name = \"root_out\"\n").unwrap();
+    assert!(sil(d, &["init"]).0);
+    fs::create_dir_all(d.join("docs/projects/sub")).unwrap();
+    fs::write(
+        d.join("docs/projects/README.md"),
+        "# Root docs\n[Sub](sub/guide.md)\n[Root README](../../README.md)\n",
+    )
+    .unwrap();
+    fs::write(d.join("docs/projects/sub/guide.md"), "# Sub guide\n").unwrap();
+    fs::write(d.join("docs/projects/diagram.png"), b"\x89PNG\r\n\x1a\n").unwrap();
+    fs::write(d.join("docs/projects/raw.svg"), "<svg></svg>").unwrap();
+    fs::write(d.join("docs/.draft.md"), "# Draft\n").unwrap();
+    fs::write(d.join("README.md"), "# Repo README\n").unwrap();
+
+    // Symlinked directory inside docs/ must not be followed
+    let outside = tempfile::tempdir().unwrap();
+    fs::write(outside.path().join("secret.md"), "# Secret\n").unwrap();
+    std::os::unix::fs::symlink(outside.path(), d.join("docs/projects/escaped_dir")).unwrap();
+
+    // Normal root CLI output: `sil project explore --out explore.html` inside the project root
+    let (ok, out) = sil(d, &["explore", "--out", "explore.html"]);
+    assert!(ok, "{out}");
+    assert!(d.join("explore.html").is_file());
+    assert!(d.join("explore-sw.js").is_file());
+    assert!(d.join("explore-mermaid.js").is_file());
+    // Source docs/ is preserved intact and staged docs live under _docs/
+    assert_eq!(
+        fs::read_to_string(d.join("docs/projects/README.md")).unwrap(),
+        "# Root docs\n[Sub](sub/guide.md)\n[Root README](../../README.md)\n"
+    );
+    assert!(d.join("_docs/projects/README.md").is_file());
+    assert!(d.join("_docs/projects/sub/guide.md").is_file());
+    assert!(d.join("_docs/projects/diagram.png").is_file());
+    assert!(!d.join("_docs/projects/raw.svg").exists());
+    assert!(!d.join("_docs/.draft.md").exists());
+    assert!(!d.join("_docs/projects/escaped_dir").exists());
+    assert!(!d.join("_docs/_repo").exists());
+
+    // Symlinked --out target is refused and its target is not modified
+    let victim = d.join("victim.txt");
+    fs::write(&victim, "untouched").unwrap();
+    std::os::unix::fs::symlink(&victim, d.join("symlink-out.html")).unwrap();
+    let (ok_sym, out_sym) = sil(d, &["explore", "--out", "symlink-out.html"]);
+    assert!(!ok_sym, "expected symlinked --out to fail: {out_sym}");
+    assert_eq!(fs::read_to_string(&victim).unwrap(), "untouched");
+}

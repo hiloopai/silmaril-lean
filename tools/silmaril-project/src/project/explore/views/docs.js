@@ -9,6 +9,16 @@
     return "projects/README.md";
   }
 
+  function hasDirectoryReadme(dirRel) {
+    if (typeof PROJECT_META !== "undefined" && PROJECT_META && Array.isArray(PROJECT_META.docsDirs)) {
+      return PROJECT_META.docsDirs.includes(dirRel);
+    }
+    // Fallback when docsDirs is absent: only the default index's parent directory is known
+    const idx = defaultDocsIndex();
+    const slash = idx.lastIndexOf("/");
+    return (slash >= 0 ? idx.slice(0, slash) : "") === dirRel;
+  }
+
   // Parse the current hash `#/docs/<path>#<fragment>` or `#/docs/<path>?section=<fragment>`
   function parseDocsRoute(arg) {
     const rawHash = location.hash.replace(/^#\/?docs\/?/, "");
@@ -31,14 +41,14 @@
   }
 
   function validDocPath(docPath) {
-    if (!docPath || typeof docPath !== "string" || !/\.md$/i.test(docPath)) return false;
+    if (!docPath || typeof docPath !== "string" || !/\.md$/i.test(docPath) || docPath.startsWith("_repo/")) return false;
     const parts = docPath.split("/");
     return parts.every((p) => p && p !== "." && p !== ".." && !p.startsWith("."));
   }
 
   async function fetchDocMarkdown(docPath) {
     if (!validDocPath(docPath)) throw new Error(`Invalid documentation path: ${docPath}`);
-    const url = "docs/" + docPath.split("/").map(encodeURIComponent).join("/");
+    const url = "_docs/" + docPath.split("/").map(encodeURIComponent).join("/");
     if (!docsCache.has(url)) {
       docsCache.set(url, fetch(url).then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -54,7 +64,7 @@
   }
 
   function repoPathOfDoc(docPath) {
-    return docPath.startsWith("_repo/") ? docPath.slice("_repo/".length) : "docs/" + docPath;
+    return "docs/" + docPath;
   }
 
   function breadcrumbsHtml(docPath, repoInfo) {
@@ -68,8 +78,12 @@
       if (isLast) {
         crumbs.push(`<span aria-current="page"><code>${esc(parts[i])}</code></span>`);
       } else {
-        const dirReadme = cur.join("/") + "/README.md";
-        crumbs.push(`<a href="${esc(ProjectDocs.docsRouteHref(dirReadme, ""))}"><code>${esc(parts[i])}</code></a>`);
+        const dirRel = cur.join("/");
+        if (hasDirectoryReadme(dirRel)) {
+          crumbs.push(`<a href="${esc(ProjectDocs.docsRouteHref(dirRel + "/README.md", ""))}"><code>${esc(parts[i])}</code></a>`);
+        } else {
+          crumbs.push(`<span class="muted"><code>${esc(parts[i])}</code></span>`);
+        }
       }
     }
     const srcLink = repoInfo && repoInfo.blob
@@ -115,7 +129,11 @@
       repoFile: typeof repoFile === "function" ? repoFile : null,
     });
     const html = `<article class="doc-view">${breadcrumbsHtml(docPath, rf)}<div id="doc-content" class="doc-body">${bodyHtml}</div></article>`;
-    const init = () => {
+    const init = async () => {
+      const container = document.querySelector("#doc-content");
+      if (container && typeof ProjectDocs.hydrateMermaidDiagrams === "function") {
+        await ProjectDocs.hydrateMermaidDiagrams(container);
+      }
       if (fragment) scrollToAnchor(fragment);
     };
     return { html, init };

@@ -46,6 +46,7 @@ pub const SCRIPTS: &[(&str, &str)] = &[
     script!("navigation.js"),
     script!("router.js"),
     script!("graphs.js"),
+    script!("vendor/marked.js"),
     script!("docs.js"),
     script!("views/docs.js"),
     script!("views/summary.js"),
@@ -99,6 +100,13 @@ pub const SERVICE_WORKER: &str = include_str!("explore-sw.js");
 /// The service worker's file name, next to the page.
 pub const SERVICE_WORKER_NAME: &str = "explore-sw.js";
 
+/// The local pinned Mermaid 11.17.2 runtime written next to the page (`explore-mermaid.js`),
+/// loaded on demand by the inline documentation view with no external CDN request.
+pub const MERMAID_BUNDLE: &[u8] = include_bytes!("explore/vendor/mermaid.min.js");
+
+/// The local Mermaid bundle's file name, next to the page.
+pub const MERMAID_BUNDLE_NAME: &str = "explore-mermaid.js";
+
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -137,8 +145,9 @@ pub struct SourceMeta {
 }
 
 /// Optional project metadata read from `silmaril.toml` at `explore` generation time: the
-/// description (shown on the front page when the database row lacks one) and optional
-/// project-specific help (inline text or a relative `.md` path packaged under `docs/`).
+/// description (shown on the front page when the database row lacks one), optional
+/// project-specific help (inline text or a relative `.md` path packaged under `_docs/`),
+/// and the packaged documentation directory inventory.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ProjectMeta {
     pub name: Option<String>,
@@ -146,6 +155,7 @@ pub struct ProjectMeta {
     pub help: Option<String>,
     pub help_doc: Option<String>,
     pub docs_index: Option<String>,
+    pub docs_dirs: Vec<String>,
 }
 
 /// Whether `repo` is a GitHub repository URL the page may link to and read raw files from.
@@ -194,6 +204,7 @@ pub fn page(
             "help": p.help,
             "helpDoc": p.help_doc,
             "docsIndex": p.docs_index,
+            "docsDirs": p.docs_dirs,
         })
     });
     // The script goes in last, so that no placeholder text inside it is replaced.
@@ -225,204 +236,331 @@ pub fn relative_url(from: &Path, target: &Path) -> Option<String> {
     Some(parts.join("/"))
 }
 
-/// Package the project's Markdown guides (`docs/` and any local `.md` files or doc assets they
-/// link to inside the project directory) into `<out_dir>/docs/`, returning `(docs_index, help_doc)`
-/// relative to `<out_dir>/docs/`.
+/// Write `bytes` to `path` after verifying that neither `path` nor any existing parent component
+/// inside `base_dir` is a symlink.
+pub fn write_regular_file_bounded(
+    base_dir: &Path,
+    path: &Path,
+    bytes: &[u8],
+) -> std::io::Result<()> {
+    let rel = path.strip_prefix(base_dir).map_err(|_| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("{} is not under {}", path.display(), base_dir.display()),
+        )
+    })?;
+    let mut cur = base_dir.to_path_buf();
+    if let Ok(meta) = std::fs::symlink_metadata(&cur)
+        && meta.file_type().is_symlink()
+    {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("refusing to write through symlink {}", cur.display()),
+        ));
+    }
+    let comps: Vec<_> = rel.components().collect();
+    for (i, comp) in comps.iter().enumerate() {
+        let Component::Normal(seg) = comp else {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("invalid path component in {}", path.display()),
+            ));
+        };
+        cur.push(seg);
+        let is_last = i + 1 == comps.len();
+        match std::fs::symlink_metadata(&cur) {
+            Ok(meta) => {
+                if meta.file_type().is_symlink() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        format!(
+                            "refusing to overwrite or traverse symlink {}",
+                            cur.display()
+                        ),
+                    ));
+                }
+                if is_last && meta.is_dir() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::IsADirectory,
+                        format!("{} is a directory", cur.display()),
+                    ));
+                }
+                if !is_last && !meta.is_dir() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::AlreadyExists,
+                        format!("{} is not a directory", cur.display()),
+                    ));
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                if !is_last {
+                    std::fs::create_dir(&cur)?;
+                }
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    std::fs::write(&cur, bytes)
+}
+
+const DOCS_STAGE_MARKER: &str = ".silmaril-explore-docs";
+
+/// Clean a previous `<out_dir>/_docs` directory only if it carries our staging marker (and has
+/// no symlink root), preventing stale files across rebuilds without touching user-owned trees.
+fn clean_staged_docs_dir(out_docs: &Path) -> std::io::Result<()> {
+    let meta = match std::fs::symlink_metadata(out_docs) {
+        Ok(m) => m,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(e),
+    };
+    if meta.file_type().is_symlink() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!(
+                "refusing to use symlinked docs output {}",
+                out_docs.display()
+            ),
+        ));
+    }
+    if !meta.is_dir() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("{} exists and is not a directory", out_docs.display()),
+        ));
+    }
+    let marker = out_docs.join(DOCS_STAGE_MARKER);
+    if std::fs::symlink_metadata(&marker).is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
+    {
+        std::fs::remove_dir_all(out_docs)?;
+    }
+    Ok(())
+}
+
+/// Enumerate Git-tracked files under `docs/` when `project_dir` is a Git worktree, returning
+/// `None` when Git is unavailable or `project_dir` is not tracked by Git.
+fn git_tracked_docs(project_dir: &Path) -> Option<Vec<std::path::PathBuf>> {
+    let out = std::process::Command::new("git")
+        .args(["-C"])
+        .arg(project_dir)
+        .args(["ls-files", "-z", "--", "docs"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let raw = String::from_utf8(out.stdout).ok()?;
+    let files: Vec<std::path::PathBuf> = raw
+        .split('\0')
+        .filter(|s| !s.is_empty())
+        .map(|s| project_dir.join(s))
+        .collect();
+    (!files.is_empty()).then_some(files)
+}
+
+/// Package the project's Markdown guides and raster image assets from `docs/` into
+/// `<out_dir>/_docs/`, returning `(docs_index, help_doc, docs_dirs)` relative to `<out_dir>/_docs/`.
 ///
-/// Only constrained relative `.md` files and safe image assets (`.svg`, `.png`, `.jpg`, `.jpeg`,
-/// `.gif`, `.webp`) inside `project_dir` are copied; symlinks, dotfiles, and other files are never
-/// copied.
+/// Publication boundary:
+/// - Only files inside `docs/` with constrained relative paths (no `.` or `..`, no hidden dot
+///   segments, no symlinks anywhere along the path) and allowed extensions (`.md`, `.png`, `.jpg`,
+///   `.jpeg`, `.gif`, `.webp`) are packaged.
+/// - Raw `.svg` files are not packaged as standalone same-origin documents; inline Mermaid
+///   diagrams render directly inside the explorer page.
+/// - In a Git checkout, only Git-tracked files under `docs/` (plus an explicit `help = "docs/…"`
+///   path in `silmaril.toml` if present inside `docs/`) are included, so untracked/ignored local
+///   drafts are never published. Outside Git, `docs/` is walked directly under the same symlink
+///   and dotfile guards.
+/// - Output is staged into `<out_dir>/_docs/` (isolated from the source `docs/` directory even
+///   when `--out` is in the project root).
 pub fn package_project_docs(
     project_dir: &Path,
     out_dir: &Path,
     extra_doc: Option<&str>,
-) -> std::io::Result<(Option<String>, Option<String>)> {
+) -> std::io::Result<(Option<String>, Option<String>, Vec<String>)> {
     let Ok(canon_root) = std::fs::canonicalize(project_dir) else {
-        return Ok((None, None));
+        return Ok((None, None, Vec::new()));
     };
     let docs_root = project_dir.join("docs");
-    let projects_readme = docs_root.join("projects/README.md");
-    let docs_readme = docs_root.join("README.md");
-    let mut seeds: Vec<std::path::PathBuf> = Vec::new();
-    let index_rel = if projects_readme.is_file() {
-        Some("projects/README.md".to_string())
-    } else if docs_readme.is_file() {
-        Some("README.md".to_string())
-    } else {
-        None
+    let Ok(docs_meta) = std::fs::symlink_metadata(&docs_root) else {
+        return Ok((None, None, Vec::new()));
     };
-
-    fn walk_md(dir: &Path, canon_root: &Path, out: &mut Vec<std::path::PathBuf>) {
-        let Ok(rd) = std::fs::read_dir(dir) else {
-            return;
-        };
-        for e in rd.flatten() {
-            let name = e.file_name();
-            if name.to_string_lossy().starts_with('.') {
-                continue;
-            }
-            let p = e.path();
-            let Ok(meta) = std::fs::symlink_metadata(&p) else {
-                continue;
-            };
-            if meta.file_type().is_symlink() {
-                continue;
-            }
-            if meta.is_dir() {
-                walk_md(&p, canon_root, out);
-            } else if meta.is_file()
-                && p.extension().is_some_and(|x| x == "md")
-                && std::fs::canonicalize(&p).is_ok_and(|c| c.starts_with(canon_root))
-            {
-                out.push(p);
-            }
-        }
+    if docs_meta.file_type().is_symlink() || !docs_meta.is_dir() {
+        return Ok((None, None, Vec::new()));
     }
-
-    if docs_root.is_dir() {
-        walk_md(&docs_root, &canon_root, &mut seeds);
-    }
-
-    let mut help_doc_rel: Option<String> = None;
-    if let Some(h) = extra_doc {
-        let trimmed = h.trim();
-        if trimmed.ends_with(".md")
-            && !trimmed.contains("..")
-            && !trimmed.starts_with('/')
-            && !trimmed.contains('\\')
-        {
-            let candidate = project_dir.join(trimmed);
-            if candidate.is_file()
-                && std::fs::symlink_metadata(&candidate).is_ok_and(|m| !m.file_type().is_symlink())
-                && std::fs::canonicalize(&candidate).is_ok_and(|c| c.starts_with(&canon_root))
-            {
-                seeds.push(candidate);
-                let rel = if let Some(rest) = trimmed.strip_prefix("docs/") {
-                    rest.to_string()
-                } else {
-                    format!("_repo/{trimmed}")
-                };
-                help_doc_rel = Some(rel);
-            }
-        }
-    }
-
-    if seeds.is_empty() {
-        return Ok((None, None));
+    let Ok(canon_docs) = std::fs::canonicalize(&docs_root) else {
+        return Ok((None, None, Vec::new()));
+    };
+    if !canon_docs.starts_with(&canon_root) {
+        return Ok((None, None, Vec::new()));
     }
 
     let allowed_ext = |p: &Path| {
         p.extension().and_then(|x| x.to_str()).is_some_and(|ext| {
             matches!(
                 ext.to_ascii_lowercase().as_str(),
-                "md" | "svg" | "png" | "jpg" | "jpeg" | "gif" | "webp"
+                "md" | "png" | "jpg" | "jpeg" | "gif" | "webp"
             )
         })
     };
 
-    let mut to_copy: std::collections::BTreeSet<std::path::PathBuf> = seeds.into_iter().collect();
-    let mut queue: Vec<std::path::PathBuf> = to_copy.iter().cloned().collect();
-    while let Some(file) = queue.pop() {
-        if !file.extension().is_some_and(|x| x == "md") {
-            continue;
+    // Validate that `rel` under `docs_root` has no hidden segments, no symlinks along any
+    // component, is a regular file with an allowed extension, and canonicalizes inside `canon_docs`.
+    let valid_docs_file = |rel: &Path| -> Option<std::path::PathBuf> {
+        let mut cur = docs_root.clone();
+        let comps: Vec<_> = rel.components().collect();
+        if comps.is_empty() {
+            return None;
         }
-        let Ok(text) = std::fs::read_to_string(&file) else {
-            continue;
-        };
-        let Some(parent) = file.parent() else {
-            continue;
-        };
-        for target in markdown_local_links(&text) {
-            let Some(joined) = normalize_rel_path(parent, &target) else {
-                continue;
+        for (i, comp) in comps.iter().enumerate() {
+            let Component::Normal(seg) = comp else {
+                return None;
             };
-            if !joined.starts_with(project_dir) || !allowed_ext(&joined) {
-                continue;
+            let s = seg.to_str()?;
+            if s.is_empty() || s.starts_with('.') {
+                return None;
             }
-            let Ok(meta) = std::fs::symlink_metadata(&joined) else {
-                continue;
-            };
-            if meta.file_type().is_symlink() || !meta.is_file() {
-                continue;
+            cur.push(seg);
+            let meta = std::fs::symlink_metadata(&cur).ok()?;
+            if meta.file_type().is_symlink() {
+                return None;
             }
-            if std::fs::canonicalize(&joined).is_ok_and(|c| c.starts_with(&canon_root))
-                && to_copy.insert(joined.clone())
+            let is_last = i + 1 == comps.len();
+            if is_last {
+                if !meta.is_file() || !allowed_ext(&cur) {
+                    return None;
+                }
+            } else if !meta.is_dir() {
+                return None;
+            }
+        }
+        let canon = std::fs::canonicalize(&cur).ok()?;
+        canon.starts_with(&canon_docs).then_some(cur)
+    };
+
+    let mut to_copy: std::collections::BTreeSet<std::path::PathBuf> =
+        std::collections::BTreeSet::new();
+
+    if let Some(tracked) = git_tracked_docs(project_dir) {
+        for p in tracked {
+            if let Ok(rel) = p.strip_prefix(&docs_root)
+                && let Some(valid) = valid_docs_file(rel)
             {
-                queue.push(joined);
+                to_copy.insert(valid);
             }
+        }
+    } else {
+        fn walk_docs(
+            dir: &Path,
+            docs_root: &Path,
+            valid_docs_file: &dyn Fn(&Path) -> Option<std::path::PathBuf>,
+            out: &mut std::collections::BTreeSet<std::path::PathBuf>,
+        ) {
+            let Ok(rd) = std::fs::read_dir(dir) else {
+                return;
+            };
+            for e in rd.flatten() {
+                if e.file_name().to_string_lossy().starts_with('.') {
+                    continue;
+                }
+                let p = e.path();
+                let Ok(meta) = std::fs::symlink_metadata(&p) else {
+                    continue;
+                };
+                if meta.file_type().is_symlink() {
+                    continue;
+                }
+                if meta.is_dir() {
+                    walk_docs(&p, docs_root, valid_docs_file, out);
+                } else if meta.is_file()
+                    && let Ok(rel) = p.strip_prefix(docs_root)
+                    && let Some(valid) = valid_docs_file(rel)
+                {
+                    out.insert(valid);
+                }
+            }
+        }
+        walk_docs(&docs_root, &docs_root, &valid_docs_file, &mut to_copy);
+    }
+
+    let mut help_doc_rel: Option<String> = None;
+    if let Some(h) = extra_doc {
+        let trimmed = h.trim();
+        let rel_under_docs = trimmed.strip_prefix("docs/").unwrap_or(trimmed);
+        if Path::new(rel_under_docs)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+            && let Some(valid) = valid_docs_file(Path::new(rel_under_docs))
+            && let Ok(rel) = valid.strip_prefix(&docs_root)
+        {
+            let norm = rel
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("/");
+            to_copy.insert(valid);
+            help_doc_rel = Some(norm);
         }
     }
 
-    let out_docs = out_dir.join("docs");
+    if to_copy.is_empty() {
+        return Ok((None, None, Vec::new()));
+    }
+
+    let out_docs = out_dir.join("_docs");
+    if let Ok(canon_out) = std::fs::canonicalize(&out_docs)
+        && canon_out == canon_docs
+    {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "packaged docs output directory must not alias source docs/",
+        ));
+    }
+    clean_staged_docs_dir(&out_docs)?;
+    if !out_docs.exists() {
+        std::fs::create_dir(&out_docs)?;
+    }
+    write_regular_file_bounded(
+        &out_docs,
+        &out_docs.join(DOCS_STAGE_MARKER),
+        b"silmaril-explore-docs\n",
+    )?;
+
+    let mut packaged_rel: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut readme_dirs: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     for src in &to_copy {
-        let Ok(rel_to_proj) = src.strip_prefix(project_dir) else {
+        let Ok(rel) = src.strip_prefix(&docs_root) else {
             continue;
         };
-        let dst = if let Ok(under_docs) = rel_to_proj.strip_prefix("docs") {
-            out_docs.join(under_docs)
-        } else {
-            out_docs.join("_repo").join(rel_to_proj)
-        };
-        if let Some(p) = dst.parent() {
-            std::fs::create_dir_all(p)?;
+        let rel_str = rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("/");
+        let bytes = std::fs::read(src)?;
+        let dst = out_docs.join(rel);
+        write_regular_file_bounded(&out_docs, &dst, &bytes)?;
+        if rel.file_name().is_some_and(|n| n == "README.md")
+            && let Some(parent) = rel.parent()
+        {
+            let dir_str = parent
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("/");
+            readme_dirs.insert(dir_str);
         }
-        std::fs::copy(src, dst)?;
+        packaged_rel.insert(rel_str);
     }
 
-    Ok((index_rel, help_doc_rel))
-}
+    let index_rel = if packaged_rel.contains("projects/README.md") {
+        Some("projects/README.md".to_string())
+    } else if packaged_rel.contains("README.md") {
+        Some("README.md".to_string())
+    } else {
+        None
+    };
 
-fn markdown_local_links(text: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    let bytes = text.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b']' && i + 1 < bytes.len() && bytes[i + 1] == b'(' {
-            let start = i + 2;
-            let mut end = start;
-            while end < bytes.len() && bytes[end] != b')' && bytes[end] != b'\n' {
-                end += 1;
-            }
-            if end < bytes.len() && bytes[end] == b')' {
-                let raw = text[start..end].trim();
-                let path = raw.split(['#', '?']).next().unwrap_or("").trim();
-                if !path.is_empty()
-                    && !path.starts_with("http://")
-                    && !path.starts_with("https://")
-                    && !path.starts_with("mailto:")
-                    && !path.starts_with('/')
-                {
-                    out.push(path.to_string());
-                }
-                i = end + 1;
-                continue;
-            }
-        }
-        i += 1;
-    }
-    out
-}
-
-fn normalize_rel_path(base: &Path, rel: &str) -> Option<std::path::PathBuf> {
-    let mut out = base.to_path_buf();
-    for comp in Path::new(rel).components() {
-        match comp {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                if !out.pop() {
-                    return None;
-                }
-            }
-            Component::Normal(s) => {
-                if s.to_string_lossy().starts_with('.') {
-                    return None;
-                }
-                out.push(s);
-            }
-            _ => return None,
-        }
-    }
-    Some(out)
+    Ok((index_rel, help_doc_rel, readme_dirs.into_iter().collect()))
 }
 
 #[cfg(test)]
@@ -578,16 +716,67 @@ mod tests {
             "# RVSDG\n",
         )
         .unwrap();
+        std::fs::write(
+            proj.path().join("docs/projects/arch.png"),
+            b"\x89PNG\r\n\x1a\n",
+        )
+        .unwrap();
+        std::fs::write(
+            proj.path().join("docs/projects/raw.svg"),
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>",
+        )
+        .unwrap();
         std::fs::write(proj.path().join("README.md"), "# Repo root\n").unwrap();
         std::fs::write(proj.path().join("docs/help.md"), "# Custom help\n").unwrap();
+        std::fs::write(proj.path().join("docs/.hidden.md"), "# Hidden\n").unwrap();
 
-        let (idx, help) =
+        let (idx, help, dirs) =
             package_project_docs(proj.path(), out.path(), Some("docs/help.md")).unwrap();
         assert_eq!(idx.as_deref(), Some("projects/README.md"));
         assert_eq!(help.as_deref(), Some("help.md"));
-        assert!(out.path().join("docs/projects/README.md").is_file());
-        assert!(out.path().join("docs/projects/rvsdg/overview.md").is_file());
-        assert!(out.path().join("docs/_repo/README.md").is_file());
-        assert!(out.path().join("docs/help.md").is_file());
+        assert_eq!(dirs, vec!["projects".to_string()]);
+        assert!(out.path().join("_docs/projects/README.md").is_file());
+        assert!(
+            out.path()
+                .join("_docs/projects/rvsdg/overview.md")
+                .is_file()
+        );
+        assert!(out.path().join("_docs/projects/arch.png").is_file());
+        assert!(
+            !out.path().join("_docs/projects/raw.svg").exists(),
+            "raw SVG must not be packaged as a standalone document"
+        );
+        assert!(
+            !out.path().join("_docs/.hidden.md").exists(),
+            "hidden files must not be packaged"
+        );
+        assert!(
+            !out.path().join("_docs/_repo").exists(),
+            "files outside docs/ must not be crawled into _docs/"
+        );
+        assert!(out.path().join("_docs/help.md").is_file());
+
+        // Stale files in _docs/ are removed on the next run, while source docs/ is untouched when
+        // out_dir is the project root itself.
+        std::fs::write(out.path().join("_docs/projects/stale.md"), "# Stale\n").unwrap();
+        let (_, _, _) = package_project_docs(proj.path(), out.path(), None).unwrap();
+        assert!(!out.path().join("_docs/projects/stale.md").exists());
+
+        // Root output (`--out explore.html` inside `proj`) isolates `_docs/` from `docs/`.
+        let (root_idx, _, _) = package_project_docs(proj.path(), proj.path(), None).unwrap();
+        assert_eq!(root_idx.as_deref(), Some("projects/README.md"));
+        assert!(proj.path().join("docs/projects/README.md").is_file());
+        assert!(proj.path().join("_docs/projects/README.md").is_file());
+
+        // Symlinked output files and symlinked directories are refused.
+        let target = proj.path().join("victim.txt");
+        std::fs::write(&target, "keep").unwrap();
+        let sym_out = out.path().join("sym-explore.html");
+        std::os::unix::fs::symlink(&target, &sym_out).unwrap();
+        assert!(
+            write_regular_file_bounded(out.path(), &sym_out, b"overwrite").is_err(),
+            "symlinked --out must be refused"
+        );
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "keep");
     }
 }
