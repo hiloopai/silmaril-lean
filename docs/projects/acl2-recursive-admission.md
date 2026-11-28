@@ -145,6 +145,50 @@ model reducts, and includes a following theorem book. [Pinned definition][list]
 lake build --wfail +Silmaril.Logic.ACL2.Recursive.Institution.Tests
 ```
 
+## Checking the pinned translated TRUE-LISTP export
+
+The stock ACL2 8.7 exporter reads the initial world's logical declarations for
+`ACL2::TRUE-LISTP` and `COMMON-LISP::EQ`. It records their ordered formals,
+arities and unnormalized translated bodies, plus the measure, its domain and
+the well-founded relation. Both bodies must already be free of guard holders.
+Symbols are serialized with their resolved home packages, including
+`COMMON-LISP::NIL` in the quote. [Fixture](../../corpus/acl2/true-listp/acl2-8.7.sexp)
+
+`Silmaril.ProofFormats.ACL2.TrueListp` reads the fixture with the existing Lisp
+reader. It checks the resolved names and arities and uses `Translated.lower`
+to bind formal occurrences to finite slots. The recursive block is built from
+the structural projection of that checked body. The profile checks that the
+exported logical `EQ` applies `EQUAL` to its original formals in order, and
+that the default-order measure is `ACL2-COUNT` of the single bound formal.
+A supplied CDR certificate checks decrease on the actual recursive call.
+
+Lean proves pointwise agreement between evaluation of the checked source
+and evaluation of the block body in the admitted standard-object model.
+Source evaluation runs the separately checked `EQ` body. The admitted
+equation then gives the translated source equation for all arguments.
+The institution test uses the same block to obtain the ordinary model
+reduct and the equation's syntactic π-derivation. Mutations of the recursive
+argument, its governing test, the measure, qualified bindings, call arity,
+and the exported equality body are rejected.
+
+The stock ACL2 image supplies translation, package resolution and world
+provenance. Lean checks the exported terms and the supplied termination
+certificate. Inference of termination certificates and native theorem or
+book-certification replay remain outside this case.
+
+Build stock ACL2 8.7 at `bc6f4f49e81a0711214a8d91f0d06e0e084d2204` with
+`make LISP=sbcl` in its checkout. The exporter checks that commit and tree,
+the tracked checkout and the SHA-256 of `axioms.lisp`. The committed export
+has SHA-256 `4dde04074aa4a1e40488121a3f326f5ec79139c03fb08d33c461dbc3e7e277a1`.
+The direct Lean run reads the fixture again and prints the axiom audit.
+
+```sh
+python3 -B tools/acl2/export_true_listp.py /path/to/acl2
+lake build --wfail +Silmaril.ProofFormats.ACL2.TrueListp.Tests
+lake env lean -DautoImplicit=false -DwarningAsError=true \
+  Silmaril/ProofFormats/ACL2/TrueListp/Tests.lean
+```
+
 ## Next step for X86-RUN
 
 The [C3 X86-RUN slice](acl2-x86-run.md) documents the implemented export and
