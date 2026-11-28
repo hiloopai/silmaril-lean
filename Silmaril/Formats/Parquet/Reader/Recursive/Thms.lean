@@ -3,12 +3,13 @@ module
 public import Silmaril.Formats.Parquet.Reader.Recursive.Defs
 import Silmaril.Proofs.Formats.Parquet.Reader.Recursive.Prefix
 import Silmaril.Proofs.Formats.Parquet.Reader.Recursive.Agreement
+import Silmaril.Proofs.Formats.Parquet.Reader.Recursive.Selection
 
 namespace Silmaril.Formats.Parquet.Reader.Recursive
 
-open Arrow.RecursiveSchema (Field)
+open Arrow.RecursiveSchema (Field Schema)
 open Arrow.RecursiveSchema.Batch.Rows (Observation)
-open Arrow.RecursiveSchema.Stream.Events (Signature)
+open Arrow.RecursiveSchema.Stream.Events (Signature declarations fieldName eraseBatch projectTrace)
 
 public section
 
@@ -47,6 +48,25 @@ theorem Groups.events_eq_of_complete {Group Failure Error : Type} {leftFields ri
     (after : right.order.mapM right.readGroup = .ok batches) :
     left.events = right.events :=
   Proofs.Formats.Parquet.Reader.Recursive.events_eq_of_complete fields order before after
+
+theorem Selection.declarations_exact (selection : Selection) {source : Signature} {schema : Schema}
+    (original : declarations source = schema.fields.map (fun field => (fieldName field, field))) :
+    declarations (selection.columns source).schema =
+      (selection.schema schema).fields.map (fun field => (fieldName field, field)) := by
+  cases selection
+  · exact original
+  · rfl
+
+theorem Selection.batch_rowCount (selection : Selection) (batch : Observation) :
+    (selection.batch batch).rowCount = batch.rowCount := by cases selection <;> rfl
+
+/-- Empty selection retains the exact logical number of zero-width rows in
+each original batch. Full selection retains the complete observations. -/
+theorem Selection.batches_exact (selection : Selection) {source : Signature} {Failure : Type}
+    (events : Trace source Failure) :
+    (projectTrace (selection.columns source) events).batches.map eraseBatch =
+      (events.batches.map eraseBatch).map selection.batch :=
+  Proofs.Formats.Parquet.Reader.Recursive.selected_batches selection events
 
 end
 
