@@ -69,9 +69,8 @@ complete original column reads. Its slot and end coordinates
 resolve to those checked original reads.
 
 Paths beginning with a Struct or a signed leaf continue to have a
-checked compiler plan and a typed adapter refusal. Native Arrow
-Events and strict IPC can build on the checked group result in a
-separate change.
+checked compiler plan and a typed adapter refusal. The [native Arrow Events adapter](parquet-recursive-tree-events.md)
+uses the checked group result for its full and projected views.
 
 ## Verification
 

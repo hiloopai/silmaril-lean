@@ -4,6 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.Tree.Rows.Defs
 import Silmaril.Formats.Parquet.RecursiveSchema.Tree.ListPath.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Tree.Rows
+import Silmaril.Formats.Parquet.RecursiveSchema.Tree.Rows.Projection.Thms
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Tree.Rows
 
@@ -118,6 +119,21 @@ theorem GroupResult.bounded {schemaLimits : Snapshot.Limits} {snapshot : Snapsho
       declaredSlots result.admission.value ≤ limits.maxSlots ∧ slotCount (tapes result.inputs) ≤ limits.maxSlots :=
   ⟨result.admission.columnLimit, result.exact.rowCount ▸ result.admission.rowLimit,
     result.admission.slotLimit, result.exact.bounded⟩
+
+/-- A logical group is the observation of the corresponding checked native result. -/
+theorem readGroup_checked {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {limits : Limits} {schema : Compiled schemaLimits snapshot} {group : Nat}
+    {batch : Arrow.RecursiveSchema.Batch.Rows.Observation}
+    (accepted : readGroup schema limits group = .ok batch) :
+    ∃ result, readGroupChecked schema limits group = .ok result ∧ result.observation = batch :=
+  Proofs.Formats.Parquet.RecursiveSchema.Tree.Rows.readGroup_checked accepted
+
+/-- Exact native reprojection also establishes recursive Arrow typing. -/
+theorem GroupResult.typed {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {compiled : Compiled schemaLimits snapshot} {limits : Limits} {group : Nat}
+    (result : GroupResult compiled limits group) :
+    ∀ row ∈ result.observation.rows, Arrow.RecursiveSchema.Batch.Rows.RowFits compiled.arrow.fields row :=
+  Projection.trace_typed result.exact.exact
 
 end
 

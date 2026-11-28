@@ -8,6 +8,7 @@ namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Tree.Rows
 
 open Silmaril.Formats.Parquet Silmaril.Formats.Parquet.RecursiveSchema
 open Tree Tree.Rows Tree.Occurrences
+open Silmaril.Formats.Arrow.RecursiveSchema.Batch.Rows (Observation)
 
 public theorem tape_atoms (carrier : ListPath.Chunk.Carrier) (observed : ListPath.Chunk.Observation) :
     (Tape.ofRead carrier observed).atoms = observed.atoms := by
@@ -219,5 +220,17 @@ public theorem original_boundary {schemaLimits : Snapshot.Limits} {snapshot : Sn
       simp only [Boundary.point] at selected
       rw [selected] at found
       exact found.symm
+
+public theorem readGroup_checked {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {limits : Limits} {schema : Tree.Compiled schemaLimits snapshot} {group : Nat}
+    {batch : Observation}
+    (accepted : readGroup schema limits group = .ok batch) :
+    ∃ result, readGroupChecked schema limits group = .ok result ∧ result.observation = batch := by
+  unfold readGroup at accepted
+  cases read : readGroupChecked schema limits group with
+  | error cause => simp [read, Except.map] at accepted
+  | ok result =>
+    simp [read, Except.map] at accepted
+    exact ⟨result, rfl, accepted⟩
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Tree.Rows

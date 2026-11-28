@@ -1,0 +1,47 @@
+{
+  "authored_parquet": {
+    "late_presence": {
+      "bytes": 2197,
+      "sha256": "355e7eb45c825a257454486e4de9c3a03441f1b6e7921b2f53dc34e32c699e60"
+    },
+    "late_unselected_crc": {
+      "bytes": 2197,
+      "sha256": "f14fb696412a09b5a9f77c68cc9316d9a9e72cbffc5994ba9c456042f5662681"
+    },
+    "physical_zero_group": {
+      "bytes": 2478,
+      "sha256": "e98f4c51d1b67ca28c35d8abd8552931ab3ce23b48095d25a6d4d1eefd9cfe11"
+    }
+  },
+  "genuine_parquet": {
+    "branch_v1": {
+      "bytes": 2013,
+      "sha256": "59c17020e6dde0c3fb8b514a3a8577806a6d741ecf1cbb71bfeb6dd054ad62c6"
+    },
+    "branch_v2": {
+      "bytes": 1960,
+      "sha256": "5d5957cf710ff51b27054d4e4aeb7a76f5cedcedf87306ab5db2c5053a82626e"
+    },
+    "independent_roots_v2": {
+      "bytes": 1244,
+      "sha256": "2be42023fc9f9341dbfa08d8d2b8f1575275b90f47859ee6199aef84627d398f"
+    },
+    "renamed_branch_v2": {
+      "bytes": 2243,
+      "sha256": "f5c37c87fe2385a658149c23549504d9b521b3d6c54869aa57103b3fe3731eca"
+    },
+    "schema_only": {
+      "bytes": 208,
+      "sha256": "adbf1ed6ba59ec4d8372b393388b3673164d140c552a8b06730e03b52b270d80"
+    },
+    "unsupported_double": {
+      "bytes": 894,
+      "sha256": "834da8d3ea9c036c27843cc184d37bf93618cb49627ce4c1c940e90dbfae5ebe"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}
