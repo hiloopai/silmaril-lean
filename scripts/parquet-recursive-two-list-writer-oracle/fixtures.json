@@ -1,0 +1,81 @@
+{
+  "lean_parquet": {
+    "empty_group_no_crc": {
+      "bytes": 571,
+      "sha256": "4f929f83fc5ad36363532dbd5de0324984286d49311b4e7497159d442cea9531"
+    },
+    "schema_only": {
+      "bytes": 107,
+      "sha256": "9be998bef82e2a2a39a702f86275a1a866297b7359eed36da51cb336abca1278"
+    },
+    "signed_32_0": {
+      "bytes": 453,
+      "sha256": "0968addcaa9dd8088f7932130e3d4d5a24b966868f88e7e93455a5929511b4ae"
+    },
+    "signed_32_1": {
+      "bytes": 458,
+      "sha256": "1166fa3739b3e5012fffb5b669974d743a4ad2b06f4700974eeb80f6ffb3940a"
+    },
+    "signed_32_2": {
+      "bytes": 453,
+      "sha256": "6079bea243564a0c21f69330db7def93493b388ff75ad853b97b8296ab581790"
+    },
+    "signed_32_3": {
+      "bytes": 458,
+      "sha256": "370f0a43af287301eaff16085837b40a6da53be1ca09e26fb7c0910f4dbc1656"
+    },
+    "signed_32_4": {
+      "bytes": 446,
+      "sha256": "d8b5d0616118c36cad08a95cdada3d041bd847bcee41185599ed2d38a6bf59b1"
+    },
+    "signed_32_5": {
+      "bytes": 450,
+      "sha256": "dc80939fb2034db17b056848c2a79663d542e73a58fc86cc30d84cf23f350006"
+    },
+    "signed_32_6": {
+      "bytes": 445,
+      "sha256": "2009090b7af9abf92a4a25c95fb1fef006a59a623c36b6f2b18559da4caea68b"
+    },
+    "signed_32_7": {
+      "bytes": 450,
+      "sha256": "6c0905d66d1bf9a02d85beb8a6790b7ec41e1f0e16f51753fd470d0db757f3ce"
+    },
+    "signed_64_0": {
+      "bytes": 514,
+      "sha256": "c2029ef2322ff7450eb49376eb8ec0206420f4654ac15e83ffdf1e4e0cc43dd6"
+    },
+    "signed_64_1": {
+      "bytes": 518,
+      "sha256": "b32cdb31333363701a8de32d619be815f60636f0f59a0162650bf505d93de720"
+    },
+    "signed_64_2": {
+      "bytes": 514,
+      "sha256": "ab8b4fe41cf0571ad255a7871e1c735ab8d0115a07e97bb0079f9799f552c81d"
+    },
+    "signed_64_3": {
+      "bytes": 517,
+      "sha256": "b0f98d6871d882a32ce9148138a28466cc13fed20a72ab498a73f85c0b2f12ca"
+    },
+    "signed_64_4": {
+      "bytes": 498,
+      "sha256": "53a407c9e1d2592116c1585fb4b3c627634d951bd7fa70952850f31fdeae26f8"
+    },
+    "signed_64_5": {
+      "bytes": 502,
+      "sha256": "141fdc05965c8ccf9ab74b84385fb01e00f64c7efda0ae740c292ad4d141251c"
+    },
+    "signed_64_6": {
+      "bytes": 498,
+      "sha256": "c87719696b2c89990a9238163e064350a794eac607e49cb14c34c00571caefb9"
+    },
+    "signed_64_7": {
+      "bytes": 502,
+      "sha256": "6de42d6c0f2c43145a44ba626364ae0664d0836d03e679aa73a50439c02be527"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}

@@ -60,8 +60,9 @@ dictionary and lies outside the local table.
   indexes and explicit pageless two-LIST groups remain separate geometry.
   A schema-only source has no row groups to read.
 - Projection selects the one complete top-level field or the empty
-  schema. Nested projection and a checked two-LIST Parquet writer remain
-  separate capabilities.
+  schema. Nested projection remains a separate capability. The checked
+  writer emits the initial unindexed UNCOMPRESSED PLAIN V1 profile.
+  [Two-LIST writer profile](parquet-recursive-two-list-writer.md)
 - The encoding matrix covers PLAIN and RLE_DICTIONARY. Legacy
   PLAIN_DICTIONARY and other value encodings remain outside it. Opt-in
   raw-meta-block Brotli is a separate codec profile.
