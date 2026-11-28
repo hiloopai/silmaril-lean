@@ -27,7 +27,10 @@ example (bindings : Bindings) (x : Object) :
 example : (fixedBinding ⟨"ACL2", "FAULT"⟩ 1).isNone = true := rfl
 example : (fixedBinding faultName 2).isNone = true := rfl
 example : remaining.arity ⟨"X86ISA", "!MS"⟩ = some 2 := by decide
-example : remaining.arity ⟨"BITOPS", "PART-SELECT-LOW-HIGH$INLINE"⟩ = some 3 := by decide
+example : remaining.arity partSelectLowHighName = none := by decide
+example : (fixedBinding ⟨"ACL2", "PART-SELECT-LOW-HIGH$INLINE"⟩ 3).isNone = true := rfl
+example : (fixedBinding ⟨"BITOPS", "PART-SELECT-LOW-HIGH"⟩ 3).isNone = true := rfl
+example : (fixedBinding partSelectLowHighName 2).isNone = true := rfl
 
 private def both := (Status.observations[1]'(by decide)).state
 private def msOnly := (Status.observations[2]'(by decide)).state
@@ -42,7 +45,7 @@ run_elab do
   let allowed : Array Lean.Name := #[``propext, ``Classical.choice, ``Quot.sound]
   let declarations := #[``installed_exact, ``remaining_exact, ``remaining_iff, ``remaining_count,
     ``extend_of_fixed, ``extend_of_remaining, ``fault_agrees, ``ms_agrees,
-    ``step_defining_equation, ``run_equation_holds, ``halted_holds]
+    ``partSelectLowHigh_agrees, ``step_defining_equation, ``run_equation_holds, ``halted_holds]
   for declaration in declarations do
     for axiomName in ← Lean.collectAxioms declaration do
       unless allowed.contains axiomName do

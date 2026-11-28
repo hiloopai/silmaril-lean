@@ -1,6 +1,7 @@
 module
 
 public import Silmaril.Logic.ACL2.X86Run.WithStep.Defs
+public import Silmaril.Logic.ACL2.Standard.BitSelection.Defs
 public import Silmaril.Logic.ACL2.Standard.Pure.Defs
 
 @[expose] public section
@@ -8,6 +9,8 @@ public import Silmaril.Logic.ACL2.Standard.Pure.Defs
 namespace Silmaril.Logic.ACL2.X86Run.WithStep.Frontier
 
 open Standard
+
+def partSelectLowHighName : Name := ⟨"BITOPS", "PART-SELECT-LOW-HIGH$INLINE"⟩
 
 /-- The step uses the same encoded-record readers as the outer run. -/
 def fixedBinding (name : Name) (arity : Nat) : Option ((Fin arity → Object) → Object) :=
@@ -17,6 +20,9 @@ def fixedBinding (name : Name) (arity : Nat) : Option ((Fin arity → Object) �
     if name = faultName then some (fun args => Status.fault.read readers (args 0))
     else if name = msName then some (fun args => Status.ms.read readers (args 0))
     else Pure.binding name 1
+  | 3 =>
+    if name = partSelectLowHighName then some (fun args => (args 0).partSelectLowHigh (args 1) (args 2))
+    else Pure.binding name 3
   | k => Pure.binding name k
 
 /-- Entries supplied by the checked record readers and pure object helpers. -/
