@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
-/-! Bounded, unindexed PLAIN V1/V2 with identity or Snappy for one two-LIST leaf.
+/-! Bounded, unindexed PLAIN V1/V2 for one two-LIST leaf with checked column codecs.
 V1 can carry live ancestry across pages. V2 covers complete rows. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Chunk
@@ -14,22 +14,33 @@ abbrev Word := RecursiveSchema.Chunk.Word
 
 structure Limits extends RecursiveSchema.Chunk.Limits where
   maxSlots : Nat := 1024 * 1024
+  /-- Controller calls per reached GZIP member. -/
+  gzipCalls : Nat := ({} : Repeated.Chunk.Limits).gzipCalls
+  /-- Window and command bounds for one checked dictionary-free Zstd frame. -/
+  zstd : FlatColumn.Zstd.CompressionLimits := ({} : Repeated.Chunk.Limits).zstd
 
 def Limits.payload (limits : Limits) : Repeated.Chunk.Limits :=
-  { toLimits := limits.toLimits }
+  { toLimits := limits.toLimits, gzipCalls := limits.gzipCalls, zstd := limits.zstd }
 
+/-- LZ4 uses codec 7 and a raw block. GZIP uses one member and Zstd uses one checked dictionary-free frame. -/
 inductive Codec where
-  | uncompressed | snappy
+  | uncompressed | snappy | gzip | zstd | lz4Raw
   deriving DecidableEq, Repr
 
 def Codec.ofId : Int → Option Codec
   | 0 => some .uncompressed
   | 1 => some .snappy
+  | 2 => some .gzip
+  | 6 => some .zstd
+  | 7 => some .lz4Raw
   | _ => none
 
 def Codec.column : Codec → Repeated.Chunk.ColumnCodec
   | .uncompressed => .uncompressed
   | .snappy => .snappy
+  | .gzip => .gzip
+  | .zstd => .zstd
+  | .lz4Raw => .lz4Raw
 
 inductive Live where
   | closed | outer | inner

@@ -33,12 +33,12 @@ private structure PayloadTrace where
   decoded : List UInt8
 
 private def checkPayloads (file : Bytes) (group : Nat) (original : List PayloadTrace)
-    (storedTotal decodedTotal : Nat) (limits : Limits := {}) : IO Unit := do
+    (storedTotal decodedTotal : Nat) (codec : Codec) (codecId : Int) (limits : Limits := {}) : IO Unit := do
   let source ← take (openFile {} file)
   let binding ← take (Chunk.bind source.schema group)
   let seen ← take (read limits binding)
   let frames := seen.pages.map ObservedPage.frame
-  unless binding.codec = .snappy ∧ binding.column.metadata.codec = 1 ∧
+  unless binding.codec = codec ∧ binding.column.metadata.codec = codecId ∧
       storedChunkBytes frames = storedTotal ∧ rawChunkBytes frames = decodedTotal ∧
       frames.length = original.length do
     throw (IO.userError "original codec, page count or footer totals differ")
@@ -205,7 +205,7 @@ def verify(scratch):
     observed, total, raw_pages = {}, 0, 0
     for label, (nullable, width, groups) in positives.items():
         wire = files[label]
-        observed[label] = list(BASE["inspect"](wire, nullable, width, groups, codec=1, expand=expand))
+        observed[label] = list(BASE["inspect"](wire, nullable, width, groups, codecs=[1] * len(groups), expand=SNAPPY["snappy_block"]))
         for group, lo, hi, end, pages in observed[label]:
             opts = BASE["lst"](str(value).lower() for value in nullable)
             outer, inner, max_def = BASE["thresholds"](nullable)
@@ -225,7 +225,7 @@ def verify(scratch):
                 maximum = max(header[3][1] for _, header, _, _ in frames)
                 limits = f" {{ maxBodyBytes := {maximum} }}"
             code.append(f'  checkPayloads (← load folder "{label}") {group} {BASE["lst"](payloads)} '
-                        f'{hi - lo} {raw_total}{limits}')
+                        f'{hi - lo} {raw_total} .snappy 1{limits}')
             total += len(pages)
             raw_pages += sum(page[1] is not None and not page[1][-1] for page in pages)
             if label == "mixed" and group == GROUP[0]:

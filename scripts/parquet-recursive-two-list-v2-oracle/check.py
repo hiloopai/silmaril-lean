@@ -57,13 +57,16 @@ private structure ExpectedPage""" + CHUNK_CHECKS.replace(
 )
 
 
-def inspect(wire, nullable, width, groups, *, codec=0, expand=None):
+def inspect(wire, nullable, width, groups, *, codecs=None, expand=None):
     """Read the original Compact headers, counted levels, and exact signed suffix."""
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert parquet.schema_arrow.equals(schema_for(nullable, width))
     assert parquet.num_row_groups == len(groups)
+    codecs = [0] * len(groups) if codecs is None else codecs
+    assert len(codecs) == len(groups)
     outer, inner, maximum = thresholds(nullable)
     for (group, column), metadata, start, stop in V2["columns"](wire):
+        codec = codecs[group]
         assert column == 0 and metadata[4][1] == codec and metadata[9][1] == start
         assert [name.decode() for name in metadata[3][1][1]] == PATH
         assert parquet.read_row_group(group).column(0).to_pylist() == groups[group]
@@ -89,7 +92,7 @@ def inspect(wire, nullable, width, groups, *, codec=0, expand=None):
                 flag = info.get(7, (TType.BOOL, True))[1]
                 extent = header[2][1] - rl - dl
                 if codec != 0 and flag:
-                    suffix = expand(suffix, extent)
+                    suffix = expand(codec, suffix, extent)
                 assert len(suffix) == extent
                 assert not reps or reps[0] == 0
                 assert reps.count(0) == row_count and len(defs) - defs.count(maximum) == nulls
@@ -100,7 +103,7 @@ def inspect(wire, nullable, width, groups, *, codec=0, expand=None):
                 info = header[5][1]
                 count = info[1][1]
                 assert [info[i][1] for i in (2, 3, 4)] == [0, 3, 3]
-                decoded = expand(body, header[2][1]) if codec != 0 else body
+                decoded = expand(codec, body, header[2][1]) if codec != 0 else body
                 assert len(decoded) == header[2][1]
                 reps, rest = CHUNK["CHUNK"]["level_section"](decoded, 2, count)
                 defs, suffix = CHUNK["CHUNK"]["level_section"](rest, maximum, count)

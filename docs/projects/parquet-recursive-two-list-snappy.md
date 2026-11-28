@@ -1,11 +1,11 @@
 # Snappy data pages beneath two canonical LISTs
 
-TwoList binds the original column metadata to codec 0 or 1 for unindexed
+The Snappy extension adds codec 1 to the identity profile for unindexed
 PLAIN V1/V2 chunks with a single signed INT32 or INT64 leaf. The compiled
 LIST thresholds still distinguish null lists, empty lists and null leaf
 values. The column codec is part of every page witness in the same
 ordered chunk. The checked profile excludes dictionary pages and indexes.
-[Two-LIST schema and cursor](parquet-recursive-two-list.md) · [V2 counts and boundaries](parquet-recursive-two-list-v2.md)
+[Current codec matrix](parquet-recursive-two-list-codecs.md) · [Two-LIST schema and cursor](parquet-recursive-two-list.md) · [V2 counts and boundaries](parquet-recursive-two-list-v2.md)
 
 V1 verifies the original stored frame and optional page CRC, then passes
 the whole body to the shared bounded Snappy adapter. The checked

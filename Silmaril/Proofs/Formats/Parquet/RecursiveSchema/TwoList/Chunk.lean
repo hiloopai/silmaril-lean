@@ -92,14 +92,11 @@ public theorem codec_matches {schemaLimits : Snapshot.Limits} {snapshot : Snapsh
   change binding.codec.column.id = binding.column.metadata.codec
   have selected := binding.originalCodec
   unfold Codec.ofId at selected
-  split at selected
-  · rename_i id
+  split at selected <;> first
+  | contradiction
+  | rename_i id
     rw [← Option.some.inj selected, id]
     rfl
-  · rename_i id
-    rw [← Option.some.inj selected, id]
-    rfl
-  · contradiction
 
 public theorem chunk_bytes {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {limits : Limits}
