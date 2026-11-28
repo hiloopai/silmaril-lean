@@ -2,8 +2,8 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.Defs
 
-/-! Checked PLAIN UNCOMPRESSED V1/V2 groups with two original signed
-columns sharing the same two recursive LIST wrappers. -/
+/-! Checked PLAIN V1/V2 groups with two signed columns sharing two
+recursive LIST wrappers. Each column admits uncompressed or bounded Snappy payloads. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader
 
@@ -30,6 +30,10 @@ structure GroupBinding (snapshot : Snapshot.Checked) (group : Nat) where
   columns : original.columns.length = 2
   rows : 0 ≤ original.numRows
 
+/-- Admit only the dictionary-free codecs supported by this profile. -/
+def plainCodec (id : Int) : Option ListPath.Chunk.Codec :=
+  if id = 0 ∨ id = 1 then ListPath.Chunk.Codec.ofId id else none
+
 structure ColumnBinding {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (schema : Compiled limits snapshot) {group : Nat} (bound : GroupBinding snapshot group) (side : Side) where
   column : Footer.ColumnChunk
@@ -37,7 +41,8 @@ structure ColumnBinding {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   columnAt : bound.original.columns[side.column]? = some column
   path : column.metadata.pathInSchema = (schema.plan.child side).1.location.path
   physical : column.metadata.physicalType = (schema.plan.child side).2.physical
-  codec : column.metadata.codec = 0
+  codec : ListPath.Chunk.Codec
+  originalCodec : plainCodec column.metadata.codec = some codec
   plain : RecursiveSchema.SupportedEncodings column.metadata
   offsets : column.metadata.dictionaryPageOffset = none ∧ column.metadata.indexPageOffset = none
   unindexed : Repeated.Chunk.Unindexed column
@@ -50,7 +55,7 @@ def carrierOf {limits : Snapshot.Limits} {snapshot : Snapshot.Checked} {schema :
   ⟨schema.plan.path side, snapshot.bytes, binding.span, address schema.plan group side,
     binding.column.metadata.numValues.toNat, bound.original.numRows.toNat,
     binding.column.metadata.totalCompressedSize, binding.column.metadata.totalUncompressedSize,
-    .uncompressed, binding.column.metadata⟩
+    binding.codec, binding.column.metadata⟩
 
 end
 
@@ -78,14 +83,14 @@ public def bindColumn {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   let child := schema.plan.child side
   let ⟨⟨path, physical⟩⟩ ← guard
     (metadata.pathInSchema = child.1.location.path ∧ metadata.physicalType = child.2.physical) (fail .association)
-  let ⟨codec⟩ ← guard (metadata.codec = 0) (fail (.codec metadata.codec))
+  let ⟨codec, originalCodec⟩ ← lookup (plainCodec metadata.codec) (fail (.codec metadata.codec))
   let ⟨plain⟩ ← guard (RecursiveSchema.SupportedEncodings metadata) (fail (.encodings metadata.encodings))
   let ⟨offsets⟩ ← guard
     (metadata.dictionaryPageOffset = none ∧ metadata.indexPageOffset = none) (fail .pageOffsets)
   let ⟨unindexed⟩ ← guard (Repeated.Chunk.Unindexed column) (fail .pageIndex)
   let ⟨slots⟩ ← guard (0 ≤ metadata.numValues) (fail .counts)
   let ⟨span, originalSpan⟩ ← lookup (Page.columnSpan snapshot.footer.start metadata) (fail .span)
-  return ⟨column, span, columnAt, path, physical, codec, plain, offsets, unindexed, slots, originalSpan⟩
+  return ⟨column, span, columnAt, path, physical, codec, originalCodec, plain, offsets, unindexed, slots, originalSpan⟩
 
 @[expose] public section
 

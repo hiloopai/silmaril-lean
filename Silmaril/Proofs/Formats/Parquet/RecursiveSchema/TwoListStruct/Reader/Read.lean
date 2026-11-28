@@ -68,6 +68,62 @@ public theorem column_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
   have wire := (RecursiveSchema.ListPath.Chunk.readCarrier_wire read).1
   exact ⟨wire, prefix_plain wire.leading binding.offsets.1⟩
 
+public theorem codec_exact {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} (binding : ColumnBinding schema bound side) :
+    RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId binding.column.metadata.codec = some binding.codec.column := by
+  have original := binding.originalCodec
+  unfold plainCodec at original
+  split at original
+  · rename_i known
+    rcases known with zero | one
+    · rw [zero] at original ⊢
+      rw [← Option.some.inj original]
+      rfl
+    · rw [one] at original ⊢
+      rw [← Option.some.inj original]
+      rfl
+  · contradiction
+
+private theorem column_data_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
+    {out : RecursiveSchema.ListPath.Chunk.Observation} {page : RecursiveSchema.ListPath.Chunk.ObservedPage}
+    (wire : ColumnWire limits binding out) (member : page ∈ out.pages) :
+    let carrier := carrierOf binding
+    Page.readPage limits.framing carrier.source carrier.span page.frame.header.start = .ok page.frame ∧
+    RecursiveSchema.ListPath.Chunk.DataPageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
+      carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
+      carrier.codec none := by
+  have header := wire.original.originalHeader (frame := page.frame) (by
+    simp only [RecursiveSchema.ListPath.Chunk.Observation.frames, wire.dictionaryFree, Option.toList_none,
+      List.map_nil, List.nil_append]
+    exact List.mem_map_of_mem member)
+  exact ⟨header, wire.dictionaryFree ▸ wire.original.checked.page_of_mem member⟩
+
+public theorem column_v1_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
+    {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
+    {out : RecursiveSchema.ListPath.Chunk.Observation} {page : RecursiveSchema.ListPath.Chunk.ObservedPage}
+    {info : Page.DataV1} (wire : ColumnWire limits binding out) (member : page ∈ out.pages)
+    (version : page.frame.value.kind = .dataV1 info) :
+    let carrier := carrierOf binding
+    Page.readPage limits.framing carrier.source carrier.span page.frame.header.start = .ok page.frame ∧
+    RecursiveSchema.ListPath.Chunk.PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
+      carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
+      carrier.codec .plain := by
+  obtain ⟨header, pageWire⟩ := column_data_page wire member
+  refine ⟨header, ?_⟩
+  cases pageWire with
+  | v1 encoding v1 =>
+    cases encoding with
+    | plain => exact v1
+    | dictionary found => contradiction
+  | v2 _ v2 =>
+    obtain ⟨_, _, _, _, kind, _⟩ := v2.original
+    rw [version] at kind
+    contradiction
+
 public theorem column_v2_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
     {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
@@ -78,14 +134,9 @@ public theorem column_v2_page {schemaLimits : Snapshot.Limits} {snapshot : Snaps
     Page.readPage limits.framing carrier.source carrier.span page.frame.header.start = .ok page.frame ∧
     RecursiveSchema.ListPath.Chunk.V2PageWire limits carrier.plan (RecursiveSchema.ListPath.Chunk.wrappers carrier.plan)
       carrier.source page.frame page.start (carrier.slots - page.start.slots) carrier.rows page.decoded
-      .uncompressed .plain := by
-  have header := wire.original.originalHeader (frame := page.frame) (by
-    simp only [RecursiveSchema.ListPath.Chunk.Observation.frames, wire.dictionaryFree, Option.toList_none,
-      List.map_nil, List.nil_append]
-    exact List.mem_map_of_mem member)
+      carrier.codec .plain := by
+  obtain ⟨header, pageWire⟩ := column_data_page wire member
   refine ⟨header, ?_⟩
-  have pageWire := wire.original.checked.page_of_mem member
-  rw [wire.dictionaryFree] at pageWire
   cases pageWire with
   | v1 _ v1 =>
     obtain ⟨_, _, _, _, kind, _⟩ := v1.original

@@ -199,7 +199,7 @@
       "sha256": "02e493d52c0a1396b58e191aade58ef6fa618a0206886739c34b16094d802c0d"
     }
   },
-  "genuine_refusals": {
+  "genuine_probes": {
     "compressed": {
       "bytes": 1513,
       "sha256": "92081dc62cdd9aa82bf4581026a1f01464fb3490b5faa5f6911c4a308adf56af"

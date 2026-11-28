@@ -166,7 +166,7 @@ def trace(rows, nullable, side, names=NAMES, *, optional_element=False):
     return [slot for row in rows for slot in entries(row)]
 
 
-def inspect(wire, schema, groups, *, checksums=True, versions=(0,)):
+def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_snappy=None):
     expected_rows = [[{schema.field(0).name: row} for row in group] for group in groups]
     table = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert table.schema_arrow.equals(schema, check_metadata=True)
@@ -200,16 +200,21 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,)):
     output = {}
     for (group, side), footer, lo, hi in V2["columns"](wire):
         assert set(THRIFT["list_field"](footer, 2)) == {0, 3}
-        assert footer[4][1] == 0 and 11 not in footer and footer[9][1] == lo
-        assert footer[6][1] == footer[7][1] == hi - lo
+        codec = footer[4][1]
+        assert codec == 0 or (codec == 1 and decode_snappy is not None)
+        assert 11 not in footer and footer[9][1] == lo
+        assert footer[7][1] == hi - lo
         assert [piece.decode() for piece in THRIFT["list_field"](footer, 3)] == list(path + (names[side],))
         maximum = shared + nullable[2 + side]
         expected = trace(groups[group], nullable, side, names, optional_element=element.nullable)
         slots, rows, live = 0, 0, 0
+        raw_total = 0
         pages = []
         for at, header, body_at, body in FRAMES(wire, lo, hi):
             version = header[1][1]
-            assert version in versions and header[2][1] == header[3][1] == len(body)
+            raw_size, stored_size = header[2][1], header[3][1]
+            assert version in versions and stored_size == len(body)
+            raw_total += body_at - at + raw_size
             assert (4 in header) == checksums
             crc = header[4][1] & 0xffffffff if checksums else None
             if checksums:
@@ -222,6 +227,9 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,)):
                 reps = V2["HYBRID"](body[:rl], 2, count)
                 defs = V2["HYBRID"](body[rl:rl+dl], maximum.bit_length(), count)
                 suffix = body[rl+dl:]
+                if codec == 1 and info.get(7, (None, True))[1]:
+                    suffix = decode_snappy(suffix, raw_size - rl - dl)
+                assert rl + dl + len(suffix) == raw_size
                 assert (not reps or reps[0] == 0) and reps.count(0) == page_rows
                 assert count - defs.count(maximum) == nulls
                 sections = body_at, body_at + rl, body_at + rl + dl, body_at + len(body)
@@ -229,10 +237,12 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,)):
             else:
                 count, *encodings = [header[5][1][key][1] for key in range(1, 5)]
                 assert encodings == [0, 3, 3]
-                reps, rest = LEVEL(body, 2, count)
+                plain = decode_snappy(body, raw_size) if codec == 1 else body
+                assert len(plain) == raw_size
+                reps, rest = LEVEL(plain, 2, count)
                 defs, suffix = LEVEL(rest, maximum, count)
-                sections = (body_at, body_at + len(body) - len(rest),
-                            body_at + len(body) - len(suffix), body_at + len(body))
+                origin = 0 if codec == 1 else body_at
+                sections = origin, origin + len(plain) - len(rest), origin + len(plain) - len(suffix), origin + len(plain)
             assert len(reps) == len(defs) == count
             physical = "<i" if widths[side] == 32 else "<q"
             assert len(suffix) == defs.count(maximum) * (widths[side] // 8)
@@ -250,7 +260,7 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,)):
                 live = 0
             pages.append((at, body_at, crc, len(body), sections, before, (slots, rows, live), page_trace))
         assert slots == footer[5][1] == len(expected) and rows == len(groups[group])
-        assert pages[-1][1] + pages[-1][3] == hi
+        assert pages[-1][1] + pages[-1][3] == hi and raw_total == footer[6][1]
         output[group, side] = (lo, hi), pages
     assert len(output) == 2 * len(groups)
     for group, rows in enumerate(groups):
@@ -389,13 +399,15 @@ def verify(folder):
         tag = ".left" if side == 0 else ".right"
         code.append(f'  checkColumn (← load folder "v2") {group} {tag} {path_term(PATH + (NAMES[side],))} '
                     f'{ceiling} ⟨{lo}, {hi}⟩ {terms}')
-    span, _ = inspect(genuine["native_1111"], *positives["native_1111"][:2])[1][0, 0]
+    schema, groups, _ = positives["native_1111"]
+    batches = lst(expected_observation(schema, [{schema.field(0).name: row} for row in group]) for group in groups)
+    code.append(f'  checkRows (← load folder "snappy") {batches}')
+    span, _ = inspect(genuine["native_1111"], schema, groups)[1][0, 0]
     limit_span = triple(span)
     code.extend([
         '  refuse .structShape (openRequired {} (← load folder "optional_struct"))',
         '  let source ← take (openFile {} (← load folder "native_1111"))',
         '  refuse (.depth 6) (compile { maxSchemaDepth := 6 } source.snapshot)',
-        f'  groupRefusal (← load folder "snappy") 0 {{}} (.binding (.column {address(0, 0)} (.codec 1)))',
         f'  groupRefusal (← load folder "native_1111") 0 {{ maxSlots := 0 }} '
         f'(.chunk (.chunk {address(0, 0)} {limit_span} .slotLimit))',
         f'  groupRefusal (← load folder "native_1111") 0 {{ maxRows := 0 }} '
@@ -405,7 +417,7 @@ def verify(folder):
     driver.write_text("\n".join(code) + "\n", encoding="utf-8")
     subprocess.run(["lake", "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
                     "--run", str(driver), str(folder)], cwd=ROOT, check=True)
-    print(f"Checked {len(positives)} native inputs, {total} original V1 pages and {len(controls) + 5} typed refusals")
+    print(f"Checked {len(positives)} native inputs, {total} original V1 pages and {len(controls) + 4} typed refusals")
     return {"genuine_parquet": fingerprints(genuine), "authored_parquet": fingerprints(authored)}
 
 
