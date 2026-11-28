@@ -1,0 +1,11 @@
+("silmaril-acl2-recursive-v1"
+ "bc6f4f49e81a0711214a8d91f0d06e0e084d2204"
+ "66d80ea68f664b931f8982b607fe2305f3cec0e4"
+ "50247ed0609257bcf08c4c6d365ccf1695bd2cbd2dfedff0f7bc516f9ce828b1"
+ (|ACL2|::|TRUE-LISTP| 1 (|ACL2|::|X|) (|COMMON-LISP|::|IF| (|COMMON-LISP|::|CONSP| |ACL2|::|X|) (|ACL2|::|TRUE-LISTP| (|COMMON-LISP|::|CDR| |ACL2|::|X|)) (|COMMON-LISP|::|EQ| |ACL2|::|X| (|COMMON-LISP|::|QUOTE| |COMMON-LISP|::|NIL|))))
+ (|COMMON-LISP|::|EQ| 2 (|ACL2|::|X| |ACL2|::|Y|) (|COMMON-LISP|::|EQUAL| |ACL2|::|X| |ACL2|::|Y|))
+ (|ACL2|::|ACL2-COUNT| |ACL2|::|X|)
+ |ACL2|::|O-P|
+ |ACL2|::|O<|
+ ((|COMMON-LISP|::|IF| 3) (|COMMON-LISP|::|CONSP| 1) (|COMMON-LISP|::|CDR| 1) (|ACL2|::|TRUE-LISTP| 1) (|COMMON-LISP|::|EQ| 2) (|COMMON-LISP|::|EQUAL| 2) (|ACL2|::|ACL2-COUNT| 1))
+ )
