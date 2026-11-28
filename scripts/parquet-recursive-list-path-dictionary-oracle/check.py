@@ -33,12 +33,15 @@ LEAN = BASE["BASE"]["LEAN"] + """
 open RecursiveSchema.Repeated.Chunk (storedChunkBytes rawChunkBytes)
 
 private def checkDictionary (file : Bytes) (depth group : Nat) (frame : Page.Frame)
+    (codec : RecursiveSchema.Repeated.Chunk.DictionaryCodec)
     (entries : List RecursiveSchema.Chunk.Word) (stored raw : Nat) : IO Unit := do
   let source ← take (openFile { maxSchemaDepth := 2 * depth + 2 } file)
   let binding ← take (Chunk.bind source.schema group)
   let result ← take (Chunk.read {} binding)
   let some table := result.dictionary | throw (IO.userError "dictionary was not retained")
-  unless table.codec = .uncompressed ∧ table.frame = frame ∧ table.entries.toList = entries ∧
+  unless table.codec = codec ∧ table.frame = frame ∧ table.entries.toList = entries ∧
+      RecursiveSchema.Repeated.Chunk.DictionaryCodec.ofId binding.column.metadata.codec = some codec ∧
+      binding.codec.column = codec.column ∧
       binding.column.metadata.dictionaryPageOffset = some (Int.ofNat frame.header.start) ∧
       binding.column.metadata.dataPageOffset = Int.ofNat frame.payload.stop ∧
       result.pages.head?.map (·.frame.header.start) = some frame.payload.stop ∧
@@ -242,8 +245,50 @@ def fixtures():
 
     controls.append((key, f"{{ framing.maxPages := {len(original) - 1} }}",
                      f".chunk {address(3, 1)} ⟨{lo}, {hi}⟩ (.framing .pageLimit)", None))
-    native("compressed_dictionary", 3, 32, 2, codec=1)
+    positives["compressed_dictionary"] = native("compressed_dictionary", 3, 32, 2, codec=1), [1, 1]
     return genuine, authored, positives, controls
+
+
+def source_commands(label, wire, case, codecs, decode):
+    schema, nullable, width, groups = case
+    depth = len(nullable) - 1
+    terms = NATIVE["CORE"]["ROWS"]
+    dictionaries = {}
+    observations = capture(wire, *case, codecs=codecs, expand=decode, dictionaries=dictionaries)
+    tags = {0: "uncompressed", 1: "snappy", 2: "gzip", 6: "zstd", 7: "lz4Raw"}
+    checks, layouts = [], []
+    for group, ((lo, hi, stop, pages), rows) in enumerate(zip(observations, groups, strict=True)):
+        frames = list(FRAMES(wire, lo, hi))
+        codec = codecs[group]
+        if group in dictionaries:
+            at, payload, crc, size, entries = dictionaries[group]
+            dictionary_header = frames[0][1]
+            sorted_flag = dictionary_header[7][1].get(3)
+            sorted_term = "none" if sorted_flag is None else f"some {str(sorted_flag[1]).lower()}"
+            crc_term = "none" if crc is None else f"some {crc}"
+            raw_size = dictionary_header[2][1]
+            frame = (f"⟨⟨{raw_size}, {size}, {crc_term}, .dictionary ⟨{len(entries)}, 0, {sorted_term}⟩⟩, "
+                     f"⟨{at}, {payload}⟩, ⟨{payload}, {payload + size}⟩⟩")
+            words = lst(f".int{width} ({word})" for word in entries)
+            raw = sum(body_at - at + header[2][1] for at, header, body_at, _ in frames)
+            checks.append(f'  checkDictionary (← load folder "{label}") {depth} {group} {frame} .{tags[codec]} '
+                          f'{words} {hi - lo} {raw}')
+            frames = frames[1:]
+        expected = lst(page_term(page, width, header, codec)
+                       for page, (_, header, _, _) in zip(pages, frames, strict=True))
+        layouts.append(f"⟨{terms['batch_term'](rows, width)}, ⟨{lo}, {hi}⟩, {triple(stop)}, {expected}⟩")
+
+    field = terms["field_term"](schema.field(0))
+    commands = [
+        f"private def verify_{label} (folder : System.FilePath) : IO Unit := do",
+        f'  checkNative (← load folder "{label}") {depth} ⟨[{field}]⟩ {lst(layouts)}',
+        *checks,
+        f'  checkIpc folder "{label}" (← load folder "{label}") {depth} '
+        f'{EVENTS["declarations"](schema)} {EVENTS["batch_terms"](groups, width)}',
+    ]
+    if depth == 2:
+        commands.append(f'  compareTwoList (← load folder "{label}")')
+    return observations, dictionaries, commands
 
 
 def verify(folder):
@@ -252,54 +297,25 @@ def verify(folder):
     for label, wire in files.items():
         (folder / f"{label}.parquet").write_bytes(wire)
     code, entry = [LEAN], [*V1["ENTRY"]]
-    terms = NATIVE["CORE"]["ROWS"]
     pages_count = dictionaries_count = fallback_pages = 0
     for label, (case, codecs) in positives.items():
-        schema, nullable, width, groups = case
         wire = files[label]
-        depth = len(nullable) - 1
-        dictionaries = {}
-        observations = capture(wire, *case, codecs=codecs, expand=expand, dictionaries=dictionaries)
-        checks, layouts = [], []
-        for group, ((lo, hi, stop, pages), rows) in enumerate(zip(observations, groups, strict=True)):
-            frames = list(FRAMES(wire, lo, hi))
+        observations, dictionaries, commands = source_commands(label, wire, case, codecs, expand)
+        expected_dictionaries = [1] if label == "mixed_codec_groups" else list(range(len(observations)))
+        assert list(dictionaries) == expected_dictionaries
+        if label == "empty_dictionary":
+            assert dictionaries[0][-1] == []
+        dictionaries_count += len(dictionaries)
+        for group, (lo, hi, _, pages) in enumerate(observations):
+            pages_count += len(pages)
             if group in dictionaries:
-                at, payload, crc, size, entries = dictionaries[group]
-                if label == "empty_dictionary":
-                    assert entries == []
-                dictionary_header = frames[0][1]
-                sorted_flag = dictionary_header[7][1].get(3)
-                sorted_term = "none" if sorted_flag is None else f"some {str(sorted_flag[1]).lower()}"
-                crc_term = "none" if crc is None else f"some {crc}"
-                frame = (f"⟨⟨{size}, {size}, {crc_term}, .dictionary ⟨{len(entries)}, 0, {sorted_term}⟩⟩, "
-                         f"⟨{at}, {payload}⟩, ⟨{payload}, {payload + size}⟩⟩")
-                words = lst(f".int{width} ({word})" for word in entries)
-                checks.append(f'  checkDictionary (← load folder "{label}") {depth} {group} {frame} {words} '
-                              f'{hi - lo} {hi - lo}')
-                dictionaries_count += 1
-                frames = frames[1:]
+                frames = list(FRAMES(wire, lo, hi))[1:]
                 encodings = [header[8][1][4][1] if header[1][1] == 3 else header[5][1][2][1]
                              for _, header, _, _ in frames]
                 fallback_pages += encodings.count(0)
                 if label.startswith("fallback") and group == 1:
                     assert 0 in encodings and 8 in encodings and encodings[-1] == 0
-            elif label != "mixed_codec_groups":
-                raise AssertionError("expected dictionary")
-            expected = lst(page_term(page, width, header, codecs[group])
-                           for page, (_, header, _, _) in zip(pages, frames, strict=True))
-            layouts.append(f"⟨{terms['batch_term'](rows, width)}, ⟨{lo}, {hi}⟩, {triple(stop)}, {expected}⟩")
-            pages_count += len(pages)
-
-        field = terms["field_term"](schema.field(0))
-        code.extend([
-            f"private def verify_{label} (folder : System.FilePath) : IO Unit := do",
-            f'  checkNative (← load folder "{label}") {depth} ⟨[{field}]⟩ {lst(layouts)}',
-            *checks,
-            f'  checkIpc folder "{label}" (← load folder "{label}") {depth} '
-            f'{EVENTS["declarations"](schema)} {EVENTS["batch_terms"](groups, width)}',
-        ])
-        if depth == 2:
-            code.append(f'  compareTwoList (← load folder "{label}")')
+        code.extend(commands)
         entry.append(f"  verify_{label} folder")
 
     for label, caps, wanted, late in controls:
@@ -308,7 +324,6 @@ def verify(folder):
             (schema, _, width, groups), _ = positives[late]
             entry.append(f'  sourceFailure (← load folder "{label}") {EVENTS["declarations"](schema)} '
                          f'{EVENTS["batch_terms"](groups[:1], width)} (.group 1 (.chunk ({wanted})))')
-    entry.append(f'  refuseBinding (← load folder "compressed_dictionary") (.column {address(3, 0)} (.codec 1))')
     V2["run_lean"](folder, "ListPathDictionary.lean", code + entry)
 
     emitted = {}
@@ -322,7 +337,7 @@ def verify(folder):
         for label in ("native_32_depth_3_v2", "mixed_versions_fallback", "mixed_codec_groups"):
             assert emitted[f"{label}_{selection}"] == original
     print(f"Checked {len(positives)} native inputs, {dictionaries_count} original dictionaries, {pages_count} data pages "
-          f"({fallback_pages} PLAIN fallback), {len(emitted)} streams through exact EOS and {len(controls) + 1} typed controls")
+          f"({fallback_pages} PLAIN fallback), {len(emitted)} streams through exact EOS and {len(controls)} typed controls")
     return {kind: fingerprints(values) for kind, values in {
         "genuine_parquet": genuine, "authored_parquet": authored, "lean_ipc": emitted,
     }.items()}

@@ -5,10 +5,9 @@ LIST chain. An unindexed dictionary column uses codec zero and one
 leading PLAIN dictionary. Each subsequent V1 or V2 data page uses the
 local dictionary through RLE_DICTIONARY or carries PLAIN signed words.
 The existing PLAIN codec profiles remain available per row group,
-including in a file with dictionary groups. Compressed dictionary
-columns, legacy dictionary tags, indexes, pageless groups, and
-multi-leaf shapes remain outside this profile.
-[PLAIN codec profiles](parquet-recursive-list-path-codecs.md)
+including in a file with dictionary groups. Legacy dictionary tags,
+indexes, pageless groups and multi-leaf shapes remain outside this profile.
+[PLAIN codec profiles](parquet-recursive-list-path-codecs.md) · [Compressed dictionaries](parquet-recursive-list-path-dictionary-codecs.md)
 
 The leading frame starts at the original dictionary offset, consumes
 one physical page from the frame budget, and advances to the original
@@ -41,8 +40,9 @@ budget admission. [Events](parquet-recursive-list-path-events.md) · [Arrow V5 I
 Pinned PyArrow produces V1 and V2 sources at depths two, three and six
 for both widths. The cases cover independent nullability, an empty
 dictionary and genuine PLAIN fallback in both page versions and widths.
-The oracle checks 36 dictionaries, 156 data pages and 38 Lean IPC
-streams from 19 accepted files. It independently inspects original Compact frames, CRCs,
+The oracle checks 38 dictionaries, 164 data pages and 40 Lean IPC
+streams from 20 accepted files, including a Snappy admission case.
+It independently inspects original Compact frames, CRCs,
 signed dictionary entries, counted Hybrid levels and indices, data
 anchors and both totals. It compares depth-two rows and slots with
 TwoList and reads Lean IPC under full and empty selections through exact
@@ -51,11 +51,11 @@ continuations and a row-aligned V2 transition. A labeled mixed-codec
 file copies an original Snappy PLAIN group and an original UNCOMPRESSED
 dictionary group.
 
-Twenty-four typed controls cover dictionary placement, original offsets, dictionary
-CRC and entry count, the physical page cap, exact index consumption,
-both mixed-version boundary directions, separate footer totals and
-compressed dictionary admission. Late dictionary and data errors are
-checked under both projections, including exhausted IPC budgets.
+Twenty-three typed controls cover dictionary placement, original
+offsets, dictionary CRC and entry count, the physical page cap, exact
+index consumption, both mixed-version boundary directions and separate
+footer totals. Late dictionary and data errors are checked under both
+projections, including exhausted IPC budgets.
 [Fixture and producer pins](../../scripts/parquet-recursive-list-path-dictionary-oracle/fixtures.json)
 
 ~~~sh

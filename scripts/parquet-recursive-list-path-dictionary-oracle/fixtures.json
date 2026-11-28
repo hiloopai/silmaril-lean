@@ -164,6 +164,14 @@
     }
   },
   "lean_ipc": {
+    "compressed_dictionary_empty": {
+      "bytes": 312,
+      "sha256": "e4832c9a920e6ad1e773cfcc2cd60612805d3aabb5b8921b644c9f02a49a02d3"
+    },
+    "compressed_dictionary_field": {
+      "bytes": 1288,
+      "sha256": "39b4a0a89481a0562744ee21ab30a90b44574ebdfe77e9c6ad82cefe81fc05f8"
+    },
     "empty_dictionary_empty": {
       "bytes": 200,
       "sha256": "d1937e9374327b3a605798b0ad844a5235b7dafc080de7e443b961f61b0afa2e"

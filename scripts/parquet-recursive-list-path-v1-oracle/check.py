@@ -110,10 +110,12 @@ def capture(wire, schema, nullable, width, groups, *, codecs=None, expand=None, 
             stored += body_at - header_at + header[3][1]
             raw += body_at - header_at + header[2][1]
             if header[1][1] == 2:
-                assert dictionaries is not None and codec == 0 and entries is None and not pages
+                assert dictionaries is not None and entries is None and not pages
                 assert footer[11][1] == header_at == lo and footer[9][1] == body_at + len(body)
-                assert list_field(footer, 2) == [0, 3, 8] and len(body) == header[2][1]
-                entries = [word for word, in struct.iter_unpack(word_format, body)]
+                assert list_field(footer, 2) == [0, 3, 8]
+                decoded = expand(codec, body, header[2][1]) if codec else body
+                assert len(decoded) == header[2][1]
+                entries = [word for word, in struct.iter_unpack(word_format, decoded)]
                 assert header[7][1][1][1] == len(entries) and header[7][1][2][1] == 0
                 dictionaries[group] = (header_at, body_at, crc, len(body), entries)
                 continue
