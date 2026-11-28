@@ -7,6 +7,12 @@ namespace Silmaril.Formats.Arrow.RecursiveSchema.Stream.Events.ToIpc
 
 public section
 
+theorem schemaOf_exact {source : Signature} {schema : Schema}
+    (declared : declarations source = schema.fields.map (fun field => (fieldName field, field))) :
+    schemaOf source = schema := by
+  cases schema
+  simp [schemaOf, declared, List.map_map, Function.comp_def]
+
 theorem emit_read_error {Failure : Type} {limits : Batch.Limits} {source : Signature}
     {trace : Arrow.Events.Trace source Value Failure} {cause : Failure}
     (failed : trace.termination = .readError cause) :

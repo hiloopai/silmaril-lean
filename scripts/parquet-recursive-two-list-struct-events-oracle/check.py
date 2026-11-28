@@ -126,7 +126,7 @@ def pyarrow_groups(wire, expected_schema, expected_groups):
     return batches
 
 
-def verify(folder):
+def fixtures():
     genuine, authored, positives, controls = NATIVE["fixtures"]()
     pins = json.loads((PREVIOUS_DIR / "fixtures.json").read_text(encoding="utf-8"))
     assert pins["producer"] == {"cpython": platform.python_version(), "pyarrow": pa.__version__,
@@ -151,26 +151,40 @@ def verify(folder):
     positives |= {"physical_empty": (schema, [groups[0], [], groups[1]], empty_group),
                   "schema_only": (schema, [], schema_only), "renamed": renamed_case}
     files = genuine | authored | additional
+    failures = [(label, group, wanted) for label, group, wanted, _ in controls]
+    failures.append(("late_crc", 1, crc_error))
+    new_pins = json.loads((HERE / "fixtures.json").read_text(encoding="utf-8"))
+    assert fingerprints(additional) == new_pins
+    return files, positives, failures
+
+
+def inspect_positive(label, schema, values, original):
+    batches = pyarrow_groups(original, schema, values)
+    if label != "renamed":
+        _, chunks = inspect(original, schema, values)
+        return batches, sum(len(frames) for _, frames in chunks.values())
+
+    pages = 0
+    for (group, side), footer, lo, hi in NATIVE["V2"]["columns"](original):
+        path = [part.decode() for part in NATIVE["THRIFT"]["list_field"](footer, 3)]
+        assert group == 0 and path == ["samples", "list", "segment", "list", "point", ("west", "east")[side]]
+        pages += len(list(NATIVE["FRAMES"](original, lo, hi)))
+    return batches, pages
+
+
+def verify(folder):
+    files, positives, failures = fixtures()
     for label, original in files.items():
         (folder / f"{label}.parquet").write_bytes(original)
 
     code = [LEAN]
     pages = 0
     for label, (decl, values, original) in positives.items():
-        batches = pyarrow_groups(original, decl, values)
-        if label == "renamed":
-            columns = NATIVE["V2"]["columns"](original)
-            for (group, side), footer, lo, hi in columns:
-                path = [part.decode() for part in NATIVE["THRIFT"]["list_field"](footer, 3)]
-                assert group == 0 and path == ["samples", "list", "segment", "list", "point", ("west", "east")[side]]
-                pages += len(list(NATIVE["FRAMES"](original, lo, hi)))
-        else:
-            _, chunks = inspect(original, decl, values)
-            pages += sum(len(frames) for _, frames in chunks.values())
+        batches, inspected = inspect_positive(label, decl, values, original)
+        pages += inspected
         code.append(f'  checkFile (← load folder "{label}") {fields_term(decl)} {batches_term(decl, batches)}')
 
-    failures = [(label, group, wanted) for label, group, wanted, _ in controls]
-    failures.append(("late_crc", 1, crc_error))
+    schema, groups, wire = positives["native_1111"]
     batches = pyarrow_groups(wire, schema, groups)
     for label, group, wanted in failures:
         code.append(f'  checkFile (← load folder "{label}") {fields_term(schema)} '
@@ -184,15 +198,12 @@ def verify(folder):
                     "--run", str(driver), str(folder)], cwd=ROOT, check=True)
     print(f"Checked {len(positives)} accepted inputs, {pages} original V1 pages "
           f"and {len(failures) + 2} typed refusals through direct, full and empty Events")
-    return fingerprints(additional)
 
 
 def main():
     assert platform.python_implementation() == "CPython"
-    pins = json.loads((HERE / "fixtures.json").read_text(encoding="utf-8"))
     with tempfile.TemporaryDirectory() as directory:
-        actual = verify(Path(directory))
-    assert actual == pins, "new fixture pins changed"
+        verify(Path(directory))
 
 
 if __name__ == "__main__":

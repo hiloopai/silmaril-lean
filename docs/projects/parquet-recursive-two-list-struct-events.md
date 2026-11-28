@@ -22,8 +22,8 @@ chunks and keep each explicit row count. The selected wire theorem
 relates both declarations and the ordered observations to the original
 reader, with a `Reader.GroupWire` witness for every completed group.
 Accepted reframings with equal declarations and ordered observations
-are equivalent under either selection. Optional Struct elements,
-additional source codecs and binary IPC are follow-ups.
+are equivalent under either selection.
+[Strict Arrow IPC output](parquet-recursive-two-list-struct-to-ipc.md)
 
 ## Verification
 

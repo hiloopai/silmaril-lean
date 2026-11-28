@@ -13,7 +13,6 @@ open Parquet.RecursiveSchema.ListPath
 open Parquet.RecursiveSchema.ListPath.Reader.ToIpc
 open Parquet.RecursiveSchema.ListPath.Reader
 open Parquet.Reader.Recursive (Selection)
-open Arrow.RecursiveSchema (Schema)
 open Arrow.RecursiveSchema.Stream.Events (Signature declarations eraseBatch fieldName projectTrace)
 
 private theorem source_ok {schemaLimits : Snapshot.Limits} {limits : Chunk.Limits}
@@ -29,12 +28,6 @@ private theorem source_ok {schemaLimits : Snapshot.Limits} {limits : Chunk.Limit
   | ok original =>
     obtain ⟨source, trace⟩ := original
     exact ⟨source, trace, rfl⟩
-
-private theorem schema_exact {source : Signature} {schema : Schema}
-    (declared : declarations source = schema.fields.map (fun field => (fieldName field, field))) :
-    Arrow.RecursiveSchema.Stream.Events.ToIpc.schemaOf source = schema := by
-  cases schema
-  simp [Arrow.RecursiveSchema.Stream.Events.ToIpc.schemaOf, declared, List.map_map, Function.comp_def]
 
 private theorem writer_readback {schemaLimits : Snapshot.Limits} {limits : Chunk.Limits}
     {ipc : Arrow.RecursiveSchema.Batch.Limits} {input : Bytes} {selection : Selection} {wire : KBytes}
@@ -59,7 +52,7 @@ public theorem convert_readback {schemaLimits : Snapshot.Limits} {limits : Chunk
   obtain ⟨ended, certificate⟩ := writer_readback direct written
   have groups : Parquet.RecursiveSchema.ListPath.Reader.readAll limits opened.schema =
       .ok (trace.batches.map eraseBatch) := sourceWire.logical.completed.complete.mp ended
-  have schema := schema_exact (selection.declarations_exact sourceWire.logical.fieldsExact)
+  have schema := Arrow.RecursiveSchema.Stream.Events.ToIpc.schemaOf_exact (selection.declarations_exact sourceWire.logical.fieldsExact)
   rw [schema, selection.batches_exact trace] at certificate
   exact ⟨opened, trace.batches.map eraseBatch, original, groups,
     Parquet.RecursiveSchema.ListPath.Reader.readAll_wire groups, certificate⟩
@@ -78,7 +71,7 @@ public theorem agrees_events {schemaLimits : Snapshot.Limits} {limits : Chunk.Li
   have view := (Events.readProjected_preserves direct selection).1
   cases Except.ok.inj (projected.symm.trans view)
   have declared := selection.declarations_exact sourceWire.logical.fieldsExact
-  have schema := schema_exact declared
+  have schema := Arrow.RecursiveSchema.Stream.Events.ToIpc.schemaOf_exact declared
   have names : declarations (selection.columns source).schema =
       (Arrow.RecursiveSchema.Stream.Events.ToIpc.schemaOf (selection.columns source).schema).fields.map
         (fun field => (fieldName field, field)) := by
