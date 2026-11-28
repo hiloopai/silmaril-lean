@@ -3,8 +3,8 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.Defs
 public import Silmaril.Formats.Parquet.ListFile.Defs
 
-/-! Canonical Parquet LIST declarations with at most one repeated site
-on each physical leaf path. This layer checks the footer only. -/
+/-! Checked canonical Parquet LIST and Struct declarations.
+The legacy entry point admits at most one repeated site per leaf. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Repeated
 
@@ -110,6 +110,7 @@ structure Context where
   steps : List Step := []
   repeated : Option Boundary := none
   elementRoot : Bool := false
+  allowNested : Bool := false
 
 def Context.site (ctx : Context) (ordinal : Nat) (name : String) (nullable : Bool) : Site :=
   (RecursiveSchema.Context.mk ctx.path []).site ordinal name nullable
@@ -120,7 +121,7 @@ def Context.role (ctx : Context) : Absence :=
 def Context.enter (ctx : Context) (site : Site) : Context :=
   ⟨site.location.path,
     if site.nullable then ctx.steps ++ [.optional site.location ctx.role] else ctx.steps,
-    ctx.repeated, false⟩
+    ctx.repeated, false, ctx.allowNested⟩
 
 def wrapperAt (site : Site) (ordinal : Nat) (entry : Entry) : Location :=
   ⟨ordinal + 1, site.location.path ++ [entry.1.name]⟩
@@ -128,7 +129,14 @@ def wrapperAt (site : Site) (ordinal : Nat) (entry : Entry) : Location :=
 def Context.enterList (ctx : Context) (site : Site) (wrapper : Location) : Context :=
   let steps := if site.nullable then ctx.steps ++ [.optional site.location .list] else ctx.steps
   ⟨wrapper.path, steps ++ [.emptyList site.location wrapper],
-    some ⟨site.location, wrapper, steps.length⟩, true⟩
+    some ⟨site.location, wrapper, steps.length⟩, true, ctx.allowNested⟩
+
+def Context.admitsList (ctx : Context) : Prop :=
+  ctx.allowNested = true ∨ ctx.repeated = none
+
+instance (ctx : Context) : Decidable ctx.admitsList := by
+  unfold Context.admitsList
+  infer_instance
 
 def Wrapper (entry : Entry) : Prop :=
   entry.1.name = "list" ∧ entry.1.repetition = some .repeated ∧
@@ -179,7 +187,7 @@ inductive FieldWire (reader : ThriftCompact.Traversal.Reader) (original : Array 
         (.group (ctx.site ordinal entry.1.name nullable) children) next
   | list {depth ctx ordinal entry nullable wrapper element next} :
       original[ordinal]? = some entry → RepetitionWire entry nullable → ListOuter entry →
-      ListFile.checkList reader entry.2 = .ok () → ctx.repeated = none →
+      ListFile.checkList reader entry.2 = .ok () → ctx.admitsList →
       original[ordinal + 1]? = some wrapper → Wrapper wrapper →
       FieldWire reader original depth
         (ctx.enterList (ctx.site ordinal entry.1.name nullable)
@@ -200,13 +208,13 @@ inductive FieldsWire (reader : ThriftCompact.Traversal.Reader) (original : Array
 end
 
 structure RootWire (reader : ThriftCompact.Traversal.Reader) (original : Array Entry)
-    (depth : Nat) (root : Entry) (fields : List Field) : Prop where
+    (depth : Nat) (root : Entry) (fields : List Field) (allowNested : Bool := false) : Prop where
   originalRoot : original[0]? = some root
   unannotated : Unannotated root
   group : root.1.physicalType = none ∧ root.1.typeLength = none
   repetition : root.1.repetition = none ∨ root.1.repetition = some .required
   children : ∃ count, root.1.numChildren = some count ∧ 0 < count ∧
-    FieldsWire reader original depth {} count.toNat 1 fields original.size
+    FieldsWire reader original depth { allowNested := allowNested } count.toNat 1 fields original.size
 
 def NamedAt (original : Array Entry) (location : Location) (entry : Entry) : Prop :=
   original[location.ordinal]? = some entry ∧
@@ -233,7 +241,7 @@ structure StepsWire (reader : ThriftCompact.Traversal.Reader) (original : Array 
   wrappers : steps.filterMap Step.wrapper? = repeated.toList.map (fun b => (b.outer, b.wrapper))
   boundary : ∀ b, repeated = some b → steps[b.emptyLevel]? = some (.emptyList b.outer b.wrapper)
 
-structure Compiled (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) where
+structure Compiled (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) (allowNested : Bool := false) where
   container : ThriftCompact.Traversal.Field
   items : List Footer.ColumnOrder.Item
   root : Entry
@@ -242,7 +250,7 @@ structure Compiled (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) wher
   originalItems : Footer.NestedLeaf.readItems limits.footer snapshot = .ok (container, items)
   aligned : snapshot.metadata.schema.length = items.length
   grammar : RootWire (Footer.ColumnOrder.footerReader limits.footer snapshot) (entries snapshot items)
-    (limits.maxSchemaDepth - 1) root fields
+    (limits.maxSchemaDepth - 1) root fields allowNested
   ordered : leaves = (fields.flatMap Field.leaves).toArray
 
 structure Source (limits : Snapshot.Limits) (bytes : Bytes) where
@@ -250,8 +258,8 @@ structure Source (limits : Snapshot.Limits) (bytes : Bytes) where
   schema : Compiled limits snapshot
   original : Snapshot.checkRecursive limits bytes = .ok snapshot
 
-def Compiled.arrow {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
-    (schema : Compiled limits snapshot) : Arrow.RecursiveSchema.Schema :=
+def Compiled.arrow {limits : Snapshot.Limits} {snapshot : Snapshot.Checked} {allowNested : Bool}
+    (schema : Compiled limits snapshot allowNested) : Arrow.RecursiveSchema.Schema :=
   ⟨schema.fields.map Field.arrow⟩
 
 end
@@ -333,9 +341,7 @@ private def readField (reader : ThriftCompact.Traversal.Reader) (original : Arra
       | .error cause => throw (.annotation location cause)
       | .ok () =>
         if shape : ListOuter entry then
-          match repeated : ctx.repeated with
-          | some prior => throw (.nestedRepeated location prior.wrapper)
-          | none =>
+          if admitted : ctx.admitsList then
             let ⟨wrapper, wrapperFound⟩ ←
               entryAt original (ordinal + 1) (.original (.missing ⟨ordinal + 1, site.location.path⟩))
             let wrapperLocation := wrapperAt site ordinal wrapper
@@ -346,12 +352,17 @@ private def readField (reader : ThriftCompact.Traversal.Reader) (original : Arra
                 let child ← readField reader original remaining (ctx.enterList site wrapperLocation) (ordinal + 2)
                 return ⟨.list site wrapperLocation child.field, child.next, by
                   rw [depthEq]
-                  exact .list found repetition shape annotation repeated wrapperFound wrapperShape child.wire⟩
+                  exact .list found repetition shape annotation admitted wrapperFound wrapperShape child.wire⟩
               else throw (.wrapper wrapperLocation)
+          else
+            match repeated : ctx.repeated with
+            | some prior => throw (.nestedRepeated location prior.wrapper)
+            | none => (admitted (.inr repeated)).elim
         else throw (.listShape location)
 
-private def readRoot (reader : ThriftCompact.Traversal.Reader) (original : Array Entry) (depth : Nat) :
-    Except Error {value : Entry × List Field // RootWire reader original depth value.1 value.2} := do
+private def readRoot (reader : ThriftCompact.Traversal.Reader) (original : Array Entry)
+    (depth : Nat) (allowNested : Bool) :
+    Except Error {value : Entry × List Field // RootWire reader original depth value.1 value.2 allowNested} := do
   let ⟨root, found⟩ ← entryAt original 0 (.original .root)
   if unannotated : Unannotated root then
     if group : root.1.physicalType = none ∧ root.1.typeLength = none then
@@ -360,7 +371,7 @@ private def readRoot (reader : ThriftCompact.Traversal.Reader) (original : Array
         | none => throw (.original .root)
         | some children =>
           if positive : 0 < children then
-            let parsed ← readFields (readField reader original depth {}) children.toNat 1
+            let parsed ← readFields (readField reader original depth { allowNested := allowNested }) children.toNat 1
             if exactEnd : parsed.next = original.size then
               return ⟨(root, parsed.fields), ⟨found, unannotated, group, repetition,
                 children, count, positive, exactEnd ▸ parsed.wire⟩⟩
@@ -370,17 +381,22 @@ private def readRoot (reader : ThriftCompact.Traversal.Reader) (original : Array
     else throw (.original .root)
   else throw (.original (.annotation ⟨0, []⟩))
 
-public def compile (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) :
-    Except Error (Compiled limits snapshot) := do
+/-- The same checked footer traversal serves the single-wrapper reader and the nested tree compiler. -/
+public def compileWith (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) (allowNested : Bool) :
+    Except Error (Compiled limits snapshot allowNested) := do
   match original : Footer.NestedLeaf.readItems limits.footer snapshot with
   | .error cause => throw (.original (.footerItems cause))
   | .ok (container, items) =>
     if aligned : snapshot.metadata.schema.length = items.length then
       let reader := Footer.ColumnOrder.footerReader limits.footer snapshot
-      let ⟨(root, fields), grammar⟩ ← readRoot reader (entries snapshot items) (limits.maxSchemaDepth - 1)
+      let ⟨(root, fields), grammar⟩ ← readRoot reader (entries snapshot items) (limits.maxSchemaDepth - 1) allowNested
       return ⟨container, items, root, fields, (fields.flatMap Field.leaves).toArray,
         original, aligned, grammar, rfl⟩
     else throw (.original (.schemaExtent snapshot.metadata.schema.length items.length))
+
+public def compile (limits : Snapshot.Limits) (snapshot : Snapshot.Checked) :
+    Except Error (Compiled limits snapshot) :=
+  compileWith limits snapshot false
 
 public def openFile (limits : Snapshot.Limits) (bytes : Bytes) : Except Error (Source limits bytes) := do
   match original : Snapshot.checkRecursive limits bytes with

@@ -104,30 +104,31 @@ private def LeafWire (reader : Silmaril.Formats.ThriftCompact.Traversal.Reader)
 private theorem fields_leaf_wire {reader : Silmaril.Formats.ThriftCompact.Traversal.Reader}
     {original : Array Entry} {depth ctx count ordinal fields next}
     (wire : FieldsWire reader original depth ctx count ordinal fields next) :
-    StepsWire reader original ctx.path ctx.steps ctx.repeated →
+    ctx.allowNested = false → StepsWire reader original ctx.path ctx.steps ctx.repeated →
       ∀ plan ∈ fields.flatMap Field.leaves, LeafWire reader original plan := by
   apply FieldsWire.rec
-    (motive_1 := fun _ ctx _ field _ _ => StepsWire reader original ctx.path ctx.steps ctx.repeated →
+    (motive_1 := fun _ ctx _ field _ _ => ctx.allowNested = false → StepsWire reader original ctx.path ctx.steps ctx.repeated →
       ∀ plan ∈ field.leaves, LeafWire reader original plan)
-    (motive_2 := fun _ ctx _ _ fields _ _ => StepsWire reader original ctx.path ctx.steps ctx.repeated →
+    (motive_2 := fun _ ctx _ _ fields _ _ => ctx.allowNested = false → StepsWire reader original ctx.path ctx.steps ctx.repeated →
       ∀ plan ∈ fields.flatMap Field.leaves, LeafWire reader original plan)
     (t := wire)
-  · intro _ ctx _ entry _ _ item unannotated repetition _ physical _ prior plan member
+  · intro _ ctx _ entry _ _ item unannotated repetition _ physical _ _ prior plan member
     simp only [Field.leaves, List.mem_singleton] at member
     subst plan
     exact ⟨⟨entry, ⟨item, ctx.path, rfl⟩, rfl, repetition, unannotated, physical⟩,
       enter_wire item repetition prior⟩
-  · intro _ _ _ _ _ _ _ _ item _ repetition _ _ _ _ _ ih prior plan member
-    exact ih (enter_wire item repetition prior) plan (by simpa only [Field.leaves] using member)
-  · intro _ _ _ _ _ _ _ _ outer repetition shape listTag unused wrapper repeated _ ih prior plan member
-    exact ih (enter_list_wire outer repetition shape listTag unused wrapper repeated prior) plan
+  · intro _ _ _ _ _ _ _ _ item _ repetition _ _ _ _ _ ih legacy prior plan member
+    exact ih legacy (enter_wire item repetition prior) plan (by simpa only [Field.leaves] using member)
+  · intro _ _ _ _ _ _ _ _ outer repetition shape listTag admission wrapper repeated _ ih legacy prior plan member
+    have unused := admission.resolve_left (by simp [legacy])
+    exact ih legacy (enter_list_wire outer repetition shape listTag unused wrapper repeated prior) plan
       (by simpa only [Field.leaves] using member)
-  · intro _ _ _ _ _ member
+  · intro _ _ _ _ _ _ member
     simp at member
-  · intro _ _ _ _ _ _ _ _ _ _ first rest prior plan member
+  · intro _ _ _ _ _ _ _ _ _ _ first rest legacy prior plan member
     rcases List.mem_append.mp member with here | later
-    · exact first prior plan here
-    · exact rest prior plan later
+    · exact first legacy prior plan here
+    · exact rest legacy prior plan later
 
 private theorem leaf_wire {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (schema : Compiled limits snapshot) {column : Nat} {plan : Leaf}
@@ -137,7 +138,7 @@ private theorem leaf_wire {limits : Snapshot.Limits} {snapshot : Snapshot.Checke
     rw [schema.ordered] at selected
     exact List.mem_of_getElem? (by simpa using selected)
   obtain ⟨_, _, _, grammar⟩ := schema.grammar.children
-  exact fields_leaf_wire grammar ⟨by simp, rfl, by simp⟩ plan member
+  exact fields_leaf_wire grammar rfl ⟨by simp, rfl, by simp⟩ plan member
 
 public theorem leaf_original {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (schema : Compiled limits snapshot) {column : Nat} {plan : Leaf}
