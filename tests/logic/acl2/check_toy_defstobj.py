@@ -10,6 +10,7 @@ import sys
 from textwrap import indent
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "tools/acl2-x86isa"))
 from check_status_accessors import object_term
 from check_x86_run import EQUAL, IF, NIL, QUOTE, formals, is_symbol, symbol
@@ -21,7 +22,7 @@ TOY_SOURCE = Path(__file__).with_name("toy-defstobj.lsp")
 PIN = "fcc10ed9d708f4c755f8e2d974e00c505cf8bbbb2e52ad82dc89414b68f82015"
 TOY = ["symbol", "ACL2", "SIL-TOY"]
 # Generated Lean name, arity, call interpretation, recursive body.
-DEFINITIONS = {
+SUPPORT_DEFINITIONS = {
     ("ACL2", "LEN"): ("lenBody", 1, "Object.len", True),
     ("COMMON-LISP", "LENGTH"): ("length", 1, "length", False),
     ("COMMON-LISP", "="): ("numericEqual", 2, "numericEqual", False),
@@ -30,6 +31,9 @@ DEFINITIONS = {
     ("ACL2", "UPDATE-NTH"): ("updateNthBody", 3, "Object.updateNth", True),
     ("ACL2", "UPDATE-NTH-ARRAY"): ("updateNthArray", 4, "updateNthArray", False),
     ("ACL2", "MAKE-LIST-AC"): ("makeListAcBody", 3, "Object.makeListAc", True),
+}
+DEFINITIONS = {
+    **SUPPORT_DEFINITIONS,
     ("ACL2", "TOY-SCALARP"): ("scalarP", 1, "scalarP", False),
     ("ACL2", "TOY-CELLSP"): ("cellsPBody", 1, "Toy.cellsP", True),
     ("ACL2", "SIL-TOYP"): ("recognizer", 1, "recognizer", False),
@@ -178,5 +182,9 @@ if __name__ == "__main__":
             require(SOURCE.read_text(encoding="utf-8") == generated,
                     "Lean toy DEFSTOBJ source differs from the pinned translation")
             print("Lean toy DEFSTOBJ source and observations match the pinned export")
+            if args.input == FIXTURE:
+                from check_defstobj_schema import compare
+
+                compare()
     except (KeyError, TypeError, ValueError) as error:
         parser.exit(1, f"{error}\n")

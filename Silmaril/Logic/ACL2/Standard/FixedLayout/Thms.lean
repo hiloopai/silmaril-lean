@@ -27,6 +27,19 @@ theorem makeListAc_source (n value tail : Object) :
 theorem mvNth_eq_readAt (index x : Object) : index.mvNth x = readAt index.natRank x :=
   Proofs.Logic.ACL2.Standard.FixedLayout.mvNth_eq_readAt index x
 
+theorem natRank_integer (n : Int) : (integer n).natRank = n.toNat :=
+  Proofs.Logic.ACL2.Standard.FixedLayout.natRank_integer n
+
+theorem spineLength_ofList (xs : List Object) : (ofList xs).spineLength = xs.length :=
+  Proofs.Logic.ACL2.Standard.FixedLayout.spineLength_ofList xs
+
+theorem listAll_ofList (p : Object → Bool) (xs : List Object) :
+    (ofList xs).listAll p = xs.all p :=
+  Proofs.Logic.ACL2.Standard.FixedLayout.listAll_ofList p xs
+
+theorem integerp_integer (n : Int) : (integer n).integerp = true :=
+  Proofs.Logic.ACL2.Standard.FixedLayout.integerp_integer n
+
 theorem updateNth_of_zp {index : Object} (h : index.zp ≠ nil) (value x : Object) :
     updateNth index value x = cons value x.cdr := by
   rw [updateNth, Proofs.Logic.ACL2.Standard.FixedLayout.natRank_eq_zero_of_zp h]
@@ -54,6 +67,27 @@ theorem writeAt_spineLength (i : Nat) (v x : Object) :
   Proofs.Logic.ACL2.Standard.FixedLayout.writeAt_spineLength i v x
 
 end Silmaril.Logic.ACL2.Standard.Object
+
+namespace Silmaril.Logic.ACL2.Standard.FixedLayout.Source
+
+open Object
+
+theorem length_of_trueListp (x : Object) (h : x.trueListp = true) : length x = x.len :=
+  Proofs.Logic.ACL2.Standard.FixedLayout.length_of_trueListp x h
+
+theorem len_equal (x : Object) (n : Nat) :
+    x.len.equal (integer n) = ofBool (decide (x.spineLength = n)) :=
+  Proofs.Logic.ACL2.Standard.FixedLayout.len_equal x n
+
+theorem testAnd (p q : Bool) :
+    (if ofBool p = nil then nil else ofBool q) = ofBool (p && q) :=
+  Proofs.Logic.ACL2.Standard.FixedLayout.testAnd p q
+
+theorem testLast (p : Bool) :
+    (if ofBool p = nil then nil else truth) = ofBool p :=
+  Proofs.Logic.ACL2.Standard.FixedLayout.testLast p
+
+end Silmaril.Logic.ACL2.Standard.FixedLayout.Source
 
 namespace Silmaril.Logic.ACL2.Standard.FixedLayout.Toy
 
