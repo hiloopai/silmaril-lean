@@ -127,6 +127,12 @@ theorem read_dictionary_failure {schemaLimits : Snapshot.Limits} {snapshot : Sna
     DictionaryFailureWire limits (carrierOf binding) binding.encodings address ordinal byte cause :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.read_dictionary_failure refused
 
+theorem readCarrier_wire {limits : Limits} {carrier : Carrier} {encoding : ColumnEncoding carrier.metadata}
+    {checkFrames : List Page.Frame → Except Error Unit} {out : Observation}
+    (accepted : readCarrier limits carrier encoding checkFrames = .ok out) :
+    Wire limits carrier out ∧ checkFrames out.frames = .ok () :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.readCarrier_wire accepted
+
 theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
     {limits : Limits} {out : Observation} (accepted : read limits binding = .ok out) :

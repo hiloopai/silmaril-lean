@@ -94,11 +94,11 @@ private theorem check_totals {carrier : Carrier} {observed out : Observation} {f
           exact ⟨(Except.ok.inj accepted).symm, Decidable.not_not.mp slots,
             Decidable.not_not.mp rows, Decidable.not_not.mp stored, Decidable.not_not.mp raw⟩
 
-public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
-    {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
-    {limits : Limits} {out : Observation} (accepted : Parquet.RecursiveSchema.ListPath.Chunk.read limits binding = .ok out) :
-    Wire limits (carrierOf binding) out := by
-  unfold Parquet.RecursiveSchema.ListPath.Chunk.read at accepted
+public theorem readCarrier_wire {limits : Limits} {carrier : Carrier} {encoding : ColumnEncoding carrier.metadata}
+    {checkFrames : List Page.Frame → Except Chunk.Error Unit} {out : Observation}
+    (accepted : readCarrier limits carrier encoding checkFrames = .ok out) :
+    Wire limits carrier out ∧ checkFrames out.frames = .ok () := by
+  unfold readCarrier at accepted
   dsimp only at accepted
   split at accepted
   · contradiction
@@ -109,8 +109,8 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
   split at accepted
   · contradiction
   rename_i overRows
-  let carrier := carrierOf binding
   obtain ⟨frames, parsed, accepted⟩ := bind_ok accepted
+  obtain ⟨⟨⟩, frameCheck, accepted⟩ := bind_ok accepted
   obtain ⟨⟨dictionary, data⟩, prefixRead, accepted⟩ := bind_ok accepted
   obtain ⟨observed, decoded, accepted⟩ := bind_ok accepted
   obtain ⟨exactOutput, slots, rows, stored, raw⟩ := check_totals accepted
@@ -123,10 +123,16 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
     rw [Observation.frames, table, sameData, ← prefix_frames leading]
   have parsedExact : Page.readChunk limits.framing carrier.source carrier.span = .ok observed.frames :=
     framesExact ▸ from_mapError parsed
-  exact ⟨parsedExact, (Page.readChunk_chain parsedExact).2.2,
+  exact ⟨⟨parsedExact, (Page.readChunk_chain parsedExact).2.2,
     framesExact ▸ sameData ▸ table ▸ leading, table ▸ same ▸ chain, slots, rows,
     framesExact ▸ stored, framesExact ▸ raw, Nat.le_of_not_gt overBytes, Nat.le_of_not_gt overSlots,
-    Nat.le_of_not_gt overRows⟩
+    Nat.le_of_not_gt overRows⟩, framesExact ▸ frameCheck⟩
+
+public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
+    {limits : Limits} {out : Observation} (accepted : Parquet.RecursiveSchema.ListPath.Chunk.read limits binding = .ok out) :
+    Wire limits (carrierOf binding) out :=
+  (readCarrier_wire accepted).1
 
 private theorem first_data_anchor {span : Footer.Span} {start stop : Nat} {frame : Page.Frame}
     {rest : List Page.Frame} (chain : Page.Chain span start stop (frame :: rest))
@@ -211,7 +217,7 @@ public theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Sn
     {limits : Limits} {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat} {start : State} {cause : PageCause}
     (refused : Parquet.RecursiveSchema.ListPath.Chunk.read limits binding = .error (.page address ordinal byte start cause)) :
     PageFailureWire limits (carrierOf binding) address ordinal byte start cause := by
-  unfold Parquet.RecursiveSchema.ListPath.Chunk.read at refused
+  unfold Parquet.RecursiveSchema.ListPath.Chunk.read readCarrier at refused
   dsimp only at refused
   split at refused
   · simp at refused
@@ -278,7 +284,7 @@ public theorem read_dictionary_failure {schemaLimits : Snapshot.Limits} {snapsho
     {cause : RecursiveSchema.Repeated.Chunk.PageCause}
     (refused : Parquet.RecursiveSchema.ListPath.Chunk.read limits binding = .error (.dictionary address ordinal byte cause)) :
     DictionaryFailureWire limits (carrierOf binding) binding.encodings address ordinal byte cause := by
-  unfold Parquet.RecursiveSchema.ListPath.Chunk.read at refused
+  unfold Parquet.RecursiveSchema.ListPath.Chunk.read readCarrier at refused
   dsimp only at refused
   split at refused
   · simp at refused
