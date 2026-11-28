@@ -511,19 +511,23 @@ def admitV2Page (codec : ColumnCodec) (frame : Page.Frame) (remaining : Nat)
     else .ok info
   | kind => .error (.header (.pageKind kind))
 
-/-- Check the V2 row boundary and counts around either signed value decoder.
-Delay the decoder until after the original repetition checks. -/
-def checkV2Slots (info : Page.DataV2) (reps : List Nat) (start : State)
-    (decode : Unit → Except PageCause DecodedPage) : Except PageCause DecodedPage :=
+/-- Check the header's row start, row count and null count around the
+value decoder. The caller supplies its cursor and signed slot observation. -/
+def checkV2Counts {α ε : Type} (info : Page.DataV2) (reps : List Nat) (slot : Nat)
+    (report : PageCause → ε) (absent : α → Nat) (decode : Unit → Except ε α) : Except ε α :=
   let first := reps.head?.getD 0
   let rows := reps.count 0
-  if first ≠ 0 then .error (.v2RowBoundary start.slot first)
-  else if rows ≠ info.numRows then .error (.v2Rows info.numRows rows)
+  if first ≠ 0 then .error (report (.v2RowBoundary slot first))
+  else if rows ≠ info.numRows then .error (report (.v2Rows info.numRows rows))
   else do
     let checked ← decode ()
-    let nulls := absentSlots checked
-    if nulls ≠ info.numNulls then .error (.v2Nulls info.numNulls nulls)
-    else .ok (closeV2 checked)
+    let nulls := absent checked
+    if nulls ≠ info.numNulls then .error (report (.v2Nulls info.numNulls nulls))
+    else .ok checked
+
+def checkV2Slots (info : Page.DataV2) (reps : List Nat) (start : State)
+    (decode : Unit → Except PageCause DecodedPage) : Except PageCause DecodedPage :=
+  (checkV2Counts info reps start.slot id absentSlots decode).map closeV2
 
 def decodeV2Slots (leaf : Leaf) (info : Page.DataV2) (reps defs : List Nat) (suffix : Bytes)
     (start : State) (rowCeiling : Nat) : Except PageCause DecodedPage :=
@@ -604,6 +608,7 @@ structure V2SectionsWireWith (limits : RecursiveSchema.Chunk.Limits)
   definitions : V2LevelWire limits.levels maxDefinition info.numValues
     (bytesAt source sections.spans.definition) sections.definitions
   count : sections.repetitions.length = info.numValues
+  definitionCount : sections.definitions.length = info.numValues
 
 structure V2SectionsWire (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
     (info : Page.DataV2) (sections : V2Sections) : Prop where

@@ -77,10 +77,6 @@
     "snappy": {
       "bytes": 750,
       "sha256": "5f0aa8ca714851c09add2d9f081f126d293e2c1d03306bc664f3543d16b41ca0"
-    },
-    "v2": {
-      "bytes": 734,
-      "sha256": "a9ab76ec8e14af47595396dcd63aa93d6158ff5668c455378ba4333d8a0efa05"
     }
   },
   "genuine_parquet": {

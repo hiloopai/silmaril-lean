@@ -29,6 +29,29 @@ theorem decodePage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
     PageWire limits plan wrappers source frame start remaining ceiling decoded :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.decodePage_wire accepted
 
+theorem decodeV2Page_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
+    (accepted : decodeV2Page limits plan wrappers source frame start remaining ceiling = .ok decoded) :
+    V2PageWire limits plan wrappers source frame start remaining ceiling decoded :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.decodeV2Page_wire accepted
+
+theorem decodeDataPage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
+    (accepted : decodeDataPage limits plan wrappers source frame start remaining ceiling = .ok decoded) :
+    DataPageWire limits plan wrappers source frame start remaining ceiling decoded :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.decodeDataPage_wire accepted
+
+/-- An original V2 header separately accounts for slots, row starts and
+null markers. Its outgoing cursor has no live repeated wrapper. -/
+theorem V2PageWire.counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
+    (wire : V2PageWire limits plan wrappers source frame start remaining ceiling decoded) :
+    ∃ info, frame.value.kind = .dataV2 info ∧ decoded.atoms.length = info.numValues ∧
+      decoded.atoms.countP (·.repetition == 0) = info.numRows ∧ absentSlots decoded = info.numNulls ∧
+      decoded.after.live = 0 ∧ start.slots + decoded.atoms.length = decoded.after.slots ∧
+      start.rows + decoded.atoms.countP (·.repetition == 0) = decoded.after.rows :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.v2_page_counts wire
+
 theorem PageWire.counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     (wire : PageWire limits plan wrappers source frame start remaining ceiling decoded) :

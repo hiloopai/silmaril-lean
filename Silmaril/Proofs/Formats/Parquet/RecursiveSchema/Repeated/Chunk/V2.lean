@@ -104,9 +104,9 @@ public theorem readV2SectionsWith_wire {limits : RecursiveSchema.Chunk.Limits}
     obtain ⟨reps, repRead, read⟩ := bind_ok read
     obtain ⟨defs, defRead, done⟩ := bind_ok read
     obtain ⟨repWire, repLength⟩ := v2_levels_wire (from_mapError repRead)
-    obtain ⟨defWire, _⟩ := v2_levels_wire (from_mapError defRead)
+    obtain ⟨defWire, defLength⟩ := v2_levels_wire (from_mapError defRead)
     cases Except.ok.inj done
-    exact ⟨⟨checksum, verified⟩, split, v2_slices verified split, repWire, defWire, repLength⟩
+    exact ⟨⟨checksum, verified⟩, split, v2_slices verified split, repWire, defWire, repLength, defLength⟩
 
 public theorem readV2Sections_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
     {frame : Page.Frame} {info : Page.DataV2} {sections : V2Sections}
@@ -115,12 +115,12 @@ public theorem readV2Sections_wire {limits : Limits} {leaf : Leaf} {source : Byt
   let wire := readV2SectionsWith_wire read
   ⟨wire.checksum, wire.spans, wire.slices, wire.repetitions, wire.definitions, wire.count⟩
 
-public theorem checkV2Slots_wire {start : State} {info : Page.DataV2} {reps : List Nat}
-    {decode : Unit → Except PageCause DecodedPage} {decoded : DecodedPage}
-    (read : checkV2Slots info reps start decode = .ok decoded) :
-    reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absentSlots decoded = info.numNulls ∧
-      ∃ checked, decode () = .ok checked ∧ decoded = closeV2 checked := by
-  unfold checkV2Slots at read
+public theorem checkV2Counts_wire {α ε : Type} {info : Page.DataV2} {reps : List Nat}
+    {slot : Nat} {report : PageCause → ε} {absent : α → Nat} {decode : Unit → Except ε α} {decoded : α}
+    (read : checkV2Counts info reps slot report absent decode = .ok decoded) :
+    reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absent decoded = info.numNulls ∧
+      decode () = .ok decoded := by
+  unfold checkV2Counts at read
   dsimp only at read
   split at read
   · contradiction
@@ -128,13 +128,26 @@ public theorem checkV2Slots_wire {start : State} {info : Page.DataV2} {reps : Li
     split at read
     · contradiction
     · rename_i rows
-      obtain ⟨checked, readSlots, read⟩ := bind_ok read
+      obtain ⟨checked, slots, read⟩ := bind_ok read
       split at read
       · contradiction
       · rename_i nulls
         cases Except.ok.inj read
-        exact ⟨Classical.not_not.mp first, Classical.not_not.mp rows, Classical.not_not.mp nulls,
-          checked, readSlots, rfl⟩
+        exact ⟨Decidable.not_not.mp first, Decidable.not_not.mp rows, Decidable.not_not.mp nulls, slots⟩
+
+public theorem checkV2Slots_wire {start : State} {info : Page.DataV2} {reps : List Nat}
+    {decode : Unit → Except PageCause DecodedPage} {decoded : DecodedPage}
+    (read : checkV2Slots info reps start decode = .ok decoded) :
+    reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absentSlots decoded = info.numNulls ∧
+      ∃ checked, decode () = .ok checked ∧ decoded = closeV2 checked := by
+  unfold checkV2Slots at read
+  cases counted : checkV2Counts info reps start.slot id absentSlots decode with
+  | error => simp [counted, Except.map] at read
+  | ok checked =>
+    have exact : closeV2 checked = decoded := by simpa [counted, Except.map] using read
+    obtain ⟨first, rows, nulls, slots⟩ := checkV2Counts_wire counted
+    subst decoded
+    exact ⟨first, rows, nulls, checked, slots, rfl⟩
 
 public theorem readV2SuffixWith_wire {limits : Limits} {codec : ColumnCodec}
     {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes} {signedExtent : Option Nat}

@@ -6,7 +6,7 @@ original row group yields one Arrow batch in footer order. An explicit
 empty group yields a zero-row batch. A schema-only file emits the
 declaration and EOS. For a populated source, EOS follows only after
 all original groups succeed.
-[Native V1 reader](parquet-recursive-list-path-v1.md) · [Strict Arrow V5 IPC](parquet-recursive-list-path-to-ipc.md)
+[Native V1 reader](parquet-recursive-list-path-v1.md) · [Native V2 reader](parquet-recursive-list-path-v2.md) · [Strict Arrow V5 IPC](parquet-recursive-list-path-to-ipc.md)
 
 The reusable `Parquet.Reader.Recursive.Groups` adapter supplies the
 shared typed Parquet reader with one checked recursive Arrow batch
@@ -29,7 +29,7 @@ both projections. This applies to the legal V1 reframes checked by
 the native reader's trace law.
 [Recursive Arrow Events](arrow-recursive-events.md)
 
-The source profile is the unindexed UNCOMPRESSED PLAIN V1 LIST-path
+The source profile is the unindexed UNCOMPRESSED PLAIN V1/V2 LIST-path
 reader. Projection operates on whole top-level fields. Indexed,
 pageless, compressed and dictionary chunks remain outside this profile.
 

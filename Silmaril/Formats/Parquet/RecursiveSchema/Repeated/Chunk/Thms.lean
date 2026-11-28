@@ -86,6 +86,13 @@ theorem admitV2Page_wire {codec : ColumnCodec} {frame : Page.Frame} {remaining :
       (codec.v2 info = 0 → frame.value.uncompressedSize = frame.value.compressedSize) :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.admitV2Page_wire read
 
+theorem checkV2Counts_wire {α ε : Type} {info : Page.DataV2} {reps : List Nat}
+    {slot : Nat} {report : PageCause → ε} {absent : α → Nat} {decode : Unit → Except ε α} {decoded : α}
+    (accepted : checkV2Counts info reps slot report absent decode = .ok decoded) :
+    reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absent decoded = info.numNulls ∧
+      decode () = .ok decoded :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.checkV2Counts_wire accepted
+
 theorem readV2SectionsWith_wire {limits : RecursiveSchema.Chunk.Limits}
     {maxRepetition maxDefinition : Nat} {source : Bytes}
     {frame : Page.Frame} {info : Page.DataV2} {sections : V2Sections}

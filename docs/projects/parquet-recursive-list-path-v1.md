@@ -8,7 +8,7 @@ reader returns one logical Arrow observation per original row group,
 in footer order.
 [Schema and logical trace core](parquet-recursive-list-path.md) · [Arrow Events](parquet-recursive-list-path-events.md)
 
-The chunk profile is local, unindexed UNCOMPRESSED PLAIN Data Page V1
+The V1 route reads local, unindexed UNCOMPRESSED PLAIN Data Page V1
 with Hybrid repetition and definition levels. The reader checks the
 original column path, physical type, codec, encodings, data offset and
 positive chunk span. The bounded page scanner parses the original
@@ -36,8 +36,9 @@ when the plan and trace agree.
 
 Schema-only files have no chunks to read. This geometry requires an
 original positive-sized in-file chunk for every group. Pageless groups,
-external chunks, dictionaries, indexes, V2, compressed columns, and
-other value encodings are outside the native profile. The one- and two-LIST interfaces have separate native profiles.
+external chunks, dictionaries, indexes, compressed columns, and
+other value encodings are outside the native profile. The same chunk
+reader also supports complete-row V2 pages. [Native V2 reader](parquet-recursive-list-path-v2.md)
 
 ## Verification
 
@@ -50,9 +51,9 @@ crosses page starts at repetitions one, two and three inside a row,
 adds a trailing physical zero-slot page, and reads back in PyArrow.
 Genuine schema-only and CRC-absent files also pass.
 
-Twenty-six typed controls cover original page addresses, missing ancestry, wire extents, CRC, counts, offset and footer
+Twenty-five typed controls cover original page addresses, missing ancestry, wire extents, CRC, counts, offset and footer
 sizes, and admission limits. Genuine files exercise the refusals for
-indexes, Snappy, dictionary encoding and V2. The late word and CRC edits
+indexes, Snappy and dictionary encoding. The late word and CRC edits
 leave the earlier group readable and make the ordered file read return
 the original page error.
 [Producer and fixture pins](../../scripts/parquet-recursive-list-path-v1-oracle/fixtures.json)

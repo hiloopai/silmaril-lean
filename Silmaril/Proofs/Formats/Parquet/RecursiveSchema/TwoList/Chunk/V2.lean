@@ -20,20 +20,14 @@ private theorem checkV2Slots_wire {limits : Limits} {encoding : ValueEncoding} {
     reps.head?.getD 0 = 0 ∧ reps.count 0 = info.numRows ∧ absentSlots decoded = info.numNulls ∧
       ∃ checked, DecodedWire limits plan ceiling start.close reps defs suffix checked encoding ∧ decoded = closeV2 checked := by
   unfold checkV2Slots at accepted
-  dsimp only at accepted
-  split at accepted
-  · contradiction
-  · rename_i first
-    split at accepted
-    · contradiction
-    · rename_i rows
-      obtain ⟨checked, slots, result⟩ := bind_ok accepted
-      split at result
-      · contradiction
-      · rename_i nulls
-        cases Except.ok.inj result
-        exact ⟨Decidable.not_not.mp first, Decidable.not_not.mp rows, Decidable.not_not.mp nulls,
-          checked, decodeSlots_wire slots, rfl⟩
+  cases counted : RecursiveSchema.Repeated.Chunk.checkV2Counts info reps start.slots PageCause.v2 absentSlots
+      (fun _ => decodeSlots limits plan ceiling start.close reps defs suffix encoding) with
+  | error => simp [counted, Except.map] at accepted
+  | ok checked =>
+    have exact : closeV2 checked = decoded := by simpa [counted, Except.map] using accepted
+    obtain ⟨first, rows, nulls, slots⟩ := RecursiveSchema.Repeated.Chunk.checkV2Counts_wire counted
+    subst decoded
+    exact ⟨first, rows, nulls, checked, decodeSlots_wire slots, rfl⟩
 
 public theorem decodeV2Page_wire {limits : Limits} {plan : Plan} {source : Bytes}
     {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec} {encoding : ValueEncoding}

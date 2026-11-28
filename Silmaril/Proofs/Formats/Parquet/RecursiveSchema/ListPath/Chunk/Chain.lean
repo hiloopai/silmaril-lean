@@ -50,7 +50,7 @@ private theorem decodeFrames_wire {limits : Limits} {carrier : Carrier} {frames 
     obtain ⟨decoded, page, rest⟩ := bind_ok accepted
     obtain ⟨suffix, final, original, chain⟩ := ih rest
     exact ⟨⟨frame, start, decoded⟩ :: suffix, by simpa [List.reverse_cons, List.append_assoc] using final,
-      by simp [original], .cons (decodePage_wire (from_mapError page)) chain⟩
+      by simp [original], .cons (decodeDataPage_wire (from_mapError page)) chain⟩
 
 private theorem check_totals {carrier : Carrier} {observed out : Observation} {frames : List Page.Frame}
     (accepted : checkTotals carrier frames observed = .ok out) :
@@ -110,7 +110,7 @@ public theorem chain_counts {limits : Limits} {carrier : Carrier} {start stop : 
   induction wire with
   | nil => simp
   | cons page _ ih =>
-    obtain ⟨_, _, _, slots, rows⟩ := page_counts page
+    obtain ⟨slots, rows⟩ := data_page_counts page
     simpa [List.flatMap_cons, List.length_append, List.countP_append, ← Nat.add_assoc, slots, rows] using ih
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk
