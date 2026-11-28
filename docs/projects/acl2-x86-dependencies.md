@@ -59,6 +59,9 @@ the VEX and EVEX dispatchers. This slice has zero unsupported or unresolved
 targets.
 [Primitive table][primitives] · [Manifest][manifest]
 
+The [frontier audit](acl2-x86-frontier-audit.md) uses this manifest to select
+27 additional roots and checks their immediate logical dependencies.
+
 ## Checked slice and limits
 
 The native export matches the live X86-RUN formals and logical body against

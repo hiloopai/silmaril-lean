@@ -43,7 +43,7 @@ def encode_symbol(name):
     return ["symbol", *name]
 
 
-def direct_calls(body, parameters):
+def direct_calls(body, parameters, *, on_quote=None):
     """Map each literal call head to its observed arity before any beta substitution."""
     calls = {}
 
@@ -57,6 +57,8 @@ def direct_calls(body, parameters):
             name = symbol(operator)
             if name == QUOTE:
                 require(len(args) == 1, "quotation arity mismatch")
+                if on_quote is not None:
+                    on_quote(args[0])
                 return
             require(calls.setdefault(name, len(args)) == len(args),
                     f"inconsistent call-site arity for {name}")
