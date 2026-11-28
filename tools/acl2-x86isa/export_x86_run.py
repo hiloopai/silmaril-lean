@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export X86-RUN or the status accessors from the pinned certified ACL2 world."""
+"""Export a logical slice of the pinned certified ACL2 x86isa world."""
 
 import argparse
 import os
@@ -19,7 +19,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checkout", type=Path, help="pinned SBCL ACL2 checkout and certificates")
     parser.add_argument("output", type=Path, help="JSON destination")
-    parser.add_argument("--status-accessors", action="store_true", help="export FAULT and MS")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--status-accessors", action="store_true", help="export FAULT and MS")
+    mode.add_argument("--object-order", action="store_true", help="export ACL2 order and record recognition")
     args = parser.parse_args()
     checkout = args.checkout.resolve()
     commit, tree = subprocess.check_output(
@@ -48,12 +50,19 @@ def main():
         operands = [source, export, digest(source), commit, tree]
         before_exit, support = "", ""
         driver = "c3-export-x86-run"
-        if args.status_accessors:
+        if args.status_accessors or args.object_order:
             state_book = project / "machine/state.lisp"
             operands += [state_book, digest(state_book)]
-            before_exit = (tools / "status-samples.lisp").read_text()
             support = f'  (load {lisp_string(tools / "status-accessors.lisp")})\n'
+        if args.status_accessors:
+            before_exit = (tools / "status-samples.lisp").read_text()
             driver = "c3-export-status-accessors"
+        if args.object_order:
+            before_exit = (tools / "order-samples.lisp").read_text()
+            support += f'  (load {lisp_string(tools / "object-order.lisp")})\n'
+            operands += [digest(checkout / "axioms.lisp"), digest(books / "misc/total-order.lisp"),
+                         digest(project / "machine/tty.lisp")]
+            driver = "c3-export-object-order"
         raw_arguments = " ".join(map(lisp_string, operands))
         commands = (
             "(set-ld-error-action '(:exit 1) state)\n"

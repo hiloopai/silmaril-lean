@@ -135,6 +135,16 @@ def accessor_declarations(document, definitions):
     return "\n\n".join(result)
 
 
+def rational_term(value):
+    if type(value) is int:
+        return f"Rat.ofInt ({value})"
+    if isinstance(value, list) and len(value) == 3 and value[0] == "ratio":
+        _, numerator, denominator = value
+        if type(numerator) is int and type(denominator) is int and denominator > 0:
+            return f"Rat.divInt ({numerator}) {denominator}"
+    raise ValueError(f"unsupported ACL2 rational {value!r}")
+
+
 def object_term(value):
     if value == NIL:
         return "Object.nil"
@@ -142,6 +152,15 @@ def object_term(value):
         return "Object.truth"
     if type(value) is int:
         return f"Object.integer ({value})"
+    if type(value) is str and all(ord(c) < 256 for c in value):
+        return "Object.string [" + ", ".join(str(ord(c)) for c in value) + "]"
+    if isinstance(value, list) and value:
+        if value[0] == "ratio":
+            return f"Object.rational ({rational_term(value)})"
+        if len(value) == 3 and value[0] == "complex":
+            return f"Object.ofParts ({rational_term(value[1])}) ({rational_term(value[2])})"
+        if len(value) == 2 and value[0] == "character" and type(value[1]) is int and 0 <= value[1] < 256:
+            return f"Object.character {value[1]}"
     if is_symbol(value):
         package, spelling = map(json.dumps, symbol(value))
         return f"Object.symbol ((Symbol.ofName? ⟨{package}, {spelling}⟩).get (by decide))"

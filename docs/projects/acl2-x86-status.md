@@ -54,6 +54,8 @@ export retains the `X86REC-P1` body. Closing it requires the general field
 typing and default functions as well as ACL2's object order. Full machine
 correspondence also requires the checked step and stobj closure and a state
 relation for both machine views and the environment.
+The [object-order follow-up](acl2-x86-object-order.md) supplies both record
+callbacks and narrows the remaining field predicates.
 
 ## Reproduce
 
