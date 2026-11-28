@@ -1,0 +1,13 @@
+[package]
+name = "sqlite-elf-comparison"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+gimli = { version = "=0.31.1", default-features = false, features = ["read", "std"] }
+iced-x86 = { version = "=1.21.0", default-features = false, features = ["std", "decoder", "instr_info"] }
+object = { version = "=0.36.7", default-features = false, features = ["std", "read", "elf"] }
+serde = { version = "=1.0.219", features = ["derive"] }
+serde_json = "=1.0.140"
+sha2 = "=0.10.8"

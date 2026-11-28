@@ -1,0 +1,1265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SQLite ELF build comparison results v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "build_metadata",
+    "analyzer_tools",
+    "builds",
+    "comparisons",
+    "verification"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "build_metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "analyzer_tools": {
+      "type": "object",
+      "required": [
+        "cargo",
+        "rustc"
+      ],
+      "properties": {
+        "cargo": {
+          "$ref": "#/$defs/text"
+        },
+        "rustc": {
+          "$ref": "#/$defs/text"
+        }
+      },
+      "additionalProperties": false
+    },
+    "builds": {
+      "type": "object",
+      "required": [
+        "clang-O0",
+        "clang-O1",
+        "clang-O2",
+        "clang-O3",
+        "gcc-O0",
+        "gcc-O1",
+        "gcc-O2",
+        "gcc-O3"
+      ],
+      "properties": {
+        "clang-O0": {
+          "$ref": "#/$defs/build"
+        },
+        "clang-O1": {
+          "$ref": "#/$defs/build"
+        },
+        "clang-O2": {
+          "$ref": "#/$defs/build"
+        },
+        "clang-O3": {
+          "$ref": "#/$defs/build"
+        },
+        "gcc-O0": {
+          "$ref": "#/$defs/build"
+        },
+        "gcc-O1": {
+          "$ref": "#/$defs/build"
+        },
+        "gcc-O2": {
+          "$ref": "#/$defs/build"
+        },
+        "gcc-O3": {
+          "$ref": "#/$defs/build"
+        }
+      },
+      "additionalProperties": false
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/comparison"
+      },
+      "minItems": 28,
+      "maxItems": 28
+    },
+    "verification": {
+      "$ref": "#/$defs/verification"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "text": {
+      "type": "string"
+    },
+    "flag": {
+      "type": "boolean"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "buildId": {
+      "type": "string",
+      "enum": [
+        "clang-O0",
+        "clang-O1",
+        "clang-O2",
+        "clang-O3",
+        "gcc-O0",
+        "gcc-O1",
+        "gcc-O2",
+        "gcc-O3"
+      ]
+    },
+    "buildNote": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "inventory": {
+      "type": "object",
+      "required": [
+        "alias_spans",
+        "clone_spans",
+        "defined_function_records",
+        "overlapping_spans",
+        "split_or_outline_spans",
+        "unusable_records",
+        "usable_spans",
+        "zero_size_records"
+      ],
+      "properties": {
+        "alias_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "clone_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "defined_function_records": {
+          "$ref": "#/$defs/count"
+        },
+        "overlapping_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "split_or_outline_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "unusable_records": {
+          "$ref": "#/$defs/count"
+        },
+        "usable_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "zero_size_records": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "additionalProperties": false
+    },
+    "instructionCounts": {
+      "type": "object",
+      "required": [
+        "analyzed_spans",
+        "blocks",
+        "cfg_edges",
+        "cfg_spans",
+        "compiler_helper_transfer_sites",
+        "direct_branch_sites",
+        "direct_call_sites",
+        "executable_relocations_in_decoded_spans",
+        "got_named_indirect_call_sites",
+        "got_named_indirect_jump_sites",
+        "indirect_call_sites",
+        "indirect_jump_sites",
+        "instructions",
+        "invalid_decode_spans",
+        "invalid_local_targets",
+        "lock_prefix_sites",
+        "memory_xchg_sites",
+        "mfence_sites",
+        "mutex_transfer_sites",
+        "named_direct_exit_jump_sites",
+        "normalized_fields",
+        "normalized_spans",
+        "switch_table_candidates",
+        "unknown_direct_call_sites",
+        "unknown_direct_exit_jump_sites",
+        "unresolved_address_fields",
+        "unsupported_relocations"
+      ],
+      "properties": {
+        "analyzed_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "blocks": {
+          "$ref": "#/$defs/count"
+        },
+        "cfg_edges": {
+          "$ref": "#/$defs/count"
+        },
+        "cfg_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "compiler_helper_transfer_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "direct_branch_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "direct_call_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "executable_relocations_in_decoded_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "got_named_indirect_call_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "got_named_indirect_jump_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "indirect_call_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "indirect_jump_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "instructions": {
+          "$ref": "#/$defs/count"
+        },
+        "invalid_decode_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "invalid_local_targets": {
+          "$ref": "#/$defs/count"
+        },
+        "lock_prefix_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "memory_xchg_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "mfence_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "mutex_transfer_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "named_direct_exit_jump_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "normalized_fields": {
+          "$ref": "#/$defs/count"
+        },
+        "normalized_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "switch_table_candidates": {
+          "$ref": "#/$defs/count"
+        },
+        "unknown_direct_call_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "unknown_direct_exit_jump_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "unresolved_address_fields": {
+          "$ref": "#/$defs/count"
+        },
+        "unsupported_relocations": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "additionalProperties": false
+    },
+    "file": {
+      "type": "object",
+      "required": [
+        "sha256",
+        "size_bytes"
+      ],
+      "properties": {
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "size_bytes": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "additionalProperties": false
+    },
+    "segment": {
+      "type": "object",
+      "required": [
+        "address",
+        "file_size_bytes",
+        "memory_size_bytes",
+        "sha256"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/$defs/count"
+        },
+        "file_size_bytes": {
+          "$ref": "#/$defs/count"
+        },
+        "memory_size_bytes": {
+          "$ref": "#/$defs/count"
+        },
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "stripPair": {
+      "type": "object",
+      "required": [
+        "build_id",
+        "relocation_link_build_id",
+        "dynamic_symbol_records",
+        "executable_segments",
+        "stripped_debug_info",
+        "stripped_static_symbol_records"
+      ],
+      "properties": {
+        "build_id": {
+          "$ref": "#/$defs/buildNote"
+        },
+        "relocation_link_build_id": {
+          "$ref": "#/$defs/buildNote"
+        },
+        "dynamic_symbol_records": {
+          "$ref": "#/$defs/count"
+        },
+        "executable_segments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/segment"
+          },
+          "minItems": 1
+        },
+        "stripped_debug_info": {
+          "const": false
+        },
+        "stripped_static_symbol_records": {
+          "const": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "inlineHints": {
+      "type": "object",
+      "required": [
+        "inline_dies",
+        "unresolved_inline_dies",
+        "sites_by_name"
+      ],
+      "properties": {
+        "inline_dies": {
+          "$ref": "#/$defs/count"
+        },
+        "unresolved_inline_dies": {
+          "$ref": "#/$defs/count"
+        },
+        "sites_by_name": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/count"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableExample": {
+      "type": "object",
+      "required": [
+        "jump_address",
+        "table_address",
+        "first_two_destinations"
+      ],
+      "properties": {
+        "jump_address": {
+          "$ref": "#/$defs/count"
+        },
+        "table_address": {
+          "$ref": "#/$defs/count"
+        },
+        "first_two_destinations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/count"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "additionalProperties": false
+    },
+    "transferExample": {
+      "type": "object",
+      "required": [
+        "address",
+        "kind",
+        "destination"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/$defs/count"
+        },
+        "kind": {
+          "enum": [
+            "direct_call",
+            "direct_exit_jump",
+            "indirect_call",
+            "indirect_jump"
+          ]
+        },
+        "destination": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "sample": {
+      "type": "object",
+      "required": [
+        "address",
+        "size_bytes",
+        "names",
+        "counts",
+        "direct_callees",
+        "short_slice_hex",
+        "exact_sha256",
+        "normalized_sha256",
+        "table_examples",
+        "transfer_examples"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/$defs/count"
+        },
+        "size_bytes": {
+          "$ref": "#/$defs/count"
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          },
+          "minItems": 1
+        },
+        "counts": {
+          "$ref": "#/$defs/instructionCounts"
+        },
+        "direct_callees": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "short_slice_hex": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^([a-f0-9]{2}){1,32}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exact_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "normalized_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "table_examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tableExample"
+          },
+          "maxItems": 3
+        },
+        "transfer_examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transferExample"
+          },
+          "maxItems": 10
+        }
+      },
+      "additionalProperties": false
+    },
+    "build": {
+      "type": "object",
+      "required": [
+        "distinct_direct_call_edges",
+        "dynamic_export_names",
+        "symbol_names",
+        "unresolved_indirect_call_sites",
+        "unresolved_indirect_jump_sites",
+        "usable_bytes",
+        "counts",
+        "inventory",
+        "inline_hints",
+        "stripped_pair",
+        "outline_name_examples",
+        "named_targets",
+        "samples"
+      ],
+      "properties": {
+        "distinct_direct_call_edges": {
+          "$ref": "#/$defs/count"
+        },
+        "dynamic_export_names": {
+          "$ref": "#/$defs/count"
+        },
+        "symbol_names": {
+          "$ref": "#/$defs/count"
+        },
+        "unresolved_indirect_call_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "unresolved_indirect_jump_sites": {
+          "$ref": "#/$defs/count"
+        },
+        "usable_bytes": {
+          "$ref": "#/$defs/count"
+        },
+        "counts": {
+          "$ref": "#/$defs/instructionCounts"
+        },
+        "inventory": {
+          "$ref": "#/$defs/inventory"
+        },
+        "inline_hints": {
+          "$ref": "#/$defs/inlineHints"
+        },
+        "stripped_pair": {
+          "$ref": "#/$defs/stripPair"
+        },
+        "outline_name_examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          },
+          "maxItems": 6
+        },
+        "named_targets": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/count"
+          }
+        },
+        "samples": {
+          "type": "object",
+          "required": [
+            "pthreadMutexEnter",
+            "sqlite3VdbeExec",
+            "sqlite3_libversion_number",
+            "sqlite3_mutex_enter",
+            "sqlite3_step",
+            "sqlite3_str_length",
+            "sqlite3_threadsafe",
+            "unixShmBarrier"
+          ],
+          "properties": {
+            "pthreadMutexEnter": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/sample"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sqlite3VdbeExec": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/sample"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sqlite3_libversion_number": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/sample"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sqlite3_mutex_enter": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/sample"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sqlite3_step": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/sample"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sqlite3_str_length": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/sample"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sqlite3_threadsafe": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/sample"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "unixShmBarrier": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/sample"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "direction": {
+      "type": "object",
+      "required": [
+        "ambiguous_spans",
+        "cfg_edges_all",
+        "cfg_edges_both_eligible",
+        "cfg_spans_all",
+        "direct_call_edges_all",
+        "direct_call_edges_both_decoded",
+        "dynamic_export_names",
+        "matched_bytes",
+        "normalized_spans_all",
+        "symbol_names",
+        "total_bytes",
+        "total_spans",
+        "unmatched_clone_and_inline_hint",
+        "unmatched_clone_hint_only",
+        "unmatched_inline_hint_only",
+        "unmatched_spans",
+        "unmatched_unknown"
+      ],
+      "properties": {
+        "ambiguous_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "cfg_edges_all": {
+          "$ref": "#/$defs/count"
+        },
+        "cfg_edges_both_eligible": {
+          "$ref": "#/$defs/count"
+        },
+        "cfg_spans_all": {
+          "$ref": "#/$defs/count"
+        },
+        "direct_call_edges_all": {
+          "$ref": "#/$defs/count"
+        },
+        "direct_call_edges_both_decoded": {
+          "$ref": "#/$defs/count"
+        },
+        "dynamic_export_names": {
+          "$ref": "#/$defs/count"
+        },
+        "matched_bytes": {
+          "$ref": "#/$defs/count"
+        },
+        "normalized_spans_all": {
+          "$ref": "#/$defs/count"
+        },
+        "symbol_names": {
+          "$ref": "#/$defs/count"
+        },
+        "total_bytes": {
+          "$ref": "#/$defs/count"
+        },
+        "total_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "unmatched_clone_and_inline_hint": {
+          "$ref": "#/$defs/count"
+        },
+        "unmatched_clone_hint_only": {
+          "$ref": "#/$defs/count"
+        },
+        "unmatched_inline_hint_only": {
+          "$ref": "#/$defs/count"
+        },
+        "unmatched_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "unmatched_unknown": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "additionalProperties": false
+    },
+    "overlap": {
+      "type": "object",
+      "required": [
+        "call_graph_eligible_pairs",
+        "cfg_eligible_pairs",
+        "cfg_equal_pairs",
+        "exact_bytes",
+        "exact_spans",
+        "intersecting_cfg_edges",
+        "intersecting_direct_call_edges",
+        "intersecting_dynamic_export_names",
+        "intersecting_symbol_names",
+        "matched_spans",
+        "normalized_eligible_pairs",
+        "normalized_equal_exact_different_pairs",
+        "normalized_equal_pairs"
+      ],
+      "properties": {
+        "call_graph_eligible_pairs": {
+          "$ref": "#/$defs/count"
+        },
+        "cfg_eligible_pairs": {
+          "$ref": "#/$defs/count"
+        },
+        "cfg_equal_pairs": {
+          "$ref": "#/$defs/count"
+        },
+        "exact_bytes": {
+          "$ref": "#/$defs/count"
+        },
+        "exact_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "intersecting_cfg_edges": {
+          "$ref": "#/$defs/count"
+        },
+        "intersecting_direct_call_edges": {
+          "$ref": "#/$defs/count"
+        },
+        "intersecting_dynamic_export_names": {
+          "$ref": "#/$defs/count"
+        },
+        "intersecting_symbol_names": {
+          "$ref": "#/$defs/count"
+        },
+        "matched_spans": {
+          "$ref": "#/$defs/count"
+        },
+        "normalized_eligible_pairs": {
+          "$ref": "#/$defs/count"
+        },
+        "normalized_equal_exact_different_pairs": {
+          "$ref": "#/$defs/count"
+        },
+        "normalized_equal_pairs": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "additionalProperties": false
+    },
+    "comparison": {
+      "type": "object",
+      "required": [
+        "left",
+        "right",
+        "left_denominators",
+        "right_denominators",
+        "overlap"
+      ],
+      "properties": {
+        "left": {
+          "$ref": "#/$defs/buildId"
+        },
+        "right": {
+          "$ref": "#/$defs/buildId"
+        },
+        "left_denominators": {
+          "$ref": "#/$defs/direction"
+        },
+        "right_denominators": {
+          "$ref": "#/$defs/direction"
+        },
+        "overlap": {
+          "$ref": "#/$defs/overlap"
+        }
+      },
+      "additionalProperties": false
+    },
+    "buildMetadata": {
+      "type": "object",
+      "required": [
+        "commands",
+        "files"
+      ],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/text"
+            },
+            "minItems": 1
+          },
+          "minItems": 5,
+          "maxItems": 5
+        },
+        "files": {
+          "type": "object",
+          "required": [
+            "libsqlite3.so",
+            "macros.txt",
+            "relocs.so",
+            "sqlite3.o",
+            "stripped.so"
+          ],
+          "properties": {
+            "libsqlite3.so": {
+              "$ref": "#/$defs/file"
+            },
+            "macros.txt": {
+              "$ref": "#/$defs/file"
+            },
+            "relocs.so": {
+              "$ref": "#/$defs/file"
+            },
+            "sqlite3.o": {
+              "$ref": "#/$defs/file"
+            },
+            "stripped.so": {
+              "$ref": "#/$defs/file"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "version",
+        "url",
+        "sqlite_source_id",
+        "archive_sha256",
+        "archive_sha3_256",
+        "sqlite3.c",
+        "sqlite3.h"
+      ],
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/text"
+        },
+        "url": {
+          "$ref": "#/$defs/text"
+        },
+        "sqlite_source_id": {
+          "$ref": "#/$defs/text"
+        },
+        "archive_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "archive_sha3_256": {
+          "$ref": "#/$defs/hash"
+        },
+        "sqlite3.c": {
+          "$ref": "#/$defs/hash"
+        },
+        "sqlite3.h": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "baseline",
+        "target",
+        "source",
+        "build_environment",
+        "defines",
+        "debian_packages",
+        "tools",
+        "builds"
+      ],
+      "properties": {
+        "baseline": {
+          "const": "gcc-O2"
+        },
+        "target": {
+          "$ref": "#/$defs/text"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "build_environment": {
+          "type": "object",
+          "required": [
+            "LC_ALL",
+            "SOURCE_DATE_EPOCH",
+            "TZ"
+          ],
+          "properties": {
+            "LC_ALL": {
+              "$ref": "#/$defs/text"
+            },
+            "SOURCE_DATE_EPOCH": {
+              "$ref": "#/$defs/text"
+            },
+            "TZ": {
+              "$ref": "#/$defs/text"
+            }
+          },
+          "additionalProperties": false
+        },
+        "defines": {
+          "type": "object",
+          "required": [
+            "SQLITE_DEFAULT_MMAP_SIZE",
+            "SQLITE_MAX_MMAP_SIZE",
+            "SQLITE_OMIT_LOAD_EXTENSION",
+            "SQLITE_THREADSAFE"
+          ],
+          "properties": {
+            "SQLITE_DEFAULT_MMAP_SIZE": {
+              "$ref": "#/$defs/text"
+            },
+            "SQLITE_MAX_MMAP_SIZE": {
+              "$ref": "#/$defs/text"
+            },
+            "SQLITE_OMIT_LOAD_EXTENSION": {
+              "$ref": "#/$defs/text"
+            },
+            "SQLITE_THREADSAFE": {
+              "$ref": "#/$defs/text"
+            }
+          },
+          "additionalProperties": false
+        },
+        "debian_packages": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "tools": {
+          "type": "object",
+          "required": [
+            "clang",
+            "clang_target",
+            "gcc",
+            "gcc_target",
+            "glibc",
+            "gnu_as",
+            "gnu_ld",
+            "llvm_objdump",
+            "objdump",
+            "python",
+            "readelf",
+            "strip"
+          ],
+          "properties": {
+            "clang": {
+              "$ref": "#/$defs/text"
+            },
+            "clang_target": {
+              "$ref": "#/$defs/text"
+            },
+            "gcc": {
+              "$ref": "#/$defs/text"
+            },
+            "gcc_target": {
+              "$ref": "#/$defs/text"
+            },
+            "glibc": {
+              "$ref": "#/$defs/text"
+            },
+            "gnu_as": {
+              "$ref": "#/$defs/text"
+            },
+            "gnu_ld": {
+              "$ref": "#/$defs/text"
+            },
+            "llvm_objdump": {
+              "$ref": "#/$defs/text"
+            },
+            "objdump": {
+              "$ref": "#/$defs/text"
+            },
+            "python": {
+              "$ref": "#/$defs/text"
+            },
+            "readelf": {
+              "$ref": "#/$defs/text"
+            },
+            "strip": {
+              "$ref": "#/$defs/text"
+            }
+          },
+          "additionalProperties": false
+        },
+        "builds": {
+          "type": "object",
+          "required": [
+            "clang-O0",
+            "clang-O1",
+            "clang-O2",
+            "clang-O3",
+            "gcc-O0",
+            "gcc-O1",
+            "gcc-O2",
+            "gcc-O3"
+          ],
+          "properties": {
+            "clang-O0": {
+              "$ref": "#/$defs/buildMetadata"
+            },
+            "clang-O1": {
+              "$ref": "#/$defs/buildMetadata"
+            },
+            "clang-O2": {
+              "$ref": "#/$defs/buildMetadata"
+            },
+            "clang-O3": {
+              "$ref": "#/$defs/buildMetadata"
+            },
+            "gcc-O0": {
+              "$ref": "#/$defs/buildMetadata"
+            },
+            "gcc-O1": {
+              "$ref": "#/$defs/buildMetadata"
+            },
+            "gcc-O2": {
+              "$ref": "#/$defs/buildMetadata"
+            },
+            "gcc-O3": {
+              "$ref": "#/$defs/buildMetadata"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "required": [
+        "version",
+        "version_number",
+        "source_id",
+        "threadsafe",
+        "mmap_before",
+        "mmap_after_request",
+        "compile_options",
+        "query_rows",
+        "extension_apis_absent"
+      ],
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/text"
+        },
+        "version_number": {
+          "$ref": "#/$defs/count"
+        },
+        "source_id": {
+          "$ref": "#/$defs/text"
+        },
+        "threadsafe": {
+          "$ref": "#/$defs/count"
+        },
+        "mmap_before": {
+          "$ref": "#/$defs/count"
+        },
+        "mmap_after_request": {
+          "$ref": "#/$defs/count"
+        },
+        "compile_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "query_rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        },
+        "extension_apis_absent": {
+          "$ref": "#/$defs/flag"
+        }
+      },
+      "additionalProperties": false
+    },
+    "toolChecks": {
+      "type": "object",
+      "required": [
+        "gnu_objdump_slices_checked",
+        "llvm_objdump_slices_checked",
+        "relative_table_examples_checked",
+        "runtime_artifacts_checked",
+        "soname",
+        "needed",
+        "readelf_dwarf_inline_count_checked",
+        "runtime"
+      ],
+      "properties": {
+        "gnu_objdump_slices_checked": {
+          "$ref": "#/$defs/count"
+        },
+        "llvm_objdump_slices_checked": {
+          "$ref": "#/$defs/count"
+        },
+        "relative_table_examples_checked": {
+          "$ref": "#/$defs/count"
+        },
+        "runtime_artifacts_checked": {
+          "$ref": "#/$defs/count"
+        },
+        "soname": {
+          "$ref": "#/$defs/text"
+        },
+        "needed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        },
+        "readelf_dwarf_inline_count_checked": {
+          "$ref": "#/$defs/flag"
+        },
+        "runtime": {
+          "$ref": "#/$defs/runtime"
+        }
+      },
+      "additionalProperties": false
+    },
+    "replay": {
+      "type": "object",
+      "required": [
+        "files_checked",
+        "analysis_identical"
+      ],
+      "properties": {
+        "files_checked": {
+          "$ref": "#/$defs/count"
+        },
+        "analysis_identical": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "primary_matrix",
+        "replay"
+      ],
+      "properties": {
+        "primary_matrix": {
+          "type": "object",
+          "required": [
+            "clang-O0",
+            "clang-O1",
+            "clang-O2",
+            "clang-O3",
+            "gcc-O0",
+            "gcc-O1",
+            "gcc-O2",
+            "gcc-O3"
+          ],
+          "properties": {
+            "clang-O0": {
+              "$ref": "#/$defs/toolChecks"
+            },
+            "clang-O1": {
+              "$ref": "#/$defs/toolChecks"
+            },
+            "clang-O2": {
+              "$ref": "#/$defs/toolChecks"
+            },
+            "clang-O3": {
+              "$ref": "#/$defs/toolChecks"
+            },
+            "gcc-O0": {
+              "$ref": "#/$defs/toolChecks"
+            },
+            "gcc-O1": {
+              "$ref": "#/$defs/toolChecks"
+            },
+            "gcc-O2": {
+              "$ref": "#/$defs/toolChecks"
+            },
+            "gcc-O3": {
+              "$ref": "#/$defs/toolChecks"
+            }
+          },
+          "additionalProperties": false
+        },
+        "replay": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/replay"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
