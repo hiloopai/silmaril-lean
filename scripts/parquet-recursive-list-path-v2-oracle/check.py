@@ -161,7 +161,7 @@ def fixtures():
     refusals.append(("raw_total", f".chunk {address} ⟨{lo}, {hi}⟩ (.rawSize {hi - lo + 1} {hi - lo})"))
     assert end[0] == sum(map(len, (row1, row2, row3)))
 
-    controls["compressed"] = write(schema, groups, data_page_version="2.0", compression="snappy")
+    controls["compressed"] = write(schema, groups, data_page_version="2.0", compression="gzip")
     controls["dictionary"] = write(schema, groups, data_page_version="2.0", use_dictionary=True)
     return genuine, positive, authored, controls, refusals
 
@@ -217,7 +217,7 @@ def verify(folder):
     address = f'⟨0, 0, {json.dumps(["chain"] + ["list", "element"] * 3)}⟩'
     dict_encodings = NATIVE["list_field"](next(V2["columns"](controls["dictionary"]))[1], 2)
     code.extend([
-        f'  refuseBinding (← load folder "compressed") (.column {address} (.codec 1))',
+        f'  refuseBinding (← load folder "compressed") (.column {address} (.codec 2))',
         f'  refuseBinding (← load folder "dictionary") (.column {address} (.encodings {dict_encodings}))',
     ])
     V2["run_lean"](folder, "ListPathV2.lean", code)

@@ -103,6 +103,74 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
     framesExact ▸ stored, framesExact ▸ raw, Nat.le_of_not_gt overBytes, Nat.le_of_not_gt overSlots,
     Nat.le_of_not_gt overRows⟩
 
+private theorem decodeFrames_failure {limits : Limits} {carrier : Carrier} {frames : List Page.Frame}
+    {initial ordinal byte : Nat} {start atFailure : State} {reversed : List ObservedPage}
+    {address : RecursiveSchema.Chunk.Address} {cause : PageCause}
+    (refused : decodeFrames limits carrier (wrappers carrier.plan) frames initial start reversed =
+      .error (.page address ordinal byte atFailure cause)) :
+    address = carrier.address ∧ ∃ completed frame rest,
+      frames = completed.map ObservedPage.frame ++ frame :: rest ∧
+      ChainWire limits carrier start atFailure completed ∧
+      ordinal = initial + completed.length ∧ byte = frame.header.start ∧
+      decodeDataPage limits carrier.plan (wrappers carrier.plan) carrier.source frame atFailure
+        (carrier.slots - atFailure.slots) carrier.rows carrier.codec = .error cause := by
+  induction frames generalizing initial start reversed with
+  | nil => contradiction
+  | cons frame frames ih =>
+    simp only [decodeFrames] at refused
+    cases page : decodeDataPage limits carrier.plan (wrappers carrier.plan) carrier.source frame start
+        (carrier.slots - start.slots) carrier.rows carrier.codec with
+    | error actual =>
+      simp only [page, Except.mapError, Bind.bind, Except.bind, Except.error.injEq, Error.page.injEq] at refused
+      obtain ⟨rfl, rfl, rfl, rfl, rfl⟩ := refused
+      exact ⟨rfl, [], frame, frames, rfl, .nil _, rfl, rfl, page⟩
+    | ok decoded =>
+      simp only [page, Except.mapError, Bind.bind, Except.bind] at refused
+      obtain ⟨column, completed, failed, rest, original, chain, index, offset, error⟩ := ih refused
+      refine ⟨column, ⟨frame, start, decoded⟩ :: completed, failed, rest, ?_,
+        .cons (decodeDataPage_wire page) chain, ?_, offset, error⟩
+      · simp [original]
+      · simp only [List.length_cons]
+        omega
+
+public theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
+    {limits : Limits} {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat} {start : State} {cause : PageCause}
+    (refused : Parquet.RecursiveSchema.ListPath.Chunk.read limits binding = .error (.page address ordinal byte start cause)) :
+    PageFailureWire limits (carrierOf binding) address ordinal byte start cause := by
+  unfold Parquet.RecursiveSchema.ListPath.Chunk.read at refused
+  dsimp only at refused
+  split at refused
+  · simp at refused
+  split at refused
+  · simp at refused
+  split at refused
+  · simp at refused
+  let carrier := carrierOf binding
+  change ((Page.readChunk limits.framing carrier.source carrier.span).mapError
+    (Error.chunk carrier.address carrier.span ∘ ChunkCause.framing) >>= _) = _ at refused
+  cases parsed : Page.readChunk limits.framing carrier.source carrier.span with
+  | error => simp [parsed, Except.mapError, Bind.bind, Except.bind] at refused
+  | ok frames =>
+    simp only [parsed, Except.mapError, Bind.bind, Except.bind] at refused
+    change (decodeFrames limits carrier (wrappers carrier.plan) frames 0 {} [] >>= fun observed =>
+      checkTotals carrier frames observed) = _ at refused
+    cases decoded : decodeFrames limits carrier (wrappers carrier.plan) frames 0 {} [] with
+    | error actual =>
+      simp only [decoded, Bind.bind, Except.bind, Except.error.injEq] at refused
+      subst actual
+      obtain ⟨column, completed, frame, rest, original, chain, ordinal, offset, error⟩ := decodeFrames_failure decoded
+      rw [original] at parsed
+      have member : frame ∈ completed.map ObservedPage.frame ++ frame :: rest := by simp
+      exact ⟨column, completed, frame, rest, parsed,
+        offset.symm ▸ Page.readChunk_readPage parsed frame member, chain, by simpa using ordinal, offset, error⟩
+    | ok observed =>
+      simp only [decoded, Bind.bind, Except.bind] at refused
+      unfold checkTotals at refused
+      dsimp only at refused
+      repeat' split at refused
+      all_goals simp at refused
+
 public theorem chain_counts {limits : Limits} {carrier : Carrier} {start stop : State} {pages : List ObservedPage}
     (wire : ChainWire limits carrier start stop pages) :
     start.slots + (pages.flatMap (·.decoded.atoms)).length = stop.slots ∧
