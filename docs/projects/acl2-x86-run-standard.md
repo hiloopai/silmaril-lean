@@ -15,6 +15,9 @@ native guard. [Lean specialization](../../Silmaril/Logic/ACL2/X86Run/Standard/Th
 
 ## Direct unresolved bindings
 
+The later status-reader slice resolves `FAULT` and `MS` through the logical
+record path and exposes its lower-level dependencies. [Status readers](acl2-x86-status.md)
+
 These are the direct unresolved function references in the exported logical
 body. All three have `logicp` true, one `X86ISA::X86` formal, and symbol-class
 `:COMMON-LISP-COMPLIANT` in the pinned ACL2 8.7 certified world

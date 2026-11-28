@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Export X86-RUN and X86-RUN-HALTED from the pinned certified ACL2 world."""
+"""Export X86-RUN or the status accessors from the pinned certified ACL2 world."""
 
 import argparse
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from inventory import COMMIT, NATIVE_INPUTS, PROJECT, digest, lisp_string
 
 
@@ -17,6 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checkout", type=Path, help="pinned SBCL ACL2 checkout and certificates")
     parser.add_argument("output", type=Path, help="JSON destination")
+    parser.add_argument("--status-accessors", action="store_true", help="export FAULT and MS")
     args = parser.parse_args()
     checkout = args.checkout.resolve()
     commit, tree = subprocess.check_output(
@@ -42,15 +45,25 @@ def main():
     log = args.output.with_suffix(args.output.suffix + ".log")
     with tempfile.TemporaryDirectory(prefix="acl2-x86-run-") as directory:
         export = Path(directory) / "x86-run.json"
-        operands = " ".join(map(lisp_string, (source, export, digest(source), commit, tree)))
+        operands = [source, export, digest(source), commit, tree]
+        before_exit, support = "", ""
+        driver = "c3-export-x86-run"
+        if args.status_accessors:
+            state_book = project / "machine/state.lisp"
+            operands += [state_book, digest(state_book)]
+            before_exit = (tools / "status-samples.lisp").read_text()
+            support = f'  (load {lisp_string(tools / "status-accessors.lisp")})\n'
+            driver = "c3-export-status-accessors"
+        raw_arguments = " ".join(map(lisp_string, operands))
         commands = (
             "(set-ld-error-action '(:exit 1) state)\n"
             '(include-book "machine/x86" :ttags nil :uncertified-okp nil '
             ':defaxioms-okp nil :skip-proofs-okp nil)\n'
-            ":q\n(handler-case (progn\n"
+            f"{before_exit}:q\n(handler-case (progn\n"
             f'  (load {lisp_string(tools / "certificate.lisp")})\n'
             f'  (load {lisp_string(tools / "x86-run.lisp")})\n'
-            f'  (c3-export-x86-run {operands}) (sb-ext:exit :code 0))\n'
+            f"{support}"
+            f'  ({driver} {raw_arguments}) (sb-ext:exit :code 0))\n'
             '  (error (condition) (format *error-output* "~a~%" condition) (sb-ext:exit :code 1)))\n'
         )
         with log.open("w") as output:

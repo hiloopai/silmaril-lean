@@ -78,6 +78,7 @@ CHECK_TARGETS += +Silmaril.Formats.Parquet.Page.Thms parquet-page-regression
 CHECK_TARGETS += +Silmaril.Formats.Parquet.FlatScan.Thms parquet-flat-scan-regression
 CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Run.Thms
 CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Run.Standard.Tests
+CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Run.Status.Tests
 
 # The release suites run when CHECK_TARGETS holds the executables. A change scoped to a library
 # that wasm-opt imports puts only wasm-opt in scope, so the other release binaries are built first.
@@ -92,6 +93,8 @@ check:
 	$(PYTHON) -I scripts/check-wasm-sim.py
 	$(PYTHON) -B tools/acl2-x86isa/check_x86_run.py --compare
 	$(PYTHON) -B tests/acl2/check_x86_run.py
+	$(PYTHON) -B tools/acl2-x86isa/check_status_accessors.py --compare
+	$(PYTHON) -B tests/acl2/check_status_accessors.py
 	$(if $(filter cexplorer-export CompilesToExamples,$(CHECK_TARGETS)),,$(MAKE) compiler-explorer-unit-check)
 	@if [ -n "$(LAKE_CACHE_RECORD)" ]; then \
 		cov-lake-cache build --repository hiloopai/silmaril-lean --record "$(LAKE_CACHE_RECORD)" -- $(CHECK_TARGETS); \
