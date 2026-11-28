@@ -280,4 +280,243 @@ theorem placed_slot_byte (k : Nat) (small : k < 8) :
 #print axioms cut_inhabited
 #print axioms placed_slot_byte
 
+/-- Numeric relocation inventory of the pinned client, in ELF table order. -/
+private def clientDyn : List Elf.Rela :=
+  [⟨0x3db0, 8, 0, 0x1450⟩, ⟨0x3db8, 8, 0, 0x1410⟩, ⟨0x4088, 8, 0, 0x4088⟩,
+    ⟨0x3fc0, 6, 2, 0⟩, ⟨0x3fc8, 6, 3, 0⟩, ⟨0x3fd0, 6, 14, 0⟩,
+    ⟨0x3fd8, 6, 20, 0⟩, ⟨0x3fe0, 6, 22, 0⟩, ⟨0x40a0, 5, 21, 0⟩, ⟨0x40c0, 5, 23, 0⟩]
+
+private def clientPlt : List Elf.Rela :=
+  ([1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19] : List Nat).zipIdx.map
+    fun (index, position) => ⟨0x4000 + 8 * position, 7, index, 0⟩
+
+/-- All 26 client RELA rows, using the loader reader for both tables. -/
+theorem client_inventory : frun client (Elf.relas clientInfo) = some (clientDyn, clientPlt) :=
+  read_checked clientK.wf_true clientK.toByteArray_eq (by decide +kernel)
+
+/-- A SQLite API slot and the direct client call sites covered by this receipt. -/
+structure ApiSlot where
+  name : String
+  off : Nat
+  index : Nat
+  plt : Nat
+  entry : Nat
+  size : Nat
+  sites : List Nat
+
+def pointApi : List ApiSlot :=
+  [⟨"sqlite3_bind_int",     0x4010,  5, 0x1050, 0x49810,    8, [0x11f6]⟩,
+   ⟨"sqlite3_column_int",  0x4028,  8, 0x1080, 0x26ee0,   82, [0x1353]⟩,
+   ⟨"sqlite3_errmsg",      0x4030,  9, 0x1090, 0x4d5d0,  298, [0x1299]⟩,
+   ⟨"sqlite3_column_type", 0x4040, 11, 0x10b0, 0x27010,   82, [0x133e]⟩,
+   ⟨"sqlite3_step",        0x4048, 12, 0x10c0, 0xb6600, 3969, [0x12fd, 0x135f]⟩,
+   ⟨"sqlite3_close",       0x4058, 15, 0x10e0, 0x810f0,    7, [0x121e, 0x12bc]⟩,
+   ⟨"sqlite3_finalize",    0x4068, 17, 0x1100, 0x81280,  223, [0x128b, 0x1317]⟩,
+   ⟨"sqlite3_prepare_v2",  0x4070, 18, 0x1110, 0xce420,   27, [0x11dc]⟩,
+   ⟨"sqlite3_open_v2",     0x4078, 19, 0x1120, 0xa4ca0,    5, [0x11bb]⟩]
+
+def ApiSlot.row (a : ApiSlot) : Elf.Rela := ⟨a.off, 7, a.index, 0⟩
+def ApiSlot.ref (a : ApiSlot) : Elf.Ref := ⟨nm a.name, false, none⟩
+def ApiSlot.destination (a : ApiSlot) : Word := 0x70000000 + BitVec.ofNat 64 a.entry
+
+private def inFileSpan (ph : Elf.Phdr) (va length : Nat) : Prop :=
+  ph.vaddr ≤ va ∧ va + length ≤ ph.vaddr + ph.filesz ∧
+    va + length ≤ ph.vaddr + ph.memsz
+
+private instance (ph : Elf.Phdr) (va length : Nat) : Decidable (inFileSpan ph va length) :=
+  inferInstanceAs (Decidable (_ ∧ _))
+
+private def callEncoding (pc plt : Nat) : Nat :=
+  0xe8 + 0x100 * (BitVec.ofInt 32 ((plt : Int) - (pc + 5 : Nat))).toNat
+
+private def pltEncoding (a : ApiSlot) : Nat :=
+  0x25ff + 0x10000 * (BitVec.ofInt 32 ((a.off : Int) - (a.plt + 6 : Nat))).toNat
+
+private theorem point_check {p : ApiSlot → Bool} (checked : pointApi.all p = true)
+    {a : ApiSlot} (member : a ∈ pointApi) : p a = true :=
+  List.all_eq_true.mp checked a member
+
+private theorem point_prop (p : ApiSlot → Prop) [∀ a, Decidable (p a)]
+    (checked : pointApi.all (fun a => decide (p a)) = true)
+    {a : ApiSlot} (member : a ∈ pointApi) : p a :=
+  of_decide_eq_true (point_check checked member)
+
+private theorem ref_checked {a : ApiSlot} (member : a ∈ pointApi) :
+    frun client (Elf.refOf clientInfo a.index) = some a.ref :=
+  read_checked clientK.wf_true clientK.toByteArray_eq
+    (point_prop (fun a => (Elf.refOf clientInfo a.index).run (kread clientK) = some a.ref)
+      (by decide +kernel) member)
+
+private theorem miss_checked {a : ApiSlot} (member : a ∈ pointApi) :
+    frun client (Elf.lookupDef clientInfo a.ref true) = some none :=
+  read_checked clientK.wf_true clientK.toByteArray_eq
+    (point_prop (fun a => (Elf.lookupDef clientInfo a.ref true).run (kread clientK) = some none)
+      (by decide +kernel) member)
+
+private theorem hit_checked {a : ApiSlot} (member : a ∈ pointApi) :
+    frun sqlite (Elf.lookupDef sqliteInfo a.ref true) = some (some ⟨a.entry, false, false⟩) :=
+  read_checked sqliteK.wf_true sqliteK.toByteArray_eq
+    (point_prop (fun a => (Elf.lookupDef sqliteInfo a.ref true).run (kread sqliteK) =
+        some (some ⟨a.entry, false, false⟩))
+      (by decide +kernel) member)
+
+private theorem api_lookup {a : ApiSlot} (member : a ∈ pointApi) :
+    resolve scope a.ref true = some (some (1, ⟨a.entry, false, false⟩)) := by
+  rw [resolve, scope, resolveFrom, client_info, Option.bind_eq_bind, Option.bind_some,
+    miss_checked member, Option.bind_eq_bind, Option.bind_some]
+  rw [resolveFrom, sqlite_info, Option.bind_eq_bind, Option.bind_some,
+    hit_checked member, Option.bind_eq_bind, Option.bind_some]
+  rfl
+
+theorem api_relocation {a : ApiSlot} (member : a ∈ pointApi) :
+    relocVal (resolve scope) client clientInfo a.row = some (.addr 1 a.entry) :=
+  jump_value (ref_checked member) (api_lookup member)
+
+/-- Real relocations, dedicated slots, and file-backed executable destinations. -/
+theorem api_ranges {a : ApiSlot} (member : a ∈ pointApi) :
+    a.row ∈ clientPlt ∧ inFileSpan clientRW a.off 8 ∧
+    inFileSpan clientRX a.plt 6 ∧ inFileSpan sqliteRX a.entry a.size ∧
+    (∀ pc ∈ a.sites, inFileSpan clientRX pc 5) ∧
+    (∀ k : Fin 8, (clientDyn ++ clientPlt).filter (fun r => covers r.off (a.off + k.val)) =
+      [a.row]) ∧ 0x4000 ≤ a.off ∧ a.off + 8 ≤ 0x4080 := by
+  have checked : pointApi.all (fun p => decide (p.row ∈ clientPlt ∧
+      inFileSpan clientRW p.off 8 ∧ inFileSpan clientRX p.plt 6 ∧
+      inFileSpan sqliteRX p.entry p.size ∧
+      (∀ pc ∈ p.sites, inFileSpan clientRX pc 5) ∧
+      (∀ k : Fin 8, (clientDyn ++ clientPlt).filter (fun r => covers r.off (p.off + k.val)) =
+        [p.row]) ∧ 0x4000 ≤ p.off ∧ p.off + 8 ≤ 0x4080)) = true := by decide +kernel
+  exact of_decide_eq_true (point_check checked member)
+
+private def rel32Fits (displacement : Int) : Prop :=
+  -(2 ^ 31) ≤ displacement ∧ displacement < 2 ^ 31
+
+private instance (displacement : Int) : Decidable (rel32Fits displacement) :=
+  inferInstanceAs (Decidable (_ ∧ _))
+
+/-- The selected writes remain writable after RELRO, and both instruction
+displacements and the loaded symbol extent fit their address widths. -/
+theorem api_address_bounds {a : ApiSlot} (member : a ∈ pointApi) :
+    a.off % 8 = 0 ∧ (∀ k : Fin 8, inRelro clientInfo (a.off + k.val) = false) ∧
+    0x70000000 + a.entry + a.size < 2 ^ 64 ∧ rel32Fits ((a.off : Int) - (a.plt + 6 : Nat)) ∧
+    ∀ pc ∈ a.sites, rel32Fits ((a.plt : Int) - (pc + 5 : Nat)) :=
+  point_prop (fun a =>
+    a.off % 8 = 0 ∧ (∀ k : Fin 8, inRelro clientInfo (a.off + k.val) = false) ∧
+    0x70000000 + a.entry + a.size < 2 ^ 64 ∧ rel32Fits ((a.off : Int) - (a.plt + 6 : Nat)) ∧
+    ∀ pc ∈ a.sites, rel32Fits ((a.plt : Int) - (pc + 5 : Nat))) (by decide +kernel) member
+
+/-- The definition found by GNU hash must be a default-visible global function. -/
+private noncomputable def providerExtent (a : ApiSlot) : Rd (Nat × Nat) := do
+  let found ← Elf.lookupIn sqliteInfo a.ref true
+  let index ← Rd.ofOption found
+  let symbol ← Elf.sym sqliteInfo index
+  Rd.guard (symbol.type = 2 ∧ symbol.bind = 1 ∧ symbol.other % 4 = 0 ∧ symbol.shndx ≠ 0)
+  let size ← symSize sqliteInfo index
+  pure (symbol.value, size)
+
+theorem api_entry_extent {a : ApiSlot} (member : a ∈ pointApi) :
+    frun sqlite (providerExtent a) = some (a.entry, a.size) :=
+  read_checked sqliteK.wf_true sqliteK.toByteArray_eq
+    (point_prop (fun a => (providerExtent a).run (kread sqliteK) = some (a.entry, a.size))
+      (by decide +kernel) member)
+
+/-- Direct CALL rel32 bytes in the client and its six-byte RIP-relative PLT jump. -/
+theorem api_route_bytes {a : ApiSlot} (member : a ∈ pointApi) :
+    frun client (Rd.le a.plt 6) = some (pltEncoding a) ∧
+    ∀ pc ∈ a.sites, frun client (Rd.le pc 5) = some (callEncoding pc a.plt) := by
+  constructor
+  · exact read_checked clientK.wf_true clientK.toByteArray_eq
+      (point_prop (fun a => (Rd.le a.plt 6).run (kread clientK) = some (pltEncoding a))
+        (by decide +kernel) member)
+  · intro pc site
+    have checked : pointApi.all (fun p => p.sites.all fun loc =>
+        decide ((Rd.le loc 5).run (kread clientK) = some (callEncoding loc p.plt))) =
+        true := by decide +kernel
+    exact read_checked clientK.wf_true clientK.toByteArray_eq
+      (of_decide_eq_true (List.all_eq_true.mp (point_check checked member) pc site))
+
+def apiTable : List (Nat × Option Word) :=
+  pointApi.map fun a => (a.off, some a.destination)
+
+private def apiFind (va : Nat) : Option (Nat × Option Word) :=
+  apiTable.find? (fun item => covers item.1 va)
+
+private def apiByte (va : Nat) : Byte :=
+  match apiFind va with
+  | some (off, some word) => wordByte word (va - off)
+  | _ => 0
+
+/-- Only the selected slot spans are mapped. Padding in the finite backing has no access. -/
+def apiMemory : Memory :=
+  ⟨pointApi.map (fun a => ⟨0x400000 + a.off, 8, ⟨true, true, false⟩⟩),
+    Memory.install ∅ 0x404000 ((List.range 0x80).map fun k => apiByte (0x4000 + k))⟩
+
+private theorem api_find {a : ApiSlot} (member : a ∈ pointApi) (k : Fin 8) :
+    apiFind (a.off + k.val) = some (a.off, some a.destination) :=
+  point_prop (fun a => ∀ j : Fin 8, apiFind (a.off + j.val) = some (a.off, some a.destination))
+    (by decide +kernel) member k
+
+private theorem api_backed {a : ApiSlot} (member : a ∈ pointApi) {k : Nat} (small : k < 8) :
+    apiMemory.bytes.get? (0x400000 + a.off + k) = some (wordByte a.destination k) := by
+  obtain ⟨_, _, _, _, _, _, lo, hi⟩ := api_ranges member
+  let j := a.off - 0x4000 + k
+  have hj : j < 0x80 := by dsimp [j]; omega
+  have addr : 0x404000 + j = 0x400000 + a.off + k := by dsimp [j]; omega
+  have va : 0x4000 + j = a.off + k := by dsimp [j]; omega
+  rw [← addr]
+  change (Memory.install ∅ 0x404000 ((List.range 0x80).map fun n => apiByte (0x4000 + n))).get?
+    (0x404000 + j) = _
+  rw [Memory.install_get _ _ _ j (by simpa using hj)]
+  simp only [List.getElem_map, List.getElem_range, va, apiByte, api_find member ⟨k, small⟩,
+    Nat.add_sub_cancel_left]
+
+private theorem api_read_word {a : ApiSlot} (member : a ∈ pointApi) :
+    Silmaril.X86.Ext.loadN apiMemory (0x400000 + BitVec.ofNat 64 a.off) 8 =
+      some a.destination := by
+  obtain ⟨_, _, _, _, _, _, _, hi⟩ := api_ranges member
+  have permitted : apiMemory.checkSpan .read (0x400000 + a.off) 8 = true :=
+    point_check (p := fun a => apiMemory.checkSpan .read (0x400000 + a.off) 8)
+      (by decide +kernel) member
+  let bytes := (List.range 8).map (wordByte a.destination)
+  have read : apiMemory.readWith .read (0x400000 + a.off) bytes.length = some bytes := by
+    apply read_checked_span (by simpa [bytes] using permitted)
+    intro k bound
+    have small : k < 8 := by simpa [bytes] using bound
+    simpa [bytes] using api_backed member small
+  have addr : ((0x400000 : Word) + BitVec.ofNat 64 a.off).toNat = 0x400000 + a.off :=
+    addr_toNat (by change 0x400000 + a.off < 2 ^ 64; omega)
+  unfold Silmaril.X86.Ext.loadN Memory.readBytes
+  rw [addr]
+  change (apiMemory.readWith .read (0x400000 + a.off) bytes.length).map _ = _
+  rw [read, Option.map_some, leValue_wordBytes, BitVec.ofNat_toNat, BitVec.setWidth_eq]
+
+/-- All selected bindings share one inhabited, bounded projection of the eager byte image. -/
+theorem point_api_closure : ∃ memory : Memory, ∀ a ∈ pointApi,
+    a.row ∈ clientPlt ∧ inFileSpan clientRW a.off 8 ∧ inFileSpan sqliteRX a.entry a.size ∧
+    relocVal (resolve scope) client clientInfo a.row = some (.addr 1 a.entry) ∧
+    (Val.addr 1 a.entry).word bases (fun _ => none) 0 = some (some a.destination) ∧
+    Silmaril.X86.Ext.loadN memory (0x400000 + BitVec.ofNat 64 a.off) 8 = some a.destination ∧
+    ∀ k < 8, expectedByte client apiTable clientRW (a.off + k) =
+        some (some (wordByte a.destination k)) ∧
+      memory.bytes.get? (0x400000 + a.off + k) = some (wordByte a.destination k) := by
+  refine ⟨apiMemory, ?_⟩
+  intro a member
+  obtain ⟨row, fits, _, extent, _, _, _, _⟩ := api_ranges member
+  refine ⟨row, fits, extent, api_relocation member, rfl, api_read_word member, ?_⟩
+  intro k small
+  refine ⟨?_, api_backed member small⟩
+  unfold expectedByte
+  change (match apiFind (a.off + k) with
+    | some (off, some word) => some (some (wordByte word (a.off + k - off)))
+    | some (_, none) => some none
+    | none => (imageByte client clientRW (a.off + k)).map some) = _
+  rw [api_find member ⟨k, small⟩]
+  simp only [Nat.add_sub_cancel_left]
+
+#print axioms client_inventory
+#print axioms api_ranges
+#print axioms api_address_bounds
+#print axioms api_entry_extent
+#print axioms api_route_bytes
+#print axioms point_api_closure
+
 end SqliteCampaign
