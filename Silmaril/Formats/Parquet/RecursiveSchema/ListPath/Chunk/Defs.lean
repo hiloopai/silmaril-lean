@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Rows.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
-/-! Original unindexed V1/V2 pages for one canonical LIST path. -/
+/-! Original unindexed V1/V2 pages for one repeated signed path. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
@@ -134,10 +134,33 @@ public def bind {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
 
 @[expose] public section
 
+/-- The physical scanner accepts exactly the shape information it needs.
+Both level sections are present in this repeated-path profile. -/
+class ScanShape (P : Type) where
+  shape : P → Shape
+  repeated : ∀ plan, 0 < (shape plan).repetitions
+
+instance : ScanShape Plan where
+  shape := Plan.shape
+  repeated plan := by
+    simp only [Plan.shape, Shape.repetitions]
+    omega
+
+@[simp] theorem ScanShape.legacy_shape (plan : Plan) : ScanShape.shape plan = plan.shape := rfl
+
+/-- A full unary signed path with at least one original LIST wrapper. -/
+structure RepeatedPath where
+  shape : Shape
+  repeated : 0 < shape.repetitions
+
+instance : ScanShape RepeatedPath := ⟨RepeatedPath.shape, RepeatedPath.repeated⟩
+
+variable {P : Type} [ScanShape P]
+
 /-- Each entry is the original definition level at which a repeated
 wrapper stops. A slot reaches that wrapper only above this level. -/
-def wrappers (plan : Plan) : List Nat :=
-  ((plan.shape.steps {}).zipIdx).filterMap fun (step, level) =>
+def wrappers (plan : P) : List Nat :=
+  (((ScanShape.shape plan).steps {}).zipIdx).filterMap fun (step, level) =>
     if step.wrapper?.isSome then some level else none
 
 def reached (wrappers : List Nat) (definition : Nat) : Nat :=
@@ -162,10 +185,10 @@ def State.close (state : State) : State := { state with live := 0 }
 def State.advance (start : State) (repetition live : Nat) : State :=
   ⟨start.slots + 1, start.rows + (repetition == 0).toNat, live⟩
 
-def step (plan : Plan) (wrappers : List Nat) (ceiling : Nat) (start : State)
+def step (plan : P) (wrappers : List Nat) (ceiling : Nat) (start : State)
     (rep defn : Nat) : Except LevelError State :=
-  if rep > plan.shape.repetitions then .error (.repetition start.slots rep plan.shape.repetitions)
-  else if defn > plan.shape.definitions then .error (.definition start.slots defn plan.shape.definitions)
+  if rep > (ScanShape.shape plan).repetitions then .error (.repetition start.slots rep (ScanShape.shape plan).repetitions)
+  else if defn > (ScanShape.shape plan).definitions then .error (.definition start.slots defn (ScanShape.shape plan).definitions)
   else if rep > start.live then .error (.closedAncestor start.slots rep start.live)
   else
     let live := reached wrappers defn
@@ -174,23 +197,23 @@ def step (plan : Plan) (wrappers : List Nat) (ceiling : Nat) (start : State)
       let stop := start.advance rep live
       if stop.rows > ceiling then .error (.rowOverrun start.slots ceiling) else .ok stop
 
-def scan (plan : Plan) (wrappers : List Nat) (ceiling : Nat) :
+def scan (plan : P) (wrappers : List Nat) (ceiling : Nat) :
     List (Nat × Nat) → State → Except LevelError State
   | [], start => .ok start
   | (rep, defn) :: rest, start => do
     let stop ← step plan wrappers ceiling start rep defn
     scan plan wrappers ceiling rest stop
 
-structure StepWire (plan : Plan) (wrappers : List Nat) (ceiling : Nat) (start : State)
+structure StepWire (plan : P) (wrappers : List Nat) (ceiling : Nat) (start : State)
     (rep defn : Nat) (stop : State) : Prop where
-  repetition : rep ≤ plan.shape.repetitions
-  definition : defn ≤ plan.shape.definitions
+  repetition : rep ≤ (ScanShape.shape plan).repetitions
+  definition : defn ≤ (ScanShape.shape plan).definitions
   openAncestor : rep ≤ start.live
   reachedAncestor : rep ≤ reached wrappers defn
   after : stop = start.advance rep (reached wrappers defn)
   rows : stop.rows ≤ ceiling
 
-inductive ScanWire (plan : Plan) (wrappers : List Nat) (ceiling : Nat) :
+inductive ScanWire (plan : P) (wrappers : List Nat) (ceiling : Nat) :
     State → List (Nat × Nat) → State → Prop where
   | nil (state : State) : ScanWire plan wrappers ceiling state [] state
   | cons {start middle stop rep defn rest} :
@@ -261,8 +284,8 @@ def atoms (levels : List (Nat × Nat)) (values : List (Option RecursiveSchema.Ch
     List Rows.Atom :=
   levels.zipWith (fun (rep, defn) word => ⟨rep, defn, word⟩) values
 
-def mask (plan : Plan) (definitions : List Nat) : List Bool :=
-  definitions.map (· == plan.shape.definitions)
+def mask (plan : P) (definitions : List Nat) : List Bool :=
+  definitions.map (· == (ScanShape.shape plan).definitions)
 
 inductive ValueEncoding where
   | plain
@@ -278,8 +301,8 @@ def ValueEncoding.read (limits : Limits) (kind : RecursiveSchema.Kind) (count : 
   | .dictionary entries =>
     (DictionaryIndex.readValues limits.indices entries count suffix).mapError .dictionaryIndices
 
-def ValueEncoding.signedExtent (plan : Plan) (info : Page.DataV2) : ValueEncoding → Option Nat
-  | .plain => some ((info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth plan.shape.leaf.2)
+def ValueEncoding.signedExtent (plan : P) (info : Page.DataV2) : ValueEncoding → Option Nat
+  | .plain => some ((info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth (ScanShape.shape plan).leaf.2)
   | .dictionary _ => none
 
 def ValueEncoding.select (dictionary : Option Repeated.Chunk.Dictionary) (tag : Int) :
@@ -291,23 +314,23 @@ def ValueEncoding.select (dictionary : Option Repeated.Chunk.Dictionary) (tag : 
   else .ok .plain
 
 /-- Both page versions scan ancestry independently of the value encoding. -/
-def decodeSlots (plan : Plan) (wrappers : List Nat) (spans : Sections) (start : State)
+def decodeSlots (plan : P) (wrappers : List Nat) (spans : Sections) (start : State)
     (ceiling : Nat) (reps defs : List Nat) (suffix : Bytes) (limits : Limits)
     (encoding : ValueEncoding := .plain) : Except PageCause Decoded := do
   let levels := reps.zip defs
   let stop ← (scan plan wrappers ceiling levels start).mapError .level
   let present := mask plan defs
-  let words ← encoding.read limits plan.shape.leaf.2 (present.count true) suffix
+  let words ← encoding.read limits (ScanShape.shape plan).leaf.2 (present.count true) suffix
   let aligned ← (FlatPage.reconstruct present words).mapError .alignment
   return ⟨spans, atoms levels aligned, stop⟩
 
-def decodePage (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+def decodePage (limits : Limits) (plan : P) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed)
     (encoding : ValueEncoding := .plain) : Except PageCause Decoded := do
   let info ← (Repeated.Chunk.admitPage frame remaining codec.column encoding.tag).mapError v1Error
   let body ← (Repeated.Chunk.readV1Body limits.payload codec.column source frame).mapError v1Error
-  let reps ← (Repeated.Chunk.readLevels limits.levels plan.shape.repetitions info.numValues body).mapError .repetition
-  let defs ← (Repeated.Chunk.readLevels limits.levels plan.shape.definitions info.numValues reps.tail).mapError .definition
+  let reps ← (Repeated.Chunk.readLevels limits.levels (ScanShape.shape plan).repetitions info.numValues body).mapError .repetition
+  let defs ← (Repeated.Chunk.readLevels limits.levels (ScanShape.shape plan).definitions info.numValues reps.tail).mapError .definition
   decodeSlots plan wrappers (sections (codec.v1Source source frame body) body reps defs)
     start ceiling reps.levels defs.levels defs.tail limits encoding
 
@@ -318,12 +341,12 @@ def absentSlots (decoded : Decoded) : Nat := decoded.atoms.countP (·.word.isNon
 /-- Check the original V2 header, stored body and raw level spans.
 Only the value suffix enters the codec when the original flag is true.
 A V2 page starts and ends with a closed ancestry cursor. -/
-def decodeV2Page (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+def decodeV2Page (limits : Limits) (plan : P) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed)
     (encoding : ValueEncoding := .plain) : Except PageCause Decoded := do
   let info ← (Repeated.Chunk.admitV2Page codec.column frame remaining encoding.tag).mapError .v2
-  let parts ← (Repeated.Chunk.readV2SectionsWith limits.toLimits plan.shape.repetitions
-    plan.shape.definitions source frame info).mapError .v2
+  let parts ← (Repeated.Chunk.readV2SectionsWith limits.toLimits (ScanShape.shape plan).repetitions
+    (ScanShape.shape plan).definitions source frame info).mapError .v2
   let stored := Repeated.Chunk.bytesAt source parts.spans.values
   let suffix ← (Repeated.Chunk.readV2SuffixWith limits.payload codec.column frame info stored
     (encoding.signedExtent plan info)).mapError .v2
@@ -331,7 +354,7 @@ def decodeV2Page (limits : Limits) (plan : Plan) (wrappers : List Nat) (source :
     decodeSlots plan wrappers (.ofV2 parts.spans) start.close ceiling parts.repetitions parts.definitions suffix limits encoding
   return decoded.close
 
-def decodeDataPage (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+def decodeDataPage (limits : Limits) (plan : P) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed)
     (dictionary : Option Repeated.Chunk.Dictionary := none) : Except PageCause Decoded :=
   match frame.value.kind with
@@ -357,23 +380,23 @@ inductive ValueEncoding.From (dictionary : Option Repeated.Chunk.Dictionary) : V
   | dictionary {table : Repeated.Chunk.Dictionary} :
       dictionary = some table → From dictionary (.dictionary table.entries)
 
-structure SlotsWire (plan : Plan) (wrappers : List Nat) (start : State) (ceiling : Nat)
+structure SlotsWire (plan : P) (wrappers : List Nat) (start : State) (ceiling : Nat)
     (reps defs : List Nat) (suffix : Bytes) (decoded : Decoded) (limits : Limits)
     (encoding : ValueEncoding := .plain) : Prop where
   original : ∃ aligned : List (Option RecursiveSchema.Chunk.Word),
     ScanWire plan wrappers ceiling start (reps.zip defs) decoded.after ∧
-    encoding.Wire limits plan.shape.leaf.2 ((mask plan defs).count true) suffix (aligned.filterMap id) ∧
+    encoding.Wire limits (ScanShape.shape plan).leaf.2 ((mask plan defs).count true) suffix (aligned.filterMap id) ∧
     aligned.map Option.isSome = mask plan defs ∧
     decoded.atoms = atoms (reps.zip defs) aligned
 
-structure SectionsWire (limits : Hybrid.Limits) (plan : Plan) (count : Nat) (input : SectionSource)
+structure SectionsWire (limits : Hybrid.Limits) (plan : P) (count : Nat) (input : SectionSource)
     (spans : Sections) (repetitions definitions : List Nat) (suffix : Bytes) : Prop where
   original : ∃ repPrefix defPrefix repBytes defBytes : List UInt8,
     repPrefix.length = 4 ∧ defPrefix.length = 4 ∧
     KBytes.leVal repPrefix = repBytes.length ∧ KBytes.leVal defPrefix = defBytes.length ∧
     repBytes.length ≤ limits.bytes ∧ defBytes.length ≤ limits.bytes ∧
-    Hybrid.Wire (bitWidth plan.shape.repetitions) count repBytes repetitions ∧
-    Hybrid.Wire (bitWidth plan.shape.definitions) count defBytes definitions ∧
+    Hybrid.Wire (bitWidth (ScanShape.shape plan).repetitions) count repBytes repetitions ∧
+    Hybrid.Wire (bitWidth (ScanShape.shape plan).definitions) count defBytes definitions ∧
     spans.origin = input.origin ∧
     spans.repetition.start = input.span.start ∧ spans.repetition.stop = spans.definition.start ∧
     spans.definition.stop = spans.values.start ∧ spans.values.stop = input.span.stop ∧
@@ -383,7 +406,7 @@ structure SectionsWire (limits : Hybrid.Limits) (plan : Plan) (count : Nat) (inp
       some (Bytes.ofList (defPrefix ++ defBytes)) ∧
     input.bytes.slice? spans.values.start (some spans.values.stop) = some suffix
 
-structure PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+structure PageWire (limits : Limits) (plan : P) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed)
     (encoding : ValueEncoding := .plain) : Prop where
   original : ∃ (info : Page.DataV1) (body : Bytes) (reps defs : LevelBlock),
@@ -396,13 +419,13 @@ structure PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source
     reps.levels.length = info.numValues ∧ defs.levels.length = info.numValues ∧
     SlotsWire plan wrappers start ceiling reps.levels defs.levels defs.tail decoded limits encoding
 
-structure V2PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+structure V2PageWire (limits : Limits) (plan : P) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed)
     (encoding : ValueEncoding := .plain) : Prop where
   original : ∃ (info : Page.DataV2) (parts : Repeated.Chunk.V2Sections) (suffix : Bytes) (checked : Decoded),
     frame.value.kind = .dataV2 info ∧ info.encoding = encoding.tag ∧ info.numValues ≤ remaining ∧
     (codec.column.v2 info = 0 → frame.value.uncompressedSize = frame.value.compressedSize) ∧
-    Repeated.Chunk.V2SectionsWireWith limits.toLimits plan.shape.repetitions plan.shape.definitions
+    Repeated.Chunk.V2SectionsWireWith limits.toLimits (ScanShape.shape plan).repetitions (ScanShape.shape plan).definitions
       source frame info parts ∧
     Repeated.Chunk.V2SuffixWire limits.payload codec.column frame info
       (Repeated.Chunk.bytesAt source parts.spans.values) suffix ∧
@@ -412,7 +435,7 @@ structure V2PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (sour
     SlotsWire plan wrappers start.close ceiling parts.repetitions parts.definitions suffix checked limits encoding ∧
     decoded = checked.close
 
-inductive DataPageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+inductive DataPageWire (limits : Limits) (plan : P) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed)
     (dictionary : Option Repeated.Chunk.Dictionary := none) : Prop where
   | v1 {encoding : ValueEncoding} : encoding.From dictionary →
@@ -456,8 +479,8 @@ def Observation.frames (observed : Observation) : List Page.Frame :=
   (observed.dictionary.toList.map (·.frame)) ++ observed.pages.map ObservedPage.frame
 def Observation.atoms (observed : Observation) : List Rows.Atom := observed.pages.flatMap (·.decoded.atoms)
 
-structure Carrier where
-  plan : Plan
+structure Carrier (P : Type := Plan) where
+  plan : P
   source : Bytes
   span : Footer.Span
   address : Address
@@ -474,17 +497,17 @@ def carrierOf {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     binding.rowGroup.numRows.toNat, binding.column.metadata.totalCompressedSize,
     binding.column.metadata.totalUncompressedSize, binding.codec, binding.column.metadata⟩
 
-def readPrefix (limits : Limits) (carrier : Carrier) (encoding : ColumnEncoding carrier.metadata)
+def readPrefix (limits : Limits) (carrier : Carrier P) (encoding : ColumnEncoding carrier.metadata)
     (frames : List Page.Frame) :
     Except Repeated.Chunk.DictionaryPrefixError (Option Repeated.Chunk.Dictionary × List Page.Frame) :=
   match encoding with
   | .plain _ _ => .ok (none, frames)
   | .dictionary _ codec _ => do
-    let (table, rest) ← Repeated.Chunk.readFramedDictionary limits.payload carrier.plan.shape.leaf.2
+    let (table, rest) ← Repeated.Chunk.readFramedDictionary limits.payload (ScanShape.shape carrier.plan).leaf.2
       carrier.source carrier.span carrier.metadata frames codec
     return (some table, rest)
 
-def decodeFrames (limits : Limits) (carrier : Carrier) (wrappers : List Nat)
+def decodeFrames (limits : Limits) (carrier : Carrier P) (wrappers : List Nat)
     (dictionary : Option Repeated.Chunk.Dictionary) :
     List Page.Frame → Nat → State → List ObservedPage → Except Error Observation
   | [], _, finish, reversed => .ok ⟨reversed.reverse, finish, dictionary⟩
@@ -496,7 +519,7 @@ def decodeFrames (limits : Limits) (carrier : Carrier) (wrappers : List Nat)
 
 /-- Counts refer to the complete original frame chain. Both footer
 sizes include each serialized page header. -/
-def checkTotals (carrier : Carrier) (frames : List Page.Frame) (observed : Observation) : Except Error Observation :=
+def checkTotals (carrier : Carrier P) (frames : List Page.Frame) (observed : Observation) : Except Error Observation :=
   let fail := Error.chunk carrier.address carrier.span
   if observed.stop.slots ≠ carrier.slots then .error (fail (.slotCount carrier.slots observed.stop.slots))
   else if observed.stop.rows ≠ carrier.rows then .error (fail (.rowCount carrier.rows observed.stop.rows))
@@ -509,7 +532,7 @@ def checkTotals (carrier : Carrier) (frames : List Page.Frame) (observed : Obser
 
 /-- Check the addressed original frames before decoding their payloads.
 The live LIST ancestry belongs to the chunk across V1 continuations. -/
-def readCarrier (limits : Limits) (carrier : Carrier) (encoding : ColumnEncoding carrier.metadata)
+def readCarrier (limits : Limits) (carrier : Carrier P) (encoding : ColumnEncoding carrier.metadata)
     (checkFrames : List Page.Frame → Except Error Unit) : Except Error Observation :=
   let bytes := carrier.span.stop - carrier.span.start
   let fail := Error.chunk carrier.address carrier.span
@@ -529,7 +552,7 @@ def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (limits : Limits) (binding : Binding schema group) : Except Error Observation :=
   readCarrier limits (carrierOf binding) binding.encodings (fun _ => .ok ())
 
-inductive ChainWire (limits : Limits) (carrier : Carrier) (dictionary : Option Repeated.Chunk.Dictionary) :
+inductive ChainWire (limits : Limits) (carrier : Carrier P) (dictionary : Option Repeated.Chunk.Dictionary) :
     State → State → List ObservedPage → Prop where
   | nil (state : State) : ChainWire limits carrier dictionary state state []
   | cons {start stop frame decoded rest} :
@@ -538,7 +561,7 @@ inductive ChainWire (limits : Limits) (carrier : Carrier) (dictionary : Option R
       ChainWire limits carrier dictionary decoded.after stop rest →
       ChainWire limits carrier dictionary start stop (⟨frame, start, decoded⟩ :: rest)
 
-inductive PrefixWire (limits : Limits) (carrier : Carrier) :
+inductive PrefixWire (limits : Limits) (carrier : Carrier P) :
     Option Repeated.Chunk.Dictionary → List Page.Frame → List Page.Frame → Prop where
   | plain {frames} : carrier.metadata.dictionaryPageOffset = none →
       PrefixWire limits carrier none frames frames
@@ -547,12 +570,12 @@ inductive PrefixWire (limits : Limits) (carrier : Carrier) :
       carrier.metadata.dictionaryPageOffset = some (Int.ofNat carrier.span.start) →
       carrier.metadata.dataPageOffset = Int.ofNat table.frame.payload.stop →
       table.frame.payload.stop < carrier.span.stop →
-      Repeated.Chunk.DictionaryContentsWire limits.payload carrier.plan.shape.leaf.2 carrier.source table →
+      Repeated.Chunk.DictionaryContentsWire limits.payload (ScanShape.shape carrier.plan).leaf.2 carrier.source table →
       PrefixWire limits carrier (some table) (table.frame :: frames) frames
 
 /-- A payload or slot refusal comes from the next original frame after
 the complete checked page prefix, with its original absolute header offset. -/
-structure PageFailureWire (limits : Limits) (carrier : Carrier) (address : Address)
+structure PageFailureWire (limits : Limits) (carrier : Carrier P) (address : Address)
     (ordinal byte : Nat) (start : State) (cause : PageCause) : Prop where
   column : address = carrier.address
   original : ∃ (dictionary : Option Repeated.Chunk.Dictionary) (frames : List Page.Frame)
@@ -567,7 +590,7 @@ structure PageFailureWire (limits : Limits) (carrier : Carrier) (address : Addre
 
 /-- A dictionary refusal comes from the original leading frame or its
 metadata anchors, before any data slot is consumed. -/
-structure DictionaryFailureWire (limits : Limits) (carrier : Carrier)
+structure DictionaryFailureWire (limits : Limits) (carrier : Carrier P)
     (encoding : ColumnEncoding carrier.metadata) (address : Address)
     (ordinal byte : Nat) (cause : Repeated.Chunk.PageCause) : Prop where
   column : address = carrier.address
@@ -575,7 +598,7 @@ structure DictionaryFailureWire (limits : Limits) (carrier : Carrier)
     Page.readChunk limits.framing carrier.source carrier.span = .ok frames ∧
     readPrefix limits carrier encoding frames = .error ⟨ordinal, byte, cause⟩
 
-structure Wire (limits : Limits) (carrier : Carrier) (observed : Observation) : Prop where
+structure Wire (limits : Limits) (carrier : Carrier P) (observed : Observation) : Prop where
   framed : Page.readChunk limits.framing carrier.source carrier.span = .ok observed.frames
   pages : Page.Chain carrier.span carrier.span.start carrier.span.stop observed.frames
   leading : PrefixWire limits carrier observed.dictionary observed.frames (observed.pages.map ObservedPage.frame)

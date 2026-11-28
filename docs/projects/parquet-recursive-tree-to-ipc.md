@@ -3,7 +3,7 @@
 `Parquet.RecursiveSchema.Tree.Rows.Events.ToIpc.convert` passes
 the [native Tree Events](parquet-recursive-tree-events.md) view
 to the shared strict Arrow V5 emitter. The input follows the
-Tree reader's leading-LIST signed-leaf adapter. The default view
+Tree reader's repeated signed-leaf adapter. The default view
 keeps every field. The standard positional projection also permits
 reordering, selecting a subset and selecting zero fields. Each view
 validates the original source leaves before projecting its groups.

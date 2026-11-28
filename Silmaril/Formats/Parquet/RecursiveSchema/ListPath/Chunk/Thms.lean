@@ -10,6 +10,8 @@ namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
 public section
 
+variable {P : Type} [ScanShape P]
+
 theorem Codec.column_ofId {id : Int} {codec : Codec} (read : Codec.ofId id = some codec) :
     Repeated.Chunk.ColumnCodec.ofId id = some codec.column := by
   unfold Codec.ofId at read
@@ -29,26 +31,26 @@ theorem Binding.span_exact {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
       binding.span.start < binding.span.stop ∧ binding.span.stop ≤ snapshot.footer.start :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.binding_span binding
 
-theorem step_wire {plan : Plan} {wrappers : List Nat} {ceiling : Nat} {start stop : State}
+theorem step_wire {plan : P} {wrappers : List Nat} {ceiling : Nat} {start stop : State}
     {rep defn : Nat} (accepted : step plan wrappers ceiling start rep defn = .ok stop) :
     StepWire plan wrappers ceiling start rep defn stop :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.step_wire accepted
 
-theorem decodePage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
+theorem decodePage_wire {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {encoding : ValueEncoding}
     (accepted : decodePage limits plan wrappers source frame start remaining ceiling codec encoding = .ok decoded) :
     PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.decodePage_wire accepted
 
-theorem decodeV2Page_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
+theorem decodeV2Page_wire {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {encoding : ValueEncoding}
     (accepted : decodeV2Page limits plan wrappers source frame start remaining ceiling codec encoding = .ok decoded) :
     V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.decodeV2Page_wire accepted
 
-theorem decodeDataPage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
+theorem decodeDataPage_wire {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {dictionary : Option Repeated.Chunk.Dictionary}
     (accepted : decodeDataPage limits plan wrappers source frame start remaining ceiling codec dictionary = .ok decoded) :
@@ -57,7 +59,7 @@ theorem decodeDataPage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat
 
 /-- An original V2 header separately accounts for slots, row starts and
 null markers. Its outgoing cursor has no live repeated wrapper. -/
-theorem V2PageWire.counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
+theorem V2PageWire.counts {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {encoding : ValueEncoding}
     (wire : V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding) :
@@ -67,7 +69,7 @@ theorem V2PageWire.counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
       start.rows + decoded.atoms.countP (·.repetition == 0) = decoded.after.rows :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.v2_page_counts wire
 
-theorem PageWire.counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
+theorem PageWire.counts {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {encoding : ValueEncoding}
     (wire : PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding) :
@@ -76,19 +78,19 @@ theorem PageWire.counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
       start.rows + decoded.atoms.countP (·.repetition == 0) = decoded.after.rows :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.page_counts wire
 
-theorem ChainWire.counts {limits : Limits} {carrier : Carrier} {start stop : State} {pages : List ObservedPage}
+theorem ChainWire.counts {limits : Limits} {carrier : Carrier P} {start stop : State} {pages : List ObservedPage}
     {dictionary : Option Repeated.Chunk.Dictionary}
     (wire : ChainWire limits carrier dictionary start stop pages) :
     start.slots + (pages.flatMap (·.decoded.atoms)).length = stop.slots ∧
     start.rows + (pages.flatMap (·.decoded.atoms)).countP (·.repetition == 0) = stop.rows :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.chain_counts wire
 
-theorem Wire.originalHeader {limits : Limits} {carrier : Carrier} {output : Observation} {frame : Page.Frame}
+theorem Wire.originalHeader {limits : Limits} {carrier : Carrier P} {output : Observation} {frame : Page.Frame}
     (wire : Wire limits carrier output) (member : frame ∈ output.frames) :
     Page.readPage limits.framing carrier.source carrier.span frame.header.start = .ok frame :=
   Page.readChunk_readPage wire.framed frame member
 
-theorem Wire.dictionary_anchors {limits : Limits} {carrier : Carrier} {observed : Observation}
+theorem Wire.dictionary_anchors {limits : Limits} {carrier : Carrier P} {observed : Observation}
     {table : Repeated.Chunk.Dictionary}
     (wire : Wire limits carrier observed) (found : observed.dictionary = some table) :
     ∃ first,
@@ -101,14 +103,14 @@ theorem Wire.dictionary_anchors {limits : Limits} {carrier : Carrier} {observed 
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.dictionary_anchors wire found
 
 /-- The original column codec and checked dictionary agree for any carrier. -/
-theorem Wire.dictionary_payloadOf {limits : Limits} {carrier : Carrier}
+theorem Wire.dictionary_payloadOf {limits : Limits} {carrier : Carrier P}
     {observed : Observation} {table : Repeated.Chunk.Dictionary}
     (wire : Wire limits carrier observed)
     (codec : Repeated.Chunk.ColumnCodec.ofId carrier.metadata.codec = some carrier.codec.column)
     (found : observed.dictionary = some table) :
     Repeated.Chunk.DictionaryCodec.ofId carrier.metadata.codec = some table.codec ∧
       table.codec.column = carrier.codec.column ∧
-      Repeated.Chunk.DictionaryContentsWire limits.payload carrier.plan.shape.leaf.2 carrier.source table :=
+      Repeated.Chunk.DictionaryContentsWire limits.payload (ScanShape.shape carrier.plan).leaf.2 carrier.source table :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.dictionary_payload codec wire found
 
 /-- The checked dictionary uses the same original column codec as its data
@@ -122,7 +124,7 @@ theorem Wire.dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Sna
       Repeated.Chunk.DictionaryContentsWire limits.payload schema.plan.shape.leaf.2 snapshot.bytes table :=
   wire.dictionary_payloadOf binding.codec_exact found
 
-theorem ChainWire.page_of_mem {limits : Limits} {carrier : Carrier} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
+theorem ChainWire.page_of_mem {limits : Limits} {carrier : Carrier P} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     {start stop : State} {pages : List ObservedPage} {page : ObservedPage}
     (chain : ChainWire limits carrier dictionary start stop pages) (member : page ∈ pages) :
     DataPageWire limits carrier.plan (wrappers carrier.plan) carrier.source page.frame page.start
@@ -131,7 +133,7 @@ theorem ChainWire.page_of_mem {limits : Limits} {carrier : Carrier} {dictionary 
 
 /-- Refusals from the shared original frame and payload reader with no
 extra frame restriction retain the original addressed prefix. -/
-theorem readCarrier_page_failure {limits : Limits} {carrier : Carrier}
+theorem readCarrier_page_failure {limits : Limits} {carrier : Carrier P}
     {encoding : ColumnEncoding carrier.metadata} {address : RecursiveSchema.Chunk.Address}
     {ordinal byte : Nat} {start : State} {cause : PageCause}
     (refused : readCarrier limits carrier encoding (fun _ => .ok ()) = .error (.page address ordinal byte start cause)) :
@@ -146,7 +148,7 @@ theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.
     PageFailureWire limits (carrierOf binding) address ordinal byte start cause :=
   readCarrier_page_failure refused
 
-theorem readCarrier_dictionary_failure {limits : Limits} {carrier : Carrier}
+theorem readCarrier_dictionary_failure {limits : Limits} {carrier : Carrier P}
     {encoding : ColumnEncoding carrier.metadata} {address : RecursiveSchema.Chunk.Address}
     {ordinal byte : Nat} {cause : Repeated.Chunk.PageCause}
     (refused : readCarrier limits carrier encoding (fun _ => .ok ()) = .error (.dictionary address ordinal byte cause)) :
@@ -161,7 +163,7 @@ theorem read_dictionary_failure {schemaLimits : Snapshot.Limits} {snapshot : Sna
     DictionaryFailureWire limits (carrierOf binding) binding.encodings address ordinal byte cause :=
   readCarrier_dictionary_failure refused
 
-theorem readCarrier_wire {limits : Limits} {carrier : Carrier} {encoding : ColumnEncoding carrier.metadata}
+theorem readCarrier_wire {limits : Limits} {carrier : Carrier P} {encoding : ColumnEncoding carrier.metadata}
     {checkFrames : List Page.Frame → Except Error Unit} {out : Observation}
     (accepted : readCarrier limits carrier encoding checkFrames = .ok out) :
     Wire limits carrier out ∧ checkFrames out.frames = .ok () :=

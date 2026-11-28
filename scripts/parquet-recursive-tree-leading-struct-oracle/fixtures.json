@@ -1,0 +1,81 @@
+{
+  "authored_parquet": {
+    "independent_cuts": {
+      "bytes": 2207,
+      "sha256": "288664ece17fe41349e6a33481cff1c6cbeafc14407006625f6b01c31dc65b0f"
+    },
+    "late_presence": {
+      "bytes": 2207,
+      "sha256": "63d42d7f10ad73ca03b6fd6c2d4ca0b460796d46dcb5ee655a790b5986f564d9"
+    },
+    "late_unreached": {
+      "bytes": 2206,
+      "sha256": "a89e1c4530e7648ccaeaa4aa784f433fc8df86606c0786730f2e1dcb98f20eee"
+    }
+  },
+  "emitted_ipc": {
+    "independent_cuts_empty": {
+      "bytes": 312,
+      "sha256": "217e93af8f263e1b69efad3927bc171b1dd64da23e527dd0cecae1cd444330ac"
+    },
+    "independent_cuts_first": {
+      "bytes": 1744,
+      "sha256": "e2176a4c0546228825cd164c48def202af9e9d2626a35b405cbfef2404b30de0"
+    },
+    "independent_cuts_full": {
+      "bytes": 2232,
+      "sha256": "ae2d74e8a067d4432e4a6623cae334fb8e9c8a4a23c4bc8d88b0110301fa6ead"
+    },
+    "independent_cuts_reverse": {
+      "bytes": 2232,
+      "sha256": "464166d8fc3d9b9047f974e5993a8a40bcfabf752bb09f17c5eade818d54ee65"
+    },
+    "leading_v1_empty": {
+      "bytes": 312,
+      "sha256": "217e93af8f263e1b69efad3927bc171b1dd64da23e527dd0cecae1cd444330ac"
+    },
+    "leading_v1_first": {
+      "bytes": 1744,
+      "sha256": "e2176a4c0546228825cd164c48def202af9e9d2626a35b405cbfef2404b30de0"
+    },
+    "leading_v1_full": {
+      "bytes": 2232,
+      "sha256": "ae2d74e8a067d4432e4a6623cae334fb8e9c8a4a23c4bc8d88b0110301fa6ead"
+    },
+    "leading_v1_reverse": {
+      "bytes": 2232,
+      "sha256": "464166d8fc3d9b9047f974e5993a8a40bcfabf752bb09f17c5eade818d54ee65"
+    },
+    "leading_v2_empty": {
+      "bytes": 312,
+      "sha256": "217e93af8f263e1b69efad3927bc171b1dd64da23e527dd0cecae1cd444330ac"
+    },
+    "leading_v2_first": {
+      "bytes": 1744,
+      "sha256": "e2176a4c0546228825cd164c48def202af9e9d2626a35b405cbfef2404b30de0"
+    },
+    "leading_v2_full": {
+      "bytes": 2232,
+      "sha256": "ae2d74e8a067d4432e4a6623cae334fb8e9c8a4a23c4bc8d88b0110301fa6ead"
+    },
+    "leading_v2_reverse": {
+      "bytes": 2232,
+      "sha256": "464166d8fc3d9b9047f974e5993a8a40bcfabf752bb09f17c5eade818d54ee65"
+    }
+  },
+  "genuine_parquet": {
+    "leading_v1": {
+      "bytes": 2289,
+      "sha256": "eb7e1985f73bbe2e81563f3551562db4892c354b8b5fc2f3281a6f4e49a87e8c"
+    },
+    "leading_v2": {
+      "bytes": 2216,
+      "sha256": "b2046ff5b13e26fc0d7d1e7c8d6dfbcca7361ccc2c984a0d133f24c682e50145"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}

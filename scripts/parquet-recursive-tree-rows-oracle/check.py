@@ -186,6 +186,7 @@ def inspect(wire, expected, layout=BRANCH_LAYOUT):
             crc = header[4][1] & 0xffffffff
             assert crc == zlib.crc32(body)
             assert header[2][1] == header[3][1] == len(body)
+            start = slots, rows, live
             if version == 0:
                 reps, after_reps = LEVEL(body, depth, count)
                 defs, suffix = LEVEL(after_reps, maximum, count)
@@ -202,7 +203,6 @@ def inspect(wire, expected, layout=BRANCH_LAYOUT):
                 assert (not reps or reps[0] == 0) and reps.count(0) == info[3][1]
                 assert count - defs.count(maximum) == info[2][1]
                 live = 0
-            start = slots, rows, live
             sections = body_at, body_at + rep_end, body_at + def_end, body_at + len(body)
             values = [word for word, in struct.iter_unpack("<i" if width == 32 else "<q", suffix)]
             assert len(values) == defs.count(maximum)
@@ -319,7 +319,7 @@ def verify(folder, genuine, authored, controls, schema, positives, invalid, chan
         '  refuseGroup (← load folder "branch_v1") 0 { maxSlots := 25 } (.input (.slotLimit 0 26))',
         '  refuseGroup (← load folder "branch_v1") 0 { chunk := { maxRows := 2 } } (.input (.rowLimit 0 3))',
         '  refuseGroup (← load folder "branch_v1") 2 {} (.input (.group 2))',
-        '  refuseGroup (← load folder "leading_struct") 0 {} (.input (.leaf 0 (.representation 0)))',
+        '  refuseGroup (← load folder "leading_struct") 0 {} (.input (.leaf 1 (.representation 1)))',
         '  refuse (openFile {} (← load folder "unsupported_double"))',
         '    (.original (.physical ⟨4, ["items", "list", "element", "a"]⟩ .double))',
     ])

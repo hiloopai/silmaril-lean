@@ -10,7 +10,7 @@ open Silmaril.Formats.Parquet Silmaril.Formats.Parquet.RecursiveSchema
 open Tree Tree.Rows Tree.Occurrences
 open Silmaril.Formats.Arrow.RecursiveSchema.Batch.Rows (Observation)
 
-public theorem tape_atoms (carrier : ListPath.Chunk.Carrier) (observed : ListPath.Chunk.Observation) :
+public theorem tape_atoms {P : Type} (carrier : ListPath.Chunk.Carrier P) (observed : ListPath.Chunk.Observation) :
     (Tape.ofRead carrier observed).atoms = observed.atoms := by
   simp only [Tape.atoms, Tape.ofRead, List.toList_toArray, addressed,
     List.map_flatMap, List.map_map, ListPath.Chunk.Observation.atoms]
@@ -26,7 +26,7 @@ public theorem tape_atoms (carrier : ListPath.Chunk.Carrier) (observed : ListPat
   simpa only [Function.comp_def, List.zipIdx_map_fst] using
     aux observed.pages observed.dictionary.isSome.toNat
 
-public theorem tape_of_slot {carrier : ListPath.Chunk.Carrier} {observed : ListPath.Chunk.Observation}
+public theorem tape_of_slot {P : Type} {carrier : ListPath.Chunk.Carrier P} {observed : ListPath.Chunk.Observation}
     {slot : Nat} {entry : Addressed} (found : (Tape.ofRead carrier observed).slots[slot]? = some entry) :
     ∃ page ordinal localSlot,
       observed.pages[ordinal]? = some page ∧

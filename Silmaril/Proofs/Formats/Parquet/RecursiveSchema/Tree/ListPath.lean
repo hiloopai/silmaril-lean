@@ -67,6 +67,33 @@ private theorem boundary_count (steps : List (Step × Nat)) :
     rcases first with ⟨step, level⟩
     cases step <;> simp [List.filterMap_cons, boundaryAt, Step.wrapper?, ih]
 
+private theorem path_levels {P : Type} [ListPath.Chunk.ScanShape P] {path : LeafPath} {plan : P}
+    (shape : ListPath.Chunk.ScanShape.shape plan = path.shape) :
+    let original := ListPath.Chunk.ScanShape.shape plan
+    original.leaf = (path.site, path.kind) ∧ original.steps {} = path.steps ∧
+      original.definitions = path.maxDefinition ∧ original.repetitions = path.maxRepetition ∧
+      ListPath.Chunk.wrappers plan = path.repeated.map (·.emptyLevel) := by
+  have steps : (ListPath.Chunk.ScanShape.shape plan).steps {} = path.steps :=
+    shape.symm ▸ wrap_steps path.ancestors {} path.site path.kind
+  have leaf : (ListPath.Chunk.ScanShape.shape plan).leaf = (path.site, path.kind) :=
+    shape.symm ▸ plan_leaf path.ancestors path.site path.kind
+  have defn := ListPath.Shape.steps_length (ListPath.Chunk.ScanShape.shape plan) {}
+  rw [steps] at defn
+  have repeated := boundary_count path.steps.zipIdx
+  change _ = (path.steps.zipIdx.filterMap (Step.wrapper? ∘ Prod.fst)).length at repeated
+  rw [← List.filterMap_map, List.zipIdx_map_fst] at repeated
+  change path.maxRepetition = _ at repeated
+  have reps := wrapper_count (ListPath.Chunk.ScanShape.shape plan) {}
+  rw [steps] at reps
+  refine ⟨leaf, steps, ?_, ?_, ?_⟩
+  · simpa [LeafPath.maxDefinition] using defn.symm
+  · change _ = 0 + _ at reps
+    rw [Nat.zero_add] at reps
+    exact reps.symm.trans repeated.symm
+  · unfold ListPath.Chunk.wrappers
+    rw [steps]
+    exact (boundary_indices path.steps.zipIdx).symm
+
 public theorem projected_levels {path : LeafPath} {plan : ListPath.Plan} (projected : path.listPlan = some plan) :
     plan.shape.leaf = (path.site, path.kind) ∧ plan.shape.steps {} = path.steps ∧
       plan.shape.definitions = path.maxDefinition ∧ plan.shape.repetitions = path.maxRepetition ∧
@@ -80,25 +107,19 @@ public theorem projected_levels {path : LeafPath} {plan : ListPath.Plan} (projec
       simp only [seen, Option.some.injEq] at projected
       cases projected
       rfl
-  have steps : plan.shape.steps {} = path.steps :=
-    shape.symm ▸ wrap_steps path.ancestors {} path.site path.kind
-  have leaf : plan.shape.leaf = (path.site, path.kind) :=
-    shape.symm ▸ plan_leaf path.ancestors path.site path.kind
-  have defn := ListPath.Shape.steps_length plan.shape {}
-  rw [steps] at defn
-  have repeated := boundary_count path.steps.zipIdx
-  change _ = (path.steps.zipIdx.filterMap (Step.wrapper? ∘ Prod.fst)).length at repeated
-  rw [← List.filterMap_map, List.zipIdx_map_fst] at repeated
-  change path.maxRepetition = _ at repeated
-  have reps := wrapper_count plan.shape {}
-  rw [steps] at reps
-  refine ⟨leaf, steps, ?_, ?_, ?_⟩
-  · simpa [LeafPath.maxDefinition] using defn.symm
-  · change _ = 0 + _ at reps
-    rw [Nat.zero_add] at reps
-    exact reps.symm.trans repeated.symm
-  · unfold ListPath.Chunk.wrappers
-    rw [steps]
-    exact (boundary_indices path.steps.zipIdx).symm
+  exact path_levels (path := path) (plan := plan) shape
+
+public theorem scan_levels {path : LeafPath} {plan : ListPath.Chunk.RepeatedPath}
+    (projected : path.scanPlan = some plan) :
+    plan.shape = path.shape ∧ plan.shape.leaf = (path.site, path.kind) ∧ plan.shape.steps {} = path.steps ∧
+      plan.shape.definitions = path.maxDefinition ∧ plan.shape.repetitions = path.maxRepetition ∧
+      ListPath.Chunk.wrappers plan = path.repeated.map (·.emptyLevel) := by
+  have shape : plan.shape = path.shape := by
+    dsimp only [LeafPath.scanPlan] at projected
+    split at projected
+    · cases projected
+      rfl
+    · contradiction
+  exact ⟨shape, path_levels (path := path) (plan := plan) shape⟩
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.Tree

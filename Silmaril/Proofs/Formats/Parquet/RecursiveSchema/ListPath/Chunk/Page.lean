@@ -17,6 +17,8 @@ open Parquet
 open Parquet.RecursiveSchema.ListPath
 open Parquet.RecursiveSchema.ListPath.Chunk
 
+variable {P : Type} [ScanShape P]
+
 private theorem bind_ok {α β ε : Type} {first : Except ε α} {next : α → Except ε β} {out : β}
     (read : (first >>= next) = .ok out) : ∃ found, first = .ok found ∧ next found = .ok out := by
   cases first with
@@ -49,7 +51,7 @@ private theorem read_values_wire {encoding : ValueEncoding} {limits : Limits}
     exact ⟨physical, extent, count, widths, values⟩
   | dictionary _ => exact DictionaryIndex.readValues_wire (from_mapError accepted)
 
-private theorem decodeSlots_wire {plan : Plan} {wrappers : List Nat} {spans : Sections}
+private theorem decodeSlots_wire {plan : P} {wrappers : List Nat} {spans : Sections}
     {start : State} {ceiling : Nat} {reps defs : List Nat} {suffix : Bytes} {decoded : Decoded}
     {limits : Limits} {encoding : ValueEncoding}
     (accepted : decodeSlots plan wrappers spans start ceiling reps defs suffix limits encoding = .ok decoded) :
@@ -79,7 +81,7 @@ private theorem v1_body_slice {limits : Limits} {codec : Codec} {source body : B
     simp only [Option.getD_some, Nat.sub_zero, List.drop_zero]
     rw [← Bytes.length_toList, List.take_length, Bytes.ofList_toList]
 
-public theorem decodePage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
+public theorem decodePage_wire {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {encoding : ValueEncoding}
     (accepted : decodePage limits plan wrappers source frame start remaining ceiling codec encoding = .ok decoded) :
@@ -100,7 +102,7 @@ public theorem decodePage_wire {limits : Limits} {plan : Plan} {wrappers : List 
   obtain ⟨layout, values⟩ := decodeSlots_wire slots
   exact ⟨info, body, reps, defs, kind, encodings, cap, bodyWire, layout.symm ▸ parts, repCount, defCount, values⟩
 
-public theorem decodeV2Page_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
+public theorem decodeV2Page_wire {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {encoding : ValueEncoding}
     (accepted : decodeV2Page limits plan wrappers source frame start remaining ceiling codec encoding = .ok decoded) :
@@ -139,7 +141,7 @@ private theorem selected_from {dictionary : Option RecursiveSchema.Repeated.Chun
   · cases Except.ok.inj read
     exact .plain
 
-public theorem decodeDataPage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
+public theorem decodeDataPage_wire {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     (accepted : decodeDataPage limits plan wrappers source frame start remaining ceiling codec dictionary = .ok decoded) :
@@ -153,7 +155,7 @@ public theorem decodeDataPage_wire {limits : Limits} {plan : Plan} {wrappers : L
   · contradiction
   · exact .v1 .plain (decodePage_wire accepted)
 
-private theorem slot_counts {plan : Plan} {wrappers : List Nat} {start : State} {ceiling : Nat}
+private theorem slot_counts {plan : P} {wrappers : List Nat} {start : State} {ceiling : Nat}
     {reps defs : List Nat} {suffix : Bytes} {decoded : Decoded}
     {limits : Limits} {encoding : ValueEncoding}
     (wire : SlotsWire plan wrappers start ceiling reps defs suffix decoded limits encoding)
@@ -177,7 +179,7 @@ private theorem slot_counts {plan : Plan} {wrappers : List Nat} {start : State} 
   have ⟨slots, afterRows⟩ := scan_counts scanned
   exact ⟨count, rows.trans originalRows, by simpa [count, balanced] using slots, rows ▸ afterRows⟩
 
-public theorem page_counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
+public theorem page_counts {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {encoding : ValueEncoding}
     (wire : PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding) :
@@ -188,7 +190,7 @@ public theorem page_counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
   obtain ⟨count, _, slots, rows⟩ := slot_counts values (repCount.trans defCount.symm)
   exact ⟨info, kind, count.trans repCount, slots, rows⟩
 
-public theorem v2_page_counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
+public theorem v2_page_counts {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {encoding : ValueEncoding}
     (wire : V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding) :
@@ -200,7 +202,7 @@ public theorem v2_page_counts {limits : Limits} {plan : Plan} {wrappers : List N
   obtain ⟨count, pageRows, slots, rows⟩ := slot_counts values (levels.count.trans levels.definitionCount.symm)
   exact ⟨info, kind, count.trans levels.count, pageRows.trans headerRows, nulls, rfl, slots, rows⟩
 
-public theorem data_page_counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
+public theorem data_page_counts {limits : Limits} {plan : P} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
     {codec : Codec} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     (wire : DataPageWire limits plan wrappers source frame start remaining ceiling decoded codec dictionary) :
