@@ -40,18 +40,10 @@ imports the ListPath decoder separately.
 
 ## Shared-occurrence join
 
-The next reader stage will track each leaf's row and occurrence
-ordinals at its repeated ancestors. At a shared original site, it
-will compare presence, null and empty markers and child cardinality
-after projecting away descendant continuations. Each independent
-sibling list keeps its own cursor.
-
-A successful row must project back to every leaf's exact original
-addressed repetition, definition and signed words. Refusals must
-retain the first reached mismatch and original coordinates. The
-shared join will provide the row-group observations used by Events
-and strict IPC. This slice exposes checked plans and independent
-leaf observations.
+The [native row-group join](parquet-recursive-tree-rows.md) uses these
+plans and independent leaf observations. It joins shared original
+sites by row and occurrence, retains independent descendant cursors,
+and checks exact projection back to the signed physical slots.
 
 ## Verification
 
