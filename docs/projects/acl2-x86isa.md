@@ -136,6 +136,8 @@ a property the book does not export.
 
 The [C3 X86-RUN slice](acl2-x86-run.md) reproduces the certified logical export
 for one declaration and binds the exported body and halted statement in Lean.
+The [C3 dependency manifest](acl2-x86-dependencies.md) records and checks the
+direct calls from the translated run and step bodies.
 
 1. Export the ordered declaration and constraint closure reachable from the
    translated machine step and run, including the generated dispatcher and

@@ -39,6 +39,7 @@ CHECK_TARGETS += PEGIRBridgeTests PEGForwardCFGTests
 CHECK_TARGETS += PeggyDialectTests
 CHECK_TARGETS += PeggyEggTests PeggySimpleValidationTests
 CHECK_TARGETS += PeggyFieldHeapTests PeggyFieldHeapLinearizeTests
+CHECK_TARGETS += +Silmaril.Logic.ACL2.Dependencies.Defs
 
 CHECK_TARGETS += PeggyInstitutionTests PeggySortMapTests
 CHECK_TARGETS += PeggyEquationalTests
@@ -83,6 +84,7 @@ RELEASE_BINARIES := wasm-opt wasm-as wasm-dis wasm-merge wasm-shell wasm-ctor-ev
 
 check:
 	scripts/check-layout.sh
+	$(PYTHON) -B tests/acl2/check_dependencies.py
 	$(PYTHON) -I scripts/check-wasm-spec.py
 	$(PYTHON) -I scripts/check-wasm-checkers.py
 	node examples/wasm-checkers/test-lrat.mjs
@@ -135,6 +137,9 @@ check-runtime: check-runtime-core
 
 check-runtime-core:
 	$(MAKE) process-gates
+	$(if $(filter Silmaril +Silmaril.Logic.ACL2.Dependencies.Defs,$(CHECK_TARGETS)),\
+		$(LAKE) build --wfail +Silmaril.Logic.ACL2.X86Run.Source && \
+		LAKE="$(LAKE)" $(PYTHON) -B tools/acl2-x86isa/check_dependencies.py --lean)
 	$(if $(filter Silmaril +Silmaril.Logic.Temporal.TLA.%,$(CHECK_TARGETS)),$(MAKE) tla-acp-source-check)
 	$(if $(filter Silmaril +Silmaril.Logic.Abstraction +Silmaril.Logic.Abstraction.% +Silmaril.Proofs.Logic.Abstraction.%,$(CHECK_TARGETS)),$(LAKE) build --wfail +Silmaril.Logic.Abstraction && \
 		for suite in Regression Soundness Comparisons; do \

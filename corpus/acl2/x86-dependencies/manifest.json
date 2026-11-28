@@ -1,0 +1,1007 @@
+{
+  "schema": 1,
+  "acl2_commit": "bc6f4f49e81a0711214a8d91f0d06e0e084d2204",
+  "acl2_tree": "66d80ea68f664b931f8982b607fe2305f3cec0e4",
+  "x86isa_exec": "nil",
+  "book": "projects/x86isa/machine/x86.lisp",
+  "coverage": "direct-root-bodies",
+  "book_sha256": "e73251b5ea07fdb524d3530006ed268be9ebe1756d9e85abb29d34d08c006f85",
+  "run_export_sha256": "ad779373d1802ecd4dcedb27d23b3ca6bdb6303acb10c2d25e572cc9268fc269",
+  "step_body_sha256": "4aa5dcc4b81c2843d7e095c948ad89727248c08c1f37ef397ebd8ae46b328fea",
+  "roots": [
+    {
+      "requested": [
+        "symbol",
+        "X86ISA",
+        "X86-FETCH-DECODE-EXECUTE"
+      ],
+      "resolved": [
+        "symbol",
+        "X86ISA",
+        "X86-FETCH-DECODE-EXECUTE"
+      ],
+      "via": "direct"
+    },
+    {
+      "requested": [
+        "symbol",
+        "X86ISA",
+        "X86-RUN"
+      ],
+      "resolved": [
+        "symbol",
+        "X86ISA",
+        "X86-RUN"
+      ],
+      "via": "direct"
+    }
+  ],
+  "declarations": [
+    {
+      "id": [
+        "symbol",
+        "ACL2",
+        "BINARY-+"
+      ],
+      "arity": 2,
+      "world": "primitive",
+      "kind": "primitive",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "ACL2",
+        "MV-NTH"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "ACL2",
+        "ZP"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "BITOPS",
+        "PART-SELECT-LOW-HIGH$INLINE"
+      ],
+      "arity": 3,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "COMMON-LISP",
+        "CONS"
+      ],
+      "arity": 2,
+      "world": "primitive",
+      "kind": "primitive",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "COMMON-LISP",
+        "EQL"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "COMMON-LISP",
+        "EQUAL"
+      ],
+      "arity": 2,
+      "world": "primitive",
+      "kind": "primitive",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "COMMON-LISP",
+        "IF"
+      ],
+      "arity": 3,
+      "world": "primitive",
+      "kind": "primitive",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "COMMON-LISP",
+        "NOT"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "!EVEX-PREFIXES->BYTE0$INLINE"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "!EVEX-PREFIXES->BYTE1$INLINE"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "!INHIBIT-INTERRUPTS-ONE-INSTRUCTION"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "!MS"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "!VEX-PREFIXES->BYTE0$INLINE"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "!VEX-PREFIXES->BYTE1$INLINE"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "ADD-TO-*IP$INLINE"
+      ],
+      "arity": 4,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "APP-VIEW"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "ENABLE-PERIPHERALS"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "EVEX-DECODE-AND-EXECUTE"
+      ],
+      "arity": 7,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "FAULT"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "GET-PREFIXES"
+      ],
+      "arity": 6,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "HANDLE-EXCEPTIONS"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "HANDLE-FAULTS"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "INHIBIT-INTERRUPTS-ONE-INSTRUCTION"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "MS"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "ONE-BYTE-OPCODE-EXECUTE"
+      ],
+      "arity": 9,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "ONE-BYTE-OPCODE-MODR/M-P$INLINE"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "PREFIXES->ADR$INLINE"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "PREFIXES->NUM$INLINE"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "PREFIXES->NXT$INLINE"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "READ-*IP$INLINE"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "RIP"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "RME08$INLINE"
+      ],
+      "arity": 5,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "SELECT-ADDRESS-SIZE$INLINE"
+      ],
+      "arity": 3,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "VEX-DECODE-AND-EXECUTE"
+      ],
+      "arity": 7,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "X86-DECODE-SIB-P"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "X86-EXEC-PERIPHERALS"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "X86-FETCH-DECODE-EXECUTE"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": [
+        [
+          [
+            "symbol",
+            "ACL2",
+            "BINARY-+"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "ACL2",
+            "MV-NTH"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "BITOPS",
+            "PART-SELECT-LOW-HIGH$INLINE"
+          ],
+          3
+        ],
+        [
+          [
+            "symbol",
+            "COMMON-LISP",
+            "CONS"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "COMMON-LISP",
+            "EQL"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "COMMON-LISP",
+            "EQUAL"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "COMMON-LISP",
+            "IF"
+          ],
+          3
+        ],
+        [
+          [
+            "symbol",
+            "COMMON-LISP",
+            "NOT"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "!EVEX-PREFIXES->BYTE0$INLINE"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "!EVEX-PREFIXES->BYTE1$INLINE"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "!INHIBIT-INTERRUPTS-ONE-INSTRUCTION"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "!MS"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "!VEX-PREFIXES->BYTE0$INLINE"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "!VEX-PREFIXES->BYTE1$INLINE"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "ADD-TO-*IP$INLINE"
+          ],
+          4
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "APP-VIEW"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "ENABLE-PERIPHERALS"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "EVEX-DECODE-AND-EXECUTE"
+          ],
+          7
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "FAULT"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "GET-PREFIXES"
+          ],
+          6
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "HANDLE-EXCEPTIONS"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "HANDLE-FAULTS"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "INHIBIT-INTERRUPTS-ONE-INSTRUCTION"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "MS"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "ONE-BYTE-OPCODE-EXECUTE"
+          ],
+          9
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "ONE-BYTE-OPCODE-MODR/M-P$INLINE"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "PREFIXES->ADR$INLINE"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "PREFIXES->NUM$INLINE"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "PREFIXES->NXT$INLINE"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "READ-*IP$INLINE"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "RIP"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "RME08$INLINE"
+          ],
+          5
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "SELECT-ADDRESS-SIZE$INLINE"
+          ],
+          3
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "VEX-DECODE-AND-EXECUTE"
+          ],
+          7
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "X86-DECODE-SIB-P"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "X86-EXEC-PERIPHERALS"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "X86-OPERATION-MODE"
+          ],
+          1
+        ]
+      ]
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "X86-OPERATION-MODE"
+      ],
+      "arity": 1,
+      "world": "definition",
+      "kind": "native-only",
+      "calls": null
+    },
+    {
+      "id": [
+        "symbol",
+        "X86ISA",
+        "X86-RUN"
+      ],
+      "arity": 2,
+      "world": "definition",
+      "kind": "checked",
+      "calls": [
+        [
+          [
+            "symbol",
+            "ACL2",
+            "BINARY-+"
+          ],
+          2
+        ],
+        [
+          [
+            "symbol",
+            "ACL2",
+            "ZP"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "COMMON-LISP",
+            "IF"
+          ],
+          3
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "FAULT"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "MS"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "X86-FETCH-DECODE-EXECUTE"
+          ],
+          1
+        ],
+        [
+          [
+            "symbol",
+            "X86ISA",
+            "X86-RUN"
+          ],
+          2
+        ]
+      ]
+    }
+  ],
+  "frontier": [
+    [
+      "symbol",
+      "ACL2",
+      "MV-NTH"
+    ],
+    [
+      "symbol",
+      "ACL2",
+      "ZP"
+    ],
+    [
+      "symbol",
+      "BITOPS",
+      "PART-SELECT-LOW-HIGH$INLINE"
+    ],
+    [
+      "symbol",
+      "COMMON-LISP",
+      "EQL"
+    ],
+    [
+      "symbol",
+      "COMMON-LISP",
+      "NOT"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "!EVEX-PREFIXES->BYTE0$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "!EVEX-PREFIXES->BYTE1$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "!INHIBIT-INTERRUPTS-ONE-INSTRUCTION"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "!MS"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "!VEX-PREFIXES->BYTE0$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "!VEX-PREFIXES->BYTE1$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "ADD-TO-*IP$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "APP-VIEW"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "ENABLE-PERIPHERALS"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "EVEX-DECODE-AND-EXECUTE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "FAULT"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "GET-PREFIXES"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "HANDLE-EXCEPTIONS"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "HANDLE-FAULTS"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "INHIBIT-INTERRUPTS-ONE-INSTRUCTION"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "MS"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "ONE-BYTE-OPCODE-EXECUTE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "ONE-BYTE-OPCODE-MODR/M-P$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "PREFIXES->ADR$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "PREFIXES->NUM$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "PREFIXES->NXT$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "READ-*IP$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "RIP"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "RME08$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "SELECT-ADDRESS-SIZE$INLINE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "VEX-DECODE-AND-EXECUTE"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "X86-DECODE-SIB-P"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "X86-EXEC-PERIPHERALS"
+    ],
+    [
+      "symbol",
+      "X86ISA",
+      "X86-OPERATION-MODE"
+    ]
+  ]
+}
