@@ -76,6 +76,7 @@ CHECK_TARGETS += +Silmaril.Formats.Parquet.Footer.Thms parquet-footer-regression
 CHECK_TARGETS += +Silmaril.Formats.Parquet.Page.Thms parquet-page-regression
 CHECK_TARGETS += +Silmaril.Formats.Parquet.FlatScan.Thms parquet-flat-scan-regression
 CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Run.Thms
+CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Run.Standard.Tests
 
 # The release suites run when CHECK_TARGETS holds the executables. A change scoped to a library
 # that wasm-opt imports puts only wasm-opt in scope, so the other release binaries are built first.

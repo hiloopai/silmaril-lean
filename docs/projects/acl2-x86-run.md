@@ -47,6 +47,9 @@ theorem proves satisfaction of the generated corpus statement in that model.
 
 ## Trust boundary and remaining closure
 
+The standard-object specialization discharges the count laws and names the
+remaining machine bindings. [Specialization](acl2-x86-run-standard.md)
+
 The pinned ACL2 build, its certificates and expansion, the Lisp exporter,
 and the Python translation are the provenance and source-translation
 boundary. Lean checks the resulting typed terms and the conditional
@@ -55,13 +58,11 @@ termination formula and induction machine are retained evidence. The Lean
 proof uses its own natural rank and the generic block admission API. The
 stobj signatures and guard are retained as data.
 
-Closing the machine result requires binding the named operations and literal
-to a checked ACL2 value model, importing the declaration and constraint
-closure of `FAULT`, `MS` and `X86-FETCH-DECODE-EXECUTE` including the
-generated dispatcher and logical stobj operations, and proving a state
-relation for both machine views and the environment. The value model can
-supply the existing `Primitives` carrier, the named interpretations, and
-proofs of `CountLaws`. An independent source or expansion correspondence proof
+After specialization, closing the machine result requires importing the
+declaration and constraint closure of `FAULT`, `MS` and
+`X86-FETCH-DECODE-EXECUTE`, including the generated dispatcher and logical
+stobj operations, and proving a state relation for both machine views and
+the environment. An independent source or expansion correspondence proof
 would replace the current provenance boundary.
 
 ## Reproduce
