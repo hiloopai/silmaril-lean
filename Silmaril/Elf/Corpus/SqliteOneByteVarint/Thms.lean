@@ -23,6 +23,16 @@ theorem symbol_at (w : Window) : ∃ symbol,
     symbol.raw.value = w.va ∧ w.code.length ≤ symbol.raw.size :=
   Silmaril.Proofs.Elf.Corpus.SqliteOneByteVarint.symbol_at w
 
+/-- The same first-return proof for any two placements of this instruction
+sequence whose wrapper encodes the checked direct call. -/
+theorem firstReturn_at {layout : Layout} {bias : Word} {entry : MState} {byte : Byte}
+    (checked : layout.checkPath = true) (direct : layout.DirectCall)
+    (loaded : ∀ w : Window,
+      Ext.Loaded entry.memory (bias + BitVec.ofNat 64 (layout.va w)) (layout.code w))
+    (admit : EntryAt layout bias entry byte) :
+    ∃ final, ResultAt layout bias entry final byte :=
+  Silmaril.Proofs.Elf.Corpus.SqliteOneByteVarint.firstReturn_at checked direct loaded admit
+
 /-- A caller can supply two mapped windows directly. This form admits a
 standalone example with only the pages needed by the slice. -/
 theorem firstReturn_of_loaded {bias : Word} {entry : MState} {byte : Byte}
