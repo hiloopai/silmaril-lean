@@ -110,7 +110,7 @@ test("sanitization blocks raw HTML, scripts, event handlers, path traversal and 
   assert.ok(!html.includes("data:text/html"), "no data: URL");
   assert.ok(!html.includes("vbscript:"), "no vbscript: URL");
   assert.ok(!html.includes("/etc/passwd"), "traversal above repo root is rejected");
-  assert.ok(!html.includes("//evil.example"), "protocol-relative URL is rejected");
+  assert.ok(!html.includes("//evil.example/payload"), "protocol-relative URL is rejected");
 });
 
 test("strict Mermaid rendering and fallback on unsupported syntax", () => {

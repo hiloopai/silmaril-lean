@@ -10,12 +10,23 @@ const ProjectDocs = (() => {
   const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ESC[c]);
 
-  // GitHub-compatible heading slugger: strip inline Markdown links/code/emphasis and safe HTML
-  // tags, lowercase, keep Unicode letters/numbers, `_` and `-`, turn spaces into `-`.
+  // GitHub-compatible heading slugger: strip inline Markdown links/code/emphasis and angle-bracketed
+  // tokens without regex tag stripping, lowercase, keep Unicode letters/numbers, `_` and `-`, turn spaces into `-`.
+  function stripAngleBlocks(str) {
+    let out = "";
+    let depth = 0;
+    for (const ch of String(str || "")) {
+      if (ch === "<") depth++;
+      else if (ch === ">" && depth > 0) depth--;
+      else if (depth === 0) out += ch;
+    }
+    return out;
+  }
+
   function slugify(raw, seen) {
     let s = String(raw || "");
     s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
-    s = s.replace(/<[^>]+>/g, "");
+    s = stripAngleBlocks(s);
     s = s.replace(/[`*~]/g, "");
     s = s.trim().toLowerCase();
     let base = "";
@@ -138,7 +149,34 @@ const ProjectDocs = (() => {
 
   // ---------- Strict Mermaid flowchart parser & SVG renderer ----------
   const NODE_RE = /^([A-Za-z0-9_]+)(?:\s*(\["[^"]*"\]|\[[^\]]*\]|\("[^"]*"\)|\([^)]*\)|\{"[^"]*"\}|\{[^}]*\}))?/;
-  const EDGE_RE = /^(?:(<==>|==>|-\.->|<-->|-->|---)(?:\|("[^"]*"|[^|]*)\|)?|(?:-\.\s*("[^"]*"|[^.]+?)\s*\.->|--\s*("[^"]*"|[^-]+?)\s*-->|==\s*("[^"]*"|[^=]+?)\s*==>))/;
+  const MERMAID_ARROWS = ["<==>", "==>", "-.->", "<-->", "-->", "---"];
+
+  function matchMermaidEdge(rest) {
+    for (const arrow of MERMAID_ARROWS) {
+      if (rest.startsWith(arrow)) {
+        const after = rest.slice(arrow.length);
+        if (after.startsWith("|")) {
+          const endBar = after.indexOf("|", 1);
+          if (endBar > 0) {
+            return { arrow, label: cleanLabel(after.slice(1, endBar)), length: arrow.length + endBar + 1 };
+          }
+        }
+        return { arrow, label: "", length: arrow.length };
+      }
+    }
+    for (const [open, close, arrow] of [["-.", ".->", "-.->"], ["--", "-->", "-->"], ["==", "==>", "==>"]]) {
+      if (rest.startsWith(open)) {
+        const idx = rest.indexOf(close, open.length);
+        if (idx > open.length) {
+          const rawLbl = rest.slice(open.length, idx).trim();
+          if (rawLbl) {
+            return { arrow, label: cleanLabel(rawLbl), length: idx + close.length };
+          }
+        }
+      }
+    }
+    return null;
+  }
 
   function cleanLabel(raw) {
     let s = String(raw || "").trim();
@@ -205,12 +243,10 @@ const ProjectDocs = (() => {
           chain.push({ type: "node", id });
           rest = rest.slice(nm[0].length);
         } else {
-          const em = rest.match(EDGE_RE);
+          const em = matchMermaidEdge(rest);
           if (!em) return { ok: false, error: `expected arrow in line: ${line}` };
-          const arrow = em[1] || (em[3] != null ? "-.->" : em[4] != null ? "-->" : "==>");
-          const rawLbl = em[2] ?? em[3] ?? em[4] ?? em[5] ?? "";
-          chain.push({ type: "edge", arrow, label: cleanLabel(rawLbl) });
-          rest = rest.slice(em[0].length);
+          chain.push({ type: "edge", arrow: em.arrow, label: em.label });
+          rest = rest.slice(em.length);
         }
       }
       if (!chain.length || chain.length % 2 === 0) {
@@ -640,7 +676,6 @@ const ProjectDocs = (() => {
     const lines = String(markdown ?? "").replace(/\r\n/g, "\n").split("\n");
     const seenSlugs = new Map();
     const out = [];
-    let i = 0;
 
     function renderBlocks(blockLines) {
       let k = 0;
@@ -655,9 +690,12 @@ const ProjectDocs = (() => {
           const m = trimmed.match(/^<details>\s*(?:<summary>([\s\S]*?)<\/summary>)?\s*$/i);
           let summaryText = m[1] || "";
           k++;
-          if (!summaryText && k < blockLines.length && /^<summary>([\s\S]*?)<\/summary>$/i.test(blockLines[k].trim())) {
-            summaryText = blockLines[k].trim().replace(/^<summary>|<\/summary>$/gi, "");
-            k++;
+          if (!summaryText && k < blockLines.length) {
+            const sm = blockLines[k].trim().match(/^<summary>([\s\S]*?)<\/summary>$/i);
+            if (sm) {
+              summaryText = sm[1];
+              k++;
+            }
           }
           const innerLines = [];
           let depth = 1;
