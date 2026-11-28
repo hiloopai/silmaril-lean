@@ -295,11 +295,11 @@ def fixtures():
                      f'(.page {address} 0 {page_start} {{}} (.checksum .byteLimit))')
 
     original_address = address.replace("⟨1,", "⟨0,", 1)
-    genuine_controls["gzip"] = write(schema, groups, compression="gzip")
+    genuine_controls["brotli"] = write(schema, groups, compression="brotli")
     genuine_controls["indexed"] = write(schema, groups, write_page_index=True)
     genuine_controls["dictionary"] = write(schema, groups, use_dictionary=True)
     dictionary = next(V2["columns"](genuine_controls["dictionary"]))[1]
-    for label, cause in (("gzip", "(.codec 2)"), ("indexed", ".pageIndex"),
+    for label, cause in (("brotli", "(.codec 4)"), ("indexed", ".pageIndex"),
                          ("dictionary", f"(.encodings {list_field(dictionary, 2)})")):
         negatives.append(f'  refuseBinding (← load folder "{label}") (.column {original_address} {cause})')
 

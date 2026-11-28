@@ -35,15 +35,14 @@ open RecursiveSchema.Repeated.Chunk (readV1Body readV2SuffixWith bytesAt storedC
 set_option maxRecDepth 32768
 
 private def checkPayloads (file : Bytes) (depth group : Nat) (codec : Chunk.Codec)
-    (storedSize rawSize : Nat) (expanded : List KBytes) : IO Unit := do
+    (storedSize rawSize : Nat) (expanded : List KBytes) (limits : Chunk.Limits := {}) : IO Unit := do
   let source ← take (openFile { maxSchemaDepth := 2 * depth + 2 } file)
   let binding ← take (Chunk.bind source.schema group)
-  let seen ← take (Chunk.read {} binding)
+  let seen ← take (Chunk.read limits binding)
   let frames := seen.frames
   unless binding.codec = codec && binding.column.metadata.codec = codec.column.id &&
       storedChunkBytes frames = storedSize && rawChunkBytes frames = rawSize && frames.length = expanded.length do
     throw (IO.userError "original codec, frame count or column totals differ")
-  let limits : Chunk.Limits := {}
   for (frame, expected) in frames.zip expanded do
     let actual ← match frame.value.kind with
       | .dataV1 _ => take (readV1Body limits.payload codec.column file frame)
@@ -186,32 +185,53 @@ def bytes_term(payload):
     return f"(KBytes.leaf {len(payload)} {int.from_bytes(payload, 'little')})"
 
 
+def source_commands(label, wire, case, codecs, decode, caps=None):
+    schema, nullable, width, groups = case
+    depth = len(nullable) - 1
+    terms = NATIVE["CORE"]["ROWS"]
+    layouts, payload_checks = [], []
+    manifest = capture(wire, *case, codecs=codecs, expand=decode)
+    tags = {0: "uncompressed", 1: "snappy", 2: "gzip", 6: "zstd", 7: "lz4Raw"}
+    caps = {} if caps is None else caps
+    for ordinal, ((lo, hi, stop, pages), rows, codec) in enumerate(zip(manifest, groups, codecs, strict=True)):
+        original = list(FRAMES(wire, lo, hi))
+        expected = lst(page_term(page, width, header, codec)
+                       for page, (_, header, _, _) in zip(pages, original, strict=True))
+        layouts.append(f"⟨{terms['batch_term'](rows, width)}, ⟨{lo}, {hi}⟩, {triple(stop)}, {expected}⟩")
+
+        def value_bytes(header, body):
+            if codec == 0:
+                return body[level_bytes(header):]
+            return frame_bytes(header, body, decode=lambda block, size: decode(codec, block, size))
+
+        decoded = lst(bytes_term(value_bytes(header, body)) for _, header, _, body in original)
+        stored = sum(body_at - at + header[3][1] for at, header, body_at, _ in original)
+        raw = sum(body_at - at + header[2][1] for at, header, body_at, _ in original)
+        cap = f" {caps[ordinal]}" if ordinal in caps else ""
+        payload_checks.append(f'  checkPayloads (← load folder "{label}") {depth} {ordinal} .{tags[codec]} '
+                              f'{stored} {raw} {decoded}{cap}')
+    field = terms["field_term"](schema.field(0))
+    return manifest, [
+        f"private def verify_{label} (folder : System.FilePath) : IO Unit := do",
+        f'  checkNative (← load folder "{label}") {depth} ⟨[{field}]⟩ {lst(layouts)}',
+        *payload_checks,
+        f'  checkIpc folder "{label}" (← load folder "{label}") {depth} '
+        f'{EVENTS["declarations"](schema)} {EVENTS["batch_terms"](groups, width)}',
+    ]
+
+
 def verify(folder):
     genuine, authored, positives, controls = fixtures()
     files = genuine | authored
     for label, wire in files.items():
         (folder / f"{label}.parquet").write_bytes(wire)
     code, entry = [LEAN], [*V1["ENTRY"]]
-    terms = NATIVE["CORE"]["ROWS"]
     total_frames = genuine_raw = genuine_raw_with_words = 0
     for label, (case, codecs) in positives.items():
-        schema, nullable, width, groups = case
         wire = files[label]
-        depth = len(nullable) - 1
-        frames, payload_checks = [], []
-        manifest = capture(wire, *case, codecs=codecs, expand=expand)
-        for ordinal, ((lo, hi, stop, pages), rows, codec) in enumerate(zip(manifest, groups, codecs, strict=True)):
+        manifest, commands = source_commands(label, wire, case, codecs, expand)
+        for ordinal, (lo, hi, _, pages) in enumerate(manifest):
             original = list(FRAMES(wire, lo, hi))
-            expected = lst(page_term(page, width, header, codec)
-                           for page, (_, header, _, _) in zip(pages, original, strict=True))
-            frames.append(f"⟨{terms['batch_term'](rows, width)}, ⟨{lo}, {hi}⟩, {triple(stop)}, {expected}⟩")
-            decoded = lst(bytes_term(frame_bytes(header, body) if codec else body[level_bytes(header):])
-                          for _, header, _, body in original)
-            stored = sum(body_at - at + header[3][1] for at, header, body_at, _ in original)
-            raw = sum(body_at - at + header[2][1] for at, header, body_at, _ in original)
-            kind = ".snappy" if codec == 1 else ".uncompressed"
-            payload_checks.append(f'  checkPayloads (← load folder "{label}") {depth} {ordinal} {kind} '
-                                  f'{stored} {raw} {decoded}')
             if label.startswith("native_"):
                 assert len(pages) >= 2
             if label.startswith("native_v2"):
@@ -221,13 +241,8 @@ def verify(folder):
                         genuine_raw += 1
                         genuine_raw_with_words += len(body) > level_bytes(header)
             total_frames += len(pages)
-        field = terms["field_term"](schema.field(0))
-        code.append(f"private def verify_{label} (folder : System.FilePath) : IO Unit := do")
+        code.extend(commands)
         entry.append(f"  verify_{label} folder")
-        code.append(f'  checkNative (← load folder "{label}") {depth} ⟨[{field}]⟩ {lst(frames)}')
-        code.extend(payload_checks)
-        code.append(f'  checkIpc folder "{label}" (← load folder "{label}") {depth} '
-                    f'{EVENTS["declarations"](schema)} {EVENTS["batch_terms"](groups, width)}')
 
     code.append("private def controls (folder : System.FilePath) : IO Unit := do")
     entry.append("  controls folder")

@@ -38,7 +38,7 @@ Schema-only files have no chunks to read. This geometry requires an
 original positive-sized in-file chunk for every group. Pageless groups,
 external chunks, dictionaries, indexes and other value encodings are
 outside the native profile. The same reader also supports complete-row
-V2 pages and bounded Snappy. [Native V2 reader](parquet-recursive-list-path-v2.md) · [Snappy](parquet-recursive-list-path-snappy.md)
+V2 pages and the bounded codec profiles. [Native V2 reader](parquet-recursive-list-path-v2.md) · [Codec profiles](parquet-recursive-list-path-codecs.md)
 
 ## Verification
 
@@ -53,7 +53,7 @@ Genuine schema-only and CRC-absent files also pass.
 
 Twenty-five typed controls cover original page addresses, missing ancestry, wire extents, CRC, counts, offset and footer
 sizes, and admission limits. Genuine files exercise the refusals for
-indexes, GZIP and dictionary encoding. The late word and CRC edits
+indexes, Brotli and dictionary encoding. The late word and CRC edits
 leave the earlier group readable and make the ordered file read return
 the original page error.
 [Producer and fixture pins](../../scripts/parquet-recursive-list-path-v1-oracle/fixtures.json)

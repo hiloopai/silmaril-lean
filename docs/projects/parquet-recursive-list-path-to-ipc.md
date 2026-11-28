@@ -3,12 +3,12 @@
 `ListPath.Reader.ToIpc.convert` runs the existing native signed
 LIST-path Events reader and passes its selected trace to the shared
 recursive Events-to-IPC adapter. The source profile is unindexed
-PLAIN V1/V2 with one signed leaf and the UNCOMPRESSED or Snappy codec.
+PLAIN V1/V2 with one signed leaf and an admitted ListPath codec.
 Full-field selection
 retains the nested LIST declaration and logical values. Empty selection
 emits a zero-width schema and one explicit record count per original
 row group, including a zero-row batch for a physical empty group.
-[Native V1 reader](parquet-recursive-list-path-v1.md) · [Native V2 reader](parquet-recursive-list-path-v2.md) · [Snappy](parquet-recursive-list-path-snappy.md) · [Source Events](parquet-recursive-list-path-events.md)
+[Native V1 reader](parquet-recursive-list-path-v1.md) · [Native V2 reader](parquet-recursive-list-path-v2.md) · [Codec profiles](parquet-recursive-list-path-codecs.md) · [Source Events](parquet-recursive-list-path-events.md)
 
 The adapter reaches the source terminal before admitting the target.
 An open refusal carries its original cause. A native read failure

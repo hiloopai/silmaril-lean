@@ -31,7 +31,7 @@ Rows, Arrow Events and strict Arrow V5 IPC use the same checked group
 observations. Full-field and empty projection preserve complete prior
 groups and the first reached native failure. Column and offset indexes,
 dictionary encoding and pageless groups are outside the profile.
-The reader also supports bounded Snappy. [Snappy](parquet-recursive-list-path-snappy.md) · [Events](parquet-recursive-list-path-events.md) · [Arrow V5 IPC](parquet-recursive-list-path-to-ipc.md)
+The reader also supports bounded compressed columns. [Codec profiles](parquet-recursive-list-path-codecs.md) · [Events](parquet-recursive-list-path-events.md) · [Arrow V5 IPC](parquet-recursive-list-path-to-ipc.md)
 
 ## Verification
 
