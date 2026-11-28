@@ -24,7 +24,7 @@ All 33 entries remain explicit denotations. Frontier admission, verification
 of guards and full stobj correspondence remain separate obligations.
 
 The [frontier specialization](acl2-x86-step-frontier.md) installs the two
-record readers and four pure helpers in this interface.
+record readers and seven pure helpers in this interface.
 
 ## Verify
 

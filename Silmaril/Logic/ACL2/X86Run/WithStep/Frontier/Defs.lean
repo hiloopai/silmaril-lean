@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Logic.ACL2.X86Run.WithStep.Defs
 public import Silmaril.Logic.ACL2.Standard.BitSelection.Defs
+public import Silmaril.Logic.ACL2.Standard.FixedWidth.Defs
 public import Silmaril.Logic.ACL2.Standard.Pure.Defs
 
 @[expose] public section
@@ -12,13 +13,20 @@ open Standard
 
 def partSelectLowHighName : Name := ⟨"BITOPS", "PART-SELECT-LOW-HIGH$INLINE"⟩
 
-/-- The step uses the same encoded-record readers as the outer run. -/
+def prefixesAdrName : Name := ⟨"X86ISA", "PREFIXES->ADR$INLINE"⟩
+def prefixesNumName : Name := ⟨"X86ISA", "PREFIXES->NUM$INLINE"⟩
+def prefixesNxtName : Name := ⟨"X86ISA", "PREFIXES->NXT$INLINE"⟩
+
+/-- The step uses the outer run's encoded-record readers and checked pure object operations. -/
 def fixedBinding (name : Name) (arity : Nat) : Option ((Fin arity → Object) → Object) :=
   match arity with
   | 1 =>
     let readers := Status.recordPrimitives Status.fieldRules Status.Tlb.recordFields
     if name = faultName then some (fun args => Status.fault.read readers (args 0))
     else if name = msName then some (fun args => Status.ms.read readers (args 0))
+    else if name = prefixesAdrName then some (fun args => (args 0).prefixesAdr)
+    else if name = prefixesNumName then some (fun args => (args 0).prefixesNum)
+    else if name = prefixesNxtName then some (fun args => (args 0).prefixesNxt)
     else Pure.binding name 1
   | 3 =>
     if name = partSelectLowHighName then some (fun args => (args 0).partSelectLowHigh (args 1) (args 2))

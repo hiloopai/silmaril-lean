@@ -13,7 +13,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_dependencies import CORPUS, HEADER, ROOT, STEP, WORLD_CLASSES, direct_calls, encode_symbol, require
-from check_step import BODY_SHA256, MANIFEST_SHA256, SOURCE, declarations, generate, name as lean_name
+from check_step import BODY_SHA256, MANIFEST_SHA256, SOURCE, declarations, generate
 from check_x86_run import NIL, formals, is_symbol, symbol
 from export_dependencies import read_world
 from inventory import lisp_string
@@ -21,6 +21,7 @@ from inventory import lisp_string
 AUDIT = CORPUS / "frontier-audit.json"
 AUDIT_SHA256 = "c5c67c055f050450b9c74318db44cb63cca248cf0a104eb04da2fdf7f87f4553"
 SELECTOR = ("BITOPS", "PART-SELECT-LOW-HIGH$INLINE", 3)
+# The six covered entries at the time of the 27-root audit.
 COVERED = {
     ("ACL2", "MV-NTH", 2), ("COMMON-LISP", "EQL", 2), ("COMMON-LISP", "NOT", 1),
     ("X86ISA", "FAULT", 1), ("X86ISA", "MS", 1), SELECTOR,
@@ -153,17 +154,15 @@ def read_audit(data, selection, book_sha256):
 
 
 def check_lean(selection):
-    package, spelling, arity = SELECTOR
-    selector = f"({lean_name((package, spelling))}, {arity})"
     source = f"""module
 
-public import Silmaril.Logic.ACL2.X86Run.WithStep.Frontier.Defs
+public import Silmaril.Logic.ACL2.X86Step.Defs
 import Lean
 
-namespace Silmaril.Logic.ACL2.X86Run.WithStep.Frontier
+namespace Silmaril.Logic.ACL2.X86Step
 
 public theorem auditedRootsAgree :
-    remainingEntries.filter (fun entry => decide (entry ≠ {selector})) =
+    frontierEntries.filter (fun entry => decide (entry ∉ {declarations(encoded(sorted(COVERED)))})) =
       {declarations(encoded(selection))} := by decide
 
 #print axioms auditedRootsAgree
@@ -174,7 +173,7 @@ run_elab do
     unless allowed.contains axiomName do
       throwError "unapproved frontier comparison axiom {{axiomName}}"
 
-end Silmaril.Logic.ACL2.X86Run.WithStep.Frontier
+end Silmaril.Logic.ACL2.X86Step
 """
     with tempfile.TemporaryDirectory(prefix="lean-x86-frontier-") as directory:
         path = Path(directory) / "Check.lean"
@@ -191,7 +190,7 @@ def main():
     parser.add_argument("audit", nargs="?", type=Path, default=AUDIT)
     parser.add_argument("--checkout", type=Path, help="replay the metadata query in certified ACL2")
     parser.add_argument("--emit", type=Path, help="write a fresh audit outside the repository")
-    parser.add_argument("--lean", action="store_true", help="check exact roots against the compiled Lean frontier")
+    parser.add_argument("--lean", action="store_true", help="check the 27-root snapshot against the compiled step")
     args = parser.parse_args()
     if bool(args.emit) != bool(args.checkout):
         parser.error("--emit and --checkout must be used together")

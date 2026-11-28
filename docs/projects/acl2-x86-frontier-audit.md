@@ -1,12 +1,13 @@
-# Immediate dependencies of the open ACL2 x86 step frontier
+# Immediate ACL2 x86 step dependencies (27-root snapshot)
 
-The audit starts from the 28 caller-supplied entries of the
-[checked frontier specialization](acl2-x86-step-frontier.md) and excludes
-`BITOPS::PART-SELECT-LOW-HIGH$INLINE` (arity 3), whose generic equation is
-already checked. The 27 audited roots are selected by exact package, name
-and arity. The canonical [run/step audit](acl2-x86-dependencies.md) pins the
-original call graph and translated step syntax, and a Lean check equates the
-selected signatures with the compiled frontier after selector exclusion.
+The 27-root snapshot records the step frontier after the first six
+bindings, including `BITOPS::PART-SELECT-LOW-HIGH$INLINE` (arity 3).
+The canonical manifest pins the original call graph and translated step
+syntax. The Lean check filters the compiled step frontier by the six
+historical exclusions and checks the selected roots by exact package, name,
+and arity. The current specialization installs three more projections.
+[Canonical run/step audit](acl2-x86-dependencies.md) ·
+[Current frontier](acl2-x86-step-frontier.md) ·
 [Generic bit selection proof](acl2-bit-selection.md) ·
 [Immediate graph fixture](../../corpus/acl2/x86-dependencies/frontier-audit.json)
 
@@ -51,9 +52,10 @@ stobj correspondence and instruction behavior remain outside the audit.
 
 ## Small pure admission targets
 
-These are four roots within the pure group. Their prerequisites were read
-from the pinned translated definitions. They reuse the already checked
-logical `LOGHEAD` and width/offset selector.
+These four audited roots reuse the checked logical `LOGHEAD` and width/offset
+selector. The first three now have checked projection bindings. The table
+records the premises read from the pinned translated definitions.
+[Projection correspondence](acl2-prefixes-projections.md)
 
 | Root | Next exact premise |
 | --- | --- |
@@ -80,7 +82,7 @@ export PYTHONSAFEPATH=1
 python3 -I tools/acl2-x86isa/check_frontier_dependencies.py \
   --checkout "$work/acl2" --emit "$work/frontier-audit.json"
 cmp "$work/frontier-audit.json" corpus/acl2/x86-dependencies/frontier-audit.json
-lake build --wfail +Silmaril.Logic.ACL2.X86Run.WithStep.Frontier.Defs
+lake build --wfail +Silmaril.Logic.ACL2.X86Step.Defs
 python3 -I tools/acl2-x86isa/check_frontier_dependencies.py --lean
 python3 -I tests/acl2/check_frontier_dependencies.py
 ```
