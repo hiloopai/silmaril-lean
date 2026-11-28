@@ -24,6 +24,6 @@ open TwoListStruct
 #print axioms Reader.readGroup_typed
 #print axioms Reader.readGroup_topology_failure
 #print axioms Reader.Events.readProjected_wire
-#print axioms Reader.ToIpc.convert_optional_error
+#print axioms Reader.ToIpc.convert_source_error
 #print axioms Writer.certify_readback
 #print axioms Writer.FromIpc.convert_declaration_error

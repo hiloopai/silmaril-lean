@@ -15,6 +15,6 @@ open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct
 #print axioms Writer.certify_readback
 #print axioms Writer.emit_wire
 #print axioms Reader.readGroup_wire
-#print axioms Reader.ToIpc.convert_optional_error
+#print axioms Reader.ToIpc.convert_source_error
 #print axioms Writer.FromIpc.convert_declaration_error
 #print axioms Writer.FromIpc.round_trip

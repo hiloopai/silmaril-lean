@@ -5,11 +5,11 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIp
 import Silmaril.Formats.Arrow.RecursiveSchema.Stream.Import.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Thms
-import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Thms
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc
 
 open Silmaril.Formats
+open Silmaril.Formats.Parquet
 open Parquet.RecursiveSchema.TwoListStruct
 open Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc
 open Arrow.RecursiveSchema hiding Limits Error
@@ -20,7 +20,7 @@ public theorem convert_terminal_wire {limits : Limits} {input : KBytes} {checksu
     TerminalWire limits.ipc input source := by
   cases admitted : Stream.Import.admit limits.ipc input with
   | ok trace =>
-    cases supported : Writer.supportsRequiredDeclaration trace.schema <;>
+    cases supported : Writer.supportsDeclaration trace.schema <;>
       cases writer : Writer.emit limits.parquet (writerInput trace checksum) <;>
       simp [convert, admitted, supported, writer, Except.mapError] at rejected
   | error cause =>
@@ -33,11 +33,11 @@ public theorem convert_terminal_wire {limits : Limits} {input : KBytes} {checksu
 
 public theorem convert_declaration_wire {limits : Limits} {input : KBytes} {checksum : Bool}
     {source : Stream.Trace} (rejected : convert limits input checksum = .error (.declaration source)) :
-    SourceWire limits.ipc input source ∧ Writer.supportsRequiredDeclaration source.schema = false := by
+    SourceWire limits.ipc input source ∧ Writer.supportsDeclaration source.schema = false := by
   cases admitted : Stream.Import.admit limits.ipc input with
   | error cause => cases cause <;> simp [convert, admitted] at rejected
   | ok trace =>
-    cases supported : Writer.supportsRequiredDeclaration trace.schema with
+    cases supported : Writer.supportsDeclaration trace.schema with
     | true =>
       cases writer : Writer.emit limits.parquet (writerInput trace checksum) <;>
         simp [convert, admitted, supported, writer, Except.mapError] at rejected
@@ -55,7 +55,7 @@ private theorem writer_result {limits : Limits} {input : KBytes} {checksum : Boo
   cases admitted : Stream.Import.admit limits.ipc input with
   | error cause => cases cause <;> cases result <;> simp [convert, admitted, Except.mapError] at converted
   | ok source =>
-    cases supported : Writer.supportsRequiredDeclaration source.schema with
+    cases supported : Writer.supportsDeclaration source.schema with
     | false => cases result <;> simp [convert, admitted, supported, Except.mapError] at converted
     | true =>
       refine ⟨source, Stream.Import.admit_wire admitted, ?_⟩
@@ -85,8 +85,27 @@ public theorem round_trip {limits : Limits} {input returned : KBytes} {checksum 
   obtain ⟨source, original, _, _, readback⟩ := (convert_readback written).original
   obtain ⟨opened, reopen, _, _, _, fields, _, groups, _⟩ := readback.original
   obtain ⟨sameFile, completed, sameOpen, read, _, certificate⟩ := (Reader.ToIpc.convert_readback forward).original
-  cases Except.ok.inj ((Parquet.RecursiveSchema.TwoListStruct.openRequired_exact sameOpen).1.symm.trans reopen)
+  cases Except.ok.inj (sameOpen.symm.trans reopen)
   cases Except.ok.inj (read.symm.trans groups)
   exact ⟨source, original, by simpa only [fields, writerInput] using certificate⟩
+
+public theorem round_trip_parquet {limits : Limits} {schemaLimits : Snapshot.Limits} {chunk : Reader.Limits}
+    {input : Bytes} {wire : KBytes} {checksum : Bool} {output : Writer.Output}
+    (forward : Reader.ToIpc.convert schemaLimits chunk limits.ipc input .field = .ok wire)
+    (written : convert limits wire checksum = .ok output) :
+    ∃ opened groups,
+      Parquet.RecursiveSchema.TwoListStruct.openFile schemaLimits input = .ok opened ∧
+      Reader.readAll chunk opened.schema = .ok groups ∧
+      List.Forall₂ (Reader.GroupWire chunk opened.schema) (List.range opened.snapshot.groupCount) groups ∧
+      let model : Writer.Input := ⟨opened.schema.plan.arrow, groups, checksum⟩
+      Writer.Construction limits.parquet model output ∧ Writer.Readback limits.parquet model output := by
+  obtain ⟨opened, groups, original, reads, sourceGroups, emitted⟩ := (Reader.ToIpc.convert_readback forward).original
+  obtain ⟨decoded, _, readArrow, _, schema, batches, _, _, _⟩ := emitted.result
+  obtain ⟨source, admitted, _, construction, target⟩ := (convert_readback written).original
+  cases Except.ok.inj (admitted.checked.symm.trans readArrow)
+  simp only [Selection.schema, show Selection.batch .field = id from rfl, List.map_id] at schema batches
+  exact ⟨opened, groups, original, reads, sourceGroups,
+    by simpa only [writerInput, schema, batches] using construction,
+    by simpa only [writerInput, schema, batches] using target⟩
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.FromIpc

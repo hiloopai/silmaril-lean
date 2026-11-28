@@ -166,8 +166,8 @@ def trace(rows, nullable, side, names=NAMES, *, optional_element=False):
     return [slot for row in rows for slot in entries(row)]
 
 
-def inspect(wire, schema, groups):
-    expected_rows = [[{"items": row} for row in group] for group in groups]
+def inspect(wire, schema, groups, *, checksums=True):
+    expected_rows = [[{schema.field(0).name: row} for row in group] for group in groups]
     table = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert table.schema_arrow.equals(schema, check_metadata=True)
     assert [table.read_row_group(group).to_pylist() for group in range(table.num_row_groups)] == expected_rows
@@ -175,22 +175,26 @@ def inspect(wire, schema, groups):
     inner = outer.type.value_field
     element = inner.type.value_field
     nullable = outer.nullable, inner.nullable, *(child.nullable for child in element.type)
+    names = tuple(child.name for child in element.type)
+    widths = tuple(child.type.bit_width for child in element.type)
+    path = (outer.name, "list", inner.name, "list", element.name)
     first_empty, second_empty, shared = steps(nullable)
     shared += int(element.nullable)
     entries = THRIFT["list_field"](metadata(wire), 2)
     assert len(entries) == 8 and entries[0][5][1] == 1
-    for index, optional in ((1, nullable[0]), (3, nullable[1])):
+    for index, field in ((1, outer), (3, inner)):
         node, wrapper = entries[index:index+2]
-        assert node[3][1] == optional and node[5][1] == 1 and node[6][1] == 3
+        assert node[3][1] == field.nullable and node[4][1] == field.name.encode() and node[5][1] == 1 and node[6][1] == 3
         assert node[10][1] == {3: (TType.STRUCT, {})}
         assert wrapper[3][1] == 2 and wrapper[4][1] == b"list" and wrapper[5][1] == 1
         assert not (set(wrapper) & {1, 2, 6, 10})
+    assert entries[5][4][1] == element.name.encode()
     assert entries[5][3][1] == element.nullable and entries[5][5][1] == 2 and not (set(entries[5]) & {1, 2, 6, 10})
     for side, entry in enumerate(entries[6:]):
-        assert entry[1][1] == side + 1 and entry[3][1] == nullable[2 + side]
-        assert entry[4][1] == NAMES[side].encode() and not (set(entry) & {2, 6, 10})
+        assert entry[1][1] == (1 if widths[side] == 32 else 2) and entry[3][1] == nullable[2 + side]
+        assert entry[4][1] == names[side].encode() and not (set(entry) & {2, 6, 10})
         column = table.schema.column(side)
-        assert column.path == ".".join(PATH + (NAMES[side],))
+        assert column.path == ".".join(path + (names[side],))
         assert column.max_repetition_level == 2 and column.max_definition_level == shared + nullable[2 + side]
 
     output = {}
@@ -198,21 +202,23 @@ def inspect(wire, schema, groups):
         assert set(THRIFT["list_field"](footer, 2)) == {0, 3}
         assert footer[4][1] == 0 and 11 not in footer and footer[9][1] == lo
         assert footer[6][1] == footer[7][1] == hi - lo
-        assert [piece.decode() for piece in THRIFT["list_field"](footer, 3)] == list(PATH + (NAMES[side],))
+        assert [piece.decode() for piece in THRIFT["list_field"](footer, 3)] == list(path + (names[side],))
         maximum = shared + nullable[2 + side]
-        expected = trace(groups[group], nullable, side, optional_element=element.nullable)
+        expected = trace(groups[group], nullable, side, names, optional_element=element.nullable)
         slots, rows, live = 0, 0, 0
         pages = []
         for at, header, body_at, body in FRAMES(wire, lo, hi):
             assert header[1][1] == 0 and header[2][1] == header[3][1] == len(body)
-            crc = header[4][1] & 0xffffffff
-            assert crc == zlib.crc32(body)
+            assert (4 in header) == checksums
+            crc = header[4][1] & 0xffffffff if checksums else None
+            if checksums:
+                assert crc == zlib.crc32(body)
             count, *encodings = [header[5][1][key][1] for key in range(1, 5)]
             assert encodings == [0, 3, 3]
             reps, rest = LEVEL(body, 2, count)
             defs, suffix = LEVEL(rest, maximum, count)
-            physical = "<i" if WIDTHS[side] == 32 else "<q"
-            assert len(suffix) == defs.count(maximum) * (WIDTHS[side] // 8)
+            physical = "<i" if widths[side] == 32 else "<q"
+            assert len(suffix) == defs.count(maximum) * (widths[side] // 8)
             words = iter(word for word, in struct.iter_unpack(physical, suffix))
             page_trace = [(rep, definition, next(words) if definition == maximum else None)
                           for rep, definition in zip(reps, defs, strict=True)]
@@ -232,7 +238,7 @@ def inspect(wire, schema, groups):
     assert len(output) == 2 * len(groups)
     for group, rows in enumerate(groups):
         def topology(side):
-            return [(rep, min(definition, shared)) for rep, definition, _ in trace(rows, nullable, side, optional_element=element.nullable)]
+            return [(rep, min(definition, shared)) for rep, definition, _ in trace(rows, nullable, side, names, optional_element=element.nullable)]
         assert topology(0) == topology(1)
     return shared, output
 

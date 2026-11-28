@@ -140,6 +140,39 @@ def exact_trace(observed):
     return BRIDGE["trace_term"](observed, count, f".eos {count} {observed[4]}")
 
 
+def prepare_cases(positives, original_wire=None):
+    genuine, observed, code = {}, {}, [LEAN]
+    for label, schema, groups, crc in positives:
+        logical = rows_for(schema, groups)
+        wire = (original_wire or {}).get(label)
+        if wire is None:
+            wire = write_ipc(schema, logical)
+        genuine[label] = wire
+        FORWARD["inspect_ipc"](wire, schema, logical, canonical=False)
+        original = observed[label] = STREAM["observe"](pa, wire)
+        code.append(f'  roundTrip directory "{label}" {str(crc).lower()} {exact_trace(original)}')
+    return genuine, observed, code
+
+
+def run_cases(folder, files, positives, code):
+    for label, wire in files.items():
+        (folder / f"{label}.arrows").write_bytes(wire)
+    driver = folder / "TwoListStructFromIpc.lean"
+    driver.write_text("\n".join(code) + "\n", encoding="utf-8")
+    subprocess.run(["lake", "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
+                    "--run", str(driver), str(folder)], cwd=ROOT, check=True)
+
+    parquet, returned = {}, {}
+    for label, schema, groups, crc in positives:
+        parquet[label] = (folder / f"{label}.parquet").read_bytes()
+        WRITER["inspect"](parquet[label], schema, groups, crc)
+        for selection, projected in (("field", schema), ("empty", pa.schema([]))):
+            name = f"{label}.{selection}"
+            wire = returned[name] = (folder / f"{name}.arrows").read_bytes()
+            FORWARD["inspect_ipc"](wire, projected, rows_for(schema, groups))
+    return parquet, returned
+
+
 def verify(folder):
     common = "renamed_no_crc_empty_group"
     positives = []
@@ -148,13 +181,7 @@ def verify(folder):
             groups = [groups[0], [], [None, groups[2][-1]]]
         positives.append((label, schema, groups, crc))
 
-    genuine, observed, code = {}, {}, [LEAN]
-    for label, schema, groups, crc in positives:
-        logical = rows_for(schema, groups)
-        raw = genuine[label] = write_ipc(schema, logical)
-        FORWARD["inspect_ipc"](raw, schema, logical, canonical=False)
-        original = observed[label] = STREAM["observe"](pa, raw)
-        code.append(f'  roundTrip directory "{label}" {str(crc).lower()} {exact_trace(original)}')
+    genuine, observed, code = prepare_cases(positives)
 
     raw, original = genuine[common], observed[common]
     edits, bad_open = BRIDGE["edits_of"](raw, original)
@@ -163,14 +190,9 @@ def verify(folder):
     flat = write_ipc(flat_schema, [[{"value": -7}]])
     source_schema = next(schema for label, schema, _, _ in positives if label == "32_64_1000")
     outer = source_schema.field(0)
-    inner = outer.type.value_field
-    optional_element = inner.type.value_field.with_nullable(True)
-    optional_inner = pa.field(inner.name, pa.list_(optional_element), inner.nullable)
-    optional = pa.schema([pa.field(outer.name, pa.list_(optional_inner), outer.nullable)])
     controls = {
         "legacy": BRIDGE["ipc"](source_schema, [], legacy=True),
         "flat": flat,
-        "optional_struct": write_ipc(optional, [[{outer.name: [[None]]}]]),
         "zero_width": BRIDGE["ipc"](pa.schema([]), [
             pa.RecordBatch.from_struct_array(pa.array([{}, {}], type=pa.struct([]))),
         ]),
@@ -184,9 +206,6 @@ def verify(folder):
         "unnamed": absent_root_name(genuine["32_64_1000"]),
         "flat_trailing": flat + b"\0",
     }
-    for label, wire in (genuine | controls | authored).items():
-        (folder / f"{label}.arrows").write_bytes(wire)
-
     refused = [
         '  expectOpen directory "legacy" (.envelope (.unsupported .legacyFraming))',
         '  expectOpen directory "eos_without_schema" .expectedSchema',
@@ -196,7 +215,7 @@ def verify(folder):
         f'  expectWriter directory "{common}" {{ parquet.schema.snapshot.maxSchemaDepth := 6 }} (.schema (.depth []))',
         '  expectWriter directory "schema_only" { parquet.schema.maxFileBytes := 11 } (.schema .fileLimit)',
     ]
-    for label in ("flat", "optional_struct", "zero_width"):
+    for label in ("flat", "zero_width"):
         trace = exact_trace(STREAM["observe"](pa, controls[label]))
         refused.append(f'  expectDeclaration directory "{label}" {trace}')
     for label, (data, count, offset, cause) in edits.items():
@@ -208,19 +227,7 @@ def verify(folder):
     flat_wire = STREAM["observe"](pa, flat)
     flat_trace = BRIDGE["trace_term"](flat_wire, 1, f".failed 1 {flat_wire[4]} .trailingBytes")
     refused.append(f'  expectTerminal directory "flat_trailing" {{}} {flat_trace}')
-    driver = folder / "TwoListStructFromIpc.lean"
-    driver.write_text("\n".join(code + refused) + "\n", encoding="utf-8")
-    subprocess.run(["lake", "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true",
-                    "--run", str(driver), str(folder)], cwd=ROOT, check=True)
-
-    parquet, returned = {}, {}
-    for label, schema, groups, crc in positives:
-        parquet[label] = (folder / f"{label}.parquet").read_bytes()
-        WRITER["inspect"](parquet[label], schema, groups, crc)
-        for selection, projected in (("field", schema), ("empty", pa.schema([]))):
-            name = f"{label}.{selection}"
-            wire = returned[name] = (folder / f"{name}.arrows").read_bytes()
-            FORWARD["inspect_ipc"](wire, projected, rows_for(schema, groups))
+    parquet, returned = run_cases(folder, genuine | controls | authored, positives, code + refused)
     pages = 2 * sum(len(groups) for _, _, groups, _ in positives)
     print(f"Checked {len(genuine)} genuine V5 streams, {pages} original Parquet pages, "
           f"{len(returned)} strict selected IPC returns and {len(refused)} typed controls")

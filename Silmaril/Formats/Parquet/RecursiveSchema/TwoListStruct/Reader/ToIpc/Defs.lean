@@ -13,24 +13,19 @@ open Parquet.Reader.Recursive (Selection)
 
 abbrev Error := Arrow.RecursiveSchema.Stream.Events.ToIpc.Error Events.Error
 
-def sourceEvents (schemaLimits : Snapshot.Limits) (limits : Reader.Limits) (input : Bytes)
-    (selection : Selection) : Events.EventStream :=
-  match TwoListStruct.openRequired schemaLimits input with
-  | .error cause => .error (.openError cause)
-  | .ok opened => Arrow.RecursiveSchema.Stream.Events.project
-      (Events.readSource limits opened.schema) selection.columns
+abbrev sourceEvents := Events.readProjected
 
 def convert (schemaLimits : Snapshot.Limits) (limits : Reader.Limits)
     (ipc : Arrow.RecursiveSchema.Batch.Limits) (input : Bytes) (selection : Selection := .field) :
     Except Error KBytes :=
-  Arrow.RecursiveSchema.Stream.Events.ToIpc.emit ipc (sourceEvents schemaLimits limits input selection)
+  Arrow.RecursiveSchema.Stream.Events.ToIpc.emit ipc (Events.readProjected schemaLimits limits input selection)
 
 /-- The native file's complete original groups correspond one for one
 to the strict IPC observations under the selected declaration. -/
 structure Readback (schemaLimits : Snapshot.Limits) (limits : Reader.Limits)
     (ipc : Arrow.RecursiveSchema.Batch.Limits) (input : Bytes) (selection : Selection) (wire : KBytes) : Prop where
   original : ∃ opened groups,
-    TwoListStruct.openRequired schemaLimits input = .ok opened ∧
+    TwoListStruct.openFile schemaLimits input = .ok opened ∧
     Reader.readAll limits opened.schema = .ok groups ∧
     List.Forall₂ (Reader.GroupWire limits opened.schema) (List.range opened.snapshot.groupCount) groups ∧
     Arrow.RecursiveSchema.Stream.Writer.Readback ipc (selection.schema opened.schema.plan.arrow)

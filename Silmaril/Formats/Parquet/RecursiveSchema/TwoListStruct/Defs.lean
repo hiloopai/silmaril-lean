@@ -142,7 +142,7 @@ public def openFile (limits : Snapshot.Limits) (bytes : Bytes) : Except Error (S
   | .error cause => throw (.original (.snapshot cause))
   | .ok snapshot => return ⟨snapshot, ← compile limits snapshot, original⟩
 
-/-- The native writer and strict IPC export use the required-element profile. -/
+/-- Opt into the required-element subset of the native profile. -/
 @[expose] public def openRequired (limits : Snapshot.Limits) (bytes : Bytes) : Except Error (Source limits bytes) :=
   match openFile limits bytes with
   | .error cause => .error cause

@@ -54,10 +54,6 @@
       "bytes": 332,
       "sha256": "20fda897e1721e8c548b3f9a5448406fcfaab2864a5206b9d04a64b3d0d35178"
     },
-    "optional_struct": {
-      "bytes": 696,
-      "sha256": "7a1e0caa9781755d2d38514b4f5570ff7ec6f0f0123a209e4429d86b384b3548"
-    },
     "zero_width": {
       "bytes": 144,
       "sha256": "1e31d71e6ad5132110f1fc3f7cef27e9a51e6c7fc6631cef8f4469c1e60ba149"

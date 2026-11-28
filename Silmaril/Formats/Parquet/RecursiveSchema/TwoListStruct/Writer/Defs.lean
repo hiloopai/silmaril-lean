@@ -68,10 +68,6 @@ private def declaration (schema : Arrow.RecursiveSchema.Schema) : Option Declara
 public def supportsDeclaration (schema : Arrow.RecursiveSchema.Schema) : Bool :=
   (declaration schema).isSome
 
-/-- Strict IPC import continues to admit required Struct declarations. -/
-public def supportsRequiredDeclaration (schema : Arrow.RecursiveSchema.Schema) : Bool :=
-  (declaration schema).any (fun shape => !shape.elementNullable)
-
 public def planSchema (limits : Schema.Limits) (schema : Arrow.RecursiveSchema.Schema) :
     Except Error Schema.Plan := do
   let some shape := declaration schema | throw .declaration
