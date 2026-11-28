@@ -268,6 +268,41 @@ lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Snappy.Dictionary
 python3 scripts/parquet-snappy-dictionary-binary-view-oracle/check.py "$(mktemp -d)"
 ```
 
+### Opt-in Snappy V2 PLAIN-only BinaryView
+
+`ByteArrayFallback.Snappy.Plain.V2.convert` selects one flat optional
+unannotated BYTE_ARRAY leaf. The existing checked binder and chunk
+walk retain the original codec-1 column, offsets, frame extents and
+ordered footer counts. The selected chunk uses PLAIN Data Page V2 with
+no dictionary page. V1 and dictionary frames return their original
+indexed refusals.
+
+The shared opaque decoder verifies a stored CRC before splitting raw
+definition levels or interpreting the value suffix. The original V2
+flag selects literal bytes or one exact bounded Snappy block. The
+wire laws tie both lengths and the definition mask to the original
+page and retain exact PLAIN octets. Checked Events emits the complete
+successful footer prefix and its original first failure or EOS.
+Native BinaryView publication requires source EOS, preserving the
+selected descriptor, nullable bytes and group boundaries.
+
+PyArrow 26.0.1 and Thrift 0.25.0 check native files with and without
+CRC, including compressed and literal suffixes, an all-null group,
+and values containing NUL and non-UTF-8 octets. PyArrow compares its
+Parquet rows with actual Lean IPC. Labeled controls corrupt raw
+levels, alter a late PLAIN length, or append a second complete Snappy
+block. Native V1, dictionary and STRING fixtures exercise the
+profile gates.
+
+[Definitions](../../Silmaril/Formats/Parquet/ByteArrayFallback/Snappy/Plain/V2/Defs.lean) ·
+[Laws](../../Silmaril/Formats/Parquet/ByteArrayFallback/Snappy/Plain/V2/Thms.lean) ·
+[Fixture hashes](../../scripts/parquet-snappy-v2-plain-binary-view-oracle/fixtures.json)
+
+```sh
+lake build --wfail +Silmaril.Formats.Parquet.ByteArrayFallback.Snappy.Plain.V2.Checks
+python3 scripts/parquet-snappy-v2-plain-binary-view-oracle/check.py "$(mktemp -d)"
+```
+
 ### Opt-in GZIP V1 dictionary-only BinaryView
 
 `ByteArrayFallback.Gzip.Dictionary.convert` selects one named flat optional
