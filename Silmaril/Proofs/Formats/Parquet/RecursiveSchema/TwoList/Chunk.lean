@@ -14,7 +14,7 @@ open Silmaril.Formats.Parquet.RecursiveSchema.TwoList
 open Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Chunk
 
 private theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
-    {encoding : ColumnEncoding carrier.metadata carrier.codec} {frames : List Page.Frame}
+    {encoding : ColumnEncoding carrier.metadata} {frames : List Page.Frame}
     {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary} {data : List Page.Frame}
     (accepted : readPrefix limits carrier encoding frames = .ok (dictionary, data)) :
     PrefixWire limits carrier dictionary frames data := by
@@ -22,7 +22,7 @@ private theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
   | plain _ offset =>
     obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj accepted)
     exact .plain offset
-  | dictionary _ selected admitted =>
+  | dictionary _ =>
     unfold readPrefix at accepted
     dsimp only at accepted
     split at accepted
@@ -39,7 +39,7 @@ private theorem readPrefix_wire {limits : Limits} {carrier : Carrier}
             obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Except.ok.inj result)
             obtain ⟨rfl, codec, words⟩ :=
               RecursiveSchema.Repeated.Chunk.readDictionaryWith_wire (from_mapError checkedRead)
-            exact .dictionary (codec.symm ▸ admitted)
+            exact .dictionary codec
               (offsetEq.trans (congrArg some (Classical.not_not.mp original))) (by omega) (by omega) words
         · contradiction
     · contradiction
@@ -159,10 +159,6 @@ public theorem chunk_bytes {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
   change _ = (RecursiveSchema.Repeated.Chunk.storedChunkBytes out.frames : Int)
   omega
 
-private theorem dictionary_codec {codec : Codec} {selected : RecursiveSchema.Repeated.Chunk.DictionaryCodec}
-    (found : codec.dictionary? = some selected) : selected.column = codec.column := by
-  cases codec <;> cases found <;> rfl
-
 private theorem first_header {span : Footer.Span} {start stop : Nat} {frame : Page.Frame}
     {frames : List Page.Frame} (chain : Page.Chain span start stop (frame :: frames)) :
     frame.header.start = start := by
@@ -179,7 +175,7 @@ private theorem prefix_details {limits : Limits} {carrier : Carrier}
     RecursiveSchema.Repeated.Chunk.DictionaryContentsWire limits.payload carrier.plan.kind carrier.source dictionary := by
   cases leading with
   | dictionary codec offset data hasData words =>
-    exact ⟨dictionary_codec codec, offset, data, hasData, words⟩
+    exact ⟨congrArg RecursiveSchema.Repeated.Chunk.DictionaryCodec.column codec, offset, data, hasData, words⟩
 
 public theorem dictionary_anchors {limits : Limits} {carrier : Carrier} {out : Observation}
     {dictionary : RecursiveSchema.Repeated.Chunk.Dictionary}

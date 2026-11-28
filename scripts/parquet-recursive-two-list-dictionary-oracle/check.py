@@ -52,12 +52,13 @@ private def refuseCodec (file : Bytes) (expected : BindError) : IO Unit := do
 """
 
 
-def inspect(wire, width, groups, codec):
+def inspect(wire, width, groups, codecs, *, decode_block=SNAPPY["SNAPPY"]["snappy_block"]):
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert parquet.schema_arrow == BASE["schema_for"](NULLABLE, width)
-    assert parquet.num_row_groups == len(groups)
+    assert parquet.num_row_groups == len(groups) == len(codecs)
     for key, meta, start, stop in V2["columns"](wire):
         group, column = key
+        codec = codecs[group]
         assert column == 0 and meta[4][1] == codec and meta[2][1][1] == [0, 3, 8]
         assert [name.decode() for name in meta[3][1][1]] == PATH
         assert parquet.read_row_group(group).column(0).to_pylist() == groups[group]
@@ -77,7 +78,7 @@ def inspect(wire, width, groups, codec):
             raw_total += payload - at + raw_size
             if ordinal == 0:
                 assert kind == 2 and at == start == meta[11][1] and end == meta[9][1]
-                raw = expand(body, raw_size) if codec else body
+                raw = decode_block(codec, body, raw_size) if codec else body
                 entries = [word for word, in struct.iter_unpack("<i" if width == 32 else "<q", raw)]
                 assert len(raw) == raw_size and [header[7][1][tag][1] for tag in (1, 2)] == [len(entries), 0]
                 assert len(entries) == len(set(entries))
@@ -89,7 +90,7 @@ def inspect(wire, width, groups, codec):
                 info = header[5][1]
                 count, encoding = [info[tag][1] for tag in (1, 2)]
                 assert [info[tag][1] for tag in (3, 4)] == [3, 3]
-                raw = expand(body, raw_size) if codec else body
+                raw = decode_block(codec, body, raw_size) if codec else body
                 assert len(raw) == raw_size
                 reps, defs, _, suffix = section_suffix(raw, 2, 5, count)
             else:
@@ -100,7 +101,7 @@ def inspect(wire, width, groups, codec):
                 flag = info.get(7, (TType.BOOL, True))[1]
                 size = raw_size - dl - rl
                 if codec and flag:
-                    suffix = expand(suffix, size)
+                    suffix = decode_block(codec, suffix, size)
                 assert len(suffix) == size
                 live = 0
                 v2 = count, nulls, row_count, dl, rl, flag
@@ -187,7 +188,7 @@ def fixtures():
     v2_template = raw_chunks(genuine["native_0_v2_32"])[GROUP][1]
     frames = raw_chunks(identity)[GROUP]
     v1_template = frames[1]
-    _, _, _, _, dictionary, _, _ = list(inspect(identity, *positives["native_0_v1_32"][:2], 0))[1]
+    _, _, _, _, dictionary, _, _ = list(inspect(identity, *positives["native_0_v1_32"][:2], [0, 0, 0]))[1]
     entries = dictionary[-1]
     rows = positives["native_0_v1_32"][1]
     trace = BASE["expected_slots"](rows[1], NULLABLE)
@@ -307,8 +308,8 @@ def fixtures():
     edited["late_plain_tail"] = replace(wire, tail[:-1] + [encode(header, raw + b"\0", len(raw) + 1)])
     controls.append(("late_plain_tail", "fallback_0_v1", len(tail) - 1, ".plain .trailingBytes"))
 
-    genuine["gzip_dictionary"] = BASE["write"](BASE["schema_for"](NULLABLE, 32), rows, compression="GZIP",
-                                                use_dictionary=True)
+    genuine["brotli_dictionary"] = BASE["write"](BASE["schema_for"](NULLABLE, 32), rows, compression="BROTLI",
+                                                   compression_level=0, use_dictionary=True)
     return genuine, edited, positives, controls, plain_before
 
 
@@ -321,7 +322,7 @@ def verify(scratch):
     observed, dictionaries, data_pages, empty = {}, 0, 0, 0
     for label, (width, rows, codec) in positives.items():
         wire = files[label]
-        columns = list(inspect(wire, width, rows, codec))
+        columns = list(inspect(wire, width, rows, [codec] * len(rows)))
         observed[label] = columns
         for group, lo, hi, end, dictionary, pages, raw_bytes in columns:
             at, payload, stop, crc, entries = dictionary
@@ -387,7 +388,7 @@ def verify(scratch):
         f'(.chunk {address} ⟨{lo}, {hi}⟩ (.framing .pageLimit))',
         f'  refuse (← load folder "raw_total") 1 {{}} (.chunk {address} ⟨{lo}, {hi}⟩ '
         f'(.uncompressedSize {raw_total + 1} {raw_total}))',
-        f'  refuseCodec (← load folder "gzip_dictionary") (.column ⟨0, 0, {json.dumps(PATH)}⟩ (.codec 2))',
+        f'  refuseCodec (← load folder "brotli_dictionary") (.column ⟨0, 0, {json.dumps(PATH)}⟩ (.codec 4))',
     ])
 
     V2["run_lean"](scratch, "TwoListDictionary.lean", code)

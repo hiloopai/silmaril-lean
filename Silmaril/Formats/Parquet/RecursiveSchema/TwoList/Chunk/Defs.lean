@@ -4,8 +4,8 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
 /-! Bounded, unindexed PLAIN V1/V2 for one two-LIST leaf with checked column codecs.
-Identity and Snappy also admit one leading PLAIN dictionary. V1 can carry
-live ancestry across pages. V2 covers complete rows. -/
+Each codec admits one leading PLAIN dictionary. V1 carries live ancestry
+across pages. V2 covers complete rows. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Chunk
 
@@ -41,17 +41,15 @@ def Codec.ofId : Int → Option Codec
   | 7 => some .lz4Raw
   | _ => none
 
-def Codec.column : Codec → Repeated.Chunk.ColumnCodec
+def Codec.dictionary : Codec → Repeated.Chunk.DictionaryCodec
   | .uncompressed => .uncompressed
   | .snappy => .snappy
   | .gzip => .gzip
   | .zstd => .zstd
   | .lz4Raw => .lz4Raw
 
-def Codec.dictionary? : Codec → Option Repeated.Chunk.DictionaryCodec
-  | .uncompressed => some .uncompressed
-  | .snappy => some .snappy
-  | _ => none
+def Codec.column (codec : Codec) : Repeated.Chunk.ColumnCodec :=
+  codec.dictionary.column
 
 inductive Live where
   | closed | outer | inner
@@ -326,12 +324,10 @@ inductive DataPageWire (limits : Limits) (plan : Plan) (source : Bytes) (frame :
       V2PageWire limits plan source frame start remaining ceiling decoded codec encoding →
       DataPageWire limits plan source frame start remaining ceiling decoded codec dictionary
 
-inductive ColumnEncoding (metadata : Footer.ColumnMetadata) (codec : Codec) where
+inductive ColumnEncoding (metadata : Footer.ColumnMetadata) where
   | plain : RecursiveSchema.SupportedEncodings metadata → metadata.dictionaryPageOffset = none →
-      ColumnEncoding metadata codec
-  | dictionary : Repeated.Chunk.DictionaryEncodings metadata →
-      (selected : Repeated.Chunk.DictionaryCodec) → codec.dictionary? = some selected →
-      ColumnEncoding metadata codec
+      ColumnEncoding metadata
+  | dictionary : Repeated.Chunk.DictionaryEncodings metadata → ColumnEncoding metadata
 
 inductive BindCause where
   | missing | association | pageOffsets | pageIndex | span | counts
@@ -355,7 +351,7 @@ structure Binding {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   physical : column.metadata.physicalType = schema.plan.kind.physical
   codec : Codec
   originalCodec : Codec.ofId column.metadata.codec = some codec
-  encodings : ColumnEncoding column.metadata codec
+  encodings : ColumnEncoding column.metadata
   indexOffset : column.metadata.indexPageOffset = none
   unindexed : Repeated.Chunk.Unindexed column
   counts : 0 ≤ column.metadata.numValues ∧ 0 ≤ rowGroup.numRows
@@ -372,11 +368,10 @@ private def lookup {α ε : Type} (source : Option α) (error : ε) :
 private def checked {ε : Type} (p : Prop) [Decidable p] (error : ε) : Except ε (PLift p) :=
   if yes : p then .ok ⟨yes⟩ else .error error
 
-private def bindEncoding (metadata : Footer.ColumnMetadata) (codec : Codec)
-    (fail : BindCause → BindError) : Except BindError (ColumnEncoding metadata codec) := do
+private def bindEncoding (metadata : Footer.ColumnMetadata)
+    (fail : BindCause → BindError) : Except BindError (ColumnEncoding metadata) := do
   if dictionary : Repeated.Chunk.DictionaryEncodings metadata then
-    let ⟨selected, admitted⟩ ← lookup codec.dictionary? (fail (.codec metadata.codec))
-    return .dictionary dictionary selected admitted
+    return .dictionary dictionary
   else
     let ⟨plain⟩ ← checked (RecursiveSchema.SupportedEncodings metadata) (fail (.encodings metadata.encodings))
     let ⟨offset⟩ ← checked (metadata.dictionaryPageOffset = none) (fail .pageOffsets)
@@ -392,7 +387,7 @@ public def bind {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (metadata.pathInSchema = schema.plan.leaf.location.path ∧ metadata.physicalType = schema.plan.kind.physical)
     (fail .association)
   let ⟨codec, originalCodec⟩ ← lookup (Codec.ofId metadata.codec) (fail (.codec metadata.codec))
-  let encodings ← bindEncoding metadata codec fail
+  let encodings ← bindEncoding metadata fail
   let ⟨indexOffset⟩ ← checked (metadata.indexPageOffset = none) (fail .pageOffsets)
   let ⟨unindexed⟩ ← checked (Repeated.Chunk.Unindexed column) (fail .pageIndex)
   let ⟨counts⟩ ← checked (0 ≤ metadata.numValues ∧ 0 ≤ rowGroup.numRows) (fail .counts)
@@ -452,16 +447,17 @@ def carrierOf {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
 
 /-- Consume at most one dictionary at physical ordinal zero. The same
 scanned original frames continue at the declared first data page. -/
-def readPrefix (limits : Limits) (carrier : Carrier) (encoding : ColumnEncoding carrier.metadata carrier.codec)
+def readPrefix (limits : Limits) (carrier : Carrier) (encoding : ColumnEncoding carrier.metadata)
     (frames : List Page.Frame) : Except Error (Option Repeated.Chunk.Dictionary × List Page.Frame) := do
   match encoding with
   | .plain _ _ => return (none, frames)
-  | .dictionary _ codec _ =>
+  | .dictionary _ =>
     let fail := Error.page carrier.address 0 carrier.span.start {} ∘ PageCause.dictionary
     let some offset := carrier.metadata.dictionaryPageOffset | throw (fail .missingDictionary)
     if offset ≠ Int.ofNat carrier.span.start then throw (fail (.dictionaryOffset offset))
     let frame :: tail := frames | throw (fail .missingDictionary)
-    let dictionary ← (Repeated.Chunk.readDictionaryWith limits.payload carrier.plan.kind carrier.source frame codec).mapError fail
+    let dictionary ← (Repeated.Chunk.readDictionaryWith limits.payload carrier.plan.kind carrier.source
+      frame carrier.codec.dictionary).mapError fail
     if carrier.metadata.dataPageOffset ≠ Int.ofNat frame.payload.stop ∨ frame.payload.stop ≥ carrier.span.stop then
       throw (.page carrier.address 1 frame.payload.stop {}
         (.dictionary (.dataOffset carrier.metadata.dataPageOffset frame.payload.stop)))
@@ -513,7 +509,7 @@ inductive PrefixWire (limits : Limits) (carrier : Carrier) :
     Option Repeated.Chunk.Dictionary → List Page.Frame → List Page.Frame → Prop where
   | plain {frames} : carrier.metadata.dictionaryPageOffset = none → PrefixWire limits carrier none frames frames
   | dictionary {dictionary : Repeated.Chunk.Dictionary} {frames} :
-      carrier.codec.dictionary? = some dictionary.codec →
+      dictionary.codec = carrier.codec.dictionary →
       carrier.metadata.dictionaryPageOffset = some (Int.ofNat carrier.span.start) →
       carrier.metadata.dataPageOffset = Int.ofNat dictionary.frame.payload.stop →
       dictionary.frame.payload.stop < carrier.span.stop →

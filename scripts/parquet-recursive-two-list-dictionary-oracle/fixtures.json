@@ -70,6 +70,10 @@
     }
   },
   "genuine": {
+    "brotli_dictionary": {
+      "bytes": 1332,
+      "sha256": "34bcc54d77f197fc046e8f94d90307cb6790253d05350794f8efd8f3a83afb41"
+    },
     "fallback_0_v1": {
       "bytes": 1564,
       "sha256": "f735c45c58c3fe9ed2f4f52a3d14598b05619b8a303511973a522ace37bc1740"
@@ -85,10 +89,6 @@
     "fallback_1_v2": {
       "bytes": 1767,
       "sha256": "c28ad8aca8c04be8c6a7fad4b06e38ce6463cbb375cbcf97c353c5c6489ac476"
-    },
-    "gzip_dictionary": {
-      "bytes": 1434,
-      "sha256": "da7809d4550ccc2c632feddf45f8171f9dbc816b38d54ed11b5965984245c5af"
     },
     "native_0_v1_32": {
       "bytes": 1279,

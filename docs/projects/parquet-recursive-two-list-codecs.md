@@ -3,7 +3,7 @@
 The PLAIN profile accepts a single signed INT32 or INT64 leaf under
 two canonical LISTs in unindexed V1/V2 chunks. Each row group binds
 its codec from its own original column metadata.
-[Dictionary-first profile](parquet-recursive-two-list-dictionary.md)
+[Dictionary-first codec matrix](parquet-recursive-two-list-dictionary-codecs.md)
 
 | Codec | Parquet ID | Checked payload |
 | --- | ---: | --- |

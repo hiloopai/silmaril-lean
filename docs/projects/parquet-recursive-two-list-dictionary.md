@@ -1,14 +1,11 @@
 # Checked dictionary data beneath two canonical LISTs
 
 The two-LIST reader supports one signed INT32 or INT64 leaf in unindexed
-Parquet V1/V2. The dictionary-first profile admits UNCOMPRESSED and
+Parquet V1/V2. The initial dictionary-first fixtures cover UNCOMPRESSED and
 SNAPPY. Per-page PLAIN fallback and RLE_DICTIONARY may alternate in the
 same chunk. The original data page header selects the page's decoder.
 
-| Original column codec | PLAIN chunks | Dictionary-first chunks |
-| --- | --- | --- |
-| UNCOMPRESSED (0) and SNAPPY (1) | V1 and V2 | V1 and V2 with RLE_DICTIONARY and PLAIN |
-| GZIP (2), ZSTD (6), LZ4_RAW (7) | V1 and V2 | Outside this slice |
+[Current dictionary codec matrix](parquet-recursive-two-list-dictionary-codecs.md)
 
 The reader requires one leading PLAIN DictionaryPage for a
 dictionary-first column. The original dictionary and first data
