@@ -269,7 +269,11 @@ def verify(folder):
         f'  checkTree (← load folder "leading_struct") {lst(map(EVENTS["field_term"], leading))} [1, 2, 3, 4, 5] '
         f'[⟨0, ⟨{nested}, .int32, [{leading_anc}, {leading_list}]⟩⟩, ⟨1, ⟨{identifier}, .int64, [{leading_anc}]⟩⟩]',
         '  let leading ← take (openFile {} (← load folder "leading_struct"))',
-        '  refuse (bindLeaf leading.schema 0 0) (.representation 0)',
+        '  let nested ← take (bindLeaf leading.schema 0 0)',
+        '  let observed ← take (nested.read {})',
+        '  unless nested.leaf.path.listPlan.isNone && observed.atoms == '
+        '[⟨0, 0, none⟩, ⟨0, 3, some (.int32 3)⟩, ⟨1, 2, none⟩] do',
+        '    throw (IO.userError "leading Struct definition or signed atoms differ")',
         '  refuse (bindLeaf leading.schema 0 1) (.representation 1)',
         '  refuse (openFile {} (← load folder "unsupported_double"))',
         '    (.original (.physical ⟨4, ["items", "list", "element", "a"]⟩ .double))',

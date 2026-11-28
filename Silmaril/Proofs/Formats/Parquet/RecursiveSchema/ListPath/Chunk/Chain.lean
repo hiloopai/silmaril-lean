@@ -13,6 +13,8 @@ open Parquet
 open Parquet.RecursiveSchema.ListPath
 open Parquet.RecursiveSchema.ListPath.Chunk
 
+variable {P : Type} [ScanShape P]
+
 private theorem bind_ok {α β ε : Type} {first : Except ε α} {next : α → Except ε β} {out : β}
     (read : (first >>= next) = .ok out) : ∃ found, first = .ok found ∧ next found = .ok out := by
   cases first with
@@ -34,7 +36,7 @@ public theorem binding_span {schemaLimits : Snapshot.Limits} {snapshot : Snapsho
   have fromFooter := Footer.checkDataSpan_some_iff.mp binding.originalSpan
   exact ⟨fromFooter.1, fromFooter.2.1, fromFooter.2.2.2.1, fromFooter.2.2.2.2⟩
 
-private theorem readPrefix_wire {limits : Limits} {carrier : Carrier} {encoding : ColumnEncoding carrier.metadata}
+private theorem readPrefix_wire {limits : Limits} {carrier : Carrier P} {encoding : ColumnEncoding carrier.metadata}
     {frames data : List Page.Frame} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     (read : readPrefix limits carrier encoding frames = .ok (dictionary, data)) :
     PrefixWire limits carrier dictionary frames data := by
@@ -49,13 +51,13 @@ private theorem readPrefix_wire {limits : Limits} {carrier : Carrier} {encoding 
       RecursiveSchema.Repeated.Chunk.readFramedDictionary_wire checked
     exact .dictionary (original.trans (congrArg some tableCodec.symm)) offset next hasData contents
 
-private theorem prefix_frames {limits : Limits} {carrier : Carrier} {frames data : List Page.Frame}
+private theorem prefix_frames {limits : Limits} {carrier : Carrier P} {frames data : List Page.Frame}
     {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     (wire : PrefixWire limits carrier dictionary frames data) :
     frames = dictionary.toList.map (·.frame) ++ data := by
   cases wire <;> rfl
 
-private theorem decodeFrames_wire {limits : Limits} {carrier : Carrier} {frames : List Page.Frame}
+private theorem decodeFrames_wire {limits : Limits} {carrier : Carrier P} {frames : List Page.Frame}
     {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     {ordinal : Nat} {start : State} {reversed : List ObservedPage} {out : Observation}
     (accepted : decodeFrames limits carrier (wrappers carrier.plan) dictionary frames ordinal start reversed = .ok out) :
@@ -72,7 +74,8 @@ private theorem decodeFrames_wire {limits : Limits} {carrier : Carrier} {frames 
     exact ⟨⟨frame, start, decoded⟩ :: suffix, by simpa [List.reverse_cons, List.append_assoc] using final,
       by simp [original], table, .cons (decodeDataPage_wire (from_mapError page)) chain⟩
 
-private theorem check_totals {carrier : Carrier} {observed out : Observation} {frames : List Page.Frame}
+omit [ScanShape P] in
+private theorem check_totals {carrier : Carrier P} {observed out : Observation} {frames : List Page.Frame}
     (accepted : checkTotals carrier frames observed = .ok out) :
     out = observed ∧ observed.stop.slots = carrier.slots ∧ observed.stop.rows = carrier.rows ∧
       carrier.storedSize = Int.ofNat (RecursiveSchema.Repeated.Chunk.storedChunkBytes frames) ∧
@@ -94,7 +97,7 @@ private theorem check_totals {carrier : Carrier} {observed out : Observation} {f
           exact ⟨(Except.ok.inj accepted).symm, Decidable.not_not.mp slots,
             Decidable.not_not.mp rows, Decidable.not_not.mp stored, Decidable.not_not.mp raw⟩
 
-public theorem readCarrier_wire {limits : Limits} {carrier : Carrier} {encoding : ColumnEncoding carrier.metadata}
+public theorem readCarrier_wire {limits : Limits} {carrier : Carrier P} {encoding : ColumnEncoding carrier.metadata}
     {checkFrames : List Page.Frame → Except Chunk.Error Unit} {out : Observation}
     (accepted : readCarrier limits carrier encoding checkFrames = .ok out) :
     Wire limits carrier out ∧ checkFrames out.frames = .ok () := by
@@ -145,7 +148,7 @@ private theorem first_data_anchor {span : Footer.Span} {start stop : Nat} {frame
     | nil => exact (Nat.lt_irrefl _ hasData).elim
     | cons firstWithin _ => exact ⟨_, rfl, within.headerStart, firstWithin.headerStart⟩
 
-public theorem dictionary_anchors {limits : Limits} {carrier : Carrier} {observed : Observation}
+public theorem dictionary_anchors {limits : Limits} {carrier : Carrier P} {observed : Observation}
     {table : RecursiveSchema.Repeated.Chunk.Dictionary}
     (wire : Wire limits carrier observed) (found : observed.dictionary = some table) :
     ∃ first,
@@ -165,13 +168,13 @@ public theorem dictionary_anchors {limits : Limits} {carrier : Carrier} {observe
     have header := Page.readChunk_readPage wire.framed table.frame (by simp [originalFrames])
     exact ⟨first, atHead, start ▸ header, start, next, start.symm ▸ offset, next.symm ▸ dataOffset⟩
 
-public theorem dictionary_payload {limits : Limits} {carrier : Carrier}
+public theorem dictionary_payload {limits : Limits} {carrier : Carrier P}
     {observed : Observation} {table : RecursiveSchema.Repeated.Chunk.Dictionary}
     (data : RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId carrier.metadata.codec = some carrier.codec.column)
     (wire : Wire limits carrier observed) (found : observed.dictionary = some table) :
     RecursiveSchema.Repeated.Chunk.DictionaryCodec.ofId carrier.metadata.codec = some table.codec ∧
       table.codec.column = carrier.codec.column ∧
-      RecursiveSchema.Repeated.Chunk.DictionaryContentsWire limits.payload carrier.plan.shape.leaf.2 carrier.source table := by
+      RecursiveSchema.Repeated.Chunk.DictionaryContentsWire limits.payload (ScanShape.shape carrier.plan).leaf.2 carrier.source table := by
   have originalFrames : observed.frames = table.frame :: observed.pages.map ObservedPage.frame := by
     simp [Observation.frames, found]
   have leading := originalFrames ▸ found ▸ wire.leading
@@ -180,7 +183,7 @@ public theorem dictionary_payload {limits : Limits} {carrier : Carrier}
     have payload := RecursiveSchema.Repeated.Chunk.DictionaryCodec.column_ofId original
     exact ⟨original, Option.some.inj (payload.symm.trans data), contents⟩
 
-private theorem decodeFrames_failure {limits : Limits} {carrier : Carrier} {frames : List Page.Frame}
+private theorem decodeFrames_failure {limits : Limits} {carrier : Carrier P} {frames : List Page.Frame}
     {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     {initial ordinal byte : Nat} {start atFailure : State} {reversed : List ObservedPage}
     {address : RecursiveSchema.Chunk.Address} {cause : PageCause}
@@ -211,7 +214,7 @@ private theorem decodeFrames_failure {limits : Limits} {carrier : Carrier} {fram
       · simp only [List.length_cons]
         omega
 
-public theorem chain_page_of_mem {limits : Limits} {carrier : Carrier} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
+public theorem chain_page_of_mem {limits : Limits} {carrier : Carrier P} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     {start stop : State} {pages : List ObservedPage} {page : ObservedPage}
     (chain : ChainWire limits carrier dictionary start stop pages) (member : page ∈ pages) :
     DataPageWire limits carrier.plan (wrappers carrier.plan) carrier.source page.frame page.start
@@ -223,7 +226,7 @@ public theorem chain_page_of_mem {limits : Limits} {carrier : Carrier} {dictiona
     · exact original
     · exact ih tail
 
-public theorem readCarrier_page_failure {limits : Limits} {carrier : Carrier}
+public theorem readCarrier_page_failure {limits : Limits} {carrier : Carrier P}
     {encoding : ColumnEncoding carrier.metadata} {address : RecursiveSchema.Chunk.Address}
     {ordinal byte : Nat} {start : State} {cause : PageCause}
     (refused : readCarrier limits carrier encoding (fun _ => .ok ()) = .error (.page address ordinal byte start cause)) :
@@ -269,7 +272,7 @@ public theorem readCarrier_page_failure {limits : Limits} {carrier : Carrier}
         repeat' split at refused
         all_goals simp at refused
 
-private theorem decodeFrames_dictionary {limits : Limits} {carrier : Carrier} {axes : List Nat}
+private theorem decodeFrames_dictionary {limits : Limits} {carrier : Carrier P} {axes : List Nat}
     {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary} {frames : List Page.Frame}
     {initial : Nat} {state : State} {done : List ObservedPage}
     {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat}
@@ -288,7 +291,7 @@ private theorem decodeFrames_dictionary {limits : Limits} {carrier : Carrier} {a
       simp only [read, Except.mapError, Bind.bind, Except.bind] at refused
       exact ih refused
 
-public theorem readCarrier_dictionary_failure {limits : Limits} {carrier : Carrier}
+public theorem readCarrier_dictionary_failure {limits : Limits} {carrier : Carrier P}
     {encoding : ColumnEncoding carrier.metadata} {address : RecursiveSchema.Chunk.Address}
     {ordinal byte : Nat} {cause : RecursiveSchema.Repeated.Chunk.PageCause}
     (refused : readCarrier limits carrier encoding (fun _ => .ok ()) = .error (.dictionary address ordinal byte cause)) :
@@ -333,7 +336,7 @@ public theorem readCarrier_dictionary_failure {limits : Limits} {carrier : Carri
         repeat' split at refused
         all_goals simp at refused
 
-public theorem chain_counts {limits : Limits} {carrier : Carrier} {start stop : State} {pages : List ObservedPage}
+public theorem chain_counts {limits : Limits} {carrier : Carrier P} {start stop : State} {pages : List ObservedPage}
     {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     (wire : ChainWire limits carrier dictionary start stop pages) :
     start.slots + (pages.flatMap (·.decoded.atoms)).length = stop.slots ∧

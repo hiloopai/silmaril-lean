@@ -11,6 +11,8 @@ open Parquet.RecursiveSchema.ListPath
 open Parquet.RecursiveSchema.ListPath.Chunk
 open Parquet.RecursiveSchema.Repeated.Chunk (LevelBlock LevelWire)
 
+variable {P : Type} [ScanShape P]
+
 private theorem section_slice {source body : Bytes} {start stop : Nat}
     (sliced : source.slice? start (some stop) = some body)
     {preceding part suffix : List UInt8}
@@ -38,21 +40,25 @@ private theorem section_slice {source body : Bytes} {start stop : Nat}
     Nat.min_eq_left (by omega)] at selected
   simpa [Nat.add_comm] using selected.symm
 
-public theorem sections_wire {limits : Hybrid.Limits} {plan : Plan} {count : Nat}
+private theorem definitions_cover (shape : Shape) : shape.repetitions ≤ shape.definitions := by
+  induction shape with
+  | signed _ _ => exact Nat.zero_le _
+  | list _ _ ih => simp only [Shape.repetitions, Shape.definitions]; omega
+  | struct _ _ ih => simp only [Shape.repetitions, Shape.definitions]; omega
+
+public theorem sections_wire {limits : Hybrid.Limits} {plan : P} {count : Nat}
     {input : SectionSource} {body : Bytes} {reps defs : LevelBlock}
     (sliced : input.bytes.slice? input.span.start (some input.span.stop) = some body)
-    (repWire : LevelWire limits plan.shape.repetitions count body reps)
-    (defWire : LevelWire limits plan.shape.definitions count reps.tail defs) :
+    (repWire : LevelWire limits (ScanShape.shape plan).repetitions count body reps)
+    (defWire : LevelWire limits (ScanShape.shape plan).definitions count reps.tail defs) :
     SectionsWire limits plan count input (sections input body reps defs) reps.levels defs.levels defs.tail := by
   have total : input.span.stop = input.span.start + body.length := by
     have ordered := (Bytes.slice?_eq_some_iff.mp sliced).1
     have length := Bytes.length_of_slice? sliced
     simp only [Option.getD_some] at ordered length
     omega
-  have repeated : plan.shape.repetitions ≠ 0 := by simp [Plan.shape, Shape.repetitions]
-  have defined : plan.shape.definitions ≠ 0 := by
-    simp only [Plan.shape, Shape.definitions]
-    omega
+  have repeated := Nat.ne_of_gt (ScanShape.repeated plan)
+  have defined := Nat.ne_of_gt (Nat.lt_of_lt_of_le (ScanShape.repeated plan) (definitions_cover _))
   cases repWire with
   | omitted absent _ _ => exact False.elim (repeated absent)
   | @encoded reps repTail repBytes repPrefix _ repLen repSize repBound repBody repHybrid =>

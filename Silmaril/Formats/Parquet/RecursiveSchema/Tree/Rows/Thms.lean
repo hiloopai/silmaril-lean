@@ -13,12 +13,12 @@ open Occurrences
 public section
 
 /-- Discarding addresses yields the exact original signed slot stream. -/
-theorem tape_atoms (carrier : ListPath.Chunk.Carrier) (observed : ListPath.Chunk.Observation) :
+theorem tape_atoms {P : Type} (carrier : ListPath.Chunk.Carrier P) (observed : ListPath.Chunk.Observation) :
     (Tape.ofRead carrier observed).atoms = observed.atoms :=
   Proofs.Formats.Parquet.RecursiveSchema.Tree.Rows.tape_atoms carrier observed
 
 /-- The addressed entry names its original data frame and slot within that frame. -/
-theorem tape_of_slot {carrier : ListPath.Chunk.Carrier} {observed : ListPath.Chunk.Observation}
+theorem tape_of_slot {P : Type} {carrier : ListPath.Chunk.Carrier P} {observed : ListPath.Chunk.Observation}
     {slot : Nat} {entry : Addressed} (found : (Tape.ofRead carrier observed).slots[slot]? = some entry) :
     ∃ page ordinal localSlot,
       observed.pages[ordinal]? = some page ∧

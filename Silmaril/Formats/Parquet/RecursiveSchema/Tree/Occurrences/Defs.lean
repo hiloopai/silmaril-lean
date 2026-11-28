@@ -25,13 +25,13 @@ structure Tape where
   slots : Array Addressed
   finish : Point
 
-def addressed (carrier : RecursiveSchema.ListPath.Chunk.Carrier)
+def addressed {P : Type} (carrier : RecursiveSchema.ListPath.Chunk.Carrier P)
     (original : RecursiveSchema.ListPath.Chunk.Observation) : List Addressed :=
   (original.pages.zipIdx original.dictionary.isSome.toNat).flatMap fun (page, ordinal) =>
     (page.decoded.atoms.zipIdx page.start.slots).map fun (atom, slot) =>
       ⟨⟨carrier.address, ordinal, page.frame.header.start, slot⟩, atom⟩
 
-def Tape.ofRead (carrier : RecursiveSchema.ListPath.Chunk.Carrier)
+def Tape.ofRead {P : Type} (carrier : RecursiveSchema.ListPath.Chunk.Carrier P)
     (original : RecursiveSchema.ListPath.Chunk.Observation) : Tape :=
   ⟨(addressed carrier original).toArray,
     ⟨carrier.address, original.frames.length, carrier.span.stop, original.stop.slots⟩⟩

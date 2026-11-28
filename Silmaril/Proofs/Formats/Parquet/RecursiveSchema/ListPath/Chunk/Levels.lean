@@ -7,12 +7,14 @@ namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 open Silmaril.Formats.Parquet.RecursiveSchema.ListPath
 open Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
-public theorem step_wire {plan : Plan} {wrappers : List Nat} {ceiling : Nat} {start stop : State}
+variable {P : Type} [ScanShape P]
+
+public theorem step_wire {plan : P} {wrappers : List Nat} {ceiling : Nat} {start stop : State}
     {rep defn : Nat} (accepted : step plan wrappers ceiling start rep defn = .ok stop) :
     StepWire plan wrappers ceiling start rep defn stop := by
-  by_cases repOver : rep > plan.shape.repetitions
+  by_cases repOver : rep > (ScanShape.shape plan).repetitions
   · simp [step, repOver] at accepted
-  by_cases defOver : defn > plan.shape.definitions
+  by_cases defOver : defn > (ScanShape.shape plan).definitions
   · simp [step, repOver, defOver] at accepted
   by_cases closed : rep > start.live
   · simp [step, repOver, defOver, closed] at accepted
@@ -25,7 +27,7 @@ public theorem step_wire {plan : Plan} {wrappers : List Nat} {ceiling : Nat} {st
   exact ⟨Nat.le_of_not_gt repOver, Nat.le_of_not_gt defOver, Nat.le_of_not_gt closed,
     Nat.le_of_not_gt short, exact.symm, exact ▸ Nat.le_of_not_gt rowOver⟩
 
-public theorem scan_wire {plan : Plan} {wrappers : List Nat} {ceiling : Nat} {start stop : State}
+public theorem scan_wire {plan : P} {wrappers : List Nat} {ceiling : Nat} {start stop : State}
     {levels : List (Nat × Nat)} (accepted : scan plan wrappers ceiling levels start = .ok stop) :
     ScanWire plan wrappers ceiling start levels stop := by
   induction levels generalizing start with
@@ -37,7 +39,7 @@ public theorem scan_wire {plan : Plan} {wrappers : List Nat} {ceiling : Nat} {st
     | ok middle =>
       exact .cons (step_wire advanced) (ih (by simpa [scan, advanced, Bind.bind, Except.bind] using accepted))
 
-public theorem scan_counts {plan : Plan} {wrappers : List Nat} {ceiling : Nat} {start stop : State}
+public theorem scan_counts {plan : P} {wrappers : List Nat} {ceiling : Nat} {start stop : State}
     {levels : List (Nat × Nat)} (wire : ScanWire plan wrappers ceiling start levels stop) :
     start.slots + levels.length = stop.slots ∧
     start.rows + levels.countP (fun level => level.1 == 0) = stop.rows := by
