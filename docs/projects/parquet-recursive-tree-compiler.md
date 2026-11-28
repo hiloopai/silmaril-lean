@@ -32,12 +32,11 @@ checked ListPath page reader and retains its original frames, cursors,
 levels and signed words. The projection proof preserves the exact
 step list, definition and repetition maxima and wrapper thresholds.
 
-The shared carrier checks any signed path with at least one original
-LIST wrapper, including [paths with leading Structs](parquet-recursive-tree-leading-struct.md).
-Zero-repetition paths retain their complete compiler plan and return a
-typed representation refusal from the adapter. The compiler module
-depends on the footer traversal. The adapter imports the physical
-decoder separately.
+The shared carrier checks signed paths with
+[leading Structs](parquet-recursive-tree-leading-struct.md) and
+[zero repetition](parquet-recursive-tree-scalar.md). The compiler
+module depends on the footer traversal. The adapter imports the
+physical decoder separately.
 
 ## Shared-occurrence join
 

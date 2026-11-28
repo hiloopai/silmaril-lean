@@ -13,8 +13,8 @@ different definition levels. A continuation reaches a LIST
 wrapper only above its original empty-list definition threshold.
 The projection theorem preserves the ordered definition steps,
 every wrapper threshold, both level maxima and the original
-signed leaf. A zero-repetition path returns a typed representation
-refusal. Its omitted-level sections require a separate profile.
+signed leaf. The [zero-repetition profile](parquet-recursive-tree-scalar.md)
+certifies omitted levels for paths with no LIST wrapper.
 
 The carrier still binds the physical column by group, index, path
 and kind. V1 and V2 use the existing original framing, levels,

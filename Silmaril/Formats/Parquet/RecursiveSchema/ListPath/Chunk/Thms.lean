@@ -5,6 +5,7 @@ import Silmaril.Formats.Parquet.Page.Thms
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Levels
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Page
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Chain
+import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Omitted
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
@@ -77,6 +78,40 @@ theorem PageWire.counts {limits : Limits} {plan : P} {wrappers : List Nat}
       start.slots + decoded.atoms.length = decoded.after.slots ∧
       start.rows + decoded.atoms.countP (·.repetition == 0) = decoded.after.rows :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.page_counts wire
+
+/-- An omitted V1 repetition section consumes no bytes and synthesizes one zero per slot. -/
+theorem SectionsWire.zero_repetition {limits : Hybrid.Limits} {plan : P} {count : Nat} {input : SectionSource}
+    {spans : Sections} {reps defs : List Nat} {suffix : Bytes}
+    (wire : SectionsWire limits plan count input spans reps defs suffix)
+    (zero : (ScanShape.shape plan).repetitions = 0) :
+    spans.repetition.start = spans.repetition.stop ∧ reps = List.replicate count 0 :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.section_zero_repetition wire zero
+
+/-- An omitted V1 definition section consumes no bytes and synthesizes one zero per slot. -/
+theorem SectionsWire.zero_definition {limits : Hybrid.Limits} {plan : P} {count : Nat} {input : SectionSource}
+    {spans : Sections} {reps defs : List Nat} {suffix : Bytes}
+    (wire : SectionsWire limits plan count input spans reps defs suffix)
+    (zero : (ScanShape.shape plan).definitions = 0) :
+    spans.definition.start = spans.definition.stop ∧ defs = List.replicate count 0 :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.section_zero_definition wire zero
+
+/-- A V2 page at repetition width zero has zero stored repetition bytes and one row per slot. -/
+theorem V2PageWire.zero_repetition {limits : Limits} {plan : P} {wrappers : List Nat}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
+    {codec : Codec} {encoding : ValueEncoding}
+    (wire : V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding)
+    (zero : (ScanShape.shape plan).repetitions = 0) :
+    ∃ info, frame.value.kind = .dataV2 info ∧ info.repetitionBytes = 0 ∧ info.numRows = info.numValues :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.v2_zero_repetition wire zero
+
+/-- A V2 page at definition width zero has zero stored definition bytes and zero null slots. -/
+theorem V2PageWire.zero_definition {limits : Limits} {plan : P} {wrappers : List Nat}
+    {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
+    {codec : Codec} {encoding : ValueEncoding}
+    (wire : V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec encoding)
+    (zero : (ScanShape.shape plan).definitions = 0) :
+    ∃ info, frame.value.kind = .dataV2 info ∧ info.definitionBytes = 0 ∧ info.numNulls = 0 :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.v2_zero_definition wire zero
 
 theorem ChainWire.counts {limits : Limits} {carrier : Carrier P} {start stop : State} {pages : List ObservedPage}
     {dictionary : Option Repeated.Chunk.Dictionary}

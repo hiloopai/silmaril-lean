@@ -40,11 +40,17 @@ private theorem section_slice {source body : Bytes} {start stop : Nat}
     Nat.min_eq_left (by omega)] at selected
   simpa [Nat.add_comm] using selected.symm
 
-private theorem definitions_cover (shape : Shape) : shape.repetitions ≤ shape.definitions := by
-  induction shape with
-  | signed _ _ => exact Nat.zero_le _
-  | list _ _ ih => simp only [Shape.repetitions, Shape.definitions]; omega
-  | struct _ _ ih => simp only [Shape.repetitions, Shape.definitions]; omega
+/-- Isolate exactly the bytes consumed by a V1 level reader. An omitted
+level consumes nothing and leaves the payload cursor in place. -/
+private theorem level_section {limits : Hybrid.Limits} {maximum count : Nat}
+    {body : Bytes} {block : LevelBlock} (wire : LevelWire limits maximum count body block) :
+    ∃ bytes, body.toList = bytes ++ block.tail.toList ∧
+      LevelWire limits maximum count (Bytes.ofList bytes) ⟨block.levels, .empty⟩ := by
+  cases wire with
+  | omitted zero bounded budget => exact ⟨[], rfl, .omitted zero bounded budget⟩
+  | @encoded levels tail encoded lengthBytes nonzero length size budget bodyBytes hybrid =>
+    refine ⟨lengthBytes ++ encoded.toList, by simpa [List.append_assoc] using bodyBytes, ?_⟩
+    exact .encoded nonzero length size budget (by simp) hybrid
 
 public theorem sections_wire {limits : Hybrid.Limits} {plan : P} {count : Nat}
     {input : SectionSource} {body : Bytes} {reps defs : LevelBlock}
@@ -52,57 +58,38 @@ public theorem sections_wire {limits : Hybrid.Limits} {plan : P} {count : Nat}
     (repWire : LevelWire limits (ScanShape.shape plan).repetitions count body reps)
     (defWire : LevelWire limits (ScanShape.shape plan).definitions count reps.tail defs) :
     SectionsWire limits plan count input (sections input body reps defs) reps.levels defs.levels defs.tail := by
+  obtain ⟨repetition, repBody, repSection⟩ := level_section repWire
+  obtain ⟨definition, defBody, defSection⟩ := level_section defWire
+  have split : body.toList = repetition ++ definition ++ defs.tail.toList := by
+    rw [repBody, defBody, List.append_assoc]
   have total : input.span.stop = input.span.start + body.length := by
     have ordered := (Bytes.slice?_eq_some_iff.mp sliced).1
     have length := Bytes.length_of_slice? sliced
     simp only [Option.getD_some] at ordered length
     omega
-  have repeated := Nat.ne_of_gt (ScanShape.repeated plan)
-  have defined := Nat.ne_of_gt (Nat.lt_of_lt_of_le (ScanShape.repeated plan) (definitions_cover _))
-  cases repWire with
-  | omitted absent _ _ => exact False.elim (repeated absent)
-  | @encoded reps repTail repBytes repPrefix _ repLen repSize repBound repBody repHybrid =>
-    cases defWire with
-    | omitted absent _ _ => exact False.elim (defined absent)
-    | @encoded defs suffix defBytes defPrefix _ defLen defSize defBound defBody defHybrid =>
-      let repetition := repPrefix ++ repBytes.toList
-      let definition := defPrefix ++ defBytes.toList
-      have split : body.toList = repetition ++ definition ++ suffix.toList := by
-        rw [repBody, defBody]
-        simp [repetition, definition, List.append_assoc]
-      have afterRep : body.length - repTail.length = repetition.length := by
-        have count := congrArg List.length repBody
-        simp only [List.length_append, Bytes.length_toList] at count
-        simp only [repetition, List.length_append, Bytes.length_toList]
-        omega
-      have afterDef : body.length - suffix.length = repetition.length + definition.length := by
-        have count := congrArg List.length split
-        simp only [List.length_append, Bytes.length_toList] at count
-        omega
-      have suffixEnd :
-          input.span.start + (repetition ++ definition).length + suffix.length = input.span.stop := by
-        have count := congrArg List.length split
-        simp only [List.length_append, Bytes.length_toList] at count ⊢
-        omega
-      have repSlice := section_slice sliced (preceding := []) (part := repetition)
-        (suffix := definition ++ suffix.toList) (by simpa [List.append_assoc] using split)
-      have defSlice := section_slice sliced (preceding := repetition) (part := definition)
-        (suffix := suffix.toList) split
-      have suffixSlice := section_slice sliced (preceding := repetition ++ definition) (part := suffix.toList)
-        (suffix := []) (by simpa using split)
-      refine ⟨repPrefix, defPrefix, repBytes.toList, defBytes.toList, repLen, defLen, ?_, ?_, ?_, ?_,
-        repHybrid, defHybrid, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_⟩
-      · simpa using repSize
-      · simpa using defSize
-      · simpa using repBound
-      · simpa using defBound
-      · simpa [sections, afterRep, repetition]
-          using repSlice
-      · simpa [sections, afterRep, afterDef,
-          Nat.add_assoc, definition] using defSlice
-      · rw [Bytes.length_toList] at suffixSlice
-        rw [suffixEnd] at suffixSlice
-        simpa [sections, afterDef,
-          List.length_append] using suffixSlice
+  have afterRep : body.length - reps.tail.length = repetition.length := by
+    have count := congrArg List.length repBody
+    simp only [List.length_append, Bytes.length_toList] at count
+    omega
+  have afterDef : body.length - defs.tail.length = repetition.length + definition.length := by
+    have count := congrArg List.length split
+    simp only [List.length_append, Bytes.length_toList] at count
+    omega
+  have suffixEnd :
+      input.span.start + (repetition ++ definition).length + defs.tail.length = input.span.stop := by
+    have count := congrArg List.length split
+    simp only [List.length_append, Bytes.length_toList] at count ⊢
+    omega
+  have repSlice := section_slice sliced (preceding := []) (part := repetition)
+    (suffix := definition ++ defs.tail.toList) (by simpa [List.append_assoc] using split)
+  have defSlice := section_slice sliced (preceding := repetition) (part := definition)
+    (suffix := defs.tail.toList) split
+  have suffixSlice := section_slice sliced (preceding := repetition ++ definition) (part := defs.tail.toList)
+    (suffix := []) (by simpa using split)
+  refine ⟨repetition, definition, repSection, defSection, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_⟩
+  · simpa [sections, afterRep] using repSlice
+  · simpa [sections, afterRep, afterDef, Nat.add_assoc] using defSlice
+  · rw [Bytes.length_toList, suffixEnd] at suffixSlice
+    simpa [sections, afterDef, List.length_append] using suffixSlice
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk

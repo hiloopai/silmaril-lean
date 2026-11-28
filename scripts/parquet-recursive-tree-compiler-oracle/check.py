@@ -64,8 +64,8 @@ private def checkLeaf (file : Bytes) (group column : Nat) (span : Footer.Span) (
   let observed ← take (readLeaf source.schema {} group column)
   let plan := bound.leaf.path
   unless bound.carrier.address = ⟨group, column, path⟩ && bound.span = span &&
-      bound.plan.shape.repetitions = plan.maxRepetition && bound.plan.shape.definitions = plan.maxDefinition &&
-      bound.plan.shape.steps {} == plan.steps &&
+      bound.plan.repetitions = plan.maxRepetition && bound.plan.definitions = plan.maxDefinition &&
+      bound.plan.steps {} == plan.steps &&
       RecursiveSchema.ListPath.Chunk.wrappers bound.plan == plan.repeated.map (·.emptyLevel) &&
       observed.dictionary.isNone && observed.pages.length = pages.length do
     throw (IO.userError "original carrier or thresholds differ")
@@ -274,7 +274,9 @@ def verify(folder):
         '  unless nested.leaf.path.listPlan.isNone && observed.atoms == '
         '[⟨0, 0, none⟩, ⟨0, 3, some (.int32 3)⟩, ⟨1, 2, none⟩] do',
         '    throw (IO.userError "leading Struct definition or signed atoms differ")',
-        '  refuse (bindLeaf leading.schema 0 1) (.representation 1)',
+        '  let scalar ← take (readLeaf leading.schema {} 0 1)',
+        '  unless scalar.atoms == [⟨0, 0, none⟩, ⟨0, 1, some (.int64 (-4))⟩] do',
+        '    throw (IO.userError "scalar sibling level or signed word differs")',
         '  refuse (openFile {} (← load folder "unsupported_double"))',
         '    (.original (.physical ⟨4, ["items", "list", "element", "a"]⟩ .double))',
     ])

@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.Tree.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Defs
 
-/-! Bind a repeated signed path of the checked tree to the shared physical
+/-! Bind a signed path of the checked tree to the shared physical
 scanner. The path carries all original Struct and LIST sites. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.Tree
@@ -26,12 +26,6 @@ def LeafPath.listPlan (path : LeafPath) : Option ListPath.Plan :=
   | .list outer child => some ⟨outer, child⟩
   | _ => none
 
-/-- The physical reader uses the full signed path when it has an original
-repetition wrapper, including any Structs above that wrapper. -/
-def LeafPath.scanPlan (path : LeafPath) : Option ListPath.Chunk.RepeatedPath :=
-  let shape := path.shape
-  if repeated : 0 < shape.repetitions then some ⟨shape, repeated⟩ else none
-
 inductive LeafError where
   | leaf (column : Nat)
   | representation (column : Nat)
@@ -44,12 +38,12 @@ inductive LeafError where
 structure LeafBinding {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (compiled : Compiled limits snapshot) (group column : Nat) where
   leaf : LeafPlan
-  plan : ListPath.Chunk.RepeatedPath
+  plan : ListPath.Shape
   rowGroup : Footer.RowGroup
   chunk : Footer.ColumnChunk
   span : Footer.Span
   selected : compiled.leaves[column]? = some leaf
-  projected : leaf.path.scanPlan = some plan
+  projected : plan = leaf.path.shape
   groupAt : snapshot.groupAt group = some rowGroup
   columns : rowGroup.columns.length = compiled.leaves.size
   columnAt : rowGroup.columns[column]? = some chunk
@@ -65,7 +59,7 @@ structure LeafBinding {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
 
 def LeafBinding.carrier {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {compiled : Compiled limits snapshot} {group column : Nat} (bound : LeafBinding compiled group column) :
-    ListPath.Chunk.Carrier ListPath.Chunk.RepeatedPath :=
+    ListPath.Chunk.Carrier ListPath.Shape :=
   ⟨bound.plan, snapshot.bytes, bound.span, ⟨group, column, bound.leaf.path.site.location.path⟩,
     bound.chunk.metadata.numValues.toNat, bound.rowGroup.numRows.toNat, bound.chunk.metadata.totalCompressedSize,
     bound.chunk.metadata.totalUncompressedSize, bound.codec, bound.chunk.metadata⟩
@@ -84,7 +78,7 @@ private def guard (condition : Prop) [Decidable condition] (error : LeafError) :
 public def bindLeaf {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (compiled : Compiled limits snapshot) (group column : Nat) : Except LeafError (LeafBinding compiled group column) := do
   let ⟨leaf, selected⟩ ← lookup compiled.leaves[column]? (.leaf column)
-  let ⟨plan, projected⟩ ← lookup leaf.path.scanPlan (.representation column)
+  let plan := leaf.path.shape
   let ⟨rowGroup, groupAt⟩ ← lookup (snapshot.groupAt group) (.group group)
   let width := compiled.leaves.size
   let ⟨columns⟩ ← guard (rowGroup.columns.length = width) (.columns group width rowGroup.columns.length)
@@ -99,7 +93,7 @@ public def bindLeaf {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   let ⟨unindexed⟩ ← guard (Repeated.Chunk.Unindexed chunk) (fail .pageIndex)
   let ⟨counts⟩ ← guard (0 ≤ metadata.numValues ∧ 0 ≤ rowGroup.numRows) (fail .counts)
   let ⟨span, originalSpan⟩ ← lookup (Page.columnSpan snapshot.footer.start metadata) (fail .span)
-  return ⟨leaf, plan, rowGroup, chunk, span, selected, projected, groupAt, columns, columnAt,
+  return ⟨leaf, plan, rowGroup, chunk, span, selected, rfl, groupAt, columns, columnAt,
     path, physical, codec, originalCodec, encodings, indexOffset, unindexed, counts, originalSpan⟩
 
 @[expose] public section

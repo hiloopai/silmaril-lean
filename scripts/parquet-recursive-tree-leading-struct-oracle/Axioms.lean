@@ -8,7 +8,6 @@ open Silmaril.Formats.Parquet.RecursiveSchema
 
 #print axioms Tree.LeafPath.projected_levels
 #print axioms Tree.LeafPath.scan_levels
-#print axioms Tree.LeafPath.scanPlan_none_iff
 #print axioms Tree.LeafBinding.read_wire
 #print axioms Tree.LeafBinding.original_page
 #print axioms Tree.LeafBinding.read_page_failure
