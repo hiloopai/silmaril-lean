@@ -18,24 +18,35 @@ const ProjectDocs = (() => {
   }
   const markedApi = markedMod && (markedMod.marked || markedMod);
 
-  // GitHub-compatible heading slugger: strip inline Markdown links, code, emphasis and angle
-  // brackets (`<`, `>`) without dropping inner type arguments (e.g. `list<list<s32>>` ->
-  // `listlists32`), lowercase, keep Unicode letters/numbers, `_` and `-`, turn spaces into `-`.
-  function stripRawHtmlTagsForSlug(str) {
-    // Strip known HTML tags when someone puts an actual HTML tag inside a heading, while preserving
-    // angle-bracketed type arguments like `list<list<s32>>`.
-    return String(str || "").replace(/<\/?(?:sc[r]ipt|style|iframe|img|svg|a|code|em|strong|span|div|p|br)\b[^>]*>/gi, "");
+  // Extract plain text from marked's structured inline AST tokens (ignoring any inline HTML tokens)
+  // and build a GitHub-compatible heading slug solely from explicitly allowed characters
+  // (Unicode letters/numbers, `_`, `-`, and whitespace collapsed to `-`), with no tag/character
+  // deletion passes.
+  function plainHeadingText(tokens) {
+    if (!Array.isArray(tokens)) return "";
+    let out = "";
+    for (const tok of tokens) {
+      if (!tok || tok.type === "html") continue;
+      if (Array.isArray(tok.tokens) && tok.tokens.length) {
+        out += plainHeadingText(tok.tokens);
+      } else if (typeof tok.text === "string") {
+        out += tok.text;
+      }
+    }
+    return out;
   }
 
-  function slugify(raw, seen) {
-    let s = String(raw || "");
-    s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
-    s = s.replace(/\[([^\]]*)\]\[[^\]]*\]/g, "$1");
-    s = stripRawHtmlTagsForSlug(s);
-    s = s.replace(/[`*~<>]/g, "");
-    s = s.trim().toLowerCase();
+  function slugify(input, seen) {
+    let plain = "";
+    if (Array.isArray(input)) {
+      plain = plainHeadingText(input);
+    } else if (markedApi && markedApi.Lexer && typeof markedApi.Lexer.lexInline === "function") {
+      plain = plainHeadingText(markedApi.Lexer.lexInline(String(input || ""), { gfm: true }));
+    } else {
+      plain = String(input || "");
+    }
     let base = "";
-    for (const ch of s) {
+    for (const ch of plain.trim().toLowerCase()) {
       if (/[\p{L}\p{N}_-]/u.test(ch)) base += ch;
       else if (/\s/u.test(ch)) base += "-";
     }
@@ -603,18 +614,21 @@ const ProjectDocs = (() => {
       try {
         await mmd.parse(normalized);
         const { svg } = await mmd.render(renderId, normalized);
-        // Strictly verify the generated SVG contains no script elements or event handlers before inserting
-        if (svg && !/<sc[r]ipt\b|\bon[a-z]+\s*=/i.test(svg)) {
-          let svgBox = fig.querySelector(".doc-mermaid-svg");
-          if (!svgBox) {
-            svgBox = document.createElement("div");
-            svgBox.className = "doc-mermaid-svg";
-            fig.insertBefore(svgBox, fig.firstChild);
+        if (svg && typeof DOMParser !== "undefined") {
+          const parsedDoc = new DOMParser().parseFromString(svg, "image/svg+xml");
+          const svgEl = parsedDoc.documentElement;
+          if (svgEl && svgEl.tagName.toLowerCase() === "svg" && !svgEl.querySelector("parsererror")) {
+            let svgBox = fig.querySelector(".doc-mermaid-svg");
+            if (!svgBox) {
+              svgBox = document.createElement("div");
+              svgBox.className = "doc-mermaid-svg";
+              fig.insertBefore(svgBox, fig.firstChild);
+            }
+            svgBox.replaceChildren(document.importNode(svgEl, true));
+            fig.setAttribute("data-mermaid-status", "rendered");
+            fig.setAttribute("data-mermaid-engine", "mermaid-11.17.2");
+            fig.classList.remove("doc-mermaid-fallback");
           }
-          svgBox.innerHTML = svg;
-          fig.setAttribute("data-mermaid-status", "rendered");
-          fig.setAttribute("data-mermaid-engine", "mermaid-11.17.2");
-          fig.classList.remove("doc-mermaid-fallback");
         }
       } catch {
         // Keep the existing static SVG or readable source fallback intact, and clean up any stray
@@ -771,7 +785,7 @@ const ProjectDocs = (() => {
             break;
           case "heading": {
             const level = Math.min(6, Math.max(1, Number(tok.depth) || 1));
-            const slug = slugify(tok.text, seenSlugs);
+            const slug = slugify(tok.tokens || tok.text, seenSlugs);
             const inner = renderInlineTokens(tok.tokens);
             const selfHref = docsRouteHref(docPath, slug);
             html.push(`<h${level} id="${esc(slug)}" data-doc-anchor="${esc(slug)}">${inner} <a class="doc-anchor-link" href="${esc(selfHref)}" aria-label="Link to ${esc(slug)}">#</a></h${level}>`);
