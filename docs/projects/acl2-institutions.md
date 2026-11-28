@@ -63,24 +63,31 @@ model. [ACL2 8.7 manual](https://www.cs.utexas.edu/users/moore/acl2/v8-7/combine
 [ACL2 8.7 source](https://github.com/acl2/acl2/tree/bc6f4f49e81a0711214a8d91f0d06e0e084d2204) ·
 [ACL2 8.7 Community Books](https://github.com/acl2/acl2/tree/bc6f4f49e81a0711214a8d91f0d06e0e084d2204/books)
 
-## Typed graph declarations
+## Logic graph
 
-Names in the table are relative to `Silmaril.Logic.ACL2`.
+The [logic graph](logic-graph.md) registers the ordinary fragment institutions and their
+morphisms. The ACL2 declarations in the table are relative to `Silmaril.Logic.ACL2`.
 
-| Declaration | Type and direction |
-| --- | --- |
-| `inst` | Ordinary institution on arity signatures |
-| `presentedInst` | Ordinary institution on signatures with definitions, with definition-satisfying models |
-| `pi` and `piIns` | The syntactic π-institution in the comorphism and morphism diagram categories |
-| `Equational.toEquational` | Institution morphism from `inst` to the registered `Institution.Examples.EQ.inst` (registry ID `logic.institution.examples.eq.inst`). Models go to their one-sort equational algebras. Equations over image signatures translate back to ACL2 `equal` statements. |
-| `forgetDefinitions` | Institution morphism from `presentedInst` to `inst`. Models forget the defining constraints. Sentence translation is the identity on each underlying signature. |
-| `piSound` | Forward diagram comorphism from `pi` to `Institution.semanticPi presentedInst`, with identity signature and sentence translations. |
+| Declaration | Record | Type and direction |
+| --- | --- | --- |
+| `inst` | `logic.acl2.inst` | Ordinary institution on arity signatures. |
+| `presentedInst` | `logic.acl2.presented_inst` | Ordinary institution on signatures with definitions. Its models satisfy the defining equations. |
+| `Equational.toEquational` | `logic.acl2.to_equational` | Institution morphism from `inst` to `logic.institution.examples.eq.inst`. Models go to their one-sort equational algebras. Equations over image signatures translate back to ACL2 `equal` statements. |
+| `forgetDefinitions` | `logic.acl2.forget_definitions` | Institution morphism from `presentedInst` to `inst`. Models forget the defining constraints. Sentence translation is the identity on each underlying signature. |
 
-The graph supports ordinary institution, room and consequence-system records. The `pi`,
-`piIns` and `piSound` declarations are available as Lean diagrams. For a graph consequence
-pair, use `Consequence.presentationRoom` at `Examples.exampleWorld.presentation` and the
-monomorphic systems `Consequence.exampleDerives` and `Consequence.exampleEntails`.
-`Consequence.exampleSound` proves the soundness comparison. Registration is separate.
+The consequence records `logic.consequence.acl2.{derives,entails}` use the arity signature of
+`Examples.exampleWorld`. The records `logic.consequence.acl2.presented.{derives,entails}` use
+`Consequence.exampleDerives` and `Consequence.exampleEntails` over its presentation, where
+`SILMARIL-FIRST` is defined as `car`. Both derivability systems have checked soundness answers.
+The presented system records `Examples.firstSingleton` with an empty list of additional
+premises. It uses `World.Checked.pi_derives` to discharge the named theorem table from the
+book's `World.Provable` judgment, leaving just the defining equations as hypotheses.
+
+`pi` and `piIns` are views of the syntactic π-institution in the comorphism and morphism diagram
+categories. `piSound` is a diagram comorphism to `Institution.semanticPi presentedInst`. Its
+component at the example presentation proves `Consequence.exampleSound`. The ordinary graph's
+record types cover the entries in the table. Native ACL2 admission and inclusion cross the
+`Standard.Interface` boundary described above.
 
 ## Reproduce the example
 

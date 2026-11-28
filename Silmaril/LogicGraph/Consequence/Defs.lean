@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Project.Shapes.Consequence.Defs
 public import Silmaril.LogicGraph.Nodes.Logic.Defs
+public import Silmaril.LogicGraph.Consequence.ACL2.Defs
 public import Silmaril.Logic.Consequence.Metamath.Thms
 public import Silmaril.Logic.Consequence.HOL.Thms
 public import Silmaril.Logic.Consequence.TypeTheory.Thms
