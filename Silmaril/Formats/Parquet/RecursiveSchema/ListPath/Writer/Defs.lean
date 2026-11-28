@@ -157,7 +157,7 @@ private def checked {α ε : Type} (result : Except ε α) (report : ε → Erro
   | .error cause => .error (report cause)
 
 /-- Count and check a whole group before allocating its level or word bytes. -/
-private def writeGroup (limits : Limits) (checksum : Bool) (plan : Plan) (ordinal offset priorSlots : Nat)
+public def writeGroup (limits : Limits) (checksum : Bool) (plan : Plan) (ordinal offset priorSlots : Nat)
     (input : Observation) : Except Error {output // GroupWire limits checksum plan offset priorSlots input output} := do
   let ⟨rowCount⟩ ← require (input.rowCount = input.rows.length) (.rowCount ordinal input.rowCount input.rows.length)
   let ⟨rowCap⟩ ← require (input.rowCount ≤ limits.chunk.maxRows) (.rowLimit ordinal input.rowCount)

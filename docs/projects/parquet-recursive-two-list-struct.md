@@ -36,7 +36,7 @@ Projecting either signed child from the merged rows restores its
 entire original ordered trace, including every repetition, definition
 and signed word. The group theorem retains the original row count
 and both original column witnesses. `readAll` keeps footer order.
-[Checked Arrow Events](parquet-recursive-two-list-struct-events.md)
+[Checked Arrow Events](parquet-recursive-two-list-struct-events.md) · [Native writer](parquet-recursive-two-list-struct-writer.md)
 
 ## Verification
 
