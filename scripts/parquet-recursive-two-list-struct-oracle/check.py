@@ -166,7 +166,7 @@ def trace(rows, nullable, side, names=NAMES, *, optional_element=False):
     return [slot for row in rows for slot in entries(row)]
 
 
-def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_snappy=None):
+def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block=None):
     expected_rows = [[{schema.field(0).name: row} for row in group] for group in groups]
     table = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert table.schema_arrow.equals(schema, check_metadata=True)
@@ -201,7 +201,7 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_snapp
     for (group, side), footer, lo, hi in V2["columns"](wire):
         assert set(THRIFT["list_field"](footer, 2)) == {0, 3}
         codec = footer[4][1]
-        assert codec == 0 or (codec == 1 and decode_snappy is not None)
+        assert codec == 0 or (codec in (1, 2, 6, 7) and decode_block is not None)
         assert 11 not in footer and footer[9][1] == lo
         assert footer[7][1] == hi - lo
         assert [piece.decode() for piece in THRIFT["list_field"](footer, 3)] == list(path + (names[side],))
@@ -227,8 +227,8 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_snapp
                 reps = V2["HYBRID"](body[:rl], 2, count)
                 defs = V2["HYBRID"](body[rl:rl+dl], maximum.bit_length(), count)
                 suffix = body[rl+dl:]
-                if codec == 1 and info.get(7, (None, True))[1]:
-                    suffix = decode_snappy(suffix, raw_size - rl - dl)
+                if codec != 0 and info.get(7, (None, True))[1]:
+                    suffix = decode_block(codec, suffix, raw_size - rl - dl)
                 assert rl + dl + len(suffix) == raw_size
                 assert (not reps or reps[0] == 0) and reps.count(0) == page_rows
                 assert count - defs.count(maximum) == nulls
@@ -237,11 +237,11 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_snapp
             else:
                 count, *encodings = [header[5][1][key][1] for key in range(1, 5)]
                 assert encodings == [0, 3, 3]
-                plain = decode_snappy(body, raw_size) if codec == 1 else body
+                plain = decode_block(codec, body, raw_size) if codec != 0 else body
                 assert len(plain) == raw_size
                 reps, rest = LEVEL(plain, 2, count)
                 defs, suffix = LEVEL(rest, maximum, count)
-                origin = 0 if codec == 1 else body_at
+                origin = 0 if codec != 0 else body_at
                 sections = origin, origin + len(plain) - len(rest), origin + len(plain) - len(suffix), origin + len(plain)
             assert len(reps) == len(defs) == count
             physical = "<i" if widths[side] == 32 else "<q"

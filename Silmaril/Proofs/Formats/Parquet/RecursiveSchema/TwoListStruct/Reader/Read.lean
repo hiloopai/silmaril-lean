@@ -68,23 +68,6 @@ public theorem column_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
   have wire := (RecursiveSchema.ListPath.Chunk.readCarrier_wire read).1
   exact ⟨wire, prefix_plain wire.leading binding.offsets.1⟩
 
-public theorem codec_exact {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
-    {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
-    {side : Side} (binding : ColumnBinding schema bound side) :
-    RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId binding.column.metadata.codec = some binding.codec.column := by
-  have original := binding.originalCodec
-  unfold plainCodec at original
-  split at original
-  · rename_i known
-    rcases known with zero | one
-    · rw [zero] at original ⊢
-      rw [← Option.some.inj original]
-      rfl
-    · rw [one] at original ⊢
-      rw [← Option.some.inj original]
-      rfl
-  · contradiction
-
 private theorem column_data_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
     {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}

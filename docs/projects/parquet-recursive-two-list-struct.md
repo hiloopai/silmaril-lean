@@ -12,19 +12,20 @@ Struct. An optional Struct adds one shared definition step.
 
 The reader binds exactly two positional chunks in each original row
 group. This profile reads dictionary-free, unindexed PLAIN V1 and V2.
-Each column independently admits UNCOMPRESSED or bounded Snappy
-according to its original footer metadata. Each keeps the existing
-byte, page, row and slot bounds and
-reuses the LIST-path reader's Compact framing, stored CRC, exact
+Each column independently admits UNCOMPRESSED, bounded Snappy, bounded
+LZ4_RAW, single-member GZIP, or bounded single-frame dictionary-free
+Zstandard according to its original footer metadata. Each keeps the
+LIST-path byte, page, row, slot and codec bounds and reuses its
+Compact framing, stored CRC, exact
 Hybrid and signed word extents, and both header-inclusive totals.
 V1 level sections have length prefixes and may continue live ancestry
-across pages. Snappy V1 expands the complete body after checking its
+across pages. Compressed V1 expands the complete body after checking its
 stored-byte CRC. Its section offsets refer to the decoded body, and
 the original frame's header and payload offsets remain absolute.
 V2 uses the original raw sections selected by the header's repetition
-and definition lengths. It decompresses only a flagged Snappy value
-suffix. A false flag keeps the original raw suffix. It independently checks slot, row and
-null counts and closes both boundaries, even for a zero-slot page.
+and definition lengths. It decompresses only a flagged value suffix on a compressed
+chunk. A false flag keeps the original raw suffix. V2 independently
+checks slot, row and null counts and closes both boundaries, even for a zero-slot page.
 The two columns can use different codecs, page versions and row cuts.
 `Reader.ColumnWire.v1_page` and `Reader.ColumnWire.v2_page` recover
 the original frame at its absolute header offset and expose the
@@ -121,11 +122,33 @@ header-inclusive totals. Full and empty projections retain ordered
 group counts through exact Arrow IPC EOS. Late stored CRC, malformed
 and trailing payloads, declared extents, byte bounds and footer totals retain an
 original typed failure and the preceding complete group. The oracle
-also checks GZIP and dictionary refusals at codec and encoding admission.
+also checks dictionary refusal at encoding admission and reads the original GZIP probe.
 [Snappy producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-snappy-oracle/fixtures.json)
 
 ~~~sh
 lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Thms
 lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-snappy-oracle/Axioms.lean
 python3 scripts/parquet-recursive-two-list-struct-snappy-oracle/check.py
+~~~
+
+The codec oracle checks genuine PyArrow LZ4_RAW, GZIP and Zstandard
+files in both page versions, both Struct nullabilities and both
+signed width orders. PyArrow also produces a file whose sibling
+chunks have different codecs. A labeled reframe combines independent
+codecs and page cuts, including V1 continuations, and matches the
+uncompressed reference through exact IPC EOS. The original wire
+checks cover both footer totals, stored-body CRC, level coordinates
+and exact decoded values using pinned liblz4, libzstd and zlib.
+False-flag V2 suffixes bypass even exhausted GZIP and Zstandard
+codec budgets. Typed refusals cover legacy LZ4 IDs, framed LZ4 bodies,
+GZIP trailers and extra members, Zstandard dictionary IDs and extra
+frames, and Parquet dictionary encoding. Late payload and shared
+topology refusals retain their original positions and complete group
+prefix under both projections, including with exhausted IPC budgets.
+[Codec producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-codecs-oracle/fixtures.json)
+
+~~~sh
+lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-codecs-oracle/Axioms.lean
+python3 scripts/parquet-recursive-two-list-struct-codecs-oracle/check.py
 ~~~
