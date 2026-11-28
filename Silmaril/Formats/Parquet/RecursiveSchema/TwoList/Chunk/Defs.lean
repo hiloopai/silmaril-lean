@@ -236,16 +236,9 @@ def absentSlots (decoded : Decoded) : Nat :=
 is discarded. A V2 page also closes its outgoing cursor, including when
 it has zero slots. -/
 def checkV2Slots (limits : Limits) (plan : Plan) (info : Page.DataV2) (reps defs : List Nat)
-    (suffix : Bytes) (start : State) (ceiling : Nat) (encoding : ValueEncoding := .plain) : Except PageCause Decoded := do
-  let first := reps.head?.getD 0
-  let rows := reps.count 0
-  if first ≠ 0 then throw (.v2 (.v2RowBoundary start.slots first))
-  else if rows ≠ info.numRows then throw (.v2 (.v2Rows info.numRows rows))
-  else do
-    let decoded ← decodeSlots limits plan ceiling start.close reps defs suffix encoding
-    let nulls := absentSlots decoded
-    if nulls ≠ info.numNulls then throw (.v2 (.v2Nulls info.numNulls nulls))
-    else return closeV2 decoded
+    (suffix : Bytes) (start : State) (ceiling : Nat) (encoding : ValueEncoding := .plain) : Except PageCause Decoded :=
+  (Repeated.Chunk.checkV2Counts info reps start.slots PageCause.v2 absentSlots
+    (fun _ => decodeSlots limits plan ceiling start.close reps defs suffix encoding)).map closeV2
 
 /-- Keep the original raw V2 levels and resolve the original flag before
 passing the value suffix to the shared codec dispatch. -/

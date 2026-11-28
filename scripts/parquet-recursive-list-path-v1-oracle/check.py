@@ -99,25 +99,41 @@ def capture(wire, schema, nullable, width, groups):
         expected = levels(groups[group], nullable)
         pages, stored, raw = [], 0, 0
         for header_at, header, body_at, body in FRAMES(wire, lo, hi):
-            assert header[1][1] == 0 and header[2][1] == header[3][1] == len(body)
+            assert header[2][1] == header[3][1] == len(body)
             crc = (header[4][1] & 0xffffffff) if 4 in header else None
             assert crc is None or crc == zlib.crc32(body)
-            count, *encodings = (header[5][1][i][1] for i in range(1, 5))
-            assert encodings == [0, 3, 3]
-            reps, rest = LEVEL(body, depth, count)
-            defs, suffix = LEVEL(rest, maximum, count)
+            is_v2 = header[1][1] == 3
+            start = (slots, rows, live)
+            if is_v2:
+                info = header[8][1]
+                count, nulls, page_rows, encoding, dl, rl = (info[i][1] for i in range(1, 7))
+                assert encoding == 0 and rl + dl <= len(body)
+                reps = V2["HYBRID"](body[:rl], depth.bit_length(), count)
+                defs = V2["HYBRID"](body[rl:rl + dl], maximum.bit_length(), count)
+                rest, suffix = body[rl:], body[rl + dl:]
+                assert not reps or reps[0] == 0
+                assert reps.count(0) == page_rows and len(defs) - defs.count(maximum) == nulls
+                live = 0
+            else:
+                assert header[1][1] == 0
+                count, *encodings = (header[5][1][i][1] for i in range(1, 5))
+                assert encodings == [0, 3, 3]
+                reps, rest = LEVEL(body, depth, count)
+                defs, suffix = LEVEL(rest, maximum, count)
+            assert len(reps) == len(defs) == count
             assert len(suffix) == defs.count(maximum) * (width // 8)
             signed = iter(word for word, in struct.iter_unpack("<i" if width == 32 else "<q", suffix))
             trace = [(rep, definition, next(signed) if definition == maximum else None)
                      for rep, definition in zip(reps, defs, strict=True)]
             assert trace == expected[slots:slots + count]
-            start = (slots, rows, live)
             for rep, definition, _ in trace:
                 reached = sum(stop < definition for stop in stop_levels)
                 assert rep <= min(live, reached) and 0 <= definition <= maximum
                 rows += rep == 0
                 live = reached
             slots += count
+            if is_v2:
+                live = 0
             sections = (body_at, body_at + len(body) - len(rest),
                         body_at + len(body) - len(suffix), body_at + len(body))
             stored += body_at - header_at + header[3][1]
@@ -135,11 +151,17 @@ def triple(state):
     return "⟨" + ", ".join(map(str, state)) + "⟩"
 
 
-def page_term(page, width):
+def page_term(page, width, header=None):
     at, body, crc, size, sections, start, stop, trace = page
     marker = "none" if crc is None else f"some {crc}"
     lo, p, q, hi = sections
-    frame = f"⟨⟨{size}, {size}, {marker}, .dataV1 ⟨{len(trace)}, 0, 3, 3⟩⟩, ⟨{at}, {body}⟩, ⟨{body}, {hi}⟩⟩"
+    kind = f".dataV1 ⟨{len(trace)}, 0, 3, 3⟩"
+    if header is not None and header[1][1] == 3:
+        info = header[8][1]
+        fields = ", ".join(str(info[i][1]) for i in range(1, 7))
+        flag = str(info.get(7, (TType.BOOL, True))[1]).lower()
+        kind = f".dataV2 ⟨{fields}, {flag}⟩"
+    frame = f"⟨⟨{size}, {size}, {marker}, {kind}⟩, ⟨{at}, {body}⟩, ⟨{body}, {hi}⟩⟩"
     spans = f"⟨⟨{lo}, {p}⟩, ⟨{p}, {q}⟩, ⟨{q}, {hi}⟩⟩"
     return f"⟨{frame}, {spans}, {triple(start)}, {triple(stop)}, {lst(atom_term(slot, width) for slot in trace)}⟩"
 
@@ -266,16 +288,6 @@ def fixtures():
     for label, cause in (("snappy", "(.codec 1)"), ("indexed", ".pageIndex"),
                          ("dictionary", f"(.encodings {list_field(dictionary, 2)})")):
         negatives.append(f'  refuseBinding (← load folder "{label}") (.column {original_address} {cause})')
-
-    genuine_controls["v2"] = write(schema, groups, data_page_version="2.0")
-    at, header, _, _ = next(FRAMES(genuine_controls["v2"], *chunk(genuine_controls["v2"], (0, 0))))
-    assert header[1][1] == 3
-    info = header[8][1]
-    count, nulls, row_count, encoding, dl, rl = (info[i][1] for i in range(1, 7))
-    compressed = str(info.get(7, (TType.BOOL, True))[1]).lower()
-    kind = f".dataV2 ⟨{count}, {nulls}, {row_count}, {encoding}, {dl}, {rl}, {compressed}⟩"
-    negatives.append(f'  refuse (← load folder "v2") 0 {{}} (.page {original_address} 0 {at} {{}} '
-                     f'(.header (.pageKind ({kind}))))')
 
     wide = "signed_32_depth_4_10"
     wide_source = genuine[wide]

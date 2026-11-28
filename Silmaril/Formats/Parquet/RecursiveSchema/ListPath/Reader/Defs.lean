@@ -2,7 +2,7 @@ module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Defs
 
-/-! Reconstruct complete native V1 groups for a checked canonical LIST path. -/
+/-! Reconstruct complete native V1/V2 groups for a checked canonical LIST path. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Reader
 

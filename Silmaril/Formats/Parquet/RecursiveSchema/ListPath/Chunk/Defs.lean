@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Rows.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
-/-! Original unindexed UNCOMPRESSED PLAIN V1 pages for one canonical LIST path. -/
+/-! Original unindexed UNCOMPRESSED PLAIN V1/V2 pages for one canonical LIST path. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
@@ -108,6 +108,8 @@ inductive LevelError where
   | rowOverrun (slot rows : Nat)
   deriving DecidableEq, Repr
 
+def State.close (state : State) : State := { state with live := 0 }
+
 def State.advance (start : State) (repetition live : Nat) : State :=
   ⟨start.slots + 1, start.rows + (repetition == 0).toNat, live⟩
 
@@ -147,7 +149,7 @@ inductive ScanWire (plan : Plan) (wrappers : List Nat) (ceiling : Nat) :
       ScanWire plan wrappers ceiling middle rest stop →
       ScanWire plan wrappers ceiling start ((rep, defn) :: rest) stop
 
-/-- Both V1 level spans include their four-byte length prefix. -/
+/-- V1 level spans include their four-byte prefixes. V2 spans are raw. -/
 structure Sections where
   repetition : Footer.Span
   definition : Footer.Span
@@ -159,6 +161,9 @@ def sections (frame : Page.Frame) (body : Bytes) (reps defs : LevelBlock) : Sect
   let values := frame.payload.start + (body.length - defs.tail.length)
   ⟨⟨frame.payload.start, definition⟩, ⟨definition, values⟩, ⟨values, frame.payload.stop⟩⟩
 
+def Sections.ofV2 (spans : Page.V2Spans) : Sections :=
+  ⟨spans.repetition, spans.definition, spans.values⟩
+
 inductive PageCause where
   | header (cause : RecursiveSchema.Chunk.Cause)
   | slotOverrun (remaining advertised : Nat)
@@ -168,6 +173,7 @@ inductive PageCause where
   | level (cause : LevelError)
   | plain (cause : Plain.Error)
   | alignment (cause : FlatPage.Error)
+  | v2 (cause : Repeated.Chunk.PageCause)
   deriving DecidableEq, Repr
 
 def headerError : RecursiveSchema.Chunk.Cause → PageCause
@@ -187,6 +193,16 @@ def atoms (levels : List (Nat × Nat)) (values : List (Option RecursiveSchema.Ch
 def mask (plan : Plan) (definitions : List Nat) : List Bool :=
   definitions.map (· == plan.shape.definitions)
 
+/-- Both page versions use the same ancestry scan and exact signed extent. -/
+def decodeSlots (plan : Plan) (wrappers : List Nat) (spans : Sections) (start : State)
+    (ceiling : Nat) (reps defs : List Nat) (suffix : Bytes) : Except PageCause Decoded := do
+  let levels := reps.zip defs
+  let stop ← (scan plan wrappers ceiling levels start).mapError .level
+  let present := mask plan defs
+  let words ← (RecursiveSchema.Chunk.readWords plan.shape.leaf.2 (present.count true) suffix).mapError .plain
+  let aligned ← (FlatPage.reconstruct present words).mapError .alignment
+  return ⟨spans, atoms levels aligned, stop⟩
+
 def decodePage (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
     (start : State) (remaining ceiling : Nat) : Except PageCause Decoded := do
   let info ← (RecursiveSchema.Chunk.admitPage frame remaining).mapError headerError
@@ -194,12 +210,42 @@ def decodePage (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : B
   let body := Page.Checksum.payloadBytes source frame
   let reps ← (Repeated.Chunk.readLevels limits.levels plan.shape.repetitions info.numValues body).mapError .repetition
   let defs ← (Repeated.Chunk.readLevels limits.levels plan.shape.definitions info.numValues reps.tail).mapError .definition
-  let levels := reps.levels.zip defs.levels
-  let stop ← (scan plan wrappers ceiling levels start).mapError .level
-  let present := mask plan defs.levels
-  let words ← (RecursiveSchema.Chunk.readWords plan.shape.leaf.2 (present.count true) defs.tail).mapError .plain
-  let aligned ← (FlatPage.reconstruct present words).mapError .alignment
-  return ⟨sections frame body reps defs, atoms levels aligned, stop⟩
+  decodeSlots plan wrappers (sections frame body reps defs) start ceiling reps.levels defs.levels defs.tail
+
+def Decoded.close (decoded : Decoded) : Decoded := { decoded with after := decoded.after.close }
+
+def absentSlots (decoded : Decoded) : Nat := decoded.atoms.countP (·.word.isNone)
+
+/-- Check the original V2 header, stored body and raw level spans. Codec
+zero keeps the original values for either header flag. A V2 page starts
+from a closed cursor and closes its last row before the next frame. -/
+def decodeV2Page (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining ceiling : Nat) : Except PageCause Decoded := do
+  let info ← (Repeated.Chunk.admitV2Page .uncompressed frame remaining).mapError .v2
+  let parts ← (Repeated.Chunk.readV2SectionsWith limits.toLimits plan.shape.repetitions
+    plan.shape.definitions source frame info).mapError .v2
+  let stored := Repeated.Chunk.bytesAt source parts.spans.values
+  let suffix ← (Repeated.Chunk.readV2SuffixWith { toLimits := limits.toLimits }
+    .uncompressed frame info stored none).mapError .v2
+  let decoded ← Repeated.Chunk.checkV2Counts info parts.repetitions start.slots PageCause.v2 absentSlots fun _ =>
+    decodeSlots plan wrappers (.ofV2 parts.spans) start.close ceiling parts.repetitions parts.definitions suffix
+  return decoded.close
+
+def decodeDataPage (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining ceiling : Nat) : Except PageCause Decoded :=
+  match frame.value.kind with
+  | .dataV2 _ => decodeV2Page limits plan wrappers source frame start remaining ceiling
+  | _ => decodePage limits plan wrappers source frame start remaining ceiling
+
+structure SlotsWire (plan : Plan) (wrappers : List Nat) (start : State) (ceiling : Nat)
+    (reps defs : List Nat) (suffix : Bytes) (decoded : Decoded) : Prop where
+  original : ∃ (aligned : List (Option RecursiveSchema.Chunk.Word)) (words : List (List UInt8)),
+    ScanWire plan wrappers ceiling start (reps.zip defs) decoded.after ∧
+    suffix.toList = words.flatten ∧ words.length = (mask plan defs).count true ∧
+    (∀ word ∈ words, word.length = RecursiveSchema.Chunk.wordWidth plan.shape.leaf.2) ∧
+    aligned.map Option.isSome = mask plan defs ∧
+    aligned.filterMap id = words.map (RecursiveSchema.Chunk.readWord plan.shape.leaf.2) ∧
+    decoded.atoms = atoms (reps.zip defs) aligned
 
 structure SectionsWire (limits : Hybrid.Limits) (plan : Plan) (count : Nat) (source : Bytes)
     (frame : Page.Frame) (spans : Sections) (repetitions definitions : List Nat) (suffix : Bytes) : Prop where
@@ -231,6 +277,27 @@ structure PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source
     aligned.map Option.isSome = mask plan defs.levels ∧
     aligned.filterMap id = words.map (RecursiveSchema.Chunk.readWord plan.shape.leaf.2) ∧
     decoded.atoms = atoms (reps.levels.zip defs.levels) aligned
+
+structure V2PageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded) : Prop where
+  original : ∃ (info : Page.DataV2) (parts : Repeated.Chunk.V2Sections) (checked : Decoded),
+    frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
+    frame.value.uncompressedSize = frame.value.compressedSize ∧
+    Repeated.Chunk.V2SectionsWireWith limits.toLimits plan.shape.repetitions plan.shape.definitions
+      source frame info parts ∧
+    Repeated.Chunk.v2LevelBytes info + (Repeated.Chunk.bytesAt source parts.spans.values).length =
+      frame.value.uncompressedSize ∧
+    parts.repetitions.head?.getD 0 = 0 ∧ parts.repetitions.count 0 = info.numRows ∧
+    absentSlots decoded = info.numNulls ∧ decoded.sections = .ofV2 parts.spans ∧
+    SlotsWire plan wrappers start.close ceiling parts.repetitions parts.definitions
+      (Repeated.Chunk.bytesAt source parts.spans.values) checked ∧ decoded = checked.close
+
+inductive DataPageWire (limits : Limits) (plan : Plan) (wrappers : List Nat) (source : Bytes) (frame : Page.Frame)
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded) : Prop where
+  | v1 : PageWire limits plan wrappers source frame start remaining ceiling decoded →
+      DataPageWire limits plan wrappers source frame start remaining ceiling decoded
+  | v2 : V2PageWire limits plan wrappers source frame start remaining ceiling decoded →
+      DataPageWire limits plan wrappers source frame start remaining ceiling decoded
 
 inductive ChunkCause where
   | chunkLimit
@@ -282,7 +349,7 @@ def decodeFrames (limits : Limits) (carrier : Carrier) (wrappers : List Nat) :
     List Page.Frame → Nat → State → List ObservedPage → Except Error Observation
   | [], _, finish, reversed => .ok ⟨reversed.reverse, finish⟩
   | frame :: frames, ordinal, start, reversed => do
-    let decoded ← (decodePage limits carrier.plan wrappers carrier.source frame start
+    let decoded ← (decodeDataPage limits carrier.plan wrappers carrier.source frame start
       (carrier.slots - start.slots) carrier.rows).mapError
         (.page carrier.address ordinal frame.header.start start)
     decodeFrames limits carrier wrappers frames (ordinal + 1) decoded.after (⟨frame, start, decoded⟩ :: reversed)
@@ -319,7 +386,7 @@ def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
 inductive ChainWire (limits : Limits) (carrier : Carrier) : State → State → List ObservedPage → Prop where
   | nil (state : State) : ChainWire limits carrier state state []
   | cons {start stop frame decoded rest} :
-      PageWire limits carrier.plan (wrappers carrier.plan) carrier.source frame start
+      DataPageWire limits carrier.plan (wrappers carrier.plan) carrier.source frame start
         (carrier.slots - start.slots) carrier.rows decoded →
       ChainWire limits carrier decoded.after stop rest →
       ChainWire limits carrier start stop (⟨frame, start, decoded⟩ :: rest)
