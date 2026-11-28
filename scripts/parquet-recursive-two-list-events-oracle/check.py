@@ -88,7 +88,7 @@ def observation(wire, width, prefix=None):
     return fields, lst(batch_term(group, width) for group in groups)
 
 
-def verify(scratch):
+def fixtures():
     nullable = (True, True, True)
     genuine, labeled, positives = {}, {}, {}
     for width in (32, 64):
@@ -122,7 +122,11 @@ def verify(scratch):
     genuine["schema_only"] = write(schema_for(nullable, 32), [])
     positives["schema_only"] = 32
     labeled["empty_input"] = b""
+    return genuine, labeled, positives
 
+
+def verify(scratch):
+    genuine, labeled, positives = fixtures()
     files = genuine | labeled
     for label, wire in files.items():
         (scratch / f"{label}.parquet").write_bytes(wire)
