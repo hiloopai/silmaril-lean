@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "acl2_commit": "bc6f4f49e81a0711214a8d91f0d06e0e084d2204",
+  "acl2_tree": "66d80ea68f664b931f8982b607fe2305f3cec0e4",
+  "source_sha256": {"books/projects/x86isa/utils/structures.lisp": "9016c0e1239e34d8be8090fb19532781fbb8cbe0eb07216db7bd21705f790a6b", "books/centaur/fty/bitstruct.lisp": "6c06d80ebc4871b64d2d84eaf28c50444c8187f7631e7bbcba6ecf377ce18043", "books/centaur/bitops/part-select.lisp": "18e2888e33be871bb1b5b65200d3921bb526e78b4e09babf3fc566bfa70925ae", "books/ihs/basic-definitions.lisp": "b94a039d3232390d660c82a34efdfab4ecbbd33f147f4d30da9f05e5525f6b5a", "axioms.lisp": "50247ed0609257bcf08c4c6d365ccf1695bd2cbd2dfedff0f7bc516f9ce828b1"},
+  "definitions": [
+    [["symbol", "ACL2", "LOGHEAD$INLINE"], 2, [["symbol", "ACL2", "SIZE"], ["symbol", "ACL2", "I"]], [["symbol", "ACL2", "IMOD$INLINE"], ["symbol", "ACL2", "I"], [["symbol", "ACL2", "EXPT2$INLINE"], ["symbol", "ACL2", "SIZE"]]]],
+    [["symbol", "BITOPS", "PART-SELECT-WIDTH-LOW$INLINE"], 3, [["symbol", "ACL2", "X"], ["symbol", "BITOPS", "WIDTH"], ["symbol", "BITOPS", "LOW"]], [["symbol", "ACL2", "LOGHEAD$INLINE"], ["symbol", "BITOPS", "WIDTH"], [["symbol", "ACL2", "LOGTAIL$INLINE"], ["symbol", "BITOPS", "LOW"], ["symbol", "ACL2", "X"]]]],
+    [["symbol", "X86ISA", "PREFIXES-FIX$INLINE"], 1, [["symbol", "ACL2", "X"]], [["symbol", "ACL2", "LOGHEAD$INLINE"], [["symbol", "COMMON-LISP", "QUOTE"], 52], ["symbol", "ACL2", "X"]]],
+    [["symbol", "X86ISA", "PREFIXES->ADR$INLINE"], 1, [["symbol", "ACL2", "X"]], [[["symbol", "COMMON-LISP", "LAMBDA"], [["symbol", "ACL2", "X"]], [["symbol", "BITOPS", "PART-SELECT-WIDTH-LOW$INLINE"], ["symbol", "ACL2", "X"], [["symbol", "COMMON-LISP", "QUOTE"], 8], [["symbol", "COMMON-LISP", "QUOTE"], 36]]], [["symbol", "X86ISA", "PREFIXES-FIX$INLINE"], ["symbol", "ACL2", "X"]]]],
+    [["symbol", "X86ISA", "PREFIXES->NUM$INLINE"], 1, [["symbol", "ACL2", "X"]], [[["symbol", "COMMON-LISP", "LAMBDA"], [["symbol", "ACL2", "X"]], [["symbol", "BITOPS", "PART-SELECT-WIDTH-LOW$INLINE"], ["symbol", "ACL2", "X"], [["symbol", "COMMON-LISP", "QUOTE"], 4], [["symbol", "COMMON-LISP", "QUOTE"], 0]]], [["symbol", "X86ISA", "PREFIXES-FIX$INLINE"], ["symbol", "ACL2", "X"]]]],
+    [["symbol", "X86ISA", "PREFIXES->NXT$INLINE"], 1, [["symbol", "ACL2", "X"]], [[["symbol", "COMMON-LISP", "LAMBDA"], [["symbol", "ACL2", "X"]], [["symbol", "BITOPS", "PART-SELECT-WIDTH-LOW$INLINE"], ["symbol", "ACL2", "X"], [["symbol", "COMMON-LISP", "QUOTE"], 8], [["symbol", "COMMON-LISP", "QUOTE"], 44]]], [["symbol", "X86ISA", "PREFIXES-FIX$INLINE"], ["symbol", "ACL2", "X"]]]]
+  ],
+  "observations": [
+    [0, 0, 0, 0, 0],
+    [15, 15, 0, 15, 0],
+    [16, 16, 0, 0, 0],
+    [68719476735, 68719476735, 0, 15, 0],
+    [68719476736, 68719476736, 1, 0, 0],
+    [17592186044415, 17592186044415, 255, 15, 0],
+    [17592186044416, 17592186044416, 0, 0, 1],
+    [4503599627370495, 4503599627370495, 255, 15, 255],
+    [4503599627370496, 0, 0, 0, 0],
+    [1208925823162547039109127, 3547917864402951, 173, 7, 201],
+    [-1, 4503599627370495, 255, 15, 255],
+    [-4503599627370496, 0, 0, 0, 0],
+    [-4503599627370497, 4503599627370495, 255, 15, 255],
+    [-17, 4503599627370479, 255, 15, 255],
+    [["ratio", -3, 2], 0, 0, 0, 0],
+    [["complex", 1, -2], 0, 0, 0, 0],
+    ["123", 0, 0, 0, 0],
+    [["symbol", "KEYWORD", "BAD"], 0, 0, 0, 0],
+    [["symbol", "COMMON-LISP", "NIL"], 0, 0, 0, 0],
+    [["pair", 1, 2], 0, 0, 0, 0]
+  ]
+}

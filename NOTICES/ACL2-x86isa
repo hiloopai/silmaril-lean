@@ -59,7 +59,12 @@ https://github.com/acl2/acl2/tree/bc6f4f49e81a0711214a8d91f0d06e0e084d2204/books
 
 Copyright (C) 2011-2012 Centaur Technology
 
-The TLB export also derives from Centaur's bit selection and bitstruct books.
+The TLB and prefixes projection exports also derive from Centaur's bit
+selection and bitstruct books. The prefixes projection export in
+corpus/acl2/prefixes-projections and its generated Lean terms derive from the
+PREFIXES bitstruct in the pinned x86isa structures book.
+https://github.com/acl2/acl2/blob/bc6f4f49e81a0711214a8d91f0d06e0e084d2204/books/projects/x86isa/utils/structures.lisp#L85-L96
+
 Copyright (C) 2010-2011 Centaur Technology (centaur/bitops/part-select.lisp)
 Copyright (C) 2014 Centaur Technology (centaur/fty/bitstruct.lisp)
 
