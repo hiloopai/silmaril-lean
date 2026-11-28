@@ -2,6 +2,7 @@ module
 
 public import Silmaril.Logic.Abstraction
 public import Silmaril.Logic.Institution
+public import Silmaril.Logic.ManyValued
 public import Silmaril.Logic.Operational.Machines.Thms
 public import Silmaril.Logic.Hets
 public import Silmaril.Logic.Arithmetic.Thms

@@ -118,15 +118,22 @@ private def useBinding (registry : CheckedRegistry) (site : Site) (role : Refere
     | fail site (.missingBinding reference.target)
   return binding
 
+private def lowerPrime (site : Site) (operand : Term signature fragment) :
+    LowerM (Term signature fragment) :=
+  match operand.firstPrime with
+  | some inner => fail site (.nestedPrime inner)
+  | none =>
+    if fragment = .collections && !operand.validPrimeOperand then fail site .primeCrossesOldValue
+    else pure (.prime site operand)
+
 private def lowerBuiltin (site : Site) (name : Name) (args : List (Term signature fragment)) :
     LowerM (Term signature fragment) :=
   match name, args with
-  | .symbol .postfix "'", [operand] =>
-    match operand.firstPrime with
-    | some inner => fail site (.nestedPrime inner)
-    | none =>
-      if fragment = .collections && !operand.validPrimeOperand then fail site .primeCrossesOldValue
-      else pure (.prime site operand)
+  | .symbol .postfix "'", [operand] => lowerPrime site operand
+  | .symbol .prefix "UNCHANGED", [operand] =>
+    if fragment = .collections then do
+      return .eq false (← lowerPrime site operand) operand
+    else fail site (.unsupportedBuiltin (.builtin name))
   | .ident "TRUE", [] => pure (.boolean true)
   | .ident "FALSE", [] => pure (.boolean false)
   | .ident "BOOLEAN", [] => pure .booleanSet

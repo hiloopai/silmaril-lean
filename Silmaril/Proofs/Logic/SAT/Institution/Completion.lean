@@ -2,12 +2,13 @@ module
 
 public import Silmaril.Logic.SAT.Institution.Defs
 import Silmaril.Proofs.Logic.SAT.Institution.Evaluation
+import Silmaril.Logic.ManyValued.Thms
 
 public section
 
 namespace Silmaril.Proofs.Logic.SAT.Institution
 
-open Silmaril.Logic.SAT.Institution
+open Silmaril.Logic.SAT.Institution Silmaril.Logic.ManyValued
 
 universe u v
 variable {A : Type u} {B : Type v}
@@ -19,11 +20,11 @@ theorem exists_completion (v : PartialValuation A) : ∃ t, Completes v t := by
 
 theorem completionEvidence_support_iff (v : PartialValuation A) (F : Problem A) :
     (F.completionEvidence v).support = true ↔ ∀ t, Completes v t → F.eval t = true := by
-  simp [Problem.completionEvidence]
+  simp [Problem.completionEvidence, FDE.support_ofBits]
 
 theorem completionEvidence_refute_iff (v : PartialValuation A) (F : Problem A) :
     (F.completionEvidence v).refute = true ↔ ∀ t, Completes v t → F.eval t = false := by
-  simp [Problem.completionEvidence]
+  simp [Problem.completionEvidence, FDE.refute_ofBits]
 
 theorem completionEvidence_consistent (v : PartialValuation A) (F : Problem A) :
     ¬ ((F.completionEvidence v).support = true ∧ (F.completionEvidence v).refute = true) := by
@@ -33,30 +34,29 @@ theorem completionEvidence_consistent (v : PartialValuation A) (F : Problem A) :
   have hn := (completionEvidence_refute_iff v F).1 neg t ht
   exact Bool.noConfusion (hp.symm.trans hn)
 
+theorem completionEvidence_eq_ofK3_superEval (v : PartialValuation A) (F : Problem A) :
+    F.completionEvidence v = (F.superEvalK3 v).toFDE := by
+  cases h : (F.completionEvidence v).toK3? with
+  | none =>
+    have hb := (FDE.toK3?_eq_none_iff _).1 h
+    exact (completionEvidence_consistent v F (by rw [hb]; exact ⟨rfl, rfl⟩)).elim
+  | some k =>
+    unfold Problem.superEvalK3
+    rw [h]
+    exact ((FDE.toK3?_eq_some_iff _ _).1 h).symm
+
 theorem superEval_eq_some (v : PartialValuation A) (F : Problem A) (b : Bool) :
     F.superEval v = some b ↔ ∀ t, Completes v t → F.eval t = b := by
-  classical
-  cases b with
-  | false =>
-    rw [← completionEvidence_refute_iff]
-    by_cases ht : (F.completionEvidence v).support = true
-    · have hf : ¬ (F.completionEvidence v).refute = true :=
-        fun hn => completionEvidence_consistent v F ⟨ht, hn⟩
-      simp [Problem.superEval, ht, hf]
-    · simp [Problem.superEval, ht]
-  | true =>
-    rw [← completionEvidence_support_iff]
-    by_cases ht : (F.completionEvidence v).support = true <;> simp [Problem.superEval, ht]
+  change (F.superEvalK3 v).toOptionBool = some b ↔ _
+  cases b
+  · rw [← completionEvidence_refute_iff, completionEvidence_eq_ofK3_superEval]
+    cases F.superEvalK3 v <;> decide
+  · rw [← completionEvidence_support_iff, completionEvidence_eq_ofK3_superEval]
+    cases F.superEvalK3 v <;> decide
 
-theorem completionEvidence_eq_ofK3_superEval (v : PartialValuation A) (F : Problem A) :
-    F.completionEvidence v = Evidence.ofK3 (F.superEval v) := by
-  apply Evidence.ext <;> apply Bool.eq_iff_iff.mpr
-  · change (F.completionEvidence v).support = true ↔ _
-    rw [completionEvidence_support_iff, ← superEval_eq_some]
-    rcases F.superEval v with _ | (_ | _) <;> decide
-  · change (F.completionEvidence v).refute = true ↔ _
-    rw [completionEvidence_refute_iff, ← superEval_eq_some]
-    rcases F.superEval v with _ | (_ | _) <;> decide
+theorem toOptionBool_eq_some_iff (k : K3) (b : Bool) :
+    k.toOptionBool = some b ↔ k = K3.ofBool b := by
+  cases k <;> cases b <;> decide
 
 theorem superEval_eq_none (v : PartialValuation A) (F : Problem A) :
     F.superEval v = none ↔
@@ -83,15 +83,24 @@ theorem superEval_total (t : TotalValuation A) (F : Problem A) :
   rw [h]
 
 theorem evalK3_informationLE_superEval (v : PartialValuation A) (F : Problem A) :
-    K3.InformationLE (F.evalK3 v) (F.superEval v) := by
+    (⟨F.evalK3Partial v⟩ : K3.Information) ≤ ⟨F.superEvalK3 v⟩ := by
+  apply (K3.Information.le_iff_toOptionBool _ _).2
   intro b hb
   apply (superEval_eq_some _ _ _).2
   intro t ht
-  have hv (a : A) : K3.InformationLE (v a) ((some ∘ t) a) :=
-    fun c hc => congrArg some (ht a c hc)
-  have h := evalK3_informationLE hv F b hb
+  have hv (a : A) : (⟨v.toK3 a⟩ : K3.Information) ≤ ⟨K3.ofBool (t a)⟩ := by
+    apply (K3.Information.le_iff_toOptionBool _ _).2
+    intro c hc
+    change (K3.ofOptionBool (v a)).toOptionBool = some c at hc
+    rw [K3.toOptionBool_ofOptionBool] at hc
+    change (K3.ofOptionBool (some (t a))).toOptionBool = some c
+    rw [K3.toOptionBool_ofOptionBool, ht a c hc]
+  have h := evalK3_informationLE hv F
+  change (⟨F.evalK3Partial v⟩ : K3.Information) ≤ ⟨F.evalK3 (K3.ofBool ∘ t)⟩ at h
   rw [evalK3_total] at h
-  exact Option.some.inj h
+  have he := (K3.Information.le_iff_toOptionBool _ _).1 h b hb
+  change (K3.ofOptionBool (some (F.eval t))).toOptionBool = some b at he
+  rwa [K3.toOptionBool_ofOptionBool, Option.some.injEq] at he
 
 theorem completes_reduct (f : A → B) {v : PartialValuation B} {t : TotalValuation B}
     (h : Completes v t) : Completes (reduct f v) (reduct f t) :=
@@ -141,7 +150,8 @@ theorem superEval_rename_of_coverage (f : A → B) (v : PartialValuation B)
     | some b => nomatch hl.symm.trans ((known b).2 hr)
 
 theorem superEval_rename_informationLE (f : A → B) (v : PartialValuation B) (F : Problem A) :
-    K3.InformationLE (F.superEval (reduct f v)) ((F.rename f).superEval v) := by
+    (⟨F.superEvalK3 (reduct f v)⟩ : K3.Information) ≤ ⟨(F.rename f).superEvalK3 v⟩ := by
+  apply (K3.Information.le_iff_toOptionBool _ _).2
   intro b hb
   apply (superEval_eq_some _ _ _).2
   intro t ht

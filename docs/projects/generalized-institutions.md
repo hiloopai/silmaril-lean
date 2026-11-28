@@ -85,7 +85,7 @@ different question from whether witnesses for either answer exist.
 
 | Evaluation at one model | Signature change | Where to start |
 | --- | --- | --- |
-| SAT Boolean, strong Kleene and FDE values | `totalExact`, `kleeneExact` and `evidenceExact` commute with every atom map. Their truth, support and refutation observations agree with the ordinary SAT rooms. | [SAT study](generalized-institutions-sat.md) · [SAT bridges](../../Silmaril/Logic/SAT/Institution/Generalized/Thms.lean) |
+| SAT Boolean, strong Kleene and FDE values | `totalExact`, `kleeneExact` and `evidenceExact` return `Bool`, `K3` and `FDE`. They commute with every atom map. Their truth, support and refutation observations agree with the ordinary SAT rooms. | [SAT study](generalized-institutions-sat.md) · [SAT bridges](../../Silmaril/Logic/SAT/Institution/Generalized/Thms.lean) |
 | SAT supervaluation over total extensions of a partial assignment | `completionLax` uses the same universal flags as `Evidence.ofCompletions`. Reducts may lose coverage when atoms are identified. Injections cover every source completion. | [`completionLax_eval_eq_ofCompletions` and `completionLax_eval_map_of_coverage`](../../Silmaril/Logic/SAT/Institution/Generalized/Thms.lean) |
 | PER CNF over completions between relation bounds | `intervalLax` pulls back both bounds. The guarded `intervalLaxWith` profile requires admissibility to survive pullback. Coverage gives equality, and unrestricted intervals have coverage on injective term maps. | [PER study](per-constraints.md#intervals-and-admissible-completions) · [PER bridges](../../Silmaril/Calculi/PERConstraints/Interval/Institution/Thms.lean) |
 

@@ -9,7 +9,15 @@ namespace Silmaril.Logic.SAT.Institution
 universe u v
 variable {A : Type u} {B : Type v}
 
-open Set
+open CategoryTheory Set
+
+theorem kleeneTruthInstitution_sat_iff_evalK3Option (v : PartialValuation A) (F : Problem A) :
+    (kleeneTruthInstitution.obj A).Sat (Discrete.mk v) F ↔ F.evalK3Option v = some true :=
+  (toOptionBool_eq_some_iff _ _).symm
+
+theorem kleeneRefutationInstitution_sat_iff_evalK3Option (v : PartialValuation A) (F : Problem A) :
+    (kleeneRefutationInstitution.obj A).Sat (Discrete.mk v) F ↔ F.evalK3Option v = some false :=
+  (toOptionBool_eq_some_iff _ _).symm
 
 /-- Target completions reduce into the source completion family. -/
 theorem completion_reduct_image_subset (f : A → B) (v : PartialValuation B) :

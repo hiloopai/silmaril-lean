@@ -129,7 +129,7 @@ private def quotePred : Predicate signature → Elab.Term.TermElabM Lean.Expr
   | _ => throwError "expected a data predicate leaf"
 
 private def quoteObs (obs : Observation signature) : Elab.Term.TermElabM Lean.Expr := do
-  let type := mkApp (mkConst ``ScopedExpr) (mkConst ``signature)
+  let type := mkApp2 (mkConst ``ScopedExpr) (mkConst ``signature) (mkConst ``Fragment.core)
   Meta.mkListLit type (← obs.mapM quoteChecked)
 
 private def quoteForm : Form signature → Elab.Term.TermElabM Lean.Expr

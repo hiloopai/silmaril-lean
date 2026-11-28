@@ -21,34 +21,35 @@ inductive Diagnostic where
   | bareAction (site : Site)
   | primeInState (site : Site)
   | unsupportedFormula (site : Site)
+  | expectedStatement (site : Site)
   deriving DecidableEq, Repr
 
-structure CheckedState (signature : ExternalSignature) where
+structure CheckedState (signature : ExternalSignature) (fragment : Fragment := .core) where
   private mk ::
-  predicate : Predicate signature
+  predicate : Predicate signature fragment
 
-structure CheckedAction (signature : ExternalSignature) where
+structure CheckedAction (signature : ExternalSignature) (fragment : Fragment := .core) where
   private mk ::
-  predicate : Predicate signature
+  predicate : Predicate signature fragment
 
-structure CheckedFormula (signature : ExternalSignature) where
+structure CheckedFormula (signature : ExternalSignature) (fragment : Fragment := .core) where
   private mk ::
-  form : Form signature
+  form : Form signature fragment
 
 universe u
 
-variable {V : Type u} {signature : ExternalSignature}
+variable {V : Type u} {signature : ExternalSignature} {fragment : Fragment}
 
-@[expose] noncomputable def CheckedState.toStatePred (p : CheckedState signature)
-    (I : Interpretation V signature) (ρ : RigidEnv V) : StatePred (State V) :=
+@[expose] noncomputable def CheckedState.toStatePred (p : CheckedState signature fragment)
+    (I : Interpretation V signature fragment) (ρ : RigidEnv V) : StatePred (State V) :=
   p.predicate.toStatePred I ρ
 
-@[expose] noncomputable def CheckedAction.toAction (p : CheckedAction signature)
-    (I : Interpretation V signature) (ρ : RigidEnv V) : Action (State V) :=
+@[expose] noncomputable def CheckedAction.toAction (p : CheckedAction signature fragment)
+    (I : Interpretation V signature fragment) (ρ : RigidEnv V) : Action (State V) :=
   p.predicate.toAction I ρ
 
-@[expose] noncomputable def CheckedFormula.toFormula (p : CheckedFormula signature)
-    (I : Interpretation V signature) (ρ : RigidEnv V) : Formula (State V) :=
+@[expose] noncomputable def CheckedFormula.toFormula (p : CheckedFormula signature fragment)
+    (I : Interpretation V signature fragment) (ρ : RigidEnv V) : Formula (State V) :=
   p.form.toFormula I ρ
 
 end
@@ -57,8 +58,8 @@ private structure Context where
   registry : CheckedRegistry
   levels : Levels.CheckedLevels
 
-private structure Scope (signature : ExternalSignature) where
-  locals : DataElab.Context signature .core := []
+private structure Scope (signature : ExternalSignature) (fragment : Fragment) where
+  locals : DataElab.Context signature fragment := []
   slots : List Nat := []
 
 private def Context.levelAt (ctx : Context) (site : Site) : Except Diagnostic Levels.Level := do
@@ -93,11 +94,12 @@ private def aliasBody (ctx : Context) (site : Site) (expr : Surface.Expr) :
 
 private def exhausted (site : Site) : Diagnostic := .data ⟨site, .expansionLimit⟩
 
-private def lowerData (ctx : Context) {signature : ExternalSignature} (scope : Scope signature) (fuel : Nat)
+private def lowerData (ctx : Context) {signature : ExternalSignature} {fragment : Fragment}
+    (scope : Scope signature fragment) (fuel : Nat)
     (site : Site) (expr : Surface.Expr) (ceiling : Levels.Level) :
-    Except Diagnostic (ScopedExpr signature) := do
+    Except Diagnostic (ScopedExpr signature fragment) := do
   ctx.checkAtMost site ceiling
-  let visit := DataElab.lower (signature := signature) ctx.registry .core true false fuel
+  let visit := DataElab.lower (signature := signature) ctx.registry fragment true false fuel
     [] scope.locals site (.expression expr)
   -- Active temporal slots are dense, so data expansion starts after them.
   let (term, _) ← (StateT.run visit scope.slots.length).mapError Diagnostic.data
@@ -108,8 +110,9 @@ private def lowerData (ctx : Context) {signature : ExternalSignature} (scope : S
   else
     throw (.data ⟨site, .invalidExpansion⟩)
 
-private def lowerObservation (ctx : Context) {signature : ExternalSignature} (scope : Scope signature) (fuel : Nat)
-    (site : Site) (expr : Surface.Expr) : Except Diagnostic (Observation signature) := do
+private def lowerObservation (ctx : Context) {signature : ExternalSignature} {fragment : Fragment}
+    (scope : Scope signature fragment) (fuel : Nat)
+    (site : Site) (expr : Surface.Expr) : Except Diagnostic (Observation signature fragment) := do
   ctx.checkAtMost site .state
   if let .tuple items := expr then
     let fuel + 1 := fuel | throw (exhausted site)
@@ -117,9 +120,10 @@ private def lowerObservation (ctx : Context) {signature : ExternalSignature} (sc
   else
     return [← lowerData ctx scope fuel site expr .state]
 
-private def lowerPredicate (ctx : Context) {signature : ExternalSignature} (scope : Scope signature)
+private def lowerPredicate (ctx : Context) {signature : ExternalSignature} {fragment : Fragment}
+    (scope : Scope signature fragment)
     (ceiling : Levels.Level)
-    (fuel : Nat) (site : Site) (expr : Surface.Expr) : Except Diagnostic (Predicate signature) := do
+    (fuel : Nat) (site : Site) (expr : Surface.Expr) : Except Diagnostic (Predicate signature fragment) := do
   let remaining + 1 := fuel | throw (exhausted site)
   ctx.checkAtMost site ceiling
   let visit := lowerPredicate ctx scope ceiling remaining
@@ -143,8 +147,9 @@ private def lowerPredicate (ctx : Context) {signature : ExternalSignature} (scop
   return .data (← lowerData ctx scope (remaining + 1) site expr ceiling)
 termination_by structural fuel
 
-private def lowerForm (ctx : Context) {signature : ExternalSignature} (scope : Scope signature) (fuel : Nat)
-    (site : Site) (expr : Surface.Expr) : Except Diagnostic (Form signature) := do
+private def lowerForm (ctx : Context) {signature : ExternalSignature} {fragment : Fragment}
+    (scope : Scope signature fragment) (fuel : Nat)
+    (site : Site) (expr : Surface.Expr) : Except Diagnostic (Form signature fragment) := do
   let remaining + 1 := fuel | throw (exhausted site)
   let level ← ctx.levelAt site
   if level.atMost .state then
@@ -199,40 +204,58 @@ private def lowerForm (ctx : Context) {signature : ExternalSignature} (scope : S
   | _ => throw (.unsupportedFormula site)
 termination_by structural fuel
 
-private def select (registry : CheckedRegistry) (externalLevels : Levels.ExternalLevels)
-    (signature : ExternalSignature) (id : BindingId) :
-    Except Diagnostic (Context × Site × Surface.Expr) := do
-  let (home, body) ← (definitionBody registry id).mapError .data
+private def checkedContext (registry : CheckedRegistry) (externalLevels : Levels.ExternalLevels)
+    (signature : ExternalSignature) : Except Diagnostic Context := do
   let levels ← (Levels.check registry externalLevels).mapError .levels
   -- A data primitive may be evaluated in a noncontributing argument slot.
   -- Its interpretation still cannot supply a temporal value there.
   for (binding, level) in externalLevels do
     if level.floor = .temporal && (signature binding).isSome then
       throw (.temporalPrimitive binding)
-  return (⟨registry, levels⟩, home.child .body, body)
+  return ⟨registry, levels⟩
+
+private def select (registry : CheckedRegistry) (externalLevels : Levels.ExternalLevels)
+    (signature : ExternalSignature) (id : BindingId) :
+    Except Diagnostic (Context × Site × Surface.Expr) := do
+  let (home, body) ← (definitionBody registry id).mapError .data
+  return (← checkedContext registry externalLevels signature, home.child .body, body)
 
 /-- Select a constant- or state-level source definition. ENABLED binds its own
 successor and can appear in a state predicate. -/
 public def lowerState (registry : CheckedRegistry) (externalLevels : Levels.ExternalLevels)
-    (signature : ExternalSignature) (maxDepth : Nat) (id : BindingId) :
-    Except Diagnostic (CheckedState signature) := do
+    (signature : ExternalSignature) (maxDepth : Nat) (id : BindingId) (fragment : Fragment := .core) :
+    Except Diagnostic (CheckedState signature fragment) := do
   let (ctx, site, body) ← select registry externalLevels signature id
   return ⟨← lowerPredicate (signature := signature) ctx {} .state maxDepth site body⟩
 
 /-- Select a constant-, state- or action-level source definition as a raw
 two-endpoint relation. -/
 public def lowerAction (registry : CheckedRegistry) (externalLevels : Levels.ExternalLevels)
-    (signature : ExternalSignature) (maxDepth : Nat) (id : BindingId) :
-    Except Diagnostic (CheckedAction signature) := do
+    (signature : ExternalSignature) (maxDepth : Nat) (id : BindingId) (fragment : Fragment := .core) :
+    Except Diagnostic (CheckedAction signature fragment) := do
   let (ctx, site, body) ← select registry externalLevels signature id
   return ⟨← lowerPredicate (signature := signature) ctx {} .action maxDepth site body⟩
 
 /-- Select a formula from the same registry that produced its level annotations.
 A constant or state predicate can itself be a formula. -/
 public def lowerFormula (registry : CheckedRegistry) (externalLevels : Levels.ExternalLevels)
-    (signature : ExternalSignature) (maxDepth : Nat) (id : BindingId) :
-    Except Diagnostic (CheckedFormula signature) := do
+    (signature : ExternalSignature) (maxDepth : Nat) (id : BindingId) (fragment : Fragment := .core) :
+    Except Diagnostic (CheckedFormula signature fragment) := do
   let (ctx, site, body) ← select registry externalLevels signature id
   return ⟨← lowerForm (signature := signature) ctx {} maxDepth site body⟩
+
+/-- Lower an anonymous, proof-free theorem expression at its resolved module unit.
+The expression is read from the checked registry and lowered at its original body
+site. This selects a statement for interpretation, without checking a proof. -/
+public def lowerStatement (registry : CheckedRegistry) (externalLevels : Levels.ExternalLevels)
+    (signature : ExternalSignature) (maxDepth : Nat) (site : Site) (fragment : Fragment := .core) :
+    Except Diagnostic (CheckedFormula signature fragment) := do
+  let some source := (registry.moduleAt site.moduleId).bind (·.source)
+    | throw (.expectedStatement site)
+  let [.unit index] := site.path | throw (.expectedStatement site)
+  let some (.theoremDecl ⟨none, .expr body, none⟩) := source.units[index]?
+    | throw (.expectedStatement site)
+  let ctx ← checkedContext registry externalLevels signature
+  return ⟨← lowerForm (signature := signature) ctx {} maxDepth (site.child .body) body⟩
 
 end Silmaril.Logic.Temporal.TLA.DataElab.Temporal

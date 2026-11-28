@@ -7,7 +7,10 @@ select a nullary source definition by its resolved `BindingId` with
 `lowerState` and `lowerAction` select a state predicate or a two-endpoint
 relation. Each entry checks levels on the supplied registry before lowering.
 A constant or state predicate is also a formula. A raw action is rejected
-in a formula position.
+in a formula position. `lowerStatement` selects an anonymous, proof-free
+theorem expression at its resolved module-unit site. Each selector uses
+the core data fragment by default and also accepts `.collections` with the
+matching collection interpretation.
 [Entry points](../../Silmaril/Logic/Temporal/TLA/DataElab/Temporal/Defs.lean) ·
 [Level checking](tla-expression-levels.md)
 
@@ -25,8 +28,8 @@ and the same rigid valuation.
 
 | Form | Lowering |
 | --- | --- |
-| State and step predicates | Core DataElab expressions, with prime in step positions. Negation, the four binary Boolean operators, and junction lists compose predicates, including modal predicates, using the data Boolean policy. |
-| Observations | A core DataElab state expression or an inline flat tuple of such expressions. The evaluator compares their values position by position at the two endpoints. It rejects a retained prime even when a primitive level signature masks that operand's contribution. |
+| State and step predicates | DataElab expressions in the selected fragment, with prime in step positions. Negation, the four binary Boolean operators, and junction lists compose predicates, including modal predicates, using the data Boolean policy. |
+| Observations | A DataElab state expression or an inline flat tuple of such expressions. The evaluator compares their values position by position at the two endpoints. It rejects a retained prime even when a primitive level signature masks that operand's contribution. |
 | `UNCHANGED e`, `[A]_e`, `<<A>>_e` | Observation equality, disjunction with equality, and conjunction with inequality, respectively. A square step can change coordinates outside its observation. |
 | `ENABLED A` | Exists a successor flexible valuation satisfying the action at the current state. The witness ranges over the whole carrier at each coordinate. It is independent of any next state in a behavior. |
 | Temporal Boolean composition | Negation, conjunction, disjunction, implication, equivalence and junction lists. State children contribute their truth at the current instant. |
@@ -96,16 +99,20 @@ combine propositions about behaviors.
 [Lamport, *Specifying Systems*, §16.2](https://lamport.azurewebsites.net/tla/book-21-07-04.pdf#page=330)
 
 The temporal syntax expands nullary module operators at their original
-resolved sites, including operators reached through EXTENDS. Core DataElab
+resolved sites, including operators reached through EXTENDS. DataElab
 leaves retain their ordinary first-order calls, LET expansion and data
 binders. Lifting modal forms through parameterized calls, LET, value
 constructors or IF is a further slice. Below temporal level, quantifiers
-still use the core data path. Tuple patterns in temporal binders are outside
-this source profile. Other boundaries include
-INSTANCE replay, collection-profile leaves, value-level tuple constructors,
-temporal primitives, action composition, guarantees, and checking source
-proofs. This is a mathematical semantics with a source admission check.
+use the selected data fragment. Tuple patterns in temporal binders are outside
+this source profile. Other boundaries include INSTANCE replay, temporal
+primitives, action composition, guarantees and checking source proofs.
+This is a mathematical semantics with a source admission check.
 There is no general source adequacy or finite model-checking claim.
+
+Value-level tuple constructors require the collection fragment. The pinned
+BoundedQueue fixture uses that fragment to check its source assumption,
+specification and temporal safety statement.
+[BoundedQueue source contract](tla-sequences.md#library-identity-and-source-check)
 
 ## Intact LiveHourClock
 

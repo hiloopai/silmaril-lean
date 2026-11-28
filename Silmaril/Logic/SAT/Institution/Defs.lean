@@ -1,12 +1,15 @@
 module
 
 public import Silmaril.Logic.SAT.CNF.Defs
+public import Silmaril.Logic.ManyValued.Defs
 
 @[expose] public section
 
 /-! # Valuation semantics of CNF over arbitrary atom types -/
 
 namespace Silmaril.Logic.SAT.Institution
+
+open Silmaril.Logic.ManyValued
 
 universe u v w
 
@@ -33,66 +36,17 @@ def Problem.ofCNF (F : SAT.CNF) : Problem Nat := F.map (·.map fun l => ⟨l.var
 /-- Reduce a target valuation by precomposition with a signature map. -/
 def reduct {V : Type w} (f : A → B) (v : B → V) : A → V := v ∘ f
 
-/-- A valuation in the strong Kleene algebra, with `none` for unknown. -/
+/-- A partial Boolean assignment, with `none` for an atom left unassigned. -/
 abbrev PartialValuation (A : Type u) := A → Option Bool
 
 abbrev TotalValuation (A : Type u) := A → Bool
 
-namespace K3
+abbrev K3Valuation (A : Type u) := A → K3
 
-def neg (a : Option Bool) : Option Bool := a.map Bool.not
+abbrev EvidenceValuation (A : Type u) := A → FDE
 
-def conj : Option Bool → Option Bool → Option Bool
-  | some false, _ | _, some false => some false
-  | some true, some true => some true
-  | _, _ => none
-
-def disj : Option Bool → Option Bool → Option Bool
-  | some true, _ | _, some true => some true
-  | some false, some false => some false
-  | _, _ => none
-
-/-- Information order: an unknown can become known, and a known result is preserved. -/
-def InformationLE (a b : Option Bool) : Prop := ∀ x, a = some x → b = some x
-
-end K3
-
-/-- Independent positive (support) and negative (refutation) evidence. -/
-@[ext] structure Evidence where
-  support : Bool
-  refute : Bool
-  deriving DecidableEq
-
-abbrev EvidenceValuation (A : Type u) := A → Evidence
-
-namespace Evidence
-
-def neither : Evidence := ⟨false, false⟩
-def trueOnly : Evidence := ⟨true, false⟩
-def falseOnly : Evidence := ⟨false, true⟩
-def both : Evidence := ⟨true, true⟩
-
-def neg (a : Evidence) : Evidence := ⟨a.refute, a.support⟩
-
-def conj (a b : Evidence) : Evidence := ⟨a.support && b.support, a.refute || b.refute⟩
-
-def disj (a b : Evidence) : Evidence := ⟨a.support || b.support, a.refute && b.refute⟩
-
-/-- Truth order: increasing support and decreasing refutation. -/
-def TruthLE (a b : Evidence) : Prop :=
-  (a.support = true → b.support = true) ∧ (b.refute = true → a.refute = true)
-
-/-- Information order: increasing evidence in both channels. -/
-def InformationLE (a b : Evidence) : Prop :=
-  (a.support = true → b.support = true) ∧ (a.refute = true → b.refute = true)
-
-/-- A strong Kleene value has at most one kind of evidence. -/
-def ofK3 : Option Bool → Evidence
-  | none => neither
-  | some true => trueOnly
-  | some false => falseOnly
-
-end Evidence
+/-- Interpret unassigned atoms as the strong Kleene unknown. -/
+def PartialValuation.toK3 (v : PartialValuation A) : K3Valuation A := K3.ofOptionBool ∘ v
 
 /-- Evaluate a signed atom using the chosen negation. -/
 def Literal.evalWith {V : Type w} (neg : V → V) (v : A → V) (l : Literal A) : V :=
@@ -115,12 +69,19 @@ def eval (v : TotalValuation A) (F : Problem A) : Bool :=
   F.all fun C => C.any fun l => v l.atom == l.positive
 
 /-- Compositional strong Kleene evaluation. -/
-def evalK3 (v : PartialValuation A) (F : Problem A) : Option Bool :=
-  F.evalWith (some true) (some false) K3.neg K3.conj K3.disj v
+def evalK3 (v : K3Valuation A) (F : Problem A) : K3 :=
+  F.evalWith (K3.ofBool true) (K3.ofBool false) K3.neg K3.conj K3.disj v
+
+/-- Evaluate a partial Boolean assignment using the typed strong Kleene algebra. -/
+def evalK3Partial (v : PartialValuation A) (F : Problem A) : K3 := F.evalK3 v.toK3
+
+/-- Compatibility adapter for strong Kleene evaluation with `Option Bool` input and output. -/
+def evalK3Option (v : PartialValuation A) (F : Problem A) : Option Bool :=
+  (F.evalK3Partial v).toOptionBool
 
 /-- Compositional Belnap/FDE evaluation (conjunction and disjunction in the truth order). -/
-def evalEvidence (v : EvidenceValuation A) (F : Problem A) : Evidence :=
-  F.evalWith Evidence.trueOnly Evidence.falseOnly Evidence.neg Evidence.conj Evidence.disj v
+def evalEvidence (v : EvidenceValuation A) (F : Problem A) : FDE :=
+  F.evalWith FDE.tt FDE.ff FDE.neg FDE.conj FDE.disj v
 
 end Problem
 
@@ -133,16 +94,17 @@ def CompletionCovers (f : A → B) (v : PartialValuation B) : Prop :=
   ∀ s, Completes (reduct f v) s → ∃ t, Completes v t ∧ reduct f t = s
 
 /-- Independent universal satisfaction and refutation over total completions. -/
-noncomputable def Problem.completionEvidence (v : PartialValuation A) (F : Problem A) : Evidence :=
+noncomputable def Problem.completionEvidence (v : PartialValuation A) (F : Problem A) : FDE :=
   letI := Classical.propDecidable
-  ⟨decide (∀ t, Completes v t → F.eval t = true),
-   decide (∀ t, Completes v t → F.eval t = false)⟩
+  FDE.ofBits (decide (∀ t, Completes v t → F.eval t = true))
+    (decide (∀ t, Completes v t → F.eval t = false))
 
 /-- Supervaluation is true or false when all completions agree, and unknown when they split. -/
+noncomputable def Problem.superEvalK3 (v : PartialValuation A) (F : Problem A) : K3 :=
+  (F.completionEvidence v).toK3?.getD .unknown
+
+/-- The legacy projection of the strong Kleene supervaluation verdict. -/
 noncomputable def Problem.superEval (v : PartialValuation A) (F : Problem A) : Option Bool :=
-  let e := F.completionEvidence v
-  if e.support then some true
-  else if e.refute then some false
-  else none
+  (F.superEvalK3 v).toOptionBool
 
 end Silmaril.Logic.SAT.Institution

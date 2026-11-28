@@ -42,20 +42,38 @@ standard definitions supply reference equations for the interpretation.
 [Pinned Naturals](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/src/tla2sany/StandardModules/Naturals.tla) ·
 [Adapter](../../Silmaril/Logic/Temporal/TLA/DataElab/Sequences/Defs.lean)
 
-The gate parses the entire original BoundedQueue fixture and selects its
-declarations and definitions for resolution and level checking. The existing
-resolver rejects the `ASSUME` unit and the profile does not check the named
-proof. The source equations use the unchanged bodies of `Init`, `TypeOK`
-and `Next`. Capacity is instantiated with a tagged natural and Messages with
-a tagged set in the invariant and step equations. `Init` sets the queue to
-the empty tuple. `TypeOK` on a tuple requires that every entry belong to
-Messages and that the length be at most Capacity. `Next` either appends a
-message when there is room or removes the first element of a nonempty queue.
-The fixture proves that `Init` establishes the corresponding tuple invariant,
-and that `Next` and an unchanged queue preserve it. Concatenation, `SubSeq`,
-`SelectSeq`, recursion, fairness and source proof checking are outside the
-profile. [BoundedQueue source](../../tests/semantics/tla-parser/BoundedQueue.tla) ·
-[Lean fixture](../../tests/semantics/tla-sequence-source/BoundedQueue.lean)
+The gate parses the complete pinned BoundedQueue fixture. For resolution and
+level checking it projects exactly two units, retaining their zero-based
+positions and expression trees. Unit 2, the anonymous
+`ASSUME Capacity \in Nat`, becomes an anonymous proof-free statement. Unit 9, the named theorem
+`QueueSafety`, becomes an anonymous proof-free statement with the original
+`Spec => []TypeOK` body. The projection checks the assumption shape and the
+theorem name, expression form and presence of a proof. All constants,
+variables and definitions keep their source units. The statement selector
+reads the two projected expressions back from the checked registry.
+
+Lean proves that the denoted source assumption holds exactly when Capacity
+is a tagged natural. The model also interprets Messages as a tagged set,
+which is the domain of the standard `Seq` equation. This interpretation
+premise is separate from the source module's sole Capacity assumption. The result allows every fixed malformed-operand policy in this
+profile over those rigid values and arbitrary behaviors of the tagged state
+space.
+
+The collection equations give the empty initial tuple, the member-and-length
+invariant, and the guarded append and dequeue steps. The temporal lowering
+yields `Init /\ [][Next]_q /\ WF_q(Dequeue)`. Lean checks both observations
+against the resolved `q` coordinate and checks the theorem's implication and
+always modality. Induction uses the source square action, so an idle step
+needs equality of `q` alone. Weak fairness is interpreted as part of the
+source specification and the invariant proof needs only the initial and
+step conjuncts. Lean proves satisfaction of the denoted theorem under the
+premises above. The source proof steps, including `PROOF OMITTED`, are
+outside the check, as are queue liveness theorems. The sequence signature
+admits `Head`, which the queue does not call. Concatenation, `SubSeq`,
+`SelectSeq` and recursion remain outside the profile.
+[BoundedQueue source](../../tests/semantics/tla-parser/BoundedQueue.tla) ·
+[Lean fixture](../../tests/semantics/tla-sequence-source/BoundedQueue.lean) ·
+[Temporal bridge](tla-data-temporal.md)
 
 | Input | SHA-256 |
 | --- | --- |
@@ -69,5 +87,6 @@ python3 -I tests/semantics/tla-sequence-source/check.py
 
 The gate builds with warnings as errors and audits the sequence and queue
 theorems for dependencies on axioms beyond the three allowed by project policy.
-It runs in `make check` with the library or sequence profile targets.
+It runs in `make check` with the library, sequence profile or DataElab
+temporal targets.
 [Gate](../../tests/semantics/tla-sequence-source/check.py) · [Axiom policy](../../policy.toml)

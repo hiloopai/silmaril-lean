@@ -4,6 +4,7 @@ lean:
   - '*.lean'
   - 'tools/**'
   - 'tests/languages/python/source-scope/check_intake.py'
+  - 'tests/semantics/tla-acp-source-acceptance/**'
   - 'tests/formats/arrow-ipc/**'
   - 'scripts/**'
   - 'apps/**'

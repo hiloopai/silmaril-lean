@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check selected BoundedQueue definitions against the pinned sequence profile."""
+"""Check the pinned BoundedQueue denotations and safety theorem."""
 
 import os
 from pathlib import Path
@@ -26,7 +26,8 @@ def main():
     subprocess.run(
         [lake, "build", "--wfail",
          "+Silmaril.Logic.Temporal.TLA.Surface.Parser.Defs",
-         "+Silmaril.Logic.Temporal.TLA.DataElab.Sequences.Thms"],
+         "+Silmaril.Logic.Temporal.TLA.DataElab.Sequences.Thms",
+         "+Silmaril.Logic.Temporal.TLA.DataElab.Temporal.Thms"],
         cwd=ROOT,
         check=True,
     )

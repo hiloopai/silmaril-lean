@@ -1,25 +1,37 @@
 module
 
 public import Silmaril.Logic.Temporal.TLA.DataElab.Sequences.Thms
+import Silmaril.Logic.Temporal.TLA.DataElab.Temporal.Thms
 import all Silmaril.Logic.Temporal.TLA.DataElab.Defs
 import all Silmaril.Logic.Temporal.TLA.DataElab.Collections.Defs
 import all Silmaril.Logic.Temporal.TLA.DataElab.Sequences.Defs
 public import Lean
 meta import Silmaril.Logic.Temporal.TLA.Surface.Parser.Defs
 meta import Silmaril.Logic.Temporal.TLA.DataElab.Sequences.Defs
+meta import Silmaril.Logic.Temporal.TLA.DataElab.Temporal.Defs
 public meta import Lean
 
-/-! Checked equations for selected definitions of the original BoundedQueue fixture. -/
+/-! Checked denotations and safety of the original BoundedQueue fixture. -/
 
 namespace Silmaril.Logic.Temporal.TLA.SourceAcceptance.BoundedQueue
 
-open Resolution DataElab Data.Tagged
+open Resolution DataElab DataElab.Temporal Data.Tagged
 
 private meta abbrev root : ModuleId := "fixture/BoundedQueue"
-private meta abbrev declaration (index : Nat) : BindingId := .declared ⟨root, [.unit index]⟩
+private meta abbrev unitSite (index : Nat) : Site := ⟨root, [.unit index]⟩
+private meta abbrev declaration (index : Nat) : BindingId := .declared (unitSite index)
 private meta abbrev messagesId : BindingId := .declared ⟨root, [.unit 0, .member 0]⟩
 private meta abbrev capacityId : BindingId := .declared ⟨root, [.unit 0, .member 1]⟩
 private meta abbrev queueId : BindingId := .declared ⟨root, [.unit 1, .member 0]⟩
+
+private structure QueueSource where
+  init : CheckedExpr Sequences.signature .collections
+  typeOK : CheckedExpr Sequences.signature .collections
+  next : Collections.CheckedAction Sequences.signature
+  capacity : Form Sequences.signature .collections
+  spec : Form Sequences.signature .collections
+  dequeue : Predicate Sequences.signature .collections
+  safety : Form Sequences.signature .collections
 
 meta section
 
@@ -64,20 +76,26 @@ private def checkedRegistry : TermElabM CheckedRegistry := do
   let source ← parse fixture
   unless source.name = "BoundedQueue" ∧ source.extendsModules = ["Naturals", "Sequences"] do
     throwError "unexpected BoundedQueue header"
-  let [.constants _, .variables ["q"], .assumption none _, .definition init, .definition enqueue,
-       .definition dequeue, .definition next, .definition typeOK, .definition spec,
-       .theoremDecl ⟨some "QueueSafety", _, some _⟩] := source.units
+  let [.constants _, .variables ["q"], .assumption none assumption, .definition _, .definition _,
+       .definition _, .definition _, .definition _, .definition _,
+       .theoremDecl ⟨some "QueueSafety", .expr statement, some _⟩] := source.units
     | throwError "unexpected BoundedQueue units"
-  let selected := { source with units := source.units.take 2 ++
-    [.definition init, .definition enqueue, .definition dequeue, .definition next,
-      .definition typeOK, .definition spec] }
+  let .infix (.symbol "\\in") (.ref (.operator (.ident "Capacity")) [] [])
+      (.ref (.operator (.ident "Nat")) [] []) := assumption
+    | throwError "expected ASSUME Capacity \\in Nat"
+  -- Keep the two original expressions and all unit addresses. The resolver
+  -- admits them in the anonymous proof-free theorem expression form.
+  let units := (source.units.set 2 (.theoremDecl ⟨none, .expr assumption, none⟩)).set 9
+    (.theoremDecl ⟨none, .expr statement, none⟩)
+  let selected := { source with units }
   let imports := [("Naturals", Sequences.naturalsId), ("Sequences", Sequences.sequencesId)]
   let inputs := (root, ModuleInput.parsed selected imports) :: Sequences.inputs
   let registry ← match resolveWith .levelSyntax inputs root with
     | .ok registry => pure registry
     | .error error => throwError "BoundedQueue resolution: {reprStr error}"
   let some checked := registry.moduleAt root | throwError "missing BoundedQueue registry entry"
-  for (name, id) in [("Init", declaration 2), ("Next", declaration 5), ("TypeOK", declaration 6),
+  for (name, id) in [("Init", declaration 3), ("Dequeue", declaration 5), ("Next", declaration 6),
+      ("TypeOK", declaration 7), ("Spec", declaration 8),
       ("Messages", messagesId), ("Capacity", capacityId), ("q", queueId)] do
     unless (checked.bindingAt (.ident name)).map (·.id) = some id do
       throwError "unexpected BoundedQueue declaration for {name}"
@@ -136,29 +154,67 @@ private def quoteChecked (expression : CheckedExpr Sequences.signature .collecti
   return mkApp4 (mkConst ``CheckedExpr.mk) (mkConst ``Sequences.signature)
     (mkConst ``Fragment.collections) (← quoteTerm expression.term) (← Meta.mkEqRefl (toExpr true))
 
-private def emitSelections : TermElabM Lean.Expr := do
+private def quoteScoped (e : ScopedExpr Sequences.signature .collections) : TermElabM Lean.Expr := do
+  Meta.mkAppM ``ScopedExpr.mk #[← quoteTerm e.term, toExpr e.slots, ← Meta.mkEqRefl (toExpr true)]
+
+private def quoteObservation (obs : Observation Sequences.signature .collections) :
+    TermElabM Lean.Expr := do
+  let type := mkApp2 (mkConst ``ScopedExpr) (mkConst ``Sequences.signature) (mkConst ``Fragment.collections)
+  Meta.mkListLit type (← obs.mapM quoteScoped)
+
+private partial def quotePredicate : Predicate Sequences.signature .collections → TermElabM Lean.Expr
+  | .data e => do Meta.mkAppM ``Predicate.data #[← quoteScoped e]
+  | .junction kind items => do
+    let type := mkApp2 (mkConst ``Predicate) (mkConst ``Sequences.signature) (mkConst ``Fragment.collections)
+    let items ← Meta.mkListLit type (← items.mapM quotePredicate)
+    Meta.mkAppM ``Predicate.junction #[toExpr kind, items]
+  | _ => throwError "unexpected BoundedQueue predicate"
+
+private partial def quoteForm : Form Sequences.signature .collections → TermElabM Lean.Expr
+  | .state p => do Meta.mkAppM ``Form.state #[← quotePredicate p]
+  | .binary .implies p q => do
+    Meta.mkAppM ``Form.binary #[mkConst ``Logic.implies, ← quoteForm p, ← quoteForm q]
+  | .junction kind items => do
+    let type := mkApp2 (mkConst ``Form) (mkConst ``Sequences.signature) (mkConst ``Fragment.collections)
+    let items ← Meta.mkListLit type (← items.mapM quoteForm)
+    Meta.mkAppM ``Form.junction #[toExpr kind, items]
+  | .always p => do Meta.mkAppM ``Form.always #[← quoteForm p]
+  | .alwaysBracket p obs => do Meta.mkAppM ``Form.alwaysBracket #[← quotePredicate p, ← quoteObservation obs]
+  | .fairness .weak p obs => do
+    Meta.mkAppM ``Form.fairness #[mkConst ``Surface.Fairness.weak, ← quotePredicate p, ← quoteObservation obs]
+  | _ => throwError "unexpected BoundedQueue temporal formula"
+
+private def lowerOrThrow {α : Type} {δ : Type} [Repr δ] (name : String) :
+    Except δ α → TermElabM α
+  | .ok value => pure value
+  | .error diagnostic => throwError "{name} lowering: {reprStr diagnostic}"
+
+private def emitQueue : TermElabM Lean.Expr := do
   let registry ← checkedRegistry
-  let state := fun id => Collections.lowerState registry Sequences.levels Sequences.signature 16 id
-  let action := Collections.lowerAction registry Sequences.levels Sequences.signature 16 (declaration 5)
-  let init ← match state (declaration 2) with
-    | .ok expr => pure expr
-    | .error diagnostic => throwError "Init lowering: {reprStr diagnostic}"
-  let typeOK ← match state (declaration 6) with
-    | .ok expr => pure expr
-    | .error diagnostic => throwError "TypeOK lowering: {reprStr diagnostic}"
-  let next ← match action with
-    | .ok expr => pure expr
-    | .error diagnostic => throwError "Next lowering: {reprStr diagnostic}"
+  let state := Collections.lowerState registry Sequences.levels Sequences.signature 16
+  let action := Collections.lowerAction registry Sequences.levels Sequences.signature 16
+  let init ← lowerOrThrow "Init" (state (declaration 3))
+  let typeOK ← lowerOrThrow "TypeOK" (state (declaration 7))
+  let next ← lowerOrThrow "Next" (action (declaration 6))
   let next ← Meta.mkAppM ``Collections.CheckedAction.mk #[← quoteChecked next.expression]
-  let pair ← Meta.mkAppM ``Prod.mk #[← quoteChecked typeOK, next]
-  logInfo "Pinned BoundedQueue: checked the definition fragment and selected Init, TypeOK and Next"
-  Meta.mkAppM ``Prod.mk #[← quoteChecked init, pair]
+  let statement := fun site =>
+    Temporal.lowerStatement registry Sequences.levels Sequences.signature 24 site .collections
+  let capacity ← lowerOrThrow "Capacity assumption" (statement (unitSite 2))
+  let spec ← lowerOrThrow "Spec"
+    (Temporal.lowerFormula registry Sequences.levels Sequences.signature 24 (declaration 8) .collections)
+  let dequeue ← lowerOrThrow "Dequeue"
+    (Temporal.lowerAction registry Sequences.levels Sequences.signature 24 (declaration 5) .collections)
+  let safety ← lowerOrThrow "QueueSafety" (statement (unitSite 9))
+  let .error (.expectedStatement _) := statement (unitSite 8)
+    | throwError "expected statement selection to reject the Spec definition site"
+  logInfo "Pinned BoundedQueue: lowered Init, Next, TypeOK, Dequeue, Spec and the original assumption and theorem expressions"
+  Meta.mkAppM ``QueueSource.mk #[← quoteChecked init, ← quoteChecked typeOK, next,
+    ← quoteForm capacity.form, ← quoteForm spec.form, ← quotePredicate dequeue.predicate,
+    ← quoteForm safety.form]
 
 end
 
-private noncomputable def selections : CheckedExpr Sequences.signature .collections ×
-    CheckedExpr Sequences.signature .collections × Collections.CheckedAction Sequences.signature :=
-  by_elab emitSelections
+private noncomputable def lowered : QueueSource := by_elab emitQueue
 
 open DataElab.Tagged (Policy CollectionPolicy)
 
@@ -176,12 +232,12 @@ private noncomputable def Profile.holds (profile : Profile)
     (Sequences.external profile.tagged profile.invalidSequence) env)
 
 private noncomputable def Profile.step (profile : Profile) (env : Endpoints.EndpointValuation V) : Prop :=
-  profile.tagged.booleans.holds (selections.2.2.eval
+  profile.tagged.booleans.holds (lowered.next.eval
     (profile.tagged.collectionOperations profile.invalidCollection) profile.tagged.booleans
     (Sequences.external profile.tagged profile.invalidSequence) env)
 
 private theorem init_iff (profile : Profile) (env : Valuation V) :
-    profile.holds selections.1 env ↔ env.flexible queueId = Value.tuple [] := by
+    profile.holds lowered.init env ↔ env.flexible queueId = Value.tuple [] := by
   exact Booleans.holds_ofProp profile.tagged.booleans _
 
 private theorem isBoolean_ofProp (B : Booleans V) (p : Prop) :
@@ -233,10 +289,10 @@ private theorem typeOK_iff (profile : Profile) (env : Valuation V) (alphabet : S
     (messages : env.rigid messagesId = Value.set alphabet)
     (bound : env.rigid capacityId = Value.integer capacity)
     (queue : env.flexible queueId = Value.tuple xs) :
-    profile.holds selections.2.1 env ↔
+    profile.holds lowered.typeOK env ↔
       (∀ m ∈ xs, alphabet.mem m) ∧ xs.length ≤ capacity := by
   classical
-  simp only [Profile.holds, selections, CheckedExpr.eval, Term.eval, Term.evalList,
+  simp only [Profile.holds, lowered, CheckedExpr.eval, Term.eval, Term.evalList,
     Bool.false_eq_true, ite_false]
   simp only [Sequences.external_apply profile.tagged profile.invalidSequence (arity := 1)
       seqSelected (by rfl),
@@ -277,7 +333,7 @@ private theorem next_iff (profile : Profile) (env : Endpoints.EndpointValuation 
       (∃ m, alphabet.mem m ∧ xs.length < capacity ∧ env.target queueId = Value.tuple (xs ++ [m])) ∨
       (∃ m rest, xs = m :: rest ∧ env.target queueId = Value.tuple rest) := by
   classical
-  simp only [Profile.step, selections, Collections.CheckedAction.eval, Term.eval, Term.evalList,
+  simp only [Profile.step, lowered, Collections.CheckedAction.eval, Term.eval, Term.evalList,
     Term.evalBounds, Bool.false_eq_true, ite_false, ite_true, Bounded.axes, List.flatMap_cons,
     List.flatMap_nil, List.map_cons, List.map_nil, List.append_nil, Bounded.quantify, BinderPattern.bind]
   simp only [Sequences.external_apply profile.tagged profile.invalidSequence (arity := 2)
@@ -300,7 +356,7 @@ private def QueueInvariant (alphabet : SetData.{0}) (capacity : Nat) (queue : V)
   ∃ xs : List V, queue = Value.tuple xs ∧ (∀ m ∈ xs, alphabet.mem m) ∧ xs.length ≤ capacity
 
 private theorem init_establishes (profile : Profile) (env : Valuation V)
-    (alphabet : SetData.{0}) (capacity : Nat) (init : profile.holds selections.1 env) :
+    (alphabet : SetData.{0}) (capacity : Nat) (init : profile.holds lowered.init env) :
     QueueInvariant alphabet capacity (env.flexible queueId) :=
   ⟨[], (init_iff profile env).mp init, by simp, Nat.zero_le _⟩
 
@@ -330,9 +386,89 @@ private theorem invariant_typeOK (profile : Profile) (env : Valuation V)
     (messages : env.rigid messagesId = Value.set alphabet)
     (bound : env.rigid capacityId = Value.integer capacity)
     (invariant : QueueInvariant alphabet capacity (env.flexible queueId)) :
-    profile.holds selections.2.1 env := by
+    profile.holds lowered.typeOK env := by
   obtain ⟨xs, queue, contents, size⟩ := invariant
   exact (typeOK_iff profile env alphabet capacity xs messages bound queue).mpr ⟨contents, size⟩
+
+private abbrev QueueState := State V
+
+private noncomputable def Profile.interpretation (profile : Profile) :
+    Interpretation V Sequences.signature .collections :=
+  ⟨profile.tagged.collectionOperations profile.invalidCollection, profile.tagged.booleans,
+    Sequences.external profile.tagged profile.invalidSequence⟩
+
+private noncomputable def initial (profile : Profile) (ρ : RigidEnv V) : StatePred QueueState :=
+  fun s => profile.holds lowered.init ⟨ρ, s⟩
+
+private noncomputable def typeOK (profile : Profile) (ρ : RigidEnv V) : StatePred QueueState :=
+  fun s => profile.holds lowered.typeOK ⟨ρ, s⟩
+
+private noncomputable def next (profile : Profile) (ρ : RigidEnv V) : Action QueueState :=
+  fun s t => profile.step ⟨ρ, s, t⟩
+
+private noncomputable def observeQueue (s : QueueState) : List V := [s queueId]
+
+/-- The parsed square bracket and weak fairness both observe only q. The
+initial and next predicates agree definitionally with the collection equations. -/
+private theorem spec_denotation (profile : Profile) (ρ : RigidEnv V) :
+    lowered.spec.toFormula profile.interpretation ρ =
+      Formula.spec (initial profile ρ) (next profile ρ) observeQueue
+        (.conj (.weakFair (lowered.dequeue.toAction profile.interpretation ρ) observeQueue)
+          (.state fun _ => True)) := by
+  rfl
+
+private theorem safety_denotation (profile : Profile) (ρ : RigidEnv V) :
+    lowered.safety.toFormula profile.interpretation ρ =
+      (lowered.spec.toFormula profile.interpretation ρ).imp (.always (.state (typeOK profile ρ))) := by
+  rfl
+
+private theorem natSelected :
+    Sequences.operatorAt (.declared ⟨Sequences.naturalsId, [.member 0]⟩) =
+      some (.inl .naturals) := by rfl
+
+/-- The source assumption gives exactly the model's tagged natural capacity. -/
+private theorem capacity_iff (profile : Profile) (ρ : RigidEnv V) (σ : Behavior QueueState) :
+    (lowered.capacity.toFormula profile.interpretation ρ).Sat σ ↔
+      ∃ capacity : Nat, Value.integer capacity = ρ capacityId := by
+  change profile.tagged.booleans.holds (profile.tagged.booleans.ofProp
+    ((profile.tagged.collectionOperations profile.invalidCollection).mem (ρ capacityId)
+      ((Sequences.external profile.tagged profile.invalidSequence
+        (.declared ⟨Sequences.naturalsId, [.member 0]⟩) 0 (by rfl)).apply []))) ↔ _
+  rw [Sequences.external_apply profile.tagged profile.invalidSequence natSelected (by rfl)]
+  simp only [Booleans.holds_ofProp, Sequences.numeric_apply, Policy.naturals_apply,
+    Policy.collectionOperations, Policy.mem_value, Value.mem_set, SetData.mem_naturals]
+
+private theorem spec_entails_typeOK (profile : Profile) (ρ : RigidEnv V)
+    (alphabet : SetData.{0}) (capacity : Nat)
+    (messages : ρ messagesId = Value.set alphabet) (bound : ρ capacityId = Value.integer capacity) :
+    (lowered.spec.toFormula profile.interpretation ρ).Entails (.always (.state (typeOK profile ρ))) := by
+  rw [spec_denotation]
+  have establish (s : QueueState) (init : initial profile ρ s) :
+      QueueInvariant alphabet capacity (s queueId) :=
+    init_establishes profile ⟨ρ, s⟩ alphabet capacity init
+  have preserve (s t : QueueState) (inv : QueueInvariant alphabet capacity (s queueId))
+      (step : (next profile ρ).bracket observeQueue s t) :
+      QueueInvariant alphabet capacity (t queueId) := by
+    apply next_preserves profile ⟨ρ, s, t⟩ alphabet capacity messages bound inv
+    simpa only [Action.bracket, Action.unchanged, Action.prime, Action.current, observeQueue, next,
+      List.cons.injEq, and_true] using step
+  have invariant := Formula.spec_invariant
+    (.conj (.weakFair (lowered.dequeue.toAction profile.interpretation ρ) observeQueue)
+      (.state fun _ => True)) establish preserve
+  intro σ spec time fromStart
+  exact invariant_typeOK profile ⟨ρ, σ time⟩ alphabet capacity messages bound
+    (invariant σ spec time fromStart)
+
+/-- Satisfaction of the lowered QueueSafety statement under the lowered
+Capacity assumption and the set interpretation of Messages. -/
+private theorem queueSafety (profile : Profile) (ρ : RigidEnv V) (alphabet : SetData.{0})
+    (messages : ρ messagesId = Value.set alphabet) (σ : Behavior QueueState)
+    (capacityAssumption : (lowered.capacity.toFormula profile.interpretation ρ).Sat σ) :
+    (lowered.safety.toFormula profile.interpretation ρ).Sat σ := by
+  obtain ⟨capacity, bound⟩ := (capacity_iff profile ρ σ).mp capacityAssumption
+  rw [safety_denotation]
+  exact (Formula.holds_imp _ _ _ _).mpr
+    (spec_entails_typeOK profile ρ alphabet capacity messages bound.symm σ)
 
 private theorem zero_based_graph (invalid : SequencePolicy.{0}) (x : V) :
     let g := Graph.ofFn (SetData.intRange 0 1) (fun _ => x)
@@ -364,7 +500,8 @@ run_cmd do
     ``Value.len_tuple, ``Value.append_tuple, ``Value.head_cons, ``Value.tail_cons,
     ``Value.head_empty, ``Value.tail_empty, ``Sequences.external_apply,
     ``init_iff, ``typeOK_iff, ``next_iff, ``init_establishes, ``next_preserves,
-    ``invariant_typeOK, ``zero_based_graph, ``singleton_every_length]
+    ``invariant_typeOK, ``spec_denotation, ``safety_denotation, ``capacity_iff,
+    ``spec_entails_typeOK, ``queueSafety, ``zero_based_graph, ``singleton_every_length]
   let allowed := [``propext, ``Classical.choice, ``Quot.sound]
   for name in declarations do
     let axioms ← collectAxioms name

@@ -70,18 +70,18 @@ private partial def quotePred : Predicate signature → Elab.Term.TermElabM Lean
   | _ => throwError "unexpected fixture predicate"
 
 private def quoteObs (obs : Observation signature) : Elab.Term.TermElabM Lean.Expr := do
-  Meta.mkListLit (mkApp (mkConst ``ScopedExpr) (mkConst ``signature)) (← obs.mapM quoteChecked)
+  Meta.mkListLit (mkApp2 (mkConst ``ScopedExpr) (mkConst ``signature) (mkConst ``Fragment.core)) (← obs.mapM quoteChecked)
 
 private partial def quoteForm : Form signature → Elab.Term.TermElabM Lean.Expr
   | .state p => do Meta.mkAppM ``Form.state #[← quotePred p]
   | .binary op p q => do Meta.mkAppM ``Form.binary #[toExpr op, ← quoteForm p, ← quoteForm q]
   | .junction kind items => do
-    let forms ← Meta.mkListLit (mkApp (mkConst ``Form) (mkConst ``signature)) (← items.mapM quoteForm)
+    let forms ← Meta.mkListLit (mkApp2 (mkConst ``Form) (mkConst ``signature) (mkConst ``Fragment.core)) (← items.mapM quoteForm)
     Meta.mkAppM ``Form.junction #[toExpr kind, forms]
   | .flexQuant kind id p => do
     Meta.mkAppM ``Form.flexQuant #[toExpr kind, toExpr id, ← quoteForm p]
   | .rigidQuant kind slot none p => do
-    let bound := mkApp (mkConst ``Option.none [0]) (mkApp (mkConst ``ScopedExpr) (mkConst ``signature))
+    let bound := mkApp (mkConst ``Option.none [0]) (mkApp2 (mkConst ``ScopedExpr) (mkConst ``signature) (mkConst ``Fragment.core))
     Meta.mkAppM ``Form.rigidQuant #[toExpr kind, toExpr slot, bound, ← quoteForm p]
   | .always p => do Meta.mkAppM ``Form.always #[← quoteForm p]
   | .eventually p => do Meta.mkAppM ``Form.eventually #[← quoteForm p]

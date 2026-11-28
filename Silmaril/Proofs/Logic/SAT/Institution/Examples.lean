@@ -6,7 +6,7 @@ public section
 
 namespace Silmaril.Proofs.Logic.SAT.Institution
 
-open Silmaril.Logic.SAT.Institution
+open Silmaril.Logic.SAT.Institution Silmaril.Logic.ManyValued
 
 theorem identification_counterexample :
     let F : Problem Bool := [[⟨false, true⟩, ⟨true, false⟩]]
@@ -14,9 +14,10 @@ theorem identification_counterexample :
     ¬ Function.Injective f ∧
       F.superEval (reduct f (fun _ => none)) = none ∧
       (F.rename f).superEval (fun _ => none) = some true ∧
-      (F.rename f).evalK3 (fun _ => none) = none := by
+      (F.rename f).evalK3 (fun _ => K3.unknown) = K3.unknown ∧
+      (F.rename f).evalK3Option (fun _ => none) = none := by
   dsimp only
-  refine ⟨?_, ?_, ?_, rfl⟩
+  refine ⟨?_, ?_, ?_, rfl, rfl⟩
   · intro hf
     have h : false = true := hf rfl
     exact Bool.noConfusion h

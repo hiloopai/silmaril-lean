@@ -61,7 +61,7 @@ Lowering rejects a retained prime inside another prime after expansion. State
 selection also rejects a retained prime, for example in an evaluated external
 argument whose level signature gives that slot zero weight. An action argument
 discarded by an expanded source operator leaves no such read. The checked
-subset still excludes temporal values, action brackets, ENABLED, UNCHANGED,
+core subset excludes temporal values, action brackets, ENABLED, UNCHANGED,
 INSTANCE, and proof interpretation.
 [Endpoint API](../../Silmaril/Logic/Temporal/TLA/DataElab/Endpoints/Defs.lean) ·
 [Endpoint laws](../../Silmaril/Logic/Temporal/TLA/DataElab/Endpoints/Thms.lean) ·
@@ -130,8 +130,11 @@ scalar and `Endpoints` entry points use the core fragment.
   error identifies the first non-set field in source order. No graph or set
   is assembled from a partial schema.
 
-The pinned `ACP_SB.Init` and `TypeInv` source fixture checks these graph
-schemas with the collection state selector.
+`Collections.lowerAction` also lowers `UNCHANGED e` to equality of the
+primed and current values of `e`. It uses the same expanded-operand
+checks as explicit prime, including the lexical `@` restriction.
+The pinned ACP_SB fixture checks the `Init` and `TypeInv` graph schemas
+and proves `TypeInv` preservation across every `progN` transition.
 [ACP_SB fixture](tla-acp-sb-source-acceptance.md) ·
 [Collection entry point](../../Silmaril/Logic/Temporal/TLA/DataElab/Collections/Defs.lean) ·
 [Tagged adapter](../../Silmaril/Logic/Temporal/TLA/DataElab/Collections/Tagged.lean)
