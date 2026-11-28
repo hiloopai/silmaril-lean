@@ -12,9 +12,9 @@ Struct. An optional Struct adds one shared definition step.
 
 The reader binds exactly two positional chunks in each original row
 group. This profile reads unindexed V1 and V2 data pages.
-PLAIN columns independently admit UNCOMPRESSED, bounded Snappy, bounded
-LZ4_RAW, single-member GZIP, or bounded single-frame dictionary-free
-Zstandard according to its original footer metadata. Each keeps the
+Each child independently admits UNCOMPRESSED, bounded Snappy, bounded
+LZ4_RAW, single-member GZIP, or bounded single-frame Zstandard with
+compression dictionary ID zero, according to its original footer metadata. Each keeps the
 LIST-path byte, page, row, slot and codec bounds and reuses its
 Compact framing, stored CRC, exact
 Hybrid and signed word extents, and both header-inclusive totals.
@@ -30,10 +30,12 @@ The two columns can use different codecs, page versions and row cuts.
 `Reader.ColumnWire.v1_page` and `Reader.ColumnWire.v2_page` recover
 the original frame at its absolute header offset and expose the
 LIST-path wire witness at the codec selected by the original chunk.
-Each UNCOMPRESSED child may also declare a leading PLAIN dictionary
-and use RLE_DICTIONARY data pages with page-local PLAIN fallback.
-Dictionary and data anchors, signed entries, counted Hybrid indices
-and both header-inclusive totals bind to that child's original chunk.
+Each child may declare a leading PLAIN dictionary and use
+RLE_DICTIONARY data pages with page-local PLAIN fallback. The
+dictionary uses the child's original column codec and expands as a
+complete body after the stored CRC check. Dictionary and data anchors,
+exact stored and decoded extents, signed entries, counted Hybrid
+indices and both header-inclusive totals bind to that child's chunk.
 An empty dictionary may serve a page with zero physical values.
 Slot and refusal ordinals include the leading dictionary when present.
 The native writer emits UNCOMPRESSED PLAIN V1.
@@ -128,7 +130,7 @@ header-inclusive totals. Full and empty projections retain ordered
 group counts through exact Arrow IPC EOS. Late stored CRC, malformed
 and trailing payloads, declared extents, byte bounds and footer totals retain an
 original typed failure and the preceding complete group. The oracle
-also checks compressed dictionary refusal at encoding admission and reads the original GZIP probe.
+also reads the original GZIP and Snappy dictionary probes.
 [Snappy producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-snappy-oracle/fixtures.json)
 
 ~~~sh
@@ -148,7 +150,7 @@ and exact decoded values using pinned liblz4, libzstd and zlib.
 False-flag V2 suffixes bypass even exhausted GZIP and Zstandard
 codec budgets. Typed refusals cover legacy LZ4 IDs, framed LZ4 bodies,
 GZIP trailers and extra members, Zstandard dictionary IDs and extra
-frames, and compressed Parquet dictionary encoding. Late payload and shared
+frames. The GZIP dictionary probe decodes successfully. Late payload and shared
 topology refusals retain their original positions and complete group
 prefix under both projections, including with exhausted IPC budgets.
 [Codec producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-codecs-oracle/fixtures.json)
@@ -170,12 +172,35 @@ sibling. Independent Compact, Hybrid and signed-word inspection binds
 the frames, entries, index lists and selected child slots. Late index,
 dictionary CRC, data-anchor and shared-topology errors preserve their
 original coordinates and completed group prefix through both Events
-and strict IPC selections under exhausted target budgets. A late
-compressed dictionary exercises the existing admission refusal.
+and strict IPC selections under exhausted target budgets. The Snappy
+dictionary probes exercise successful original decoding.
 [Dictionary producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-dictionary-oracle/fixtures.json)
 
 ~~~sh
 lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Thms
 lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-dictionary-oracle/Axioms.lean
 python3 scripts/parquet-recursive-two-list-struct-dictionary-oracle/check.py
+~~~
+
+The compressed dictionary oracle checks genuine PyArrow Snappy,
+LZ4_RAW, GZIP and Zstandard sources across both page versions, both
+signed width orders and both Struct nullabilities. Genuine files
+exercise PLAIN fallback for each codec and version. One file combines
+a Zstandard dictionary child with a GZIP PLAIN sibling. Labeled
+reframes retain the original dictionary contents across mixed child
+codecs and cuts, and preserve V2 raw index suffixes. The independent
+wire checks cover stored CRC, exact dictionary frame extents, original
+anchors and page-local index lists and words. Raw V2 index suffixes
+remain readable with zero GZIP and Zstandard work budgets after the
+dictionary is checked. Late dictionary and index refusals preserve
+the original coordinates and completed group prefix through both
+projections under exhausted IPC budgets. The oracle also checks
+refusals for Brotli and deprecated LZ4, framed LZ4 bodies, extra GZIP
+members, and Zstandard dictionary IDs and extra frames.
+[Compressed dictionary fixture pins](../../scripts/parquet-recursive-two-list-struct-dictionary-codecs-oracle/fixtures.json)
+
+~~~sh
+lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-dictionary-codecs-oracle/Axioms.lean
+python3 scripts/parquet-recursive-two-list-struct-dictionary-codecs-oracle/check.py
 ~~~

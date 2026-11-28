@@ -25,13 +25,16 @@ LATE = (1, 1)
 
 LEAN = LEAN.rsplit("set_option maxHeartbeats", 1)[0] + """
 private def checkDictionary (file : Bytes) (group : Nat) (side : Side) (frame : Page.Frame)
+    (codec : RecursiveSchema.Repeated.Chunk.DictionaryCodec)
     (entries : List RecursiveSchema.Chunk.Word) (indices : List (Nat × List Nat)) : IO Unit := do
   let source ← take (openFile {} file)
   let bound ← take (Reader.bindGroup source.snapshot group)
   let column ← take (Reader.bindColumn source.schema bound side)
   let observed ← take (Reader.readColumn {} column)
   let some table := observed.dictionary | throw (IO.userError "missing checked dictionary")
-  unless table.frame = frame && table.codec = .uncompressed && table.entries.toList = entries &&
+  unless table.frame = frame && table.codec = codec && table.entries.toList = entries &&
+      RecursiveSchema.Repeated.Chunk.DictionaryCodec.ofId column.column.metadata.codec = some codec &&
+      column.codec.column = codec.column &&
       column.span.start = frame.header.start &&
       column.column.metadata.dictionaryPageOffset = some (Int.ofNat frame.header.start) &&
       column.column.metadata.dataPageOffset = Int.ofNat frame.payload.stop &&
@@ -39,7 +42,18 @@ private def checkDictionary (file : Bytes) (group : Nat) (side : Side) (frame : 
     throw (IO.userError "original dictionary frame, entries or anchors differ")
   for (ordinal, expected) in indices do
     let some page := observed.pages[ordinal]? | throw (IO.userError "missing original data page")
-    let suffix := bytesAt file page.decoded.sections.values
+    let limits : Reader.Limits := {}
+    let suffix ← match page.frame.value.kind with
+      | .dataV1 _ => do
+        let body ← take (readV1Body limits.payload codec.column file page.frame)
+        let source := column.codec.v1Source file page.frame body
+        pure (bytesAt source.bytes page.decoded.sections.values)
+      | .dataV2 info => do
+        let stored := bytesAt file page.decoded.sections.values
+        let payload := if info.isCompressed then limits.payload else
+          { limits.payload with gzipCalls := 0, zstd := { window := 0, commandsPerBlock := 0 } }
+        take (readV2SuffixWith payload codec.column page.frame info stored none)
+      | _ => throw (IO.userError "expected original indexed data frame")
     let physicalWords := page.decoded.atoms.filterMap (·.word)
     let actual ← take (DictionaryIndex.readIndices ({} : Reader.Limits).indices physicalWords.length suffix)
     let selected ← take (DictionaryIndex.select table.entries actual)
@@ -182,7 +196,6 @@ def fixtures():
         "late_data_anchor": (f".chunk (.dictionary {addr} 1 {original_offset} "
                              f"(.dataOffset {original_offset + 1} {original_offset}))"),
         "late_topology": topology,
-        "late_compressed_dictionary": f".binding (.column {addr} (.encodings {SNAPPY['lst'](map(str, THRIFT['list_field'](dest, 2)))}))",
     }
     return genuine, authored, positives, compressed, refusals, chunk_errors
 
@@ -194,38 +207,45 @@ def table_term(dictionary):
     sorted_term = "none" if sort is None else f"some {str(sort[1]).lower()}"
     crc = "none" if 4 not in header else f"some {header[4][1] & 0xffffffff}"
     size = len(body)
-    return (f"⟨⟨{size}, {size}, {crc}, .dictionary ⟨{len(entries)}, 0, {sorted_term}⟩⟩, "
+    return (f"⟨⟨{header[2][1]}, {size}, {crc}, .dictionary ⟨{len(entries)}, 0, {sorted_term}⟩⟩, "
             f"⟨{at}, {body_at}⟩, ⟨{body_at}, {body_at + size}⟩⟩")
 
 
-def dictionary_commands(label, schema, wire, columns, dictionaries, counts):
+def dictionary_commands(label, schema, wire, columns, dictionaries, counts, decode_block):
     commands = []
     widths = [field.type.bit_width for field in schema.field(0).type.value_type.value_type]
     decode = NATIVE["V2"]["HYBRID"]
     for key, table in dictionaries.items():
         group, side = key
         width = widths[side]
-        assert SNAPPY["column_codec"](wire, key) == 0
+        codec = SNAPPY["column_codec"](wire, key)
         counts["dictionaries"] += 1
         if not table[-1]:
             counts["empty_dictionaries"] += 1
         indices = []
         pages = columns[key][1]
         data_frames = frames(wire, key)[1:]
-        for ordinal, (page, (_, header, _, _)) in enumerate(zip(pages, data_frames, strict=True)):
+        for ordinal, (page, (_, header, _, stored)) in enumerate(zip(pages, data_frames, strict=True)):
             if encoding(header) == 8:
                 values = sum(atom[2] is not None for atom in page[-1])
                 lo, hi = page[4][-2:]
-                suffix = wire[lo:hi]
+                if header[1][1] == 3:
+                    suffix = SNAPPY["decoded"](header, stored, codec, decode_block)
+                elif codec != 0:
+                    suffix = SNAPPY["decoded"](header, stored, codec, decode_block)[lo:hi]
+                else:
+                    suffix = wire[lo:hi]
                 found = decode(suffix[1:], suffix[0], values)
                 indices.append(f"({ordinal}, {SNAPPY['lst'](map(str, found))})")
                 if not found:
                     counts["zero_value_pages"] += 1
+                if header[1][1] == 3 and codec != 0 and not header[8][1].get(7, (None, True))[1]:
+                    counts["raw_index_pages"] += 1
             else:
                 counts["fallback"] += 1
         tag = ".left" if side == 0 else ".right"
         words = SNAPPY["lst"](f".int{width} ({word})" for word in table[-1])
-        commands.append(f'  checkDictionary (← load folder "{label}") {group} {tag} {table_term(table)} '
+        commands.append(f'  checkDictionary (← load folder "{label}") {group} {tag} {table_term(table)} .{SNAPPY["TAGS"][codec]} '
                         f'{words} {SNAPPY["lst"](indices)}')
     return commands
 
@@ -246,7 +266,7 @@ def verify(folder):
         observations[label] = schema, logical, columns
         counts.update(frame_counts)
         local = Counter()
-        dictionary_checks = dictionary_commands(label, schema, wire, columns, tables, local)
+        dictionary_checks = dictionary_commands(label, schema, wire, columns, tables, local, SNAPPY["decode_snappy"])
         if label.startswith("fallback_"):
             assert local["fallback"] > 0
         if label.startswith("zero_values_"):
@@ -270,6 +290,9 @@ def verify(folder):
     for label, cause in chunk_errors.items():
         code.append(f'  groupRefusal (← load folder "{label}") 1 {{}} ({cause})')
         code.append(f'  checkFailure (← load folder "{label}") {{}} {prefix} (.group 1 ({cause}))')
+    batches = IPC["batches_term"](schema, logical)
+    for label in ("compressed_origin", "late_compressed_dictionary"):
+        code.append(f'  checkRows (← load folder "{label}") {batches}')
     code.extend(['public def main (args : List String) : IO Unit := do',
                  '  let [folder] := args | throw (IO.userError "expected fixture directory")',
                  *entry, "  controls folder"])

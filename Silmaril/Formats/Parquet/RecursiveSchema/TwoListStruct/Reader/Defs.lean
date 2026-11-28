@@ -4,7 +4,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.Defs
 
 /-! Checked PLAIN V1/V2 groups with two signed columns sharing two
 recursive LIST wrappers and independently selected bounded ListPath codecs.
-An uncompressed child may use a checked leading dictionary. -/
+Each child may use a checked leading dictionary. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader
 
@@ -41,7 +41,6 @@ structure ColumnBinding {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   codec : ListPath.Chunk.Codec
   originalCodec : ListPath.Chunk.Codec.ofId column.metadata.codec = some codec
   encodings : ListPath.Chunk.ColumnEncoding column.metadata
-  dictionaryUncompressed : column.metadata.dictionaryPageOffset ≠ none → column.metadata.codec = 0
   offsets : column.metadata.indexPageOffset = none
   unindexed : Repeated.Chunk.Unindexed column
   slots : 0 ≤ column.metadata.numValues
@@ -66,18 +65,6 @@ private def lookup {α ε : Type} (option : Option α) (error : ε) :
 private def guard {ε : Type} (condition : Prop) [Decidable condition] (error : ε) : Except ε (PLift condition) :=
   if yes : condition then .ok ⟨yes⟩ else .error error
 
-private def bindEncoding (metadata : Footer.ColumnMetadata)
-    (fail : ListPath.Chunk.BindCause → BindError) :
-    Except BindError {_encoding : ListPath.Chunk.ColumnEncoding metadata //
-      metadata.dictionaryPageOffset ≠ none → metadata.codec = 0} := do
-  if dictionary : metadata.codec = 0 ∧ Repeated.Chunk.DictionaryEncodings metadata then
-    return ⟨.dictionary dictionary.2 .uncompressed (by simp [dictionary.1, Repeated.Chunk.DictionaryCodec.ofId]),
-      fun _ => dictionary.1⟩
-  else
-    let ⟨plain⟩ ← guard (RecursiveSchema.SupportedEncodings metadata) (fail (.encodings metadata.encodings))
-    let ⟨offset⟩ ← guard (metadata.dictionaryPageOffset = none) (fail .pageOffsets)
-    return ⟨.plain plain offset, fun declared => (declared offset).elim⟩
-
 public def bindGroup (snapshot : Snapshot.Checked) (group : Nat) : Except BindError (GroupBinding snapshot group) := do
   let ⟨original, groupAt⟩ ← lookup (snapshot.groupAt group) (.group group)
   let ⟨columns⟩ ← guard (original.columns.length = 2) (.columns group original.columns.length)
@@ -94,13 +81,13 @@ public def bindColumn {limits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   let ⟨⟨path, physical⟩⟩ ← guard
     (metadata.pathInSchema = child.1.location.path ∧ metadata.physicalType = child.2.physical) (fail .association)
   let ⟨codec, originalCodec⟩ ← lookup (ListPath.Chunk.Codec.ofId metadata.codec) (fail (.codec metadata.codec))
-  let ⟨encodings, dictionaryUncompressed⟩ ← bindEncoding metadata fail
+  let encodings ← ListPath.Chunk.bindEncoding metadata fail
   let ⟨offsets⟩ ← guard (metadata.indexPageOffset = none) (fail .pageOffsets)
   let ⟨unindexed⟩ ← guard (Repeated.Chunk.Unindexed column) (fail .pageIndex)
   let ⟨slots⟩ ← guard (0 ≤ metadata.numValues) (fail .counts)
   let ⟨span, originalSpan⟩ ← lookup (Page.columnSpan snapshot.footer.start metadata) (fail .span)
   return ⟨column, span, columnAt, path, physical, codec, originalCodec, encodings,
-    dictionaryUncompressed, offsets, unindexed, slots, originalSpan⟩
+    offsets, unindexed, slots, originalSpan⟩
 
 @[expose] public section
 
@@ -149,7 +136,6 @@ structure ColumnWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Check
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group} {side : Side}
     (limits : Limits) (binding : ColumnBinding schema bound side) (observed : ListPath.Chunk.Observation) : Prop where
   original : ListPath.Chunk.Wire limits (carrierOf binding) observed
-  dictionaryCodec : ∀ table, observed.dictionary = some table → table.codec = .uncompressed
 
 structure GroupWire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (limits : Limits) (schema : Compiled schemaLimits snapshot) (group : Nat) (out : Observation) : Prop where
