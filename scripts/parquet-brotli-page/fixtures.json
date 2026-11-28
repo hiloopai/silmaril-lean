@@ -1,0 +1,243 @@
+{
+  "libbrotli": "028fb5a23661f123017c060daa546b55cf4bde29",
+  "pyarrow": "26.0.1",
+  "thrift": "0.25.0",
+  "profiles": {
+    "native-v1-dictionary": {
+      "provenance": "PyArrow native page with CRC",
+      "input_sha256": "b337fff54a03e3e17b45fbad667ded3e689b94ad067b28d4c0618de078da59df",
+      "header": [
+        4,
+        32
+      ],
+      "body": [
+        32,
+        354
+      ],
+      "crc": 3534642219,
+      "v2_flag": null,
+      "level_bytes": 0,
+      "expanded_bytes": 6204,
+      "stored_sha256": "9bb834d9474514b6acb9fccbfe0b9ec6113052c8165db24e8c6e8ef9509b2170",
+      "expanded_sha256": "931318e996219037c2e9aa4ee55b24f4b6d9605ae08f934361d15774b0c63348",
+      "dictionary_transforms": [
+        [
+          28174,
+          27,
+          8,
+          6
+        ],
+        [
+          81,
+          0,
+          5,
+          5
+        ],
+        [
+          73,
+          0,
+          4,
+          4
+        ],
+        [
+          26019,
+          12,
+          7,
+          6
+        ],
+        [
+          196,
+          0,
+          6,
+          6
+        ],
+        [
+          218,
+          0,
+          6,
+          6
+        ]
+      ]
+    },
+    "native-v2-dictionary": {
+      "provenance": "PyArrow native page with CRC",
+      "input_sha256": "28065544d7cea5dfd9fc3c6f9d456879826bbbc1c41b477e8197ae66f254c34e",
+      "header": [
+        4,
+        38
+      ],
+      "body": [
+        38,
+        364
+      ],
+      "crc": 2543482593,
+      "v2_flag": true,
+      "level_bytes": 23,
+      "expanded_bytes": 6200,
+      "stored_sha256": "46db403d479259c16bbca45058f477bee7fac020fba5d7da32a709b87d34ce42",
+      "expanded_sha256": "23c6bfea5d7f73e5bc8659a662b04f623e5b181bb7527a2f1f62e8ddf6cbb87b",
+      "dictionary_transforms": [
+        [
+          28174,
+          27,
+          8,
+          6
+        ],
+        [
+          81,
+          0,
+          5,
+          5
+        ],
+        [
+          73,
+          0,
+          4,
+          4
+        ],
+        [
+          26019,
+          12,
+          7,
+          6
+        ],
+        [
+          196,
+          0,
+          6,
+          6
+        ],
+        [
+          218,
+          0,
+          6,
+          6
+        ]
+      ]
+    },
+    "native-v2-raw": {
+      "provenance": "PyArrow native page with CRC",
+      "input_sha256": "ce3f8d9677c83b4e9f94c1fc8d0a4112590454a3a4f08f17814550de618d22a7",
+      "header": [
+        4,
+        38
+      ],
+      "body": [
+        38,
+        503
+      ],
+      "crc": 3276390780,
+      "v2_flag": false,
+      "level_bytes": 17,
+      "expanded_bytes": 465,
+      "stored_sha256": "7e84665cb474ba7e3b677ed496a06e59bb2103fe27e6681d0270358e25297f1b",
+      "expanded_sha256": "7e84665cb474ba7e3b677ed496a06e59bb2103fe27e6681d0270358e25297f1b",
+      "dictionary_transforms": []
+    },
+    "assembled-v1-absent-crc": {
+      "provenance": "assembled header, original native body",
+      "input_sha256": "a8fdcbb75d336035a75cf7d1432439f9beb8ab3eb7809b0b0524d6117954818e",
+      "header": [
+        0,
+        20
+      ],
+      "body": [
+        20,
+        342
+      ],
+      "crc": null,
+      "v2_flag": null,
+      "level_bytes": 0,
+      "expanded_bytes": 6204,
+      "stored_sha256": "9bb834d9474514b6acb9fccbfe0b9ec6113052c8165db24e8c6e8ef9509b2170",
+      "expanded_sha256": "931318e996219037c2e9aa4ee55b24f4b6d9605ae08f934361d15774b0c63348",
+      "dictionary_transforms": []
+    },
+    "assembled-v2-absent-flag": {
+      "provenance": "assembled header, original native body",
+      "input_sha256": "e28e543fe174cc43ae31637ad24d5b6df3203786e3d85b8b89542c0e8b26458f",
+      "header": [
+        0,
+        31
+      ],
+      "body": [
+        31,
+        357
+      ],
+      "crc": 2543482593,
+      "v2_flag": null,
+      "level_bytes": 23,
+      "expanded_bytes": 6200,
+      "stored_sha256": "46db403d479259c16bbca45058f477bee7fac020fba5d7da32a709b87d34ce42",
+      "expanded_sha256": "23c6bfea5d7f73e5bc8659a662b04f623e5b181bb7527a2f1f62e8ddf6cbb87b",
+      "dictionary_transforms": []
+    }
+  },
+  "controls": {
+    "command-cap": {
+      "error": "commandCap",
+      "block": 0,
+      "command": 0,
+      "bit": 483
+    },
+    "window-cap": {
+      "error": "windowCap",
+      "bit": 0
+    },
+    "wrong-codec": {
+      "error": "codec",
+      "actual": 6
+    },
+    "stored-cap": {
+      "error": "storedCap"
+    },
+    "caller-output-cap": {
+      "error": "outputCap"
+    },
+    "native-v1-dictionary-bad-stream-crc": {
+      "error": "checksum",
+      "declared": 3534642219,
+      "computed": 1129901225
+    },
+    "native-v2-dictionary-bad-level-crc": {
+      "error": "checksum",
+      "declared": 2543482593,
+      "computed": 3497661352
+    },
+    "native-v2-dictionary-bad-stream-crc": {
+      "error": "checksum",
+      "declared": 2543482593,
+      "computed": 4286949837
+    },
+    "native-v2-raw-bad-level-crc": {
+      "error": "checksum",
+      "declared": 3276390780,
+      "computed": 3691836537
+    },
+    "declared-expanded-small": {
+      "error": "expandedSize"
+    },
+    "declared-expanded-large": {
+      "error": "expandedSize"
+    },
+    "concatenated-stream": {
+      "error": "trailingStream",
+      "bit": 2570
+    },
+    "truncated-stream": {
+      "error": "truncatedDistance",
+      "block": 0,
+      "command": 132,
+      "bit": 2559
+    },
+    "false-flag-with-compressed-sizes": {
+      "error": "v2Lengths"
+    },
+    "levels-over-expanded": {
+      "error": "v2Lengths"
+    },
+    "levels-over-stored": {
+      "error": "v2Lengths"
+    }
+  }
+}
