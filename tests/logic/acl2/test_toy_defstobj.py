@@ -54,4 +54,7 @@ def main():
 
 
 if __name__ == "__main__":
+    from test_defstobj_schema import main as schema_tests
+
     main()
+    schema_tests()

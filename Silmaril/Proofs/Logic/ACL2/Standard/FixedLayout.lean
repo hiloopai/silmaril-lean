@@ -11,7 +11,7 @@ open Silmaril.Logic.ACL2.Standard
 open Silmaril.Logic.ACL2.Standard.FixedLayout
 open Object
 
-private theorem natRank_integer (n : Int) : (integer n).natRank = n.toNat := by
+theorem natRank_integer (n : Int) : (integer n).natRank = n.toNat := by
   have h := (integerValue?_eq_some_iff (integer n) n).2 rfl
   simp [natRank, h]
 
@@ -138,7 +138,7 @@ theorem writeAt_spineLength (i : Nat) (v x : Object) :
     rw [writeAt, spineLength, ih]
     cases x <;> simp [spineLength, cdr, nil, Nat.succ_max_succ]
 
-private theorem length_of_trueListp (x : Object) (h : x.trueListp = true) : Source.length x = x.len := by
+theorem length_of_trueListp (x : Object) (h : x.trueListp = true) : Source.length x = x.len := by
   have notString : x.stringp = false := by
     cases x <;> simp_all [stringp, trueListp, nil]
   simp [Source.length, notString, ofBool_eq_nil]
@@ -151,15 +151,15 @@ theorem cellsP_source (x : Object) : Toy.cellsP x = Source.cellsPBody Toy.cellsP
     rfl
   | _ => rfl
 
-private theorem len_equal (x : Object) (n : Nat) :
+theorem len_equal (x : Object) (n : Nat) :
     x.len.equal (integer n) = ofBool (decide (x.spineLength = n)) := by
   simp only [equal, len, integer_eq_integer, Int.natCast_inj]
 
-private theorem testAnd (p q : Bool) :
+theorem testAnd (p q : Bool) :
     (if ofBool p = nil then nil else ofBool q) = ofBool (p && q) := by
   cases p <;> rfl
 
-private theorem testLast (p : Bool) :
+theorem testLast (p : Bool) :
     (if ofBool p = nil then nil else truth) = ofBool p := by
   cases p <;> rfl
 
@@ -210,14 +210,14 @@ theorem readOtherCell_writeCell (i j : Object) (h : i.natRank ≠ j.natRank) (v 
   simp only [Toy.readCell, Toy.writeCell, writeAt, cdr_cons, car_cons, mvNth_eq_readAt,
     updateNth, readOther _ _ h]
 
-private theorem spineLength_ofList (xs : List Object) : (ofList xs).spineLength = xs.length := by
+theorem spineLength_ofList (xs : List Object) : (ofList xs).spineLength = xs.length := by
   induction xs with
   | nil => rfl
   | cons x xs ih =>
     change (ofList xs).spineLength + 1 = xs.length + 1
     rw [ih]
 
-private theorem listAll_ofList (p : Object → Bool) (xs : List Object) :
+theorem listAll_ofList (p : Object → Bool) (xs : List Object) :
     (ofList xs).listAll p = xs.all p := by
   induction xs with
   | nil => rfl
@@ -225,7 +225,7 @@ private theorem listAll_ofList (p : Object → Bool) (xs : List Object) :
     change (p x && (ofList xs).listAll p) = (p x && xs.all p)
     rw [ih]
 
-private theorem integerp_integer (n : Int) : (integer n).integerp = true := by
+theorem integerp_integer (n : Int) : (integer n).integerp = true := by
   have h := (integerValue?_eq_some_iff (integer n) n).2 rfl
   simp [integerp, h]
 

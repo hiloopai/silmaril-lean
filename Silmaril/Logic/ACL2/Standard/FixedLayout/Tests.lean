@@ -1,6 +1,7 @@
 module
 
 import Silmaril.Logic.ACL2.Standard.FixedLayout.Thms
+import Silmaril.Proofs.Logic.ACL2.Standard.FixedLayout.SchemaFixtures
 import Lean
 
 namespace Silmaril.Logic.ACL2.Standard.FixedLayout.Tests
@@ -19,11 +20,21 @@ example : Toy.writeCell (integer 4) (integer 5) (Toy.encode (-2) [7, 8, 9]) ≠
 example : Toy.readCell (integer (-4)) (Toy.writeCell (string [120]) (integer 5) Toy.initial) =
     integer 5 := by decide +kernel
 
+open Schema.Fixtures in
+example : SilToy.observations.length = 18 ∧ SilShelves.observations.length = 11 ∧
+    (SilToy.observations ++ SilShelves.observations).all
+      (fun (actual, expected) => decide (actual = expected)) = true := by
+  decide +kernel
+
 run_elab do
   let env ← Lean.getEnv
   let modules := #[`Silmaril.Logic.ACL2.Standard.FixedLayout.Defs,
     `Silmaril.Logic.ACL2.Standard.FixedLayout.Source,
-    `Silmaril.Logic.ACL2.Standard.FixedLayout.Thms]
+    `Silmaril.Logic.ACL2.Standard.FixedLayout.Thms,
+    `Silmaril.Logic.ACL2.Standard.FixedLayout.Schema.Defs,
+    `Silmaril.Logic.ACL2.Standard.FixedLayout.Schema.Thms,
+    `Silmaril.Logic.ACL2.Standard.FixedLayout.Schema.Fixtures,
+    `Silmaril.Proofs.Logic.ACL2.Standard.FixedLayout.SchemaFixtures]
   let indices ← modules.mapM fun name => do
     let some index := env.getModuleIdx? name | throwError "Missing audited module {name}"
     pure index

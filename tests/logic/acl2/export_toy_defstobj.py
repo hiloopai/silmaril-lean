@@ -16,7 +16,7 @@ from export_x86_run import TREE
 from inventory import COMMIT, digest, lisp_string
 
 
-def export(checkout, output):
+def run_acl2(checkout, output, inputs, world_scripts, export_function):
     checkout = checkout.resolve()
     commit, tree = subprocess.check_output(
         ["git", "rev-parse", "HEAD", "HEAD^{tree}"], cwd=checkout, text=True,
@@ -28,7 +28,6 @@ def export(checkout, output):
     acl2 = checkout / "saved_acl2"
     if not acl2.is_file():
         raise ValueError("build saved_acl2 with SBCL first")
-    toy = HERE / "toy-defstobj.lsp"
     env = {**os.environ, "ACL2_CUSTOMIZATION": "NONE", "ACL2_SYSTEM_BOOKS": str(checkout / "books"),
            "X86ISA_EXEC": "nil", "LC_ALL": "C"}
     log = output.with_suffix(output.suffix + ".log")
@@ -36,11 +35,11 @@ def export(checkout, output):
         staging = Path(directory) / "world.json"
         commands = (
             "(set-ld-error-action '(:exit 1) state)\n"
-            + toy.read_text(encoding="utf-8")
+            + "\n".join(path.read_text(encoding="utf-8") for path in inputs)
             + ":q\n(handler-case (progn\n"
             f'  (load {lisp_string(TOOLS / "x86-run.lisp")})\n'
-            f'  (load {lisp_string(HERE / "toy-defstobj-world.lsp")})\n'
-            f'  (export-toy-defstobj {lisp_string(staging)}) (sb-ext:exit :code 0))\n'
+            + "".join(f'  (load {lisp_string(path)})\n' for path in world_scripts)
+            + f'  ({export_function} {lisp_string(staging)}) (sb-ext:exit :code 0))\n'
             '  (error (condition) (format *error-output* "~a~%" condition) (sb-ext:exit :code 1)))\n'
         )
         with log.open("w", encoding="utf-8") as transcript:
@@ -48,7 +47,14 @@ def export(checkout, output):
                                     stdout=transcript, stderr=subprocess.STDOUT)
         if result.returncode or not staging.is_file():
             raise ValueError(f"ACL2 export did not complete. See {log}")
-        definitions, observations = json.loads(staging.read_bytes())
+        return commit, tree, json.loads(staging.read_bytes())
+
+
+def export(checkout, output):
+    toy = HERE / "toy-defstobj.lsp"
+    commit, tree, (definitions, observations) = run_acl2(
+        checkout, output, [toy], [HERE / "toy-defstobj-world.lsp"], "export-toy-defstobj",
+    )
     fields = {
         "schema": 1, "acl2_commit": commit, "acl2_tree": tree,
         "toy_source_sha256": digest(toy),
