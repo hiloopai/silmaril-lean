@@ -17,6 +17,11 @@ STANDARD = {
     "Naturals": "73f2a68412039aa86f37ad08f0d0fef50fa8327d0ad8806f515548c75e9d9d84",
     "Sequences": "f613cffe14133769f0972b6f6e0139aaf0773004a51bac88ada382426e3eb7f4",
 }
+MEMORY = {
+    "MemoryInterface": "cb496258606d5323b1a8f1f4450460a676df68ca0f945764ac80e763078d2e5a",
+    "InternalMemory": "8ba1a82a0f418b6b3c6c99ad06adfe808d604670d0d8c31ce05d53ed16d2aa73",
+    "Memory": "5f8e923b62c0f67535a59374a092f502676f21eda378108f3b85caca447174e0",
+}
 
 
 def main():
@@ -35,11 +40,12 @@ def main():
         for name, sha256 in STANDARD.items():
             standard = f"src/tla2sany/StandardModules/{name}.tla"
             staging["download"](f"{staging['RAW']}/{standard}", Path(directory) / f"{name}.tla", sha256)
-        path = Path(directory) / "WriteThroughCache.tla"
-        staging["download"](f"{staging['RAW']}/{SOURCE}", path, SHA256)
+        for name, sha256 in {**MEMORY, "WriteThroughCache": SHA256}.items():
+            source = Path(SOURCE).with_name(f"{name}.tla")
+            staging["download"](f"{staging['RAW']}/{source}", Path(directory) / source.name, sha256)
         subprocess.run(
             [lake, "env", "lean", "-DautoImplicit=false", "-DwarningAsError=true", "--run",
-             str(HERE / "WriteThroughCache.lean"), str(path)],
+             str(HERE / "WriteThroughCache.lean"), directory, REVISION],
             cwd=ROOT,
             check=True,
         )

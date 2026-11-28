@@ -29,6 +29,7 @@ inductive Profile where
   | levelSyntax
   | instanceSyntax
   | namedFunctionSyntax
+  | namedFunctionInstanceSyntax
   deriving DecidableEq, Repr
 
 structure CheckedModule where
@@ -40,8 +41,10 @@ structure CheckedModule where
   bindings : List Binding
   references : List (Path × Reference)
   instances : List InstancePlan
-  /-- Final module scope, including inherited bindings, local definitions and built-ins. -/
+  /-- Scope after the last checked unit, including imported bindings and built-ins. -/
   scope : List Binding
+  /-- A selection checks only this operator body in the root's declaration prefix. -/
+  selectedUnit : Option Nat
   deriving Repr
 
 def CheckedModule.bindingAt (mod : CheckedModule) (name : Name) : Option Binding :=
@@ -97,6 +100,12 @@ end
 private def levelSyntaxOperators : List Name :=
   [.symbol .prefix "ENABLED", .symbol .prefix "UNCHANGED", .symbol .prefix "[]",
    .symbol .prefix "<>", .symbol .infix "~>"]
+
+private def Profile.allowsInstances (profile : Profile) : Bool :=
+  profile = .instanceSyntax || profile = .namedFunctionInstanceSyntax
+
+private def Profile.allowsNamedFunctions (profile : Profile) : Bool :=
+  profile = .namedFunctionSyntax || profile = .namedFunctionInstanceSyntax
 
 private def deferredOperators : List Name :=
   [.symbol .infix "\\cdot", .symbol .infix "-+->"]
@@ -232,7 +241,7 @@ private def resolveDefinitionWith (visit : Scope → Site → Expr → ModuleM U
     visit (withFormals.filter fun formal => formal.id ≠ binding.id) (site.child .body) body
     return binding :: scope
   | .function _ name [bound@⟨.names [_], _⟩] body =>
-    unless inLet && profile = .namedFunctionSyntax do
+    unless inLet && profile.allowsNamedFunctions do
       throw (diagnostic site (.unsupported .functionDefinition))
     let binding ← declare scope site (.ident name) .namedFunction [] true
     -- Only the body sees the recursive name and the bound index.
@@ -300,7 +309,7 @@ private def resolveApplication (profile : Profile) (visit : Scope → Site → E
 private def resolveQualified (profile : Profile) (visit : Scope → Site → Expr → ModuleM Unit)
     (scope : Scope) (site : Site) (head : OperatorName) (args : List OpArg)
     (selectors : List Selector) : ModuleM Unit := do
-  unless profile = .instanceSyntax do
+  unless profile.allowsInstances do
     throw (diagnostic site (.unsupported .qualifiedReference))
   let some (name, segments) := qualifiedCall site head args selectors
     | throw (diagnostic site (.unsupported .qualifiedReference))
@@ -356,7 +365,7 @@ private partial def resolveExprIn (profile : Profile) (oldValue : Option Binding
       let declSite := site.child (.letDecl index)
       match decl with
       | .definition (.namedInstance ..) =>
-        let unsupported := if profile = .instanceSyntax then Unsupported.letInstance else .instantiation
+        let unsupported := if profile.allowsInstances then Unsupported.letInstance else .instantiation
         throw (diagnostic declSite (.unsupported unsupported))
       | .definition definition =>
         resolveDefinitionWith descend current declSite definition true profile
@@ -431,7 +440,7 @@ private def prefixName (prefixName : Ident) (name : Name) : Name :=
   | .qualified prefixes member => .qualified (prefixName :: prefixes) member
   | _ => .qualified [prefixName] name
 
-private def resolveSubstitutions (scope : Scope) (site : Site)
+private def resolveSubstitutions (profile : Profile) (scope : Scope) (site : Site)
     (declarations : List Binding) (substitutions : List Surface.Substitution) :
     ModuleM (List (BindingId × Replacement)) := do
   let mut explicit := []
@@ -446,7 +455,7 @@ private def resolveSubstitutions (scope : Scope) (site : Site)
       throw (diagnostic position (.unsupported .operatorSubstitution))
     let .expr body := subst.replacement
       | throw (diagnostic position (.unsupported .operatorSubstitution))
-    resolveExpr .instanceSyntax scope position body
+    resolveExpr profile scope position body
     explicit := (target.id, .expression position body) :: explicit
   declarations.mapM fun target => do
     unless target.slots.isEmpty do
@@ -464,7 +473,7 @@ private def resolveSubstitutions (scope : Scope) (site : Site)
 private def resolveInstance (context : ModuleContext) (scope : Scope) (site : Site)
     (visibility : Visibility) (named : Option (Ident × List OperatorDecl))
     (body : Instantiation) : ModuleM Scope := do
-  unless context.profile = .instanceSyntax do
+  unless context.profile.allowsInstances do
     throw (diagnostic site (.unsupported .instantiation))
   let (target, mod) ← context.loadInstance site body.moduleName
   let modules ← (get : RegistryM (List (ModuleId × CheckedModule)))
@@ -484,7 +493,7 @@ private def resolveInstance (context : ModuleContext) (scope : Scope) (site : Si
       let inner ← bindFormals (namespaceBinding :: scope) site params
       let ids := params.zipIdx.map fun (_, index) => BindingId.declared (site.child (.parameter index))
       pure (inner.filter (·.id ≠ namespaceBinding.id), namespaceBinding :: scope, ids)
-  let substitutions ← resolveSubstitutions host site (mod.exports.filter moduleParameter)
+  let substitutions ← resolveSubstitutions context.profile host site (mod.exports.filter moduleParameter)
     body.substitutions
   let mut current := introduced
   let mut members := []
@@ -577,21 +586,53 @@ private def ModuleInput.importsToResolve : ModuleInput → List Ident × ImportM
   | .parsed source imports => (source.extendsModules, imports)
   | .signature _ imports _ => (imports.map Prod.fst, imports)
 
+-- Reserve all names a skipped unit introduces into the unqualified scope.
+-- In particular, an anonymous INSTANCE may introduce arbitrary names.
+private def resolvePrefixUnit (context : ModuleContext) (scope : Scope) (site : Site)
+    (unit : ModuleUnit) : ModuleM Scope := do
+  match unit with
+  | .variables _ | .constants _ => resolveUnit context scope site unit
+  | .definition (.operator visibility head _) =>
+    let (name, params) := headSignature head
+    let binding ← declare scope site name .operator (params.map formalSlot)
+      (visibilityIsLocal visibility)
+    return binding :: scope
+  | .definition (.namedInstance visibility name _ _) =>
+    let binding ← declare scope site (.ident name) .instanceNamespace [] (visibilityIsLocal visibility)
+    return binding :: scope
+  | .assumption none _ | .theoremDecl ⟨none, _, _⟩ => return scope
+  | _ => throw (diagnostic site (.unsupported .selectionScope))
+
+private def resolveOperatorUnit (context : ModuleContext) (scope : Scope) (site : Site)
+    (units : List ModuleUnit) (index : Nat) : ModuleM Scope := do
+  let position := site.child (.unit index)
+  let some (unit@(.definition (.operator ..))) := units[index]?
+    | throw (diagnostic position (.malformed "selected unit must define an operator"))
+  let preceding ← (units.take index).zipIdx.foldlM (init := scope) fun current (item, i) =>
+    resolvePrefixUnit context current (site.child (.unit i)) item
+  resolveUnit context preceding position unit
+
 private def checkModule (context : ModuleContext) (site : Site) (input : ModuleInput)
-    (imported : List ModuleId) (scope : Scope) : RegistryM CheckedModule := do
+    (imported : List ModuleId) (scope : Scope) (selectedUnit : Option Nat) :
+    RegistryM CheckedModule := do
   let (source, resolver) := match input with
     | .parsed source _ =>
-      (some source, source.units.zipIdx.foldlM (init := scope) fun current (unit, index) =>
-        resolveUnit context current (site.child (.unit index)) unit)
+      (some source, match selectedUnit with
+      | none => source.units.zipIdx.foldlM (init := scope) fun current (unit, index) =>
+          resolveUnit context current (site.child (.unit index)) unit
+      | some index => resolveOperatorUnit context scope site source.units index)
     | .signature _ _ decls =>
-      (none, decls.zipIdx.foldlM (init := scope) fun current (decl, index) =>
-        resolveSignature current (site.child (.member index)) decl)
+      (none, do
+        if selectedUnit.isSome then
+          throw (diagnostic site (.malformed "operator selection needs a parsed module"))
+        decls.zipIdx.foldlM (init := scope) fun current (decl, index) =>
+          resolveSignature current (site.child (.member index)) decl)
   let (finalScope, state) ← resolver.run {}
   return ⟨input.header, source, imported, state.bindings.reverse, state.references.reverse,
-    state.instances.reverse, finalScope⟩
+    state.instances.reverse, finalScope, selectedUnit⟩
 
 private def resolveModules (profile : Profile) (registry : Registry) (fuel : Nat) (openModules : List ModuleId)
-    (incoming : Site) (id : ModuleId) : RegistryM CheckedModule := do
+    (incoming : Site) (id : ModuleId) (selectedUnit : Option Nat) : RegistryM CheckedModule := do
   if id ∈ openModules then
     let cycle := (openModules.dropWhile (· != id)) ++ [id]
     throw (diagnostic incoming (.importCycle cycle))
@@ -611,7 +652,7 @@ private def resolveModules (profile : Profile) (registry : Registry) (fuel : Nat
         | throw (diagnostic incoming (.unknownModule target))
       unless dependency.header = name do
         throw (diagnostic incoming (.importNameMismatch name dependency.header target))
-      return (target, ← resolveModules profile registry remaining (openModules ++ [id]) incoming target)
+      return (target, ← resolveModules profile registry remaining (openModules ++ [id]) incoming target none)
     let mut scope := builtins
     let mut imported := []
     for (name, index) in names.zipIdx do
@@ -619,21 +660,35 @@ private def resolveModules (profile : Profile) (registry : Registry) (fuel : Nat
       let (target, checked) ← load importSite name
       scope ← mergeExports scope importSite checked.exports
       imported := target :: imported
-    let checked ← checkModule ⟨profile, load⟩ site input imported.reverse scope
+    let checked ← checkModule ⟨profile, load⟩ site input imported.reverse scope selectedUnit
     modify ((id, checked) :: ·)
     return checked
 
-/-- Check every unit of every reachable parsed module. Inherited names retain
-their declaration identity. The caller supplies EXTENDS edges and, in the
-instance profile, INSTANCE edges. Later passes check expression levels. -/
-public def resolveWith (profile : Profile) (registry : Registry) (root : ModuleId) :
+private def resolveRegistry (profile : Profile) (registry : Registry) (root : ModuleId)
+    (selectedUnit : Option Nat) :
     Except Diagnostic CheckedRegistry := do
   let mut seen := []
   for (id, _) in registry do
     if id ∈ seen then throw (diagnostic ⟨id, []⟩ (.duplicateModuleId id))
     seen := id :: seen
-  let (_, checked) ← (resolveModules profile registry (registry.length + 1) [] ⟨root, []⟩ root).run []
+  let (_, checked) ←
+    (resolveModules profile registry (registry.length + 1) [] ⟨root, []⟩ root selectedUnit).run []
   return ⟨root, checked.reverse⟩
+
+/-- Check every unit of every reachable parsed module. Inherited names retain
+their declaration identity. The caller supplies EXTENDS and any INSTANCE edges. -/
+public def resolveWith (profile : Profile) (registry : Registry) (root : ModuleId) :
+    Except Diagnostic CheckedRegistry :=
+  resolveRegistry profile registry root none
+
+/-- Resolve one root operator at its original unit index. The root retains its
+entire parsed source and records the selection in `CheckedModule.selectedUnit`.
+Preceding declarations supply scope. Skipped bodies and named INSTANCE members
+have no resolved uses or plans. Dependencies reached through checked edges are
+resolved in full. -/
+public def resolveOperatorWith (profile : Profile) (registry : Registry) (root : ModuleId)
+    (unit : Nat) : Except Diagnostic CheckedRegistry :=
+  resolveRegistry profile registry root (some unit)
 
 /-- Resolve the core name-and-arity profile. -/
 public def resolve (registry : Registry) (root : ModuleId) : Except Diagnostic CheckedRegistry :=

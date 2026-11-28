@@ -176,7 +176,7 @@ inductive Unsupported where
   | assumption | theoremDecl | proofDirective | proofReference
   | qualifiedReference | labeledExpression | actionOrTemporal
   | operatorSubstitution | instanceParameter | instanceTheorem | letInstance
-  | instanceSignature
+  | instanceSignature | selectionScope
   deriving DecidableEq, Repr
 
 inductive DiagnosticKind where

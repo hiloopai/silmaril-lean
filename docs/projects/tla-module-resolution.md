@@ -110,16 +110,34 @@ diagnostics. Anonymous function constructors such as `[x \in S |-> e]` are
 name-checked. ASSUME, THEOREM and proof directives are also rejected at this
 boundary. Level constraints, instantiation substitutions, proof obligations and
 proof verification require later passes. Collection shapes carry no checks
-about element values, function domains or record meanings. Intact HourClock,
-DieHard and WriteThroughCache are parser fixtures and include forms this
-resolver diagnoses as unsupported.
+about element values, function domains or record meanings.
 
 The opt-in `namedFunctionSyntax` profile resolves local function declarations
 with one identifier in one bounded group. The local name is visible in its
 own body and to subsequent LET declarations and IN. The index is visible in
 its own body. Both bindings use declaration sites, and the domain is
-resolved in the preceding scope.
+resolved in the preceding scope. The `namedFunctionInstanceSyntax` profile
+also enables the existing INSTANCE syntax and its checks.
 [Named predecessor source profile](tla-named-functions.md#source-profile)
+
+### Selecting a root operator
+
+`resolveOperatorWith` takes a root unit index. The checked module keeps the
+complete parsed tree and records the selected index in `selectedUnit`. Its
+scope includes imports, the preceding variable and constant declarations,
+the names of preceding ordinary operators and named instances, and the
+selected operator. Earlier operator bodies and named instance members are
+unavailable to level checking. An anonymous INSTANCE can introduce
+unqualified bindings, so encountering one before the selection fails.
+Anonymous assumptions and theorems introduce no names. All dependency
+modules reached by checked edges still pass normal registry resolution.
+
+`Levels.checkSelectedOperator` checks that operator and the resolved
+dependencies. A reference to a skipped body fails for lack of a level summary.
+`Levels.check` requires full resolution. The WriteThroughCache gate uses the
+original coordinates and checks the imported declaration identities before
+certifying the selected state expression.
+[WriteThroughCache gate](tla-named-functions.md#source-profile)
 
 ```sh
 lake build --wfail +Silmaril.Logic.Temporal.TLA.Resolution.Defs \

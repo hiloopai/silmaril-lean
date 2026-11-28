@@ -124,19 +124,11 @@ private def lowerLet (registry : CheckedRegistry) (maxDepth : Nat) (site : Site)
   let value := Term.choose slot none (.eq false (.witness slot) rhs)
   visit [(binding.id, .expression value)] (site.child .body) result
 
-/-- Select a nullary source operator whose complete body fits the certified predecessor
-form. Resolve against the pinned standard signatures and admit only state expressions. -/
-public def check (source : Surface.Module) (root : ModuleId) (imports : ImportMap)
-    (maxDepth : Nat) (name : Name) : Except Diagnostic CheckedVMem := do
-  let registry ← (resolveWith .namedFunctionSyntax
-    ((root, .parsed source imports) :: Sequences.inputs) root).mapError .resolution
-  let externalLevels := Sequences.levels.filter fun (id, _) => (registry.findBinding id).isSome
-  let levels ← (Levels.check registry externalLevels).mapError .levels
-  let some binding := (registry.moduleAt root).bind (·.bindingAt name)
-    | throw (.unsupportedPredecessor ⟨root, []⟩)
-  let (home, expression) ← (definitionBody registry binding.id).mapError .lowering
+private def checkBody (registry : CheckedRegistry) (levels : Levels.CheckedLevels)
+    (maxDepth : Nat) (id : BindingId) : Except Diagnostic CheckedVMem := do
+  let (home, expression) ← (definitionBody registry id).mapError .lowering
   let site := home.child .body
-  let some summary := levels.operatorAt binding.id | throw (.unsupportedPredecessor site)
+  let some summary := levels.operatorAt id | throw (.unsupportedPredecessor site)
   unless summary.result.floor.atMost .state && summary.result.dependencies.isEmpty &&
       summary.requirements.isEmpty do
     throw (.unsupportedPredecessor site)
@@ -147,6 +139,29 @@ public def check (source : Surface.Module) (root : ModuleId) (imports : ImportMa
   if wellFormed : term.isWellFormed [] = true then
     return ⟨term, wellFormed, p, shape⟩
   else throw (.lowering ⟨site, .invalidExpansion⟩)
+
+private def externalLevels (registry : CheckedRegistry) : Levels.ExternalLevels :=
+  Sequences.levels.filter fun (id, _) => (registry.findBinding id).isSome
+
+/-- Check a nullary source operator in a fully resolved module with the pinned
+standard signatures. Its complete body must fit the certified state form. -/
+public def check (source : Surface.Module) (root : ModuleId) (imports : ImportMap)
+    (maxDepth : Nat) (name : Name) : Except Diagnostic CheckedVMem := do
+  let registry ← (resolveWith .namedFunctionSyntax
+    ((root, .parsed source imports) :: Sequences.inputs) root).mapError .resolution
+  let levels ← (Levels.check registry (externalLevels registry)).mapError .levels
+  let some binding := (registry.moduleAt root).bind (·.bindingAt name)
+    | throw (.unsupportedPredecessor ⟨root, []⟩)
+  checkBody registry levels maxDepth binding.id
+
+/-- Select the root operator at its original unit index with the pinned
+standard signatures and any additional imports supplied by the caller. -/
+public def checkSelected (inputs : Registry) (root : ModuleId) (unit maxDepth : Nat) :
+    Except Diagnostic CheckedVMem := do
+  let registry ← (resolveOperatorWith .namedFunctionSyntax (inputs ++ Sequences.inputs) root
+    unit).mapError .resolution
+  let levels ← (Levels.checkSelectedOperator registry (externalLevels registry)).mapError .levels
+  checkBody registry levels maxDepth (.declared ⟨root, [.unit unit]⟩)
 
 /-- Interpret the admitted term using ordinary collection evaluation, including the
 anonymous constructor, CHOOSE, and the final application. -/

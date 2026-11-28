@@ -448,7 +448,7 @@ private instance : Inhabited (CheckM (List Requirement)) := ⟨pure []⟩
 -- Replay follows dependency edges of the already cycle-checked registry.
 private partial def checkModule (registry : CheckedRegistry) (external : ExternalLevels)
     (base replacements : OperatorTable) (replaying : Bool) (id : ModuleId)
-    (resolved : CheckedModule) : CheckM (List Requirement) := do
+    (resolved : CheckedModule) (selectedUnit : Option Nat) : CheckM (List Requirement) := do
   for binding in resolved.bindings do
     if let some summary := replacements.lookup binding.id then
       modify fun state => { state with operators := (binding.id, summary) :: state.operators }
@@ -459,10 +459,11 @@ private partial def checkModule (registry : CheckedRegistry) (external : Externa
   let moduleSite : Site := ⟨id, []⟩
   let replay (target : ModuleId) (actual : OperatorTable) : CheckM (List Requirement) := do
     let requirements ← (registry.extendedModules target).mapM fun (dep, mod) =>
-      checkModule registry external base actual true dep mod
+      checkModule registry external base actual true dep mod none
     return requirements.flatten
   let mut requirements := []
   for (unit, index) in source.units.zipIdx do
+    unless selectedUnit.all (· == index) do continue
     let site := moduleSite.child (.unit index)
     match unit with
     | .definition (.namedInstance ..) | .instantiation .. =>
@@ -487,15 +488,28 @@ private def validateExternal (registry : CheckedRegistry) (external : ExternalLe
       failAt site (.unexpectedExternalSignature id)
     seen := id :: seen
 
-/-- Check every reachable module and every body in its resolved syntax profile.
-Signature-only operator declarations must have a supplied level signature. -/
-public def check (registry : CheckedRegistry) (external : ExternalLevels := []) :
+private def checkRegistry (registry : CheckedRegistry) (external : ExternalLevels)
+    (selectOperator : Bool) :
     Except Diagnostic CheckedLevels := do
   let verify : CheckM Unit := do
     validateExternal registry external
     for (id, mod) in registry.modules do
-      discard <| checkModule registry external (← get).operators [] false id mod
+      unless mod.selectedUnit.isSome == (selectOperator && id == registry.root) do
+        failAt ⟨id, []⟩ (.unsupported .declaration)
+      discard <| checkModule registry external (← get).operators [] false id mod mod.selectedUnit
   let (_, state) ← verify.run {}
   return ⟨state.expressions.reverse, state.operators.reverse⟩
+
+/-- Check every reachable module and every body in its resolved syntax profile.
+Signature-only operator declarations must have a supplied level signature. -/
+public def check (registry : CheckedRegistry) (external : ExternalLevels := []) :
+    Except Diagnostic CheckedLevels :=
+  checkRegistry registry external false
+
+/-- Check the selected root operator and its import closure. Skipped operator
+bodies supply no level summaries. A call to one requires a summary and fails. -/
+public def checkSelectedOperator (registry : CheckedRegistry) (external : ExternalLevels := []) :
+    Except Diagnostic CheckedLevels :=
+  checkRegistry registry external true
 
 end Silmaril.Logic.Temporal.TLA.Resolution.Levels

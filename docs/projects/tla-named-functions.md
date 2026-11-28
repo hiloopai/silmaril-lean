@@ -57,10 +57,11 @@ carry their existing unspecified outcomes on malformed operands. The contract is
 
 ## Source profile
 
-`NamedFunctions.Source.check` resolves a projected module against the pinned
-Naturals and Sequences signatures, checks the levels, and selects a nullary
-state operator with one named-function LET declaration. The function name is
-in scope in its recursive body and the IN expression. The single index binder
+`NamedFunctions.Source.checkSelected` takes a root registry entry and its
+original operator unit index. It keeps the parsed root intact, resolves its
+imports and the selected body, and checks the levels of the selected nullary
+state operator. The function name is in scope in its recursive body and the
+IN expression. The single index binder
 is in scope in the function body. The declared domain uses the preceding
 scope. The level checker infers the named value's level with self at constant
 level, then checks the body again with self at the inferred level.
@@ -86,10 +87,42 @@ limits ordinary syntax expansion. The predecessor computation uses the
 checked decreasing index.
 [Source theorem API](../../Silmaril/Logic/Temporal/TLA/DataElab/NamedFunctions/Source/Thms.lean)
 
-The source gate projects the original `vmem` unit with its `wmem` and `memQ`
-inputs and its two standard imports. Whole-module composition, primed or
-action-level uses of this named definition, top-level named functions,
-other recursive bodies, and INSTANCE replay remain open.
+The WriteThroughCache gate first resolves unit 12 against all three intact
+`EXTENDS` sources. It checks the `MemoryInterface` declaration origins and
+the `Sequences` unit 0 `LOCAL INSTANCE Naturals` plan. That plan reuses the
+original Naturals identities inside Sequences and keeps them local. The bound
+and both recursive branches refer to the original Naturals `..` and binary
+`-` declarations. Both calls to `Len` refer to its original Sequences
+declaration.
+
+The semantic pass supplies the existing interpreted signatures for Naturals
+and Sequences, matched to the declarations by module identity, name, and
+arity. It keeps the real `MemoryInterface` import. The upstream placeholder
+definitions supply declaration evidence only. The certificate uses the original
+`vmem` LET and the original `wmem` and `memQ` variable sites. The small
+projection from #5394 also runs as a regression.
+[Operator selection](tla-module-resolution.md#selecting-a-root-operator) ·
+[Selection and origin checks](../../tests/semantics/tla-named-functions/WriteThroughCache.lean)
+
+### Whole-module limits
+
+| Original declaration or edge | Current limit |
+| --- | --- |
+| WriteThroughCache unit 2, `ASSUME (QLen \in Nat) /\ (QLen > 0)` | Full registry resolution rejects the assumption. Operator selection can pass it because the anonymous assumption introduces no names. |
+| WriteThroughCache unit 3, `M == INSTANCE InternalMemory WITH mem <- wmem` | `InternalMemory` resolves independently and contains `THEOREM ISpec => []TypeInvariant`. The INSTANCE profile rejects a target with a theorem. A selection that uses `M!IInit` is also rejected because no instance members were admitted. |
+| WriteThroughCache unit 19, `LM == INSTANCE Memory` | The intact `Memory` registry entry fails at unit 0, `Inner(mem, ctl, buf) == INSTANCE InternalMemory`, with the same theorem restriction. |
+
+Both paths through `InternalMemory` also inherit the four-argument constants
+`Send` and `Reply` from `MemoryInterface`. The first-order instance
+substitution checker rejects operator-valued parameters, including implicit
+ones. The later `Memory.Spec` also uses temporal existential quantification,
+which the current INSTANCE syntax profiles do not admit. The selected
+state certificate covers `vmem`. Primed or action-level uses, other recursive
+bodies, top-level named functions, and refinement remain open.
+[Instance contract](tla-module-instantiation.md) ·
+[Pinned MemoryInterface](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/test-model/examples/SpecifyingSystems/CachingMemory/MemoryInterface.tla) ·
+[Pinned InternalMemory](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/test-model/examples/SpecifyingSystems/CachingMemory/InternalMemory.tla) ·
+[Pinned Memory](https://github.com/tlaplus/tlaplus/blob/bc1b506bdcad80bb518bf3776a9161c34ff0fc4c/tlatools/org.lamport.tlatools/test-model/examples/SpecifyingSystems/CachingMemory/Memory.tla)
 
 ## Checks
 
@@ -97,11 +130,10 @@ other recursive bodies, and INSTANCE replay remain open.
 python3 -I tests/semantics/tla-named-functions/check.py
 ```
 
-The gate verifies SHA-256 pins for WriteThroughCache, Naturals and Sequences
-at the same upstream revision. It parses the intact WriteThroughCache module
-and runs the source checker on the original LET. Controls cover alpha-renaming,
-an index that does not decrease, the wrong resolved primitive, same-spelled
-local operators, and lexical scope. The Lean value examples cover the empty
-queue, reads interleaved with repeated writes, and a candidate with the wrong
-domain.
+The gate verifies SHA-256 pins for all six source files at one upstream
+revision. Controls cover skipped bodies, duplicate declarations, anonymous
+INSTANCE scope, alpha-renaming, non-decreasing indices, wrong primitive
+identities, and lexical scope. It audits the predecessor and CHOOSE theorems'
+axiom closures. The value examples cover the empty queue, reads interleaved
+with repeated writes, and a candidate with the wrong domain.
 [Checked examples](../../Silmaril/Logic/Temporal/TLA/DataElab/NamedFunctions/Examples.lean) · [Pinned-source check](../../tests/semantics/tla-named-functions/check.py)
