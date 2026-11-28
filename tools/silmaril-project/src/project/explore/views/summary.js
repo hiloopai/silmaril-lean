@@ -50,14 +50,123 @@ async function statusesPage() {
   return "<h2>What the status codes mean</h2>" + glossary(counts);
 }
 
+const OPEN_PAGE_SIZE = 40;
+
 // A compact table of problems: status, name, title.
-async function problemRows(list, limit) {
+async function problemRows(list, limit, existingTitles) {
   const shown = list.slice(0, limit);
   if (!shown.length) return '<p class="muted">(none)</p>';
-  const titles = await problemTitles(shown.map((e) => e.name));
+  const titles = existingTitles || await problemTitles(shown.map((e) => e.name));
   return '<div class="tablebox"><table><thead><tr><th class="nw">status</th><th>problem</th><th>title</th></tr></thead><tbody>' +
     shown.map((e) => `<tr><td class="nw">${statusBadge(e.row)}</td><td>${link("problem", e.name)}</td><td>${esc(titles.get(e.name) || "")}</td></tr>`).join("") +
     "</tbody></table></div>" + (list.length > limit ? `<p class="muted">the first ${limit} of ${list.length}</p>` : "");
+}
+
+// Compact project facts bar from actual database rows, respecting active vs excluded problem counts.
+function projectFactsBar(problemsOnly, excluded, groupsCount, artifactCount, answerCount, tooLargeCount) {
+  let problemItem;
+  if (tooLargeCount) {
+    problemItem = ["Problems", `${tooLargeCount}`, "use Problems & SQL (above index limit)"];
+  } else {
+    const active = problemsOnly.filter((e) => !e.st.deprecated);
+    let holds = 0, fails = 0, open = 0;
+    for (const e of active) {
+      if (e.row.verdict === "holds") holds++;
+      else if (e.row.verdict === "fails") fails++;
+      else open++;
+    }
+    problemItem = ["Active problems", `${active.length}`, `${holds} holds · ${fails} fails · ${open} open`];
+  }
+  const items = [
+    problemItem,
+    ["Solutions / answers", `${answerCount}`, groupsCount ? `${groupsCount} problem group${groupsCount === 1 ? "" : "s"}` : "recorded theorems"],
+    ["Artifacts", `${artifactCount}`, excluded.deprecated.length ? `${excluded.deprecated.length} deprecated excluded` : "registered blobs"],
+  ];
+  return `<section class="project-facts" aria-label="Project statistics"><dl class="facts-strip">` +
+    items.map(([label, val, sub]) => `<div class="fact-item"><dt>${esc(label)}</dt><dd><b>${esc(val)}</b> <span class="muted">${esc(sub)}</span></dd></div>`).join("") +
+    `</dl></section>`;
+}
+
+// General Silmaril Projects help + optional project-specific help when configured.
+async function openHelpDialog() {
+  const proj = await tq("projects", "SELECT * FROM projects WHERE origin = 'local' LIMIT 1").catch(() => []);
+  const local = proj[0] || null;
+  const projName = (local && local.name) || (PROJECT_META && PROJECT_META.name) || "this project";
+  const projDesc = (local && local.description) || (PROJECT_META && PROJECT_META.description) || "";
+  const helpContextDoc = (PROJECT_META && PROJECT_META.helpDoc) || (PROJECT_META && PROJECT_META.docsIndex) || "projects/README.md";
+  let projectSpecificHtml = "";
+  if (PROJECT_META && PROJECT_META.helpDoc) {
+    try {
+      const r = await fetch("_docs/" + PROJECT_META.helpDoc.split("/").map(encodeURIComponent).join("/"));
+      if (r.ok) {
+        const md = await r.text();
+        projectSpecificHtml = `<section class="help-project-section" data-project-help="doc"><h3>Project help (${esc(projName)})</h3>` +
+          `<div class="doc-body">${ProjectDocs.renderMarkdown(md, PROJECT_META.helpDoc, {
+            sourceRepo: SOURCE && SOURCE.repo,
+            sourceRev: SOURCE && SOURCE.rev,
+            repoFile: typeof repoFile === "function" ? repoFile : null,
+          })}</div></section>`;
+      }
+    } catch { /* fall back gracefully */ }
+  } else if (PROJECT_META && PROJECT_META.help) {
+    projectSpecificHtml = `<section class="help-project-section" data-project-help="inline"><h3>Project help (${esc(projName)})</h3>` +
+      `<div class="doc-body">${ProjectDocs.renderMarkdown(PROJECT_META.help, helpContextDoc, {
+        sourceRepo: SOURCE && SOURCE.repo,
+        sourceRev: SOURCE && SOURCE.rev,
+        repoFile: typeof repoFile === "function" ? repoFile : null,
+      })}</div></section>`;
+  }
+
+  const docsIndex = PROJECT_META && PROJECT_META.docsIndex;
+  const docsLink = docsIndex
+    ? `<li><a href="${esc(ProjectDocs.docsRouteHref(docsIndex, ""))}" class="help-nav-link">Project documentation</a>: read the rendered project guides and diagrams inline.</li>`
+    : "";
+
+  const body = (projDesc ? `<p class="help-proj-desc"><b>${esc(projName)}:</b> ${esc(projDesc)}</p>` : "") +
+    projectSpecificHtml +
+    `<section class="help-general-section" data-general-help="1"><h3>Exploring a Silmaril project</h3>` +
+    `<p>A Silmaril project records content-addressed <b>artifacts</b>, typed <b>values</b> parsed under <b>formats</b>, formal <b>problems</b> and their <b>answers</b> (Lean theorems), organized in a problem DAG.</p>` +
+    `<ul>` +
+    docsLink +
+    `<li><b>Summary &amp; Needs attention:</b> active open problems and any status that differs from its expected outcome. Search across all active open problems by name or title and step through pages.</li>` +
+    `<li><b>Status badges:</b> closed problems (no parameters) read <span class="st">THM</span> (proved), <span class="st">CTH</span> (disproved) or <span class="st">OPN</span> (open). Parameterized predicates read <span class="st">TAU</span>, <span class="st">UNS</span>, <span class="st">SAT</span>, <span class="st">CSA</span> or <span class="st">NOC</span>. See <a href="#/statuses" class="help-nav-link">What the codes mean</a>.</li>` +
+    `<li><b>Browse &amp; Graph:</b> walk dotted problem namespaces in <a href="#/browse" class="help-nav-link">Browse</a>, or inspect the proof DAG and stacked leaves in <a href="#/graph" class="help-nav-link">Graph</a>.</li>` +
+    `<li><b>Database &amp; SQL:</b> the header button shows whether the SQLite database is read lazily via HTTP Range requests or loaded whole, and lets you open another database file or run queries in <a href="#/sql" class="help-nav-link">SQL</a>.</li>` +
+    `</ul></section>`;
+  const d = dialog({ title: "Silmaril Projects Help", body });
+  d.el.classList.add("dlg-wide");
+  let closeTargetHash = null;
+  d.el.addEventListener("close", () => {
+    if (closeTargetHash && location.hash !== closeTargetHash) {
+      location.hash = closeTargetHash;
+    }
+  });
+  if (typeof ProjectDocs.hydrateMermaidDiagrams === "function") {
+    ProjectDocs.hydrateMermaidDiagrams(d.el).catch(() => {});
+  }
+  const helpRoutePrefix = `#/docs/${helpContextDoc.split("/").map(encodeURIComponent).join("/")}#`;
+  for (const a of d.el.querySelectorAll("a[href^='#']")) {
+    a.addEventListener("click", (ev) => {
+      const hrefAttr = a.getAttribute("href") || "";
+      if (hrefAttr.startsWith(helpRoutePrefix)) {
+        const rawFrag = hrefAttr.slice(helpRoutePrefix.length);
+        let frag = rawFrag;
+        try { frag = decodeURIComponent(rawFrag); } catch { /* keep raw */ }
+        for (const el of d.el.querySelectorAll("[data-doc-anchor], [id]")) {
+          if (el.getAttribute("data-doc-anchor") === frag || el.id === frag) {
+            ev.preventDefault();
+            el.scrollIntoView({ block: "start" });
+            return;
+          }
+        }
+      }
+      if (hrefAttr.startsWith("#/")) {
+        ev.preventDefault();
+        closeTargetHash = hrefAttr;
+        d.close();
+      }
+    });
+  }
 }
 
 // Every query here is an aggregate, has a LIMIT, or is the shared problem index.
@@ -65,43 +174,116 @@ async function summary() {
   const proj = await tq("projects", "SELECT * FROM projects ORDER BY origin DESC, name LIMIT 50");
   const local = proj.find((p) => p.origin === "local");
   if (local?.root) await resolve([local], ["root"], HINTS, false);
-  const docs = SOURCE?.repo.toLowerCase() === "https://github.com/hiloopai/silmaril-lean"
-    ? repoFile("docs/projects/README.md") : null;
+  const isSilmarilRepo = SOURCE?.repo.toLowerCase() === "https://github.com/hiloopai/silmaril-lean";
+  const ghDocs = isSilmarilRepo ? repoFile("docs/projects/README.md") : null;
+  const packagedDocs = PROJECT_META && PROJECT_META.docsIndex ? PROJECT_META.docsIndex : null;
+  const description = (local && local.description && local.description.trim())
+    || (PROJECT_META && PROJECT_META.description && PROJECT_META.description.trim())
+    || "";
   const root = local?.root ? `<p class="index-root">Project root ${link("problem", local.root)} ${verdictBadge(local.root)}</p>` : "";
-  let h = `<section class="index-intro"><h2>${esc(local?.name || "Project index")}</h2>` +
-    (local?.description ? `<p>${esc(local.description)}</p>` : "") +
-    (docs ? `<p><a href="${esc(docs.blob)}">Project documentation</a></p>` : "") +
-    root + "</section>" + explorerIndex();
+  let docsHtml = "";
+  if (packagedDocs) {
+    const inlineHref = ProjectDocs.docsRouteHref(packagedDocs, "");
+    docsHtml = `<p class="index-docs"><a href="${esc(inlineHref)}">Project documentation</a>` +
+      (ghDocs ? ` <span class="muted">· <a href="${esc(ghDocs.blob)}" target="_blank" rel="noopener noreferrer">on GitHub</a></span>` : "") +
+      `</p>`;
+  } else if (ghDocs) {
+    docsHtml = `<p class="index-docs"><a href="${esc(ghDocs.blob)}">Project documentation</a></p>`;
+  }
+  let h = `<section class="index-intro"><div class="index-intro-head"><h2>${esc(local?.name || (PROJECT_META && PROJECT_META.name) || "Project index")}</h2>` +
+    `<button type="button" class="help-btn summary-help-btn" data-open-help="1" aria-haspopup="dialog">Help</button></div>` +
+    (description ? `<p class="project-description">${esc(description)}</p>` : "") +
+    docsHtml +
+    root + "</section>";
   const idx = tables.has("problems") ? await problemIndex() : { list: [] };
   if (idx.tooLarge) h += `<p class="muted">${idx.tooLarge} problems: too many to classify here; use the problem list and SQL.</p>`;
   const problemsOnly = idx.list.filter((e) => e.kind !== "group");
+  const groupsCount = idx.list.length - problemsOnly.length;
   const by = Object.fromEntries(ATTENTION.map((a) => [a.key, []]));
   const excluded = { deprecated: [], "expected-open": [] };
   for (const e of problemsOnly) {
     if (e.st.attention.list) by[e.st.attention.list].push(e);
     else if (e.st.attention.excluded) excluded[e.st.attention.excluded].push(e);
   }
+  const [artifactRows, answerRows] = await Promise.all([
+    tq("artifacts", "SELECT count(*) AS n FROM artifacts"),
+    tq("answers", "SELECT count(*) AS n FROM answers"),
+  ]);
+  const artifactCount = (artifactRows[0] && artifactRows[0].n) || 0;
+  const answerCount = (answerRows[0] && answerRows[0].n) || 0;
+  if (problemsOnly.length || idx.tooLarge || artifactCount || answerCount) {
+    h += projectFactsBar(problemsOnly, excluded, groupsCount, artifactCount, answerCount, idx.tooLarge);
+  }
+  h += explorerIndex();
   // within a list: closed problems first (they are single questions), then by name
   for (const k of Object.keys(by)) by[k].sort((a, b) => (a.arity === 0 ? 0 : 1) - (b.arity === 0 ? 0 : 1) || a.name.localeCompare(b.name));
+  const openTitles = by.open.length ? await problemTitles(by.open.map((e) => e.name)) : new Map();
   if (problemsOnly.length) {
-    h += `<h2 id="attention">Needs attention</h2><p class="muted">${problemsOnly.length} problems. ` +
+    const activeProblemsCount = problemsOnly.length - excluded.deprecated.length;
+    h += `<h2 id="attention">Needs attention</h2><p class="muted">${activeProblemsCount} active problem${activeProblemsCount === 1 ? "" : "s"}. ` +
       `Open problems and problems whose statuses differ from what was expected. <a href="#/statuses">What the codes mean</a>.</p><div class="att">` +
       ATTENTION.map((a) => `<a class="card k-${a.key}" href="${browseHref("", { attention: a.key })}" title="${esc(a.text)}"><b>${by[a.key].length}</b>${esc(a.title)}</a>`).join("") +
-      Object.entries(EXCLUDED).map(([k, x]) => `<a class="card k-excluded" href="${browseHref("", { excluded: k })}" title="${esc(x.text)}"><b>${excluded[k].length}</b>${esc(x.title)} <span class="muted">(not counted above)</span></a>`).join("") +
+      (excluded["expected-open"].length ? `<a class="card k-excluded" href="${browseHref("", { excluded: "expected-open" })}" title="${esc(EXCLUDED["expected-open"].text)}"><b>${excluded["expected-open"].length}</b>${esc(EXCLUDED["expected-open"].title)}</a>` : "") +
       "</div>";
     for (const a of ATTENTION) {
       if (!by[a.key].length) continue;
       const closed = by[a.key].filter((e) => e.arity === 0).length;
-      h += `<h3 id="att-${a.key}">${esc(a.title)} (${by[a.key].length}${a.key === "open" ? `: ${closed} without parameters, ${by[a.key].length - closed} with` : ""})</h3>` +
-        `<p class="muted">${esc(a.text)}. <a href="${browseHref("", { attention: a.key })}">browse by namespace</a></p>` + await problemRows(by[a.key], a.key === "open" ? 40 : 100);
+      if (a.key === "open") {
+        h += `<h3 id="att-open">${esc(a.title)} (${by.open.length}: ${closed} without parameters, ${by.open.length - closed} with)</h3>` +
+          `<p class="muted">${esc(a.text)}. <a href="${browseHref("", { attention: "open" })}">browse by namespace</a></p>` +
+          `<div class="controls open-search-controls" role="search" aria-label="Search active open problems">` +
+          `<label>Search open problems <input type="search" id="open-search" placeholder="filter by problem name or title…" size="36" autocomplete="off"></label>` +
+          `<button type="button" id="open-prev" disabled>◀ previous</button>` +
+          `<button type="button" id="open-next"${by.open.length <= OPEN_PAGE_SIZE ? " disabled" : ""}>next ▶</button>` +
+          `<span id="open-count" class="muted" aria-live="polite">showing ${by.open.length ? 1 : 0}–${Math.min(OPEN_PAGE_SIZE, by.open.length)} of ${by.open.length} open problems</span>` +
+          `</div>` +
+          `<div id="open-results">${await problemRows(by.open, OPEN_PAGE_SIZE, openTitles)}</div>`;
+      } else {
+        h += `<h3 id="att-${a.key}">${esc(a.title)} (${by[a.key].length})</h3>` +
+          `<p class="muted">${esc(a.text)}. <a href="${browseHref("", { attention: a.key })}">browse by namespace</a></p>` + await problemRows(by[a.key], 100);
+      }
     }
     const ex = Object.entries(excluded).filter(([, l]) => l.length);
-    if (ex.length) h += "<h3>Left out of the lists above</h3><ul>" + ex.map(([k, l]) =>
-      `<li><a href="${browseHref("", { excluded: k })}">${l.length} ${esc(EXCLUDED[k].title.toLowerCase())}</a> <span class="muted">— ${esc(EXCLUDED[k].text)}</span></li>`).join("") + "</ul>";
+    if (ex.length) {
+      h += `<div class="excluded-routes"><p class="muted">Excluded from active lists: ` +
+        ex.map(([k, l]) => `<a class="excluded-link" data-excluded="${esc(k)}" href="${browseHref("", { excluded: k })}"><b>${l.length}</b> ${esc(EXCLUDED[k].title.toLowerCase())}</a> — ${esc(EXCLUDED[k].text)}`).join(" · ") +
+        `</p></div>`;
+    }
   }
   // the counts read whole tables (edges, statuses): only when asked for
   h += '<details id="sumdetails"><summary><b>Counts, verdicts, groups and metadata</b></summary><div id="sumdetailsbody"><p class="muted">reading…</p></div></details>';
   const init = () => {
+    for (const btn of document.querySelectorAll("[data-open-help]")) {
+      btn.addEventListener("click", () => openHelpDialog());
+    }
+    const searchInput = $("#open-search");
+    if (searchInput) {
+      let off = 0;
+      let filtered = by.open;
+      const prevBtn = $("#open-prev"), nextBtn = $("#open-next"), countEl = $("#open-count"), resEl = $("#open-results");
+      const renderOpenPage = () => {
+        const q = searchInput.value.trim().toLowerCase();
+        filtered = !q ? by.open : by.open.filter((e) => e.name.toLowerCase().includes(q) || (openTitles.get(e.name) || "").toLowerCase().includes(q));
+        if (off >= filtered.length) off = Math.max(0, Math.floor((filtered.length - 1) / OPEN_PAGE_SIZE) * OPEN_PAGE_SIZE);
+        const page = filtered.slice(off, off + OPEN_PAGE_SIZE);
+        if (!page.length) {
+          resEl.innerHTML = '<p class="muted">(no matching open problems)</p>';
+          countEl.textContent = `0 of ${by.open.length} open problems match`;
+        } else {
+          resEl.innerHTML = '<div class="tablebox"><table><thead><tr><th class="nw">status</th><th>problem</th><th>title</th></tr></thead><tbody>' +
+            page.map((e) => `<tr><td class="nw">${statusBadge(e.row)}</td><td>${link("problem", e.name)}</td><td>${esc(openTitles.get(e.name) || "")}</td></tr>`).join("") +
+            "</tbody></table></div>";
+          countEl.textContent = q
+            ? `showing ${off + 1}–${off + page.length} of ${filtered.length} matching (${by.open.length} total open)`
+            : `showing ${off + 1}–${off + page.length} of ${by.open.length} open problems`;
+        }
+        prevBtn.disabled = off === 0;
+        nextBtn.disabled = off + OPEN_PAGE_SIZE >= filtered.length;
+      };
+      searchInput.addEventListener("input", () => { off = 0; renderOpenPage(); });
+      prevBtn.addEventListener("click", () => { off = Math.max(0, off - OPEN_PAGE_SIZE); renderOpenPage(); });
+      nextBtn.addEventListener("click", () => { if (off + OPEN_PAGE_SIZE < filtered.length) { off += OPEN_PAGE_SIZE; renderOpenPage(); } });
+    }
     const d = $("#sumdetails");
     if (!d) return;
     d.addEventListener("toggle", async () => {

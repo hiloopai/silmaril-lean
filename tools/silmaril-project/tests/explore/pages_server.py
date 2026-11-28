@@ -89,7 +89,11 @@ def main():
             ctype = ("text/html; charset=utf-8" if p.endswith(".html") else
                      "text/javascript" if p.endswith(".js") else
                      "text/css" if p.endswith(".css") else
-                     "application/json" if p.endswith(".json") else "application/octet-stream")
+                     "application/json" if p.endswith(".json") else
+                     "text/markdown; charset=utf-8" if p.endswith(".md") else
+                     "image/svg+xml" if p.endswith(".svg") else
+                     "image/png" if p.endswith(".png") else
+                     "application/octet-stream")
             rng = self.headers.get("Range")
             gz = "gzip" in (self.headers.get("Accept-Encoding") or "")
             if rng and rng.startswith("bytes="):

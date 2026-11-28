@@ -723,6 +723,7 @@ sid = "6e6b27ed…"                  # mandatory; `sil project init` writes a ra
 name = "hello"                     # default: lakefile.toml `name`
 version = "0.1.0"
 description = "A small project"
+help = "docs/help.md"              # optional: inline text or relative .md path for the explorer Help dialog
 modules = ["Hello"]                # modules the dump imports; default: the [[lean_lib]] names
 roots = ["Hello"]                  # module prefixes that are local; default: first components of `modules`
 artifacts = "silmaril/artifacts.toml"   # the default
