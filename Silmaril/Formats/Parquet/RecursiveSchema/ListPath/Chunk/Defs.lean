@@ -426,6 +426,7 @@ inductive ChunkCause where
   | slotLimit
   | rowLimit
   | framing (cause : Page.Error)
+  | pageVersion (ordinal byte : Nat) (kind : Page.Kind)
   | storedSize (advertised : Int) (actual : Nat)
   | rawSize (advertised : Int) (actual : Nat)
   | slotCount (expected actual : Nat)
@@ -505,12 +506,10 @@ def checkTotals (carrier : Carrier) (frames : List Page.Frame) (observed : Obser
     else if carrier.rawSize ≠ Int.ofNat raw then .error (fail (.rawSize carrier.rawSize raw))
     else .ok observed
 
-/-- Each framed page advances one original body. The live LIST ancestry
-belongs to the chunk, including across a V1 continuation. -/
-def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
-    {schema : Compiled schemaLimits snapshot} {group : Nat}
-    (limits : Limits) (binding : Binding schema group) : Except Error Observation :=
-  let carrier := carrierOf binding
+/-- Check the addressed original frames before decoding their payloads.
+The live LIST ancestry belongs to the chunk across V1 continuations. -/
+def readCarrier (limits : Limits) (carrier : Carrier) (encoding : ColumnEncoding carrier.metadata)
+    (checkFrames : List Page.Frame → Except Error Unit) : Except Error Observation :=
   let bytes := carrier.span.stop - carrier.span.start
   let fail := Error.chunk carrier.address carrier.span
   if bytes > limits.maxChunkBytes then .error (fail .chunkLimit)
@@ -518,10 +517,16 @@ def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   else if carrier.rows > limits.maxRows then .error (fail .rowLimit)
   else do
     let frames ← (Page.readChunk limits.framing carrier.source carrier.span).mapError (fail ∘ .framing)
-    let (dictionary, data) ← (readPrefix limits carrier binding.encodings frames).mapError fun cause =>
+    checkFrames frames
+    let (dictionary, data) ← (readPrefix limits carrier encoding frames).mapError fun cause =>
       Error.dictionary carrier.address cause.ordinal cause.byte cause.cause
     let observed ← decodeFrames limits carrier (wrappers carrier.plan) dictionary data dictionary.isSome.toNat {} []
     checkTotals carrier frames observed
+
+def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat}
+    (limits : Limits) (binding : Binding schema group) : Except Error Observation :=
+  readCarrier limits (carrierOf binding) binding.encodings (fun _ => .ok ())
 
 inductive ChainWire (limits : Limits) (carrier : Carrier) (dictionary : Option Repeated.Chunk.Dictionary) :
     State → State → List ObservedPage → Prop where
