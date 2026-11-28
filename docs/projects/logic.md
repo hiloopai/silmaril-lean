@@ -31,6 +31,44 @@ CSLib dependencies serve the Wasm toolkit and these logics.
 | [Lambda cube](lambda-cube.md) | PTS inclusions, System F/Fω relational models and concrete Hets logic graphs |
 | [Arithmetic and set theory](logic-arithmetic.md) | Q, PA, second-order subsystems, scoped ZF/ZFC, proof compilation and shared-fragment correspondence |
 
+## Finite truth values
+
+Import `Silmaril.Logic.ManyValued.Defs` for executable values and
+`Silmaril.Logic.ManyValued` for their laws. The checked tables are in
+[`Silmaril.Logic.ManyValued.Examples`](../../Silmaril/Logic/ManyValued/Examples.lean).
+
+| Values | Default truth order | Information order |
+| --- | --- | --- |
+| `K3` | `ff < unknown < tt` | `unknown` lies below the two incomparable known values. They have a meet and lack a common upper bound. |
+| `FDE` | `ff` is bottom and `tt` is top. `neither` and `both` are incomparable. | `neither` is bottom and `both` is top. `ff` and `tt` are incomparable. |
+
+Conjunction and disjunction use the truth meet and join. Logical negation
+reverses truth order and preserves information order. Use `K3.Information` or
+`FDE.Information` for a refinement law about evidence. K3 embeds in FDE's
+consistent values and reflects both orders. The embedding preserves truth
+meet and join, information meet, and logical negation.
+
+`ofBool` embeds classical values. `isDesignated` accepts just `tt` in K3 and
+accepts `tt` and `both` in FDE. `K3.ofOptionBool` and `K3.toOptionBool`
+identify unknown with `none`. `FDE.toOptionBool?` returns `some none` for
+`neither` and outer `none` for `both`. The finite FDE flags can be read as
+the propositions `a.support = true` and `a.refute = true` when integrating
+with generalized institution `Evidence`, whose fields are arbitrary propositions.
+
+The K3 tables include material implication and biconditional. The examples
+verify that the FDE restriction to `ff`, `both` and `tt` gives Priest's LP
+tables and designates the middle value. Weak Kleene (Bochvar), Gödel,
+Łukasiewicz, product, Post and Rose logics have their own connectives and
+belong to the logic catalogue.
+
+Sources include Kleene's *Introduction to Metamathematics* (1952),
+Belnap's [*A Useful Four-Valued Logic*](https://doi.org/10.1007/978-94-010-1161-7_2)
+and the [many-valued logic table survey](https://en.wikipedia.org/wiki/Many-valued_logic).
+
+```sh
+lake build --wfail +Silmaril.Logic.ManyValued +Silmaril.Logic.ManyValued.Examples
+```
+
 ## Institution API
 
 Import `Silmaril.Logic.Institution.Defs` for the central interfaces and `.Thms`
