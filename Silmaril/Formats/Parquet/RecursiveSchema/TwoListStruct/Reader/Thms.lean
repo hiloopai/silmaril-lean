@@ -36,7 +36,7 @@ theorem ColumnBinding.codec_exact {schemaLimits : Snapshot.Limits} {snapshot : S
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
     {side : Side} (binding : ColumnBinding schema bound side) :
     RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId binding.column.metadata.codec = some binding.codec.column :=
-  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.codec_exact binding
+  ListPath.Chunk.Codec.column_ofId binding.originalCodec
 
 /-- Recover the original V1 frame and the full-body wire witness for its codec. -/
 theorem ColumnWire.v1_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}

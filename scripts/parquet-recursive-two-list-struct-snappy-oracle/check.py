@@ -29,22 +29,22 @@ LEAN = BASE["LEAN"].replace("public def main", """
 open RecursiveSchema.Repeated.Chunk (bytesAt readV1Body readV2SuffixWith storedChunkBytes rawChunkBytes)
 
 private def checkPayloads (file : Bytes) (group : Nat) (side : Side) (codec : RecursiveSchema.ListPath.Chunk.Codec)
-    (storedTotal rawTotal : Nat) (bytes : List (KBytes × KBytes)) : IO Unit := do
+    (storedTotal rawTotal : Nat) (bytes : List (KBytes × KBytes)) (limits : Reader.Limits := {}) : IO Unit := do
   let source ← take (openFile {} file)
   let bound ← take (Reader.bindGroup source.snapshot group)
   let column ← take (Reader.bindColumn source.schema bound side)
-  let observed ← take (Reader.readColumn {} column)
+  let observed ← take (Reader.readColumn limits column)
   unless column.codec = codec && column.column.metadata.codec = codec.column.id &&
       storedChunkBytes observed.frames = storedTotal && rawChunkBytes observed.frames = rawTotal &&
       observed.frames.length = bytes.length do
     throw (IO.userError "original column codec, page count or footer totals differ")
   for (frame, stored, plain) in observed.frames.zip bytes do
     let expanded ← match frame.value.kind with
-      | .dataV1 _ => take (readV1Body ({} : Reader.Limits).payload codec.column file frame)
+      | .dataV1 _ => take (readV1Body limits.payload codec.column file frame)
       | .dataV2 info => do
         let some spans := frame.v2Spans | throw (IO.userError "invalid original V2 spans")
         let width := RecursiveSchema.Chunk.wordWidth (source.schema.plan.child side).2
-        take (readV2SuffixWith ({} : Reader.Limits).payload codec.column frame info
+        take (readV2SuffixWith limits.payload codec.column frame info
           (bytesAt file spans.values) (some ((info.numValues - info.numNulls) * width)))
       | _ => throw (IO.userError "expected a data frame")
     unless (bytesAt file frame.payload).toList == stored.toList && expanded.toList == plain.toList do
@@ -86,10 +86,10 @@ def column_codec(wire, key):
     return THRIFT["column_metadata"](NATIVE["metadata"](wire), *key)[4][1]
 
 
-def decoded(header, stored, codec):
-    if codec == 1:
-        return frame_bytes(header, stored)
-    assert codec == 0 and len(stored) == header[2][1]
+def decoded(header, stored, codec, decode_block):
+    if codec != 0:
+        return frame_bytes(header, stored, decode=lambda body, size: decode_block(codec, body, size))
+    assert len(stored) == header[2][1]
     return stored[level_bytes(header):]
 
 
@@ -202,6 +202,49 @@ def bytes_term(data):
     return f"(KBytes.leaf {len(data)} {int.from_bytes(data, 'little')})"
 
 
+def source_commands(label, schema, groups, wire, decode_block, *, checksums=True, limits="{}"):
+    commands = []
+    counts = {"v1": 0, "v2": 0, "v2_raw_words": 0}
+    ceiling, columns = NATIVE["inspect"](wire, schema, groups, versions=(0, 3),
+                                         checksums=checksums, decode_block=decode_block)
+    logical = EVENTS["pyarrow_groups"](wire, schema, groups)
+    outer = schema.field(0)
+    inner = outer.type.value_field
+    element = inner.type.value_field
+    for (group, side), ((lo, hi), pages) in columns.items():
+        frames = frames_in(wire, group, side)
+        width = element.type[side].type.bit_width
+        codec = column_codec(wire, (group, side))
+        tag = ".left" if side == 0 else ".right"
+        path = [outer.name, "list", inner.name, "list", element.name, element.type[side].name]
+        terms = lst(page_term(page, width, frame[1], codec) for page, frame in zip(pages, frames, strict=True))
+        commands.append(f'  checkColumn (← load folder "{label}") {group} {tag} {NATIVE["path_term"](path)} '
+                        f'{ceiling} ⟨{lo}, {hi}⟩ {terms}')
+        pairs = []
+        raw_total = 0
+        for at, header, body_at, stored in frames:
+            plain = decoded(header, stored, codec, decode_block)
+            pairs.append(f"({bytes_term(stored)}, {bytes_term(plain)})")
+            raw_total += body_at - at + header[2][1]
+            v2 = header[1][1] == 3
+            counts["v2" if v2 else "v1"] += 1
+            if v2 and codec != 0 and not header[8][1].get(7, (None, True))[1] and plain:
+                counts["v2_raw_words"] += 1
+        lean_codec = {0: ".uncompressed", 1: ".snappy", 2: ".gzip", 6: ".zstd", 7: ".lz4Raw"}[codec]
+        commands.append(f'  checkPayloads (← load folder "{label}") {group} {tag} {lean_codec} '
+                        f'{hi - lo} {raw_total} {lst(pairs)} {limits}')
+    fields, batches = IPC["fields_term"](schema), IPC["batches_term"](schema, logical)
+    commands.extend([f'  checkRows (← load folder "{label}") {batches}',
+                     f'  checkDirect (← load folder "{label}") {fields} {batches}',
+                     f'  checkIpc folder "{label}" {fields} {batches}'])
+    return commands, logical, columns, counts
+
+
+def decode_snappy(codec, data, size):
+    assert codec == 1
+    return expand(data, size)
+
+
 def verify(folder):
     genuine, authored, positives, probes, errors = fixtures()
     originals = {label: case[2] for label, case in genuine.items()}
@@ -211,42 +254,16 @@ def verify(folder):
     commands, expected = [LEAN], {}
     counts = {"v1": 0, "v2": 0, "v2_raw_words": 0}
     for label, (schema, groups, wire) in positives.items():
-        ceiling, columns = NATIVE["inspect"](wire, schema, groups, versions=(0, 3),
-                                             checksums=not label.endswith("_0001"), decode_snappy=expand)
-        logical = EVENTS["pyarrow_groups"](wire, schema, groups)
+        case, logical, columns, frame_counts = source_commands(
+            label, schema, groups, wire, decode_snappy, checksums=not label.endswith("_0001"))
+        if label == "mixed_versions_and_codecs":
+            pages = columns[1, 0][1]
+            assert [page[-1][0][0] for page in pages[:3]] == [0, 2, 1]
+            assert [frame[1][1][1] for frame in frames_in(wire, 1, 0)[:3]] == [0, 0, 0]
         expected[label] = schema, logical
-        outer = schema.field(0)
-        inner = outer.type.value_field
-        element = inner.type.value_field
-        for (group, side), ((lo, hi), pages) in columns.items():
-            frames = frames_in(wire, group, side)
-            width = element.type[side].type.bit_width
-            codec = column_codec(wire, (group, side))
-            tag = ".left" if side == 0 else ".right"
-            path = [outer.name, "list", inner.name, "list", element.name, element.type[side].name]
-            terms = lst(page_term(page, width, frame[1], codec) for page, frame in zip(pages, frames, strict=True))
-            commands.append(f'  checkColumn (← load folder "{label}") {group} {tag} {NATIVE["path_term"](path)} '
-                            f'{ceiling} ⟨{lo}, {hi}⟩ {terms}')
-            pairs = []
-            raw_total = 0
-            if label == "mixed_versions_and_codecs" and (group, side) == (1, 0):
-                assert [page[-1][0][0] for page in pages[:3]] == [0, 2, 1]
-                assert [frame[1][1][1] for frame in frames[:3]] == [0, 0, 0]
-            for at, header, body_at, stored in frames:
-                plain = decoded(header, stored, codec)
-                pairs.append(f"({bytes_term(stored)}, {bytes_term(plain)})")
-                raw_total += body_at - at + header[2][1]
-                v2 = header[1][1] == 3
-                counts["v2" if v2 else "v1"] += 1
-                if v2 and codec == 1 and not header[8][1].get(7, (None, True))[1] and plain:
-                    counts["v2_raw_words"] += 1
-            lean_codec = ".snappy" if codec == 1 else ".uncompressed"
-            commands.append(f'  checkPayloads (← load folder "{label}") {group} {tag} {lean_codec} '
-                            f'{hi - lo} {raw_total} {lst(pairs)}')
-        fields, batches = IPC["fields_term"](schema), IPC["batches_term"](schema, logical)
-        commands.extend([f'  checkRows (← load folder "{label}") {batches}',
-                         f'  checkDirect (← load folder "{label}") {fields} {batches}',
-                         f'  checkIpc folder "{label}" {fields} {batches}'])
+        commands.extend(case)
+        for kind, count in frame_counts.items():
+            counts[kind] += count
 
     schema, first = expected["optional_v2_1111"]
     prefix = IPC["batches_term"](schema, first[:1])
@@ -254,7 +271,8 @@ def verify(folder):
         commands.append(f'  groupRefusal (← load folder "{label}") 1 {limits} ({error})')
         commands.append(f'  checkFailure (← load folder "{label}") {limits} {prefix} (.group 1 ({error}))')
     addr = NATIVE["address"](0, 0)
-    commands.append(f'  groupRefusal (← load folder "other_codec") 0 {{}} (.binding (.column {addr} (.codec 2)))')
+    schema, logical = expected["optional_v2_1111"]
+    commands.append(f'  checkRows (← load folder "other_codec") {IPC["batches_term"](schema, logical)}')
     footer = THRIFT["column_metadata"](NATIVE["metadata"](probes["dictionary"]), 0, 0)
     encodings = lst(map(str, THRIFT["list_field"](footer, 2)))
     commands.append(f'  groupRefusal (← load folder "dictionary") 0 {{}} '
@@ -275,7 +293,7 @@ def verify(folder):
         assert ipc[f"v2_raw_bypass_{selection}"] == ipc[f"per_child_v2_{selection}"] == ipc[f"optional_v2_1111_{selection}"]
     print(f"Checked {len(positives)} sources, {counts['v1']} V1 and {counts['v2']} V2 frames, "
           f"{counts['v2_raw_words']} Snappy false-flag V2 suffixes with signed words, "
-          f"{len(ipc)} strict IPC streams and {len(errors) + len(probes)} typed controls")
+          f"{len(ipc)} strict IPC streams and {len(errors) + 1} typed controls")
     pins = NATIVE["fingerprints"]
     return {key: pins(data) for key, data in {
         "genuine_parquet": originals, "authored_parquet": authored, "genuine_probes": probes, "lean_ipc": ipc,
