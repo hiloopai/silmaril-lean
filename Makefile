@@ -99,6 +99,8 @@ check:
 	$(PYTHON) -B tests/acl2/check_dependencies.py
 	$(PYTHON) -B tools/acl2-x86isa/check_frontier_dependencies.py
 	$(PYTHON) -B tests/acl2/check_frontier_dependencies.py
+	$(PYTHON) -I tools/acl2-x86isa/check_closure_dependencies.py
+	$(PYTHON) -I tests/acl2/check_closure_dependencies.py
 	$(PYTHON) -B tools/acl2-x86isa/check_step.py
 	$(PYTHON) -B tests/acl2/check_x86_step.py
 	$(PYTHON) -I scripts/check-wasm-spec.py
