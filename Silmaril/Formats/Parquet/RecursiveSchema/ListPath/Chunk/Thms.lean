@@ -100,6 +100,17 @@ theorem Wire.dictionary_anchors {limits : Limits} {carrier : Carrier} {observed 
       carrier.metadata.dataPageOffset = Int.ofNat first.header.start :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.dictionary_anchors wire found
 
+/-- The checked dictionary uses the same original column codec as its data
+pages. Its wire witness covers the stored CRC, decoded extent and signed entries. -/
+theorem Wire.dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
+    {limits : Limits} {observed : Observation} {table : Repeated.Chunk.Dictionary}
+    (wire : Wire limits (carrierOf binding) observed) (found : observed.dictionary = some table) :
+    Repeated.Chunk.DictionaryCodec.ofId binding.column.metadata.codec = some table.codec ∧
+      table.codec.column = binding.codec.column ∧
+      Repeated.Chunk.DictionaryContentsWire limits.payload schema.plan.shape.leaf.2 snapshot.bytes table :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.dictionary_payload binding.codec_exact wire found
+
 theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
     {limits : Limits} {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat}

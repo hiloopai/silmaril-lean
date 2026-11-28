@@ -67,11 +67,7 @@ inductive BindError where
   | column (address : Address) (cause : BindCause)
   deriving DecidableEq, Repr
 
-inductive ColumnEncoding (metadata : Footer.ColumnMetadata) where
-  | plain : RecursiveSchema.SupportedEncodings metadata → metadata.dictionaryPageOffset = none →
-      ColumnEncoding metadata
-  | dictionary : Repeated.Chunk.DictionaryEncodings metadata → metadata.codec = 0 →
-      ColumnEncoding metadata
+abbrev ColumnEncoding := Repeated.Chunk.FramedEncoding
 
 structure Binding {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     (schema : Compiled schemaLimits snapshot) (group : Nat) where
@@ -107,8 +103,9 @@ private def checked {ε : Type} (condition : Prop) [Decidable condition] (error 
 private def bindEncoding (metadata : Footer.ColumnMetadata)
     (fail : BindCause → BindError) : Except BindError (ColumnEncoding metadata) := do
   if dictionary : Repeated.Chunk.DictionaryEncodings metadata then
-    let ⟨codec⟩ ← checked (metadata.codec = 0) (fail (.codec metadata.codec))
-    return .dictionary dictionary codec
+    let ⟨codec, original⟩ ← lookup
+      (Repeated.Chunk.DictionaryCodec.ofId metadata.codec) (fail (.codec metadata.codec))
+    return .dictionary dictionary codec original
   else
     let ⟨plain⟩ ← checked (RecursiveSchema.SupportedEncodings metadata) (fail (.encodings metadata.encodings))
     let ⟨offset⟩ ← checked (metadata.dictionaryPageOffset = none) (fail .pageOffsets)
@@ -480,9 +477,9 @@ def readPrefix (limits : Limits) (carrier : Carrier) (encoding : ColumnEncoding 
     Except Repeated.Chunk.DictionaryPrefixError (Option Repeated.Chunk.Dictionary × List Page.Frame) :=
   match encoding with
   | .plain _ _ => .ok (none, frames)
-  | .dictionary _ _ => do
+  | .dictionary _ codec _ => do
     let (table, rest) ← Repeated.Chunk.readFramedDictionary limits.payload carrier.plan.shape.leaf.2
-      carrier.source carrier.span carrier.metadata frames .uncompressed
+      carrier.source carrier.span carrier.metadata frames codec
     return (some table, rest)
 
 def decodeFrames (limits : Limits) (carrier : Carrier) (wrappers : List Nat)
@@ -540,8 +537,7 @@ inductive PrefixWire (limits : Limits) (carrier : Carrier) :
   | plain {frames} : carrier.metadata.dictionaryPageOffset = none →
       PrefixWire limits carrier none frames frames
   | dictionary {table : Repeated.Chunk.Dictionary} {frames} :
-      carrier.metadata.codec = 0 →
-      table.codec = .uncompressed →
+      Repeated.Chunk.DictionaryCodec.ofId carrier.metadata.codec = some table.codec →
       carrier.metadata.dictionaryPageOffset = some (Int.ofNat carrier.span.start) →
       carrier.metadata.dataPageOffset = Int.ofNat table.frame.payload.stop →
       table.frame.payload.stop < carrier.span.stop →

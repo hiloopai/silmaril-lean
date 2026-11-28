@@ -42,12 +42,12 @@ private theorem readPrefix_wire {limits : Limits} {carrier : Carrier} {encoding 
   | plain _ offset =>
     cases Except.ok.inj read
     exact .plain offset
-  | dictionary _ codec =>
+  | dictionary _ codec original =>
     obtain ⟨⟨table, rest⟩, checked, done⟩ := bind_ok read
     cases Except.ok.inj done
     obtain ⟨rfl, tableCodec, offset, next, hasData, contents⟩ :=
       RecursiveSchema.Repeated.Chunk.readFramedDictionary_wire checked
-    exact .dictionary codec tableCodec offset next hasData contents
+    exact .dictionary (original.trans (congrArg some tableCodec.symm)) offset next hasData contents
 
 private theorem prefix_frames {limits : Limits} {carrier : Carrier} {frames data : List Page.Frame}
     {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
@@ -154,10 +154,26 @@ public theorem dictionary_anchors {limits : Limits} {carrier : Carrier} {observe
   have framed := originalFrames ▸ wire.pages
   have leading := originalFrames ▸ found ▸ wire.leading
   cases leading with
-  | dictionary _ _ offset dataOffset hasData _ =>
+  | dictionary _ offset dataOffset hasData _ =>
     obtain ⟨first, atHead, start, next⟩ := first_data_anchor framed hasData
     have header := Page.readChunk_readPage wire.framed table.frame (by simp [originalFrames])
     exact ⟨first, atHead, start ▸ header, start, next, start.symm ▸ offset, next.symm ▸ dataOffset⟩
+
+public theorem dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
+    {limits : Limits} {observed : Observation} {table : RecursiveSchema.Repeated.Chunk.Dictionary}
+    (data : RecursiveSchema.Repeated.Chunk.ColumnCodec.ofId binding.column.metadata.codec = some binding.codec.column)
+    (wire : Wire limits (carrierOf binding) observed) (found : observed.dictionary = some table) :
+    RecursiveSchema.Repeated.Chunk.DictionaryCodec.ofId binding.column.metadata.codec = some table.codec ∧
+      table.codec.column = binding.codec.column ∧
+      RecursiveSchema.Repeated.Chunk.DictionaryContentsWire limits.payload schema.plan.shape.leaf.2 snapshot.bytes table := by
+  have originalFrames : observed.frames = table.frame :: observed.pages.map ObservedPage.frame := by
+    simp [Observation.frames, found]
+  have leading := originalFrames ▸ found ▸ wire.leading
+  cases leading with
+  | dictionary original _ _ _ contents =>
+    have payload := RecursiveSchema.Repeated.Chunk.DictionaryCodec.column_ofId original
+    exact ⟨original, Option.some.inj (payload.symm.trans data), contents⟩
 
 private theorem decodeFrames_failure {limits : Limits} {carrier : Carrier} {frames : List Page.Frame}
     {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
