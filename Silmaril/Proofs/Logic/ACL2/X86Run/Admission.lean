@@ -38,13 +38,13 @@ variable {laws} (h : declaration.Terminates M (rank laws)) (args : Env M 2)
 theorem fault_exit (hf : M.interpret faultSymbol (fun _ => args 1) ≠ M.primitives.nil) :
     run laws h args = args 1 := by
   rw [run, declaration.interpret_unfold h]
-  simp [declaration, block, sourceBody, Body.eval, Term.eval, hf]
+  simp [declaration, block, sourceBody, Body.eval, Body.evalWith, Term.eval, hf]
 
 theorem ms_exit (hf : M.interpret faultSymbol (fun _ => args 1) = M.primitives.nil)
     (hm : M.interpret msSymbol (fun _ => args 1) ≠ M.primitives.nil) :
     run laws h args = args 1 := by
   rw [run, declaration.interpret_unfold h]
-  simp [declaration, block, sourceBody, Body.eval, Term.eval, hf, hm]
+  simp [declaration, block, sourceBody, Body.eval, Body.evalWith, Term.eval, hf, hm]
 
 theorem halted_holds : halted.Holds (declaration.model M (rank laws) h) := by
   intro env
