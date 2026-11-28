@@ -1,0 +1,43 @@
+{
+  "genuine": {
+    "native_32": {
+      "bytes": 899,
+      "sha256": "3ce19f013d863dad38c544418a6588a79c17d9772bad504e4c3e9cb5c063e80e"
+    },
+    "native_64": {
+      "bytes": 1072,
+      "sha256": "cb424e3178662000c4afe7c2b4bd1a1d9006d0c314f1d7fd97f94779c829bb8b"
+    },
+    "schema_only": {
+      "bytes": 148,
+      "sha256": "2f67a05ed3b3d43931bdfd283d17dd71345d297f8d681c3ba6cdcc18c99ed6bf"
+    }
+  },
+  "labeled": {
+    "empty_input": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "first_of_two_errors": {
+      "bytes": 1214,
+      "sha256": "f76d913c5bb16a47f43fed4641818cadff3558fd98c11d635cadf81ab37aec64"
+    },
+    "late_crc": {
+      "bytes": 926,
+      "sha256": "395754c72857a803288118e8b836b07066e9ab685a8c8fd0e2227dd56a7c1f0d"
+    },
+    "reframed_32": {
+      "bytes": 1185,
+      "sha256": "30c4aa43691234bf3666af3805ea0424b92fd36eba4b3df3dec59cfc78a1ad07"
+    },
+    "reframed_64": {
+      "bytes": 1422,
+      "sha256": "8bcca974123a69771230b23cc64b2d0990588dec03311e8d61fe8bfdc6f1aed5"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}
