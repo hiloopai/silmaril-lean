@@ -7,8 +7,11 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
+# The prove worker omits the script directory in Python safe-path mode.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_x86_run import FIXTURE as RUN_SOURCE
 from check_x86_run import EXPORT_SHA256, LAMBDA, QUOTE, RUN, formals, is_symbol, symbol
 from export_x86_run import TREE

@@ -7,8 +7,11 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
+TOOLS = Path(__file__).resolve().parent
+sys.path.insert(0, str(TOOLS))
 from check_dependencies import (BOOK, HEADER, STEP, WORLD_CLASSES, check, direct_calls,
                                 encode_symbol, read_run, require)
 from check_x86_run import EXPORT_SHA256, NIL, RUN, formals, symbol
@@ -76,7 +79,6 @@ def main():
     if not acl2.is_file() or not source.with_suffix(".cert").is_file():
         parser.error("build saved_acl2 with SBCL and certify machine/x86 first")
 
-    tools = Path(__file__).resolve().parent
     env = {**os.environ, "ACL2_CUSTOMIZATION": "NONE", "ACL2_SYSTEM_BOOKS": str(books),
            "CERT_PL_NO_COLOR": "1", "LC_ALL": "C", "X86ISA_EXEC": "nil"}
     args.output.mkdir(parents=True, exist_ok=True)
@@ -88,9 +90,9 @@ def main():
             '(include-book "machine/x86" :ttags nil :uncertified-okp nil '
             ':defaxioms-okp nil :skip-proofs-okp nil)\n'
             ":q\n(handler-case (progn\n"
-            f'  (load {lisp_string(tools / "certificate.lisp")})\n'
-            f'  (load {lisp_string(tools / "x86-run.lisp")})\n'
-            f'  (load {lisp_string(tools / "dependencies.lisp")})\n'
+            f'  (load {lisp_string(TOOLS / "certificate.lisp")})\n'
+            f'  (load {lisp_string(TOOLS / "x86-run.lisp")})\n'
+            f'  (load {lisp_string(TOOLS / "dependencies.lisp")})\n'
             f'  (c3-export-dependencies {lisp_string(source)} {lisp_string(exported)})\n'
             '  (sb-ext:exit :code 0))\n'
             '  (error (condition) (format *error-output* "~a~%" condition) (sb-ext:exit :code 1)))\n'
