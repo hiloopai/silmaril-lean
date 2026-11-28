@@ -189,7 +189,7 @@ theorem list_equation : (block.equation evList).Holds admitted.model := admitted
 
 def run (x clk : Value) : Value := admitted.interpret ⟨2, ev, ![x, clk]⟩
 
--- Authored projection outputs, not the result values of the stateful upstream interpreter.
+-- Executable observations of the authored projection.
 #guard run (.cons (.cons .nil .nil) (.cons (.natural 4) .nil)) (.natural 1) == .cons .nil .nil
 #guard run (.cons (.cons .nil .nil) (.cons (.natural 4) .nil)) .nil == .nil
 

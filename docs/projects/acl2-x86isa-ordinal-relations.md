@@ -13,7 +13,14 @@ The native certifications and world records provide provenance. The Lean
 proofs establish validity and strict decrease independently. The
 [x86isa certification graph][inventory] reaches the GL book through
 `machine/guard-helpers` and `centaur/gl/gl`, and reaches RTL through the
-floating-point instruction books and `rtl/rel11/lib/reps`.
+floating-point instruction books and `rtl/rel11/lib/reps`. The pinned
+`machine/x86` book also certified with `X86ISA_EXEC=nil`. Its certificate
+records both target books as local-only post-admission dependencies. Their
+measures were exported from a separate world after including the books directly.
+The live `machine/x86` world has no justification for either GL member or
+for `RTL::EXPE`. Its `RTL::EXPO` justification records `(:? X)` and default
+`O<`, matching the declaration in the visible RTL library.
+[Visible EXPO declaration][rtl-visible]
 
 ## NAT-LIST-< and GL
 
@@ -109,8 +116,8 @@ ACL2="$PWD/saved_acl2" ACL2_CUSTOMIZATION=NONE X86ISA_EXEC=nil \
 ```
 
 After including `centaur/gl/ctrex-utils` and `rtl/rel11/support/definitions`
-with `:dir :system`, the justification
-properties are available through the raw Lisp world. For example, after
+with `:dir :system`, the justification properties are available through the
+raw Lisp world. For example, after
 `:q` the following retrieves the exact translated measure, relation, and
 predicate for `MAGICER-EV`.
 
@@ -122,6 +129,11 @@ predicate for `MAGICER-EV`.
         (acl2::access acl2::justification j :mp)))
 ```
 
+To reproduce the closure check, certify `books/projects/x86isa/machine/x86`
+with the same options. Run [the inventory tool][inventory] for
+`--root machine/x86 --certified` and inspect the certificate's post entries
+for the two source paths.
+
 The SHA-256 of `centaur/gl/ctrex-utils.lisp` is
 `df6b53a9331b2f05272ce354f928ac5fd5c330a1616da2e50a2a4ecc6f095cec`.
 The SHA-256 of `rtl/rel11/support/definitions.lisp` is
@@ -130,7 +142,13 @@ The SHA-256 of `std/basic/two-nats-measure.lisp` is
 `d5e5f6505646b1158d6159fd23f19cd3cff9e6beee902384e81abc14d230d1da`.
 The SHA-256 of `ordinals/e0-ordinal.lisp` is
 `1f2c4bd82f7182db427681c499683062d18f844c4b364cb372c2072c41e42702`.
-The native world and execution log has SHA-256
+The `machine/x86` certificate has SHA-256
+`397ba2e0be535893c7b0fd981f66a895512335c6208881e61b045964b76b4e4b`.
+The certified inventory has SHA-256
+`c78780501b3392d4ff810e3c1ad31123fc8903f64a1c46fe92141d7d3f987d78`.
+The live-world probe has SHA-256
+`09eecd718548d6b9dafe6b4659f703099c98f26c9dd7d8ea2b1b2abb6ac0e79a`.
+The direct-include world and execution log has SHA-256
 `74c0e8ec9a6529d444e7c206072f02fcf76833d03d641982ce48fee5a40d26a0`.
 
 The complete x86isa logical closure still needs term and measure
@@ -145,3 +163,4 @@ adapters for the two relations used in the examples above.
 [gl]: https://github.com/acl2/acl2/blob/bc6f4f49e81a0711214a8d91f0d06e0e084d2204/books/centaur/gl/ctrex-utils.lisp#L200-L268
 [legacy]: https://github.com/acl2/acl2/blob/bc6f4f49e81a0711214a8d91f0d06e0e084d2204/books/ordinals/e0-ordinal.lisp#L36-L148
 [rtl]: https://github.com/acl2/acl2/blob/bc6f4f49e81a0711214a8d91f0d06e0e084d2204/books/rtl/rel11/support/definitions.lisp#L648-L718
+[rtl-visible]: https://github.com/acl2/acl2/blob/bc6f4f49e81a0711214a8d91f0d06e0e084d2204/books/rtl/rel11/lib/defs.lisp#L146-L165
