@@ -136,7 +136,7 @@ def steps(nullable):
     return outer_empty, inner_empty, inner_empty + 1
 
 
-def trace(rows, nullable, side):
+def trace(rows, nullable, side, names=NAMES):
     outer, inner = nullable[:2]
     outer_empty, inner_empty, shared = steps(nullable)
     def entries(row):
@@ -155,7 +155,7 @@ def trace(rows, nullable, side):
                     yield rep, inner_empty, None
                 else:
                     for element, record in enumerate(inner_list):
-                        word = record[NAMES[side]]
+                        word = record[names[side]]
                         level = shared + (int(nullable[2 + side]) if word is not None else 0)
                         yield (2 if element else rep), level, word
     return [slot for row in rows for slot in entries(row)]
