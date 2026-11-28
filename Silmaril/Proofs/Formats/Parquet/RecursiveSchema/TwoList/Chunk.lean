@@ -64,7 +64,7 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
       · rename_i rowCap
         split at accepted
         · contradiction
-        · rename_i raw
+        · rename_i earlyExtent
           obtain ⟨frames, scan, accepted⟩ := bind_ok accepted
           obtain ⟨decoded, bodyRead, accepted⟩ := bind_ok accepted
           split at accepted
@@ -73,34 +73,33 @@ public theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.C
             split at accepted
             · contradiction
             · rename_i rows
-              cases Except.ok.inj accepted
-              obtain ⟨_, eq, wire⟩ := decodeFrames_wire bodyRead
-              simp only [List.reverse_nil, List.nil_append] at eq
-              rw [← eq] at wire
-              have framesEq := chain_frames wire
-              have scanExact := framesEq.symm ▸ from_mapError scan
-              exact ⟨scanExact, (Page.readChunk_chain scanExact).2.2, framesEq.symm ▸ wire,
-                Decidable.not_not.mp raw, Decidable.not_not.mp slots, Decidable.not_not.mp rows,
-                Nat.le_of_not_gt chunkCap, Nat.le_of_not_gt slotCap, Nat.le_of_not_gt rowCap⟩
+              split at accepted
+              · contradiction
+              · rename_i rawBytes
+                cases Except.ok.inj accepted
+                obtain ⟨_, eq, wire⟩ := decodeFrames_wire bodyRead
+                simp only [List.reverse_nil, List.nil_append] at eq
+                rw [← eq] at wire
+                have framesEq := chain_frames wire
+                have scanExact := framesEq.symm ▸ from_mapError scan
+                exact ⟨scanExact, (Page.readChunk_chain scanExact).2.2, framesEq.symm ▸ wire,
+                  Decidable.not_not.mp rawBytes, Decidable.not_not.mp slots, Decidable.not_not.mp rows,
+                  Nat.le_of_not_gt chunkCap, Nat.le_of_not_gt slotCap, Nat.le_of_not_gt rowCap⟩
 
-private theorem equal_extents {limits : Limits} {carrier : Carrier} {start stop : State}
-    {frames : List Page.Frame} {pages : List ObservedPage}
-    (wire : ChainWire limits carrier start frames pages stop) :
-    RecursiveSchema.Repeated.Chunk.rawChunkBytes frames = RecursiveSchema.Repeated.Chunk.storedChunkBytes frames := by
-  induction wire with
-  | nil => rfl
-  | @cons _ frame _ _ _ _ page _ ih =>
-    have sizes : frame.value.uncompressedSize = frame.value.compressedSize := by
-      cases page with
-      | v1 first =>
-        obtain ⟨_, _, _, _, _, header, _⟩ := first.original
-        exact header.sizes
-      | v2 second =>
-        obtain ⟨_, _, _, _, _, _, sizes, _⟩ := second.original
-        exact sizes
-    simp only [RecursiveSchema.Repeated.Chunk.rawChunkBytes, RecursiveSchema.Repeated.Chunk.storedChunkBytes, List.map_cons,
-      List.sum_cons] at ih ⊢
-    rw [sizes, ih]
+public theorem codec_matches {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} (binding : Binding schema group) :
+    (carrierOf binding).codec.column.id = binding.column.metadata.codec := by
+  change binding.codec.column.id = binding.column.metadata.codec
+  have selected := binding.originalCodec
+  unfold Codec.ofId at selected
+  split at selected
+  · rename_i id
+    rw [← Option.some.inj selected, id]
+    rfl
+  · rename_i id
+    rw [← Option.some.inj selected, id]
+    rfl
+  · contradiction
 
 public theorem chunk_bytes {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {limits : Limits}
@@ -113,13 +112,8 @@ public theorem chunk_bytes {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
   simp only [Page.columnSpan, binding.offsets.1, Option.getD_none] at framed
   obtain ⟨offset, total, _⟩ := Footer.checkDataSpan_some_iff.mp framed
   have extent := RecursiveSchema.Repeated.Chunk.chain_storedSize wire.original
-  have same := equal_extents wire.decoded
-  have raw := wire.uncompressed
-  change binding.column.metadata.totalUncompressedSize = Int.ofNat (binding.span.stop - binding.span.start) at raw
+  refine ⟨offset, ?_, wire.uncompressed⟩
   change binding.span.stop = binding.span.start + _ at extent
-  have bytes : binding.span.stop - binding.span.start =
-      RecursiveSchema.Repeated.Chunk.storedChunkBytes (out.pages.map ObservedPage.frame) := by omega
-  refine ⟨offset, ?_, raw.trans (congrArg Int.ofNat (bytes.trans same.symm))⟩
   change _ = (RecursiveSchema.Repeated.Chunk.storedChunkBytes (out.pages.map ObservedPage.frame) : Int)
   omega
 

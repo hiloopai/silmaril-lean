@@ -46,19 +46,25 @@ private def v2Header (frame : Page.Frame) : Option (Page.DataV2 × Page.V2Spans)
 private structure ExpectedPage""" + CHUNK_CHECKS.replace(
     "  words : List (Option Word)", "  words : List (Option Word)\n  v2 : Option (Page.DataV2 × Page.V2Spans)"
 ).replace(
+    "(pages : List ExpectedPage) : IO Unit",
+    "(pages : List ExpectedPage) (codec : Codec := .uncompressed) : IO Unit",
+).replace(
+    "unless observed.stop = stop",
+    "unless binding.codec = codec ∧ observed.stop = stop",
+).replace(
     "page.decoded.words = expected.words do",
     "page.decoded.words = expected.words ∧ v2Header frame = expected.v2 do",
 )
 
 
-def inspect(wire, nullable, width, groups):
+def inspect(wire, nullable, width, groups, *, codec=0, expand=None):
     """Read the original Compact headers, counted levels, and exact signed suffix."""
     parquet = pq.ParquetFile(pa.BufferReader(wire), page_checksum_verification=True)
     assert parquet.schema_arrow.equals(schema_for(nullable, width))
     assert parquet.num_row_groups == len(groups)
     outer, inner, maximum = thresholds(nullable)
     for (group, column), metadata, start, stop in V2["columns"](wire):
-        assert column == 0 and metadata[4][1] == 0 and metadata[9][1] == start
+        assert column == 0 and metadata[4][1] == codec and metadata[9][1] == start
         assert [name.decode() for name in metadata[3][1][1]] == PATH
         assert parquet.read_row_group(group).column(0).to_pylist() == groups[group]
         expected = expected_slots(groups[group], nullable)
@@ -66,7 +72,7 @@ def inspect(wire, nullable, width, groups):
         cursor, pages, stored_total, raw_total = (0, 0, 0), [], 0, 0
         for at, header, payload, body in FRAMES(wire, start, stop):
             crc = zlib.crc32(body)
-            assert header[2][1] == header[3][1] == len(body)
+            assert header[3][1] == len(body)
             assert header[4][1] & 0xffffffff == crc
             stored_total += payload - at + header[3][1]
             raw_total += payload - at + header[2][1]
@@ -80,16 +86,23 @@ def inspect(wire, nullable, width, groups):
                 reps = V2["HYBRID"](body[:rl], 2, count)
                 defs = V2["HYBRID"](body[rl:rl + dl], maximum.bit_length(), count)
                 suffix = body[rl + dl:]
+                flag = info.get(7, (TType.BOOL, True))[1]
+                extent = header[2][1] - rl - dl
+                if codec != 0 and flag:
+                    suffix = expand(suffix, extent)
+                assert len(suffix) == extent
                 assert not reps or reps[0] == 0
                 assert reps.count(0) == row_count and len(defs) - defs.count(maximum) == nulls
-                v2 = (count, nulls, row_count, dl, rl, info.get(7, (TType.BOOL, True))[1])
+                v2 = (count, nulls, row_count, dl, rl, flag)
                 live = 0
             else:
                 assert tag == 0
                 info = header[5][1]
                 count = info[1][1]
                 assert [info[i][1] for i in (2, 3, 4)] == [0, 3, 3]
-                reps, rest = CHUNK["CHUNK"]["level_section"](body, 2, count)
+                decoded = expand(body, header[2][1]) if codec != 0 else body
+                assert len(decoded) == header[2][1]
+                reps, rest = CHUNK["CHUNK"]["level_section"](decoded, 2, count)
                 defs, suffix = CHUNK["CHUNK"]["level_section"](rest, maximum, count)
 
             assert len(reps) == len(defs) == count
@@ -276,6 +289,16 @@ def verify(scratch):
     ])
     V2["run_lean"](scratch, "TwoListV2.lean", code)
 
+    emitted = readback(scratch, positives)
+    for label in ("mixed", "identity_flags"):
+        for selection in ("field", "empty"):
+            assert emitted[f"{label}_{selection}"] == emitted[f"native_32_7_{selection}"]
+    print(f"Checked {total} original frames, {len(emitted)} native IPC streams through exact EOS, "
+          f"and {len(refusals) + 6} typed refusals")
+    return {"genuine": fingerprints(genuine), "authored": fingerprints(authored), "lean_ipc": fingerprints(emitted)}
+
+
+def readback(scratch, positives):
     emitted = {}
     stream = IPC["STREAM"]
     for label, (nullable, width, groups) in positives.items():
@@ -296,12 +319,7 @@ def verify(scratch):
                 offset = frame.end
             assert wire[offset:] == stream["EOS"]
             emitted[name] = wire
-    for label in ("mixed", "identity_flags"):
-        for selection in ("field", "empty"):
-            assert emitted[f"{label}_{selection}"] == emitted[f"native_32_7_{selection}"]
-    print(f"Checked {total} original frames, {len(emitted)} native IPC streams through exact EOS, "
-          f"and {len(refusals) + 6} typed refusals")
-    return {"genuine": fingerprints(genuine), "authored": fingerprints(authored), "lean_ipc": fingerprints(emitted)}
+    return emitted
 
 
 def main():

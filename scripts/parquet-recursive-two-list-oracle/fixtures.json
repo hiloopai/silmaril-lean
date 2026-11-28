@@ -62,6 +62,10 @@
     }
   },
   "genuine": {
+    "gzip": {
+      "bytes": 752,
+      "sha256": "ff13955b7d8abd25bff90b0d936b1ed91fe6c61ce96abfabb0ff3e2b39ccac82"
+    },
     "indexes": {
       "bytes": 765,
       "sha256": "0727b1bde7a228261ad6ab5b1a35edb0f9aed5ecb43d87d067b2573e07757c88"
@@ -101,10 +105,6 @@
     "native_full_int32": {
       "bytes": 697,
       "sha256": "853d8540d59ed718159661e6ca0b822a84bed91449139303460d7920bbbfcc3f"
-    },
-    "snappy": {
-      "bytes": 702,
-      "sha256": "7b2ddd6818c930e180076e695803235c6a4501d1786dcad48ca6ca627e944139"
     }
   },
   "producer": {

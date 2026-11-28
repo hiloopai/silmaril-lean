@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
-/-! Bounded, unindexed UNCOMPRESSED PLAIN V1/V2 for one two-LIST leaf.
+/-! Bounded, unindexed PLAIN V1/V2 with identity or Snappy for one two-LIST leaf.
 V1 can carry live ancestry across pages. V2 covers complete rows. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Chunk
@@ -14,6 +14,22 @@ abbrev Word := RecursiveSchema.Chunk.Word
 
 structure Limits extends RecursiveSchema.Chunk.Limits where
   maxSlots : Nat := 1024 * 1024
+
+def Limits.payload (limits : Limits) : Repeated.Chunk.Limits :=
+  { toLimits := limits.toLimits }
+
+inductive Codec where
+  | uncompressed | snappy
+  deriving DecidableEq, Repr
+
+def Codec.ofId : Int → Option Codec
+  | 0 => some .uncompressed
+  | 1 => some .snappy
+  | _ => none
+
+def Codec.column : Codec → Repeated.Chunk.ColumnCodec
+  | .uncompressed => .uncompressed
+  | .snappy => .snappy
 
 inductive Live where
   | closed | outer | inner
@@ -120,6 +136,7 @@ inductive PageCause where
   | level (original : LevelError)
   | plain (original : Plain.Error)
   | alignment (original : FlatPage.Error)
+  | v1Payload (original : Repeated.Chunk.PageCause)
   | v2 (original : Repeated.Chunk.PageCause)
   deriving DecidableEq, Repr
 
@@ -137,13 +154,18 @@ def decodeSlots (plan : Plan) (ceiling : Nat) (start : State) (reps defs : List 
   let aligned ← (FlatPage.reconstruct mask words).mapError .alignment
   return ⟨classified.levels, aligned, classified.after⟩
 
+def v1Error : Repeated.Chunk.PageCause → PageCause
+  | .header cause => .header cause
+  | .slotOverrun remaining advertised => .slotOverrun remaining advertised
+  | .checksum cause => .checksum cause
+  | cause => .v1Payload cause
+
+/-- Verify the stored V1 frame and expand its entire body before reading
+the original level prefixes and signed values. -/
 def decodePage (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) : Except PageCause Decoded := do
-  let info ← (RecursiveSchema.Chunk.admitPage frame remaining).mapError fun
-    | .rowOverrun remaining advertised => .slotOverrun remaining advertised
-    | error => .header error
-  let _ ← (Page.Checksum.verify limits.maxBodyBytes source frame).mapError .checksum
-  let body := Page.Checksum.payloadBytes source frame
+    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed) : Except PageCause Decoded := do
+  let info ← (Repeated.Chunk.admitPage frame remaining codec.column).mapError v1Error
+  let body ← (Repeated.Chunk.readV1Body limits.payload codec.column source frame).mapError v1Error
   let reps ← (Repeated.Chunk.readLevels limits.levels 2 info.numValues body).mapError .repetition
   let defs ← (Repeated.Chunk.readLevels limits.levels plan.maxDefinition info.numValues reps.tail).mapError .definition
   decodeSlots plan ceiling start reps.levels defs.levels defs.tail
@@ -170,21 +192,24 @@ def checkV2Slots (plan : Plan) (info : Page.DataV2) (reps defs : List Nat)
     if nulls ≠ info.numNulls then throw (.v2 (.v2Nulls info.numNulls nulls))
     else return closeV2 decoded
 
-/-- Both compression flag values resolve to the original raw suffix under
-codec zero. No codec decoder is needed. -/
+/-- Keep the original raw V2 levels and resolve the original flag before
+passing the value suffix to the shared codec dispatch. -/
 def decodeV2Page (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) : Except PageCause Decoded := do
-  let info ← (Repeated.Chunk.admitV2Page .uncompressed frame remaining).mapError .v2
+    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed) : Except PageCause Decoded := do
+  let info ← (Repeated.Chunk.admitV2Page codec.column frame remaining).mapError .v2
   let sections ← (Repeated.Chunk.readV2SectionsWith limits.toLimits 2 plan.maxDefinition
     source frame info).mapError .v2
-  checkV2Slots plan info sections.repetitions sections.definitions
-    (Repeated.Chunk.bytesAt source sections.spans.values) start ceiling
+  let stored := Repeated.Chunk.bytesAt source sections.spans.values
+  let expected := (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth plan.kind
+  let suffix ← (Repeated.Chunk.readV2SuffixWith limits.payload codec.column frame info stored
+    (some expected)).mapError .v2
+  checkV2Slots plan info sections.repetitions sections.definitions suffix start ceiling
 
 def decodeDataPage (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) : Except PageCause Decoded :=
+    (start : State) (remaining ceiling : Nat) (codec : Codec := .uncompressed) : Except PageCause Decoded :=
   match frame.value.kind with
-  | .dataV2 _ => decodeV2Page limits plan source frame start remaining ceiling
-  | _ => decodePage limits plan source frame start remaining ceiling
+  | .dataV2 _ => decodeV2Page limits plan source frame start remaining ceiling codec
+  | _ => decodePage limits plan source frame start remaining ceiling codec
 
 structure DecodedWire (plan : Plan) (ceiling : Nat) (start : State) (reps defs : List Nat) (suffix : Bytes)
     (decoded : Decoded) : Prop where
@@ -196,34 +221,38 @@ structure DecodedWire (plan : Plan) (ceiling : Nat) (start : State) (reps defs :
     decoded.words.filterMap id = words.map (RecursiveSchema.Chunk.readWord plan.kind)
 
 structure PageWire (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (decoded : Decoded) : Prop where
-  original : ∃ (info : Page.DataV1) (body : Bytes) (checksum : Page.Checksum.Status) (reps defs : Repeated.Chunk.LevelBlock),
-    RecursiveSchema.Chunk.HeaderWire frame remaining info ∧
-    Page.Checksum.verify limits.maxBodyBytes source frame = .ok checksum ∧
-    source.slice? frame.payload.start (some frame.payload.stop) = some body ∧
-    body.length = frame.value.compressedSize ∧
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded)
+    (codec : Codec := .uncompressed) : Prop where
+  original : ∃ (info : Page.DataV1) (body : Bytes) (reps defs : Repeated.Chunk.LevelBlock),
+    frame.value.kind = .dataV1 info ∧
+    (info.encoding = 0 ∧ info.definitionLevelEncoding = 3 ∧ info.repetitionLevelEncoding = 3) ∧
+    info.numValues ≤ remaining ∧
+    Repeated.Chunk.V1BodyWire limits.payload codec.column source frame body ∧
     Repeated.Chunk.LevelWire limits.levels 2 info.numValues body reps ∧
     Repeated.Chunk.LevelWire limits.levels plan.maxDefinition info.numValues reps.tail defs ∧
     DecodedWire plan ceiling start reps.levels defs.levels defs.tail decoded ∧
     decoded.levels.length = info.numValues
 
 structure V2PageWire (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (decoded : Decoded) : Prop where
-  original : ∃ (info : Page.DataV2) (sections : Repeated.Chunk.V2Sections) (checked : Decoded),
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded)
+    (codec : Codec := .uncompressed) : Prop where
+  original : ∃ (info : Page.DataV2) (sections : Repeated.Chunk.V2Sections) (suffix : Bytes) (checked : Decoded),
     frame.value.kind = .dataV2 info ∧ info.encoding = 0 ∧ info.numValues ≤ remaining ∧
-    frame.value.uncompressedSize = frame.value.compressedSize ∧
     Repeated.Chunk.V2SectionsWireWith limits.toLimits 2 plan.maxDefinition source frame info sections ∧
+    Repeated.Chunk.V2SuffixWire limits.payload codec.column frame info
+      (Repeated.Chunk.bytesAt source sections.spans.values) suffix ∧
+    Repeated.Chunk.v2LevelBytes info + suffix.length = frame.value.uncompressedSize ∧
     sections.repetitions.head?.getD 0 = 0 ∧ sections.repetitions.count 0 = info.numRows ∧
     absentSlots decoded = info.numNulls ∧ decoded.levels.length = info.numValues ∧
-    DecodedWire plan ceiling start.close sections.repetitions sections.definitions
-      (Repeated.Chunk.bytesAt source sections.spans.values) checked ∧ decoded = closeV2 checked
+    DecodedWire plan ceiling start.close sections.repetitions sections.definitions suffix checked ∧
+    decoded = closeV2 checked
 
 inductive DataPageWire (limits : Limits) (plan : Plan) (source : Bytes) (frame : Page.Frame)
-    (start : State) (remaining ceiling : Nat) (decoded : Decoded) : Prop where
-  | v1 : PageWire limits plan source frame start remaining ceiling decoded →
-      DataPageWire limits plan source frame start remaining ceiling decoded
-  | v2 : V2PageWire limits plan source frame start remaining ceiling decoded →
-      DataPageWire limits plan source frame start remaining ceiling decoded
+    (start : State) (remaining ceiling : Nat) (decoded : Decoded) (codec : Codec := .uncompressed) : Prop where
+  | v1 : PageWire limits plan source frame start remaining ceiling decoded codec →
+      DataPageWire limits plan source frame start remaining ceiling decoded codec
+  | v2 : V2PageWire limits plan source frame start remaining ceiling decoded codec →
+      DataPageWire limits plan source frame start remaining ceiling decoded codec
 
 inductive BindCause where
   | missing | association | pageOffsets | pageIndex | span | counts
@@ -245,7 +274,8 @@ structure Binding {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   columnAt : rowGroup.columns[0]? = some column
   path : column.metadata.pathInSchema = schema.plan.leaf.location.path
   physical : column.metadata.physicalType = schema.plan.kind.physical
-  codec : column.metadata.codec = 0
+  codec : Codec
+  originalCodec : Codec.ofId column.metadata.codec = some codec
   encodings : RecursiveSchema.SupportedEncodings column.metadata
   offsets : column.metadata.dictionaryPageOffset = none ∧ column.metadata.indexPageOffset = none
   unindexed : Repeated.Chunk.Unindexed column
@@ -272,13 +302,13 @@ public def bind {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   let ⟨⟨path, physical⟩⟩ ← checked
     (metadata.pathInSchema = schema.plan.leaf.location.path ∧ metadata.physicalType = schema.plan.kind.physical)
     (fail .association)
-  let ⟨codec⟩ ← checked (metadata.codec = 0) (fail (.codec metadata.codec))
+  let ⟨codec, originalCodec⟩ ← lookup (Codec.ofId metadata.codec) (fail (.codec metadata.codec))
   let ⟨encodings⟩ ← checked (RecursiveSchema.SupportedEncodings metadata) (fail (.encodings metadata.encodings))
   let ⟨offsets⟩ ← checked (metadata.dictionaryPageOffset = none ∧ metadata.indexPageOffset = none) (fail .pageOffsets)
   let ⟨unindexed⟩ ← checked (Repeated.Chunk.Unindexed column) (fail .pageIndex)
   let ⟨counts⟩ ← checked (0 ≤ metadata.numValues ∧ 0 ≤ rowGroup.numRows) (fail .counts)
   let ⟨span, originalSpan⟩ ← lookup (Page.columnSpan snapshot.footer.start metadata) (fail .span)
-  return ⟨rowGroup, column, span, groupAt, columnAt, path, physical, codec, encodings,
+  return ⟨rowGroup, column, span, groupAt, columnAt, path, physical, codec, originalCodec, encodings,
     offsets, unindexed, counts, originalSpan⟩
 
 @[expose] public section
@@ -315,20 +345,21 @@ structure Carrier where
   slots : Nat
   rows : Nat
   uncompressedBytes : Int
+  codec : Codec
 
 def carrierOf {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat}
     (binding : Binding schema group) : Carrier :=
   ⟨schema.plan, snapshot.bytes, binding.span, ⟨group, 0, schema.plan.leaf.location.path⟩,
     binding.column.metadata.numValues.toNat, binding.rowGroup.numRows.toNat,
-    binding.column.metadata.totalUncompressedSize⟩
+    binding.column.metadata.totalUncompressedSize, binding.codec⟩
 
 def decodeFrames (limits : Limits) (carrier : Carrier) :
     List Page.Frame → Nat → State → List ObservedPage → Except Error Observation
   | [], _, state, reversed => .ok ⟨reversed.reverse, state⟩
   | frame :: frames, ordinal, start, reversed => do
     let decoded ← (decodeDataPage limits carrier.plan carrier.source frame start
-      (carrier.slots - start.slots) carrier.rows).mapError
+      (carrier.slots - start.slots) carrier.rows carrier.codec).mapError
         (Error.page carrier.address ordinal frame.header.start start)
     decodeFrames limits carrier frames (ordinal + 1) decoded.after (⟨frame, start, decoded⟩ :: reversed)
 
@@ -343,20 +374,24 @@ def read {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
   if limits.maxChunkBytes < bytes then throw (fail .chunkLimit)
   else if limits.maxSlots < carrier.slots then throw (fail .slotLimit)
   else if limits.maxRows < carrier.rows then throw (fail .rowLimit)
-  else if carrier.uncompressedBytes ≠ Int.ofNat bytes then
+  else if carrier.codec = .uncompressed ∧ carrier.uncompressedBytes ≠ Int.ofNat bytes then
     throw (fail (.uncompressedSize carrier.uncompressedBytes bytes))
   else do
     let frames ← (Page.readChunk limits.framing carrier.source carrier.span).mapError (fail ∘ .framing)
     let observed ← decodeFrames limits carrier frames 0 {} []
     if observed.stop.slots ≠ carrier.slots then throw (fail (.slotCount carrier.slots observed.stop.slots))
     else if observed.stop.rows ≠ carrier.rows then throw (fail (.rowCount carrier.rows observed.stop.rows))
-    else return observed
+    else
+      let decodedBytes := Repeated.Chunk.rawChunkBytes (observed.pages.map ObservedPage.frame)
+      if carrier.uncompressedBytes ≠ Int.ofNat decodedBytes then
+        throw (fail (.uncompressedSize carrier.uncompressedBytes decodedBytes))
+      else return observed
 
 inductive ChainWire (limits : Limits) (carrier : Carrier) :
     State → List Page.Frame → List ObservedPage → State → Prop where
   | nil (state : State) : ChainWire limits carrier state [] [] state
   | cons {start frame decoded frames pages stop} :
-      DataPageWire limits carrier.plan carrier.source frame start (carrier.slots - start.slots) carrier.rows decoded →
+      DataPageWire limits carrier.plan carrier.source frame start (carrier.slots - start.slots) carrier.rows decoded carrier.codec →
       ChainWire limits carrier decoded.after frames pages stop →
       ChainWire limits carrier start (frame :: frames) (⟨frame, start, decoded⟩ :: pages) stop
 
@@ -364,7 +399,8 @@ structure Wire (limits : Limits) (carrier : Carrier) (output : Observation) : Pr
   origFrames : Page.readChunk limits.framing carrier.source carrier.span = .ok (output.pages.map ObservedPage.frame)
   original : Page.Chain carrier.span carrier.span.start carrier.span.stop (output.pages.map ObservedPage.frame)
   decoded : ChainWire limits carrier {} (output.pages.map ObservedPage.frame) output.pages output.stop
-  uncompressed : carrier.uncompressedBytes = Int.ofNat (carrier.span.stop - carrier.span.start)
+  uncompressed : carrier.uncompressedBytes =
+    Int.ofNat (Repeated.Chunk.rawChunkBytes (output.pages.map ObservedPage.frame))
   slots : output.stop.slots = carrier.slots
   rows : output.stop.rows = carrier.rows
   caps : carrier.span.stop - carrier.span.start ≤ limits.maxChunkBytes ∧

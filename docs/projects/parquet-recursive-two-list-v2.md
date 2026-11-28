@@ -5,8 +5,8 @@ and V2 for one signed INT32 or INT64 leaf under two canonical LISTs.
 The checked thresholds for the outer list, inner element and leaf
 still govern the definitions and the legal repetitions. The same
 logical Rows, Events and native Arrow IPC entry points consume the
-checked observations. Dictionary pages, indexes and compression remain
-outside this profile.
+checked observations. This profile describes the identity codec.
+[Bounded Snappy extension](parquet-recursive-two-list-snappy.md)
 [Schema and V1 cursor](parquet-recursive-two-list.md) · [Arrow IPC](parquet-recursive-two-list-to-ipc.md)
 
 V2 binds the parsed original Compact header and stored body. The body

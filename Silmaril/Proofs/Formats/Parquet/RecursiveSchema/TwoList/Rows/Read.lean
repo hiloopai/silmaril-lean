@@ -52,16 +52,16 @@ private theorem decoded_row_starts {plan : Plan} {source : Silmaril.Formats.Byte
   simpa only [List.countP_map, Function.comp_def] using counts.trans (original.levels.repetitionCount)
 
 private theorem page_row_starts {limits : Chunk.Limits} {plan : Plan} {source : Silmaril.Formats.Bytes}
-    {frame : Page.Frame} {start : Chunk.State} {remaining ceiling : Nat} {decoded : Chunk.Decoded}
-    (wire : Chunk.DataPageWire limits plan source frame start remaining ceiling decoded) :
+    {frame : Page.Frame} {start : Chunk.State} {remaining ceiling : Nat} {decoded : Chunk.Decoded} {codec : Chunk.Codec}
+    (wire : Chunk.DataPageWire limits plan source frame start remaining ceiling decoded codec) :
     (pageAtoms decoded).countP (fun slot => slot.repetition == 0) =
       decoded.levels.countP Chunk.Slot.startsRow := by
   cases wire with
   | v1 v1 =>
-    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, original, _⟩ := v1.original
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, original, _⟩ := v1.original
     exact decoded_row_starts original
   | v2 v2 =>
-    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, original, rfl⟩ := v2.original
+    obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, original, rfl⟩ := v2.original
     simpa only [Chunk.closeV2, pageAtoms] using decoded_row_starts original
 
 public theorem chain_trace_rows {limits : Chunk.Limits} {carrier : Chunk.Carrier} {start stop : Chunk.State}

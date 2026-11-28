@@ -30,7 +30,7 @@ position and row count. For any two accepted page splits of the same
 ordered trace, both checked row counts are the number of repetition-zero
 atoms and the reconstruction results agree. The existing Events and IPC
 routes retain their current scope. This slice uses the existing
-unindexed UNCOMPRESSED PLAIN geometry and writer policy.
+unindexed PLAIN geometry and writer policy.
 [Original V1/V2 page checks](parquet-recursive-two-list-v2.md)
 
 ## Fixtures and regressions

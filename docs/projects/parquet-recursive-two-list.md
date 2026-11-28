@@ -6,11 +6,12 @@ annotations, repeated `list` wrappers, signed physical leaf and declared
 nullability in their flattened order. It uses the existing LIST context
 to compute both empty-wrapper levels and the maximum definition. The
 baseline reads unindexed UNCOMPRESSED PLAIN V1. The same entry point
-continues through checked [V2 and mixed chunks](parquet-recursive-two-list-v2.md). The entry point returns
+also reads checked V2 and mixed chunks and supports bounded Snappy.
+The entry point returns
 original page frames, classified slots, aligned signed words and a
 terminal cursor. Rows, Events, IPC and the writer retain their existing
 profiles.
-[One-LIST reader](parquet-recursive-repeated-chunk.md) · [Pinned Parquet nested encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/README.md#nested-encoding)
+[V2 and mixed chunks](parquet-recursive-two-list-v2.md) · [Snappy](parquet-recursive-two-list-snappy.md) · [One-LIST reader](parquet-recursive-repeated-chunk.md) · [Pinned Parquet nested encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/README.md#nested-encoding)
 
 For three optional sites the ordered definitions are:
 

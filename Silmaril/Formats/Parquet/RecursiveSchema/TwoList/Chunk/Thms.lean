@@ -57,56 +57,58 @@ theorem SlotsWire.repetitionCount {plan : Plan} {ceiling : Nat} {start stop : St
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.repetition_count wire
 
 /-- A successful page binds the original V1 header, stored body, both
-length-prefixed Hybrid sections, and every signed word in order. -/
-theorem decodePage_wire {limits : Limits} {plan : Plan} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (accepted : decodePage limits plan source frame start remaining ceiling = .ok decoded) :
-    PageWire limits plan source frame start remaining ceiling decoded :=
+decoded length-prefixed Hybrid sections, and every signed word in order. -/
+theorem decodePage_wire {limits : Limits} {plan : Plan} {source : Bytes}
+    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
+    (accepted : decodePage limits plan source frame start remaining ceiling codec = .ok decoded) :
+    PageWire limits plan source frame start remaining ceiling decoded codec :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.decodePage_wire accepted
 
 /-- Successful V2 decoding retains the original raw V2 sections, signed words and page counts. -/
 theorem decodeV2Page_wire {limits : Limits} {plan : Plan} {source : Bytes}
-    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (accepted : decodeV2Page limits plan source frame start remaining ceiling = .ok decoded) :
-    V2PageWire limits plan source frame start remaining ceiling decoded :=
+    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
+    (accepted : decodeV2Page limits plan source frame start remaining ceiling codec = .ok decoded) :
+    V2PageWire limits plan source frame start remaining ceiling decoded codec :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.decodeV2Page_wire accepted
 
 /-- Dispatch retains the checked witness for the original page version. -/
 theorem decodeDataPage_wire {limits : Limits} {plan : Plan} {source : Bytes}
-    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (accepted : decodeDataPage limits plan source frame start remaining ceiling = .ok decoded) :
-    DataPageWire limits plan source frame start remaining ceiling decoded :=
+    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
+    (accepted : decodeDataPage limits plan source frame start remaining ceiling codec = .ok decoded) :
+    DataPageWire limits plan source frame start remaining ceiling decoded codec :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.decodeDataPage_wire accepted
 
 /-- The original V2 counts match the aligned slots, row starts and absent values. -/
 theorem v2_accounting {limits : Limits} {plan : Plan} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (wire : V2PageWire limits plan source frame start remaining ceiling decoded) :
-    ∃ info spans, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
+    {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
+    (wire : V2PageWire limits plan source frame start remaining ceiling decoded codec) :
+    ∃ info spans suffix, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
+      RecursiveSchema.Repeated.Chunk.V2SuffixWire limits.payload codec.column frame info
+        (RecursiveSchema.Repeated.Chunk.bytesAt source spans.values) suffix ∧
       decoded.levels.length = info.numValues ∧ decoded.words.length = info.numValues ∧
       decoded.levels.countP Slot.startsRow = info.numRows ∧ absentSlots decoded = info.numNulls ∧
-      (RecursiveSchema.Repeated.Chunk.bytesAt source spans.values).length =
+      suffix.length =
         (info.numValues - info.numNulls) * RecursiveSchema.Chunk.wordWidth plan.kind ∧
       (decoded.levels.head?.map (·.repetition)).getD 0 = 0 ∧ decoded.after.live = .closed :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.v2_accounting wire
 
 /-- The original stored V2 body has exactly the advertised raw level and value extents. -/
 theorem v2_body {limits : Limits} {plan : Plan} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (wire : V2PageWire limits plan source frame start remaining ceiling decoded) :
+    {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
+    (wire : V2PageWire limits plan source frame start remaining ceiling decoded codec) :
     ∃ info spans, frame.value.kind = .dataV2 info ∧ frame.v2Spans = some spans ∧
       source.slice? frame.payload.start (some frame.payload.stop) = some (Page.Checksum.payloadBytes source frame) ∧
-      (Page.Checksum.payloadBytes source frame).length = frame.value.uncompressedSize ∧
+      (Page.Checksum.payloadBytes source frame).length = frame.value.compressedSize ∧
       spans.repetition.stop - spans.repetition.start = info.repetitionBytes ∧
       spans.definition.stop - spans.definition.start = info.definitionBytes ∧
       spans.values.stop - spans.values.start =
-        frame.value.uncompressedSize - info.repetitionBytes - info.definitionBytes :=
+        frame.value.compressedSize - info.repetitionBytes - info.definitionBytes :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.v2_body wire
 
 /-- A page after a closed cursor cannot continue an outer or inner list. -/
 theorem page_starts_closed {limits : Limits} {plan : Plan} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (wire : DataPageWire limits plan source frame start remaining ceiling decoded)
+    {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
+    (wire : DataPageWire limits plan source frame start remaining ceiling decoded codec)
     (closed : start.live = .closed) :
     (decoded.levels.head?.map (·.repetition)).getD 0 = 0 :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.page_starts_closed wire closed
@@ -115,10 +117,10 @@ theorem page_starts_closed {limits : Limits} {plan : Plan} {source : Bytes} {fra
 row after V2 whenever it has slots. -/
 theorem V2PageWire.nextPageStarts {limits : Limits} {plan : Plan} {source : Bytes}
     {firstFrame nextFrame : Page.Frame} {start : State} {remaining nextRemaining ceiling : Nat}
-    {decoded next : Decoded} (first : V2PageWire limits plan source firstFrame start remaining ceiling decoded)
-    (following : DataPageWire limits plan source nextFrame decoded.after nextRemaining ceiling next) :
+    {decoded next : Decoded} {codec : Codec} (first : V2PageWire limits plan source firstFrame start remaining ceiling decoded codec)
+    (following : DataPageWire limits plan source nextFrame decoded.after nextRemaining ceiling next codec) :
     (next.levels.head?.map (·.repetition)).getD 0 = 0 := by
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, closed⟩ := v2_accounting first
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, closed⟩ := v2_accounting first
   exact page_starts_closed following closed
 
 theorem ChainWire.counts {limits : Limits} {carrier : Carrier} {start stop : State}
@@ -135,6 +137,12 @@ theorem read_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {binding : Binding schema group} {out : Observation}
     (accepted : Chunk.read limits binding = .ok out) : Wire limits (carrierOf binding) out :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.read_wire accepted
+
+/-- Every page of the checked chain uses the codec of its original column. -/
+theorem Binding.codec_matches {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+    {schema : Compiled schemaLimits snapshot} {group : Nat} (binding : Binding schema group) :
+    (carrierOf binding).codec.column.id = binding.column.metadata.codec :=
+  Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk.codec_matches binding
 
 /-- Both footer totals include every original page header, and the first
 header is at the original data-page offset. -/

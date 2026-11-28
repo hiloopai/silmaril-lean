@@ -4,8 +4,6 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.TwoList.Chunk.Defs
 import Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoList.Cursor
 import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Thms
-import Silmaril.Formats.Parquet.Page.Thms
-import Silmaril.Formats.Parquet.Page.Checksum.Thms
 import Silmaril.Formats.Parquet.FlatPage.Thms
 import Silmaril.Formats.Parquet.Plain.Thms
 
@@ -43,24 +41,19 @@ public theorem decodeSlots_wire {plan : Plan} {ceiling : Nat} {start : State}
   exact ⟨classify_wire (from_mapError levelRead), words, exactWords, wordCount, width, mask,
     positions.trans ordered⟩
 
-public theorem checksum_extent {cap : Nat} {source : Bytes} {frame : Page.Frame}
-    {checksum : Page.Checksum.Status} (checked : Page.Checksum.verify cap source frame = .ok checksum) :
-    Page.Checksum.PayloadWithin source frame := by
-  cases checksum with
-  | absent => exact (Page.Checksum.verify_absent_iff.mp checked).2.1
-  | valid crc => exact (Page.Checksum.verify_valid_iff.mp checked).2.1
-
 public theorem decodePage_wire {limits : Limits} {plan : Plan} {source : Bytes}
-    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (accepted : decodePage limits plan source frame start remaining ceiling = .ok decoded) :
-    PageWire limits plan source frame start remaining ceiling decoded := by
+    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
+    (accepted : decodePage limits plan source frame start remaining ceiling codec = .ok decoded) :
+    PageWire limits plan source frame start remaining ceiling decoded codec := by
   unfold decodePage at accepted
   obtain ⟨info, header, read⟩ := bind_ok accepted
-  obtain ⟨checksum, checksumRead, read⟩ := bind_ok read
+  obtain ⟨body, bodyRead, read⟩ := bind_ok read
   obtain ⟨reps, repRead, read⟩ := bind_ok read
   obtain ⟨defs, defRead, read⟩ := bind_ok read
-  have checked := from_mapError checksumRead
-  obtain ⟨bodySlice, bodySize⟩ := Page.Checksum.payload_exact (checksum_extent checked)
+  have admitted := from_mapError header
+  unfold RecursiveSchema.Repeated.Chunk.admitPage at admitted
+  obtain ⟨kind, encodings, cap, sizes⟩ := RecursiveSchema.Chunk.admitPageWith_wire (from_mapError admitted)
+  have bodyWire := RecursiveSchema.Repeated.Chunk.readV1Body_wire sizes (from_mapError bodyRead)
   obtain ⟨repetition, repCount⟩ :=
     RecursiveSchema.Repeated.Chunk.readLevels_wire (from_mapError repRead)
   obtain ⟨definition, _⟩ :=
@@ -68,15 +61,14 @@ public theorem decodePage_wire {limits : Limits} {plan : Plan} {source : Bytes}
   have slots := decodeSlots_wire read
   have count : decoded.levels.length = info.numValues := by
     simpa only [List.length_map, repCount] using congrArg List.length (original_levels slots.levels).1
-  exact ⟨info, _, checksum, reps, defs, RecursiveSchema.Chunk.admitPage_wire (from_mapError header),
-    checked, bodySlice, bodySize, repetition, definition, slots, count⟩
+  exact ⟨info, body, reps, defs, kind, encodings, cap, bodyWire, repetition, definition, slots, count⟩
 
 public theorem v1_counts {limits : Limits} {plan : Plan} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (wire : PageWire limits plan source frame start remaining ceiling decoded) :
+    {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
+    (wire : PageWire limits plan source frame start remaining ceiling decoded codec) :
     start.slots + decoded.levels.length = decoded.after.slots ∧
     start.rows + decoded.levels.countP Slot.startsRow = decoded.after.rows := by
-  obtain ⟨_, _, _, _, _, _, _, _, _, _, _, slots, _⟩ := wire.original
+  obtain ⟨_, _, _, _, _, _, _, _, _, _, slots, _⟩ := wire.original
   exact slot_counts slots.levels
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk

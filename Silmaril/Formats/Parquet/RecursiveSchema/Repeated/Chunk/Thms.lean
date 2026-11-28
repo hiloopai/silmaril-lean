@@ -71,6 +71,14 @@ theorem readV2Levels_wire {limits : Hybrid.Limits} {maximum count : Nat} {bytes 
     V2LevelWire limits maximum count bytes levels ∧ levels.length = count :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.v2_levels_wire read
 
+theorem readV1Body_wire {limits : Limits} {codec : ColumnCodec} {source : Bytes}
+    {frame : Page.Frame} {body : Bytes}
+    (sizes : (codec == ColumnCodec.uncompressed) = true →
+      frame.value.uncompressedSize = frame.value.compressedSize)
+    (read : readV1Body limits codec source frame = .ok body) :
+    V1BodyWire limits codec source frame body :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readV1Body_wire sizes read
+
 theorem admitV2Page_wire {codec : ColumnCodec} {frame : Page.Frame} {remaining : Nat}
     {encoding : Int} {info : Page.DataV2}
     (read : admitV2Page codec frame remaining encoding = .ok info) :
@@ -88,6 +96,22 @@ theorem readV2SectionsWith_wire {limits : RecursiveSchema.Chunk.Limits}
 theorem chain_storedSize {span : Footer.Span} {start stop : Nat} {frames : List Page.Frame}
     (wire : Page.Chain span start stop frames) : stop = start + storedChunkBytes frames :=
   Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.chain_storedSize wire
+
+theorem readV2SuffixWith_wire {limits : Limits} {codec : ColumnCodec}
+    {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes} {signedExtent : Option Nat}
+    (read : readV2SuffixWith limits codec frame info stored signedExtent = .ok raw) :
+    v2LevelBytes info ≤ frame.value.compressedSize ∧ v2LevelBytes info ≤ frame.value.uncompressedSize ∧
+      V2SuffixWire limits codec frame info stored raw :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readV2SuffixWith_wire read
+
+/-- A false V2 flag has only the raw wire constructor. -/
+theorem V2SuffixWire.eq_of_false {limits : Limits} {codec : ColumnCodec}
+    {frame : Page.Frame} {info : Page.DataV2} {stored raw : Bytes}
+    (wire : V2SuffixWire limits codec frame info stored raw) (flag : info.isCompressed = false) :
+    raw = stored := by
+  cases wire with
+  | raw => rfl
+  | compressed enabled => simp [flag] at enabled
 
 /-- The original value suffix is used raw or expands by the selected checked
 payload relation, after both header subtractions are shown in bounds. -/

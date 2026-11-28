@@ -230,7 +230,7 @@ def verify(scratch):
     schema = schema_for(nullable, width)
     genuine["native_full_int32"] = write(schema, rows)
     positives["native_full_int32"] = nullable, width, rows
-    genuine["snappy"] = write(schema, rows, compression="SNAPPY")
+    genuine["gzip"] = write(schema, rows, compression="GZIP")
     genuine["indexes"] = write(schema, rows, write_page_index=True)
 
     source = genuine["native_full_int32"]
@@ -328,7 +328,7 @@ def verify(scratch):
     chunk_error("row_total", f".rowCount {stop[1] + 1} {stop[1]}")
     chunk_error("footer_extent", f".uncompressedSize {hi - lo + 1} {hi - lo}")
     address0 = f"⟨0, 0, {json.dumps(PATH)}⟩"
-    code.extend([f'  refuseBind (← load folder "snappy") (.column {address0} (.codec 1))',
+    code.extend([f'  refuseBind (← load folder "gzip") (.column {address0} (.codec 2))',
                  f'  refuseBind (← load folder "indexes") (.column {address0} .pageIndex)',
                  '  refuseOldProfile (← load folder "native_full_int32")',
                  '  unequalLevelCounts (← load folder "native_full_int32")'])
