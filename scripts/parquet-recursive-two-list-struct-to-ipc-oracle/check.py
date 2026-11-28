@@ -107,7 +107,7 @@ def positional(kind, value):
     return value
 
 
-def inspect_ipc(wire, schema, groups):
+def inspect_ipc(wire, schema, groups, *, canonical=True):
     reader = pa.ipc.open_stream(wire)
     assert reader.schema.equals(schema, check_metadata=True)
     fields, cursor = RAW["raw_schema"](wire)
@@ -118,7 +118,8 @@ def inspect_ipc(wire, schema, groups):
         assert record.rows == batch.num_rows == len(group)
         expected = [[positional(field.type, row[field.name]) for row in group] for field in schema]
         assert RAW["columns"](pa, batch) == expected
-        RAW["check_record"](pa, schema, record, expected)
+        if canonical:
+            RAW["check_record"](pa, schema, record, expected)
         cursor = record.end
     assert wire[cursor:] == RAW["eos"] and cursor + 8 == len(wire)
 

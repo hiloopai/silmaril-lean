@@ -30,7 +30,7 @@ canonical child projections and the final Compact envelope.
 reader. Successful readback binds the exact intended declaration,
 the explicit count and rows of every ordered group, and both
 `Reader.GroupWire` column, byte-range and addressed slot witnesses.
-The strict Arrow IPC input adapter is a follow-up.
+[Strict Arrow IPC input](parquet-recursive-two-list-struct-from-ipc.md)
 
 ## Verification
 
