@@ -40,6 +40,7 @@ CHECK_TARGETS += PeggyDialectTests
 CHECK_TARGETS += PeggyEggTests PeggySimpleValidationTests
 CHECK_TARGETS += PeggyFieldHeapTests PeggyFieldHeapLinearizeTests
 CHECK_TARGETS += +Silmaril.Logic.ACL2.Dependencies.Defs
+CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Step.Tests
 
 CHECK_TARGETS += PeggyInstitutionTests PeggySortMapTests
 CHECK_TARGETS += PeggyEquationalTests
@@ -90,6 +91,8 @@ RELEASE_BINARIES := wasm-opt wasm-as wasm-dis wasm-merge wasm-shell wasm-ctor-ev
 check:
 	scripts/check-layout.sh
 	$(PYTHON) -B tests/acl2/check_dependencies.py
+	$(PYTHON) -B tools/acl2-x86isa/check_step.py
+	$(PYTHON) -B tests/acl2/check_x86_step.py
 	$(PYTHON) -I scripts/check-wasm-spec.py
 	$(PYTHON) -I scripts/check-wasm-checkers.py
 	node examples/wasm-checkers/test-lrat.mjs

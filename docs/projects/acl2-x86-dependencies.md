@@ -74,7 +74,9 @@ and marks the step checked. Each mutation must fail at the corresponding
 semantic check. [Typed X86-RUN source][run-lean] · [Mutation tests][mutations]
 
 Coverage is **bounded to two logical bodies**, with a **local Lean check for
-X86-RUN**. It omits transitive bodies, quoted or dynamically applied callees,
+X86-RUN** in this manifest. The [checked step definition](acl2-x86-step.md)
+uses the same pinned step body and frontier. The graph omits transitive
+bodies, quoted or dynamically applied callees,
 guards, measures, theorem and rewrite dependencies, and stobj constraints
 and correspondence obligations. The optional native syscall support is
 absent from this profile. The exporter checks the completed root certificate
