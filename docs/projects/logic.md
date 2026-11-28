@@ -26,6 +26,7 @@ CSLib dependencies serve the Wasm toolkit and these logics.
 | Guide | Definitions, results and examples |
 | --- | --- |
 | [Abstraction Logic](abstraction-logic.md) | Shaped binders, schematic substitution, the seven-rule soundness theorem, and checked UFOL and propositional comparisons to a canonical model profile |
+| [IEEE scalar digital simulation](ieee-digital-simulation.md) | Verilog four-state and VHDL nine-state gates, driver resolution and checked conversions |
 | [HOL](logic-hol.md) | Two HOL calculi, standard-model soundness, classical consistency and rule translations |
 | [Metamath](metamath.md) | Text checker soundness, tree/string correspondence, theory morphisms and concrete presentations |
 | [Lambda cube](lambda-cube.md) | PTS inclusions, System F/Fω relational models and concrete Hets logic graphs |
