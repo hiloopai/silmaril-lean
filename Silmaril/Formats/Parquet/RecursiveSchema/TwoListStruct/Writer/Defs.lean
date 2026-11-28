@@ -5,7 +5,7 @@ public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Writer.Defs
 import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Writer.Schema.Thms
 
 /-! Write one complete PLAIN UNCOMPRESSED V1 page per signed child and
-original group of a canonical two-LIST path ending in a required Struct. -/
+original group of a canonical two-LIST path ending in a required or optional Struct. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer
 
@@ -48,6 +48,7 @@ private structure Declaration where
   inner : String
   innerNullable : Bool
   element : String
+  elementNullable : Bool
   left : SignedField
   right : SignedField
 
@@ -60,17 +61,21 @@ private def signedField (field : Arrow.RecursiveSchema.Field) : Option SignedFie
 private def declaration (schema : Arrow.RecursiveSchema.Schema) : Option Declaration := do
   let [.node (some outer) outerNullable .list
     [.node (some inner) innerNullable .list
-      [.node (some element) false .struct [left, right]]]] := schema.fields | none
-  return ⟨outer, outerNullable, inner, innerNullable, element, ← signedField left, ← signedField right⟩
+      [.node (some element) elementNullable .struct [left, right]]]] := schema.fields | none
+  return ⟨outer, outerNullable, inner, innerNullable, element, elementNullable, ← signedField left, ← signedField right⟩
 
 /-- Decide membership in the writer profile without consulting target budgets. -/
 public def supportsDeclaration (schema : Arrow.RecursiveSchema.Schema) : Bool :=
   (declaration schema).isSome
 
+/-- Strict IPC import continues to admit required Struct declarations. -/
+public def supportsRequiredDeclaration (schema : Arrow.RecursiveSchema.Schema) : Bool :=
+  (declaration schema).any (fun shape => !shape.elementNullable)
+
 public def planSchema (limits : Schema.Limits) (schema : Arrow.RecursiveSchema.Schema) :
     Except Error Schema.Plan := do
   let some shape := declaration schema | throw .declaration
-  let ⟨outer, outerNullable, inner, innerNullable, element, left, right⟩ := shape
+  let ⟨outer, outerNullable, inner, innerNullable, element, elementNullable, left, right⟩ := shape
   let compact := limits.snapshot.footer.compact
   if limits.snapshot.maxSchemaDepth < 7 then throw (.schema (.depth []))
   if min limits.maxFields compact.maxCollectionSize < 8 then throw (.schema .fieldLimit)
@@ -81,7 +86,7 @@ public def planSchema (limits : Schema.Limits) (schema : Arrow.RecursiveSchema.S
       (left.name, elementPath ++ [left.name]), (right.name, elementPath ++ [right.name])] do
     if name.utf8ByteSize > compact.maxBinaryBytes then throw (.schema (.nameBudget path))
   return ⟨1, [.list outer outerNullable, .wrapper, .list inner innerNullable, .wrapper,
-    .struct element false 2, .leaf left.name left.nullable left.kind, .leaf right.name right.nullable right.kind]⟩
+    .struct element elementNullable 2, .leaf left.name left.nullable left.kind, .leaf right.name right.nullable right.kind]⟩
 
 @[expose] public section
 
@@ -102,7 +107,8 @@ def WrittenGroup.stop (group : WrittenGroup) (offset : Nat) : Nat :=
 structure GroupWire (limits : Limits) (checksum : Bool) (plan : Plan) (offset priorSlots : Nat)
     (input : Observation) (output : WrittenGroup) : Prop where
   projected : ∃ leftRows rightRows,
-    Rows.projectRows .left input.rows = some leftRows ∧ Rows.projectRows .right input.rows = some rightRows ∧
+    Rows.projectRows .left input.rows plan.element.nullable = some leftRows ∧
+    Rows.projectRows .right input.rows plan.element.nullable = some rightRows ∧
     ListPath.Writer.GroupWire limits checksum (plan.path .left) offset priorSlots
       ⟨input.rowCount, leftRows⟩ output.left ∧
     ListPath.Writer.GroupWire limits checksum (plan.path .right) (output.middle offset)
@@ -126,7 +132,7 @@ structure Construction (limits : Limits) (input : Input) (output : Output) : Pro
   original : ∃ declared schemaOnly source groups,
     planSchema limits.schema input.schema = .ok declared ∧
     Schema.wrap limits.schema .empty declared [] = .ok schemaOnly ∧
-    TwoListStruct.openRequired limits.schema.snapshot schemaOnly.bytes = .ok source ∧
+    TwoListStruct.openFile limits.schema.snapshot schemaOnly.bytes = .ok source ∧
     source.schema.plan.arrow = input.schema ∧
     GroupsWire limits input.checksum source.schema.plan 4 0 input.groups groups ∧
     let indices := groups.map (WrittenGroup.index source.schema.plan)
@@ -145,9 +151,9 @@ private def checked {α ε : Type} (result : Except ε α) (report : ε → Erro
   | .ok value => .ok ⟨value, rfl⟩
   | .error cause => .error (report cause)
 
-private def projectRows (side : Side) (input : Observation) (ordinal : Nat) :
-    Except Error {rows // Rows.projectRows side input.rows = some rows} :=
-  match Rows.projectRows side input.rows with
+private def projectRows (side : Side) (optional : Bool) (input : Observation) (ordinal : Nat) :
+    Except Error {rows // Rows.projectRows side input.rows optional = some rows} :=
+  match Rows.projectRows side input.rows optional with
   | none => .error (.projection ordinal)
   | some rows => .ok ⟨rows, rfl⟩
 
@@ -159,12 +165,12 @@ private def writeGroup (limits : Limits) (checksum : Bool) (plan : Plan)
   let actual := input.rows.length
   if actual ≠ input.rowCount then throw (.rowCount ordinal input.rowCount actual)
   if actual > limits.chunk.maxRows then throw (.rowLimit ordinal actual)
-  let slots := ListPath.Rows.slotDemand (plan.path .left) input.rows
+  let slots := Rows.slotDemand input.rows
   if slots > ListPath.Writer.slotBudget limits then throw (.slotLimit ordinal slots)
   if priorSlots + 2 * slots > limits.maxTotalSlots then
     throw (.totalSlotLimit ordinal (priorSlots + 2 * slots))
-  let ⟨leftRows, leftExact⟩ ← projectRows .left input ordinal
-  let ⟨rightRows, rightExact⟩ ← projectRows .right input ordinal
+  let ⟨leftRows, leftExact⟩ ← projectRows .left plan.element.nullable input ordinal
+  let ⟨rightRows, rightExact⟩ ← projectRows .right plan.element.nullable input ordinal
   let ⟨left, lhs⟩ ← (ListPath.Writer.writeGroup limits checksum (plan.path .left) ordinal offset priorSlots
     ⟨input.rowCount, leftRows⟩).mapError (.column ordinal .left)
   let ⟨right, rhs⟩ ← (ListPath.Writer.writeGroup limits checksum (plan.path .right) ordinal
@@ -189,7 +195,7 @@ public def build (limits : Limits) (input : Input) : Except Error {out // Constr
   let ⟨rowCap⟩ ← require (rows < 2 ^ 63 ∧ rows ≤ limits.maxTotalRows) (.totalRowLimit rows)
   let ⟨declared, planned⟩ ← checked (planSchema limits.schema input.schema) id
   let ⟨schemaOnly, envelope⟩ ← checked (Schema.wrap limits.schema .empty declared []) .schema
-  let ⟨source, compiled⟩ ← checked (TwoListStruct.openRequired limits.schema.snapshot schemaOnly.bytes) .openReadback
+  let ⟨source, compiled⟩ ← checked (TwoListStruct.openFile limits.schema.snapshot schemaOnly.bytes) .openReadback
   let ⟨exactSchema⟩ ← require
     (Schema.equal limits.schema.snapshot.maxSchemaDepth source.schema.plan.arrow input.schema = true)
     .readbackMismatch
@@ -213,7 +219,7 @@ def agrees (limits : Limits) (input : Input) (output : Output)
 
 /-- Check the final emitted carrier using both original native chunks. -/
 def certify (limits : Limits) (input : Input) (output : Output) : Except Error Unit := do
-  let source ← (TwoListStruct.openRequired limits.schema.snapshot output.bytes).mapError .openReadback
+  let source ← (TwoListStruct.openFile limits.schema.snapshot output.bytes).mapError .openReadback
   if !agrees limits input output source then throw .readbackMismatch
   let recovered ← (Reader.readAll limits.chunk source.schema).mapError .readback
   let equal := Arrow.RecursiveSchema.Batch.Writer.agrees limits.schema.snapshot.maxSchemaDepth
@@ -226,7 +232,7 @@ def emit (limits : Limits) (input : Input) : Except Error Output := do
 
 structure Readback (limits : Limits) (input : Input) (output : Output) : Prop where
   original : ∃ (source : Source limits.schema.snapshot output.bytes),
-    TwoListStruct.openRequired limits.schema.snapshot output.bytes = .ok source ∧
+    TwoListStruct.openFile limits.schema.snapshot output.bytes = .ok source ∧
     source.snapshot.bytes = output.bytes ∧
     source.snapshot.footer = output.footer ∧ source.snapshot.metadata = output.metadata ∧
     source.schema.plan.arrow = input.schema ∧ source.snapshot.groupCount = input.groups.length ∧

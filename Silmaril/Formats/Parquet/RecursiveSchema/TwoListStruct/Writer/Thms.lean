@@ -25,6 +25,16 @@ theorem GroupWire.footer_exact {limits : Limits} {checksum : Bool} {plan : Plan}
     right.metadata.totalUncompressedSize = (output.right.page.wire.length : Int) :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.footer_exact wire
 
+/-- Both original columns use the exact shared slot demand and are
+charged together against the file's slot limit. -/
+theorem GroupWire.slots_exact {limits : Limits} {checksum : Bool} {plan : Plan} {offset priorSlots : Nat}
+    {input : Arrow.RecursiveSchema.Batch.Rows.Observation} {output : WrittenGroup}
+    (wire : GroupWire limits checksum plan offset priorSlots input output) :
+    output.left.slots = Rows.slotDemand input.rows ∧
+    output.right.slots = Rows.slotDemand input.rows ∧
+    priorSlots + 2 * Rows.slotDemand input.rows ≤ limits.maxTotalSlots :=
+  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.slots_exact wire
+
 /-- The final envelope uses the checked declaration and two contiguous
 canonical V1 frames per complete input group. -/
 theorem serialize_construction {limits : Limits} {input : Input} {output : Output}

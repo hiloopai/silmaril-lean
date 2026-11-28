@@ -5,8 +5,9 @@ import Mathlib.Data.List.Forall2
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows
 
+open Silmaril.Formats.Parquet.RecursiveSchema
 open Silmaril.Formats.Parquet
-open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct (Side)
+open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct (Plan Side)
 open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows
 open Silmaril.Formats.Arrow.RecursiveSchema.Batch.Rows (Cell Row)
 
@@ -193,5 +194,79 @@ public theorem projectRows_count {side : Side} {optional : Bool} {rows out : Lis
     obtain ⟨tail, tailRead, done⟩ := bind_some next
     cases Option.some.inj done
     simp [ih tailRead]
+
+private theorem sumDemand_mapM {α β : Type} {project : α → Option β} {before : α → Nat} {after : β → Nat}
+    (each : ∀ {value projected}, project value = some projected → after projected = before value)
+    {values : List α} {projected : List β} (read : values.mapM project = some projected) :
+    ListPath.Rows.sumDemand after projected = ListPath.Rows.sumDemand before values := by
+  unfold ListPath.Rows.sumDemand
+  suffices ∀ total, projected.foldl (fun acc value => acc + after value) total =
+      values.foldl (fun acc value => acc + before value) total from this 0
+  induction values generalizing projected with
+  | nil => cases Option.some.inj read; intro; rfl
+  | cons first rest ih =>
+    rw [List.mapM_cons] at read
+    obtain ⟨head, headRead, next⟩ := bind_some read
+    obtain ⟨tail, tailRead, done⟩ := bind_some next
+    cases Option.some.inj done
+    intro total
+    simp only [List.foldl_cons, each headRead]
+    exact ih tailRead _
+
+private def nest : List TwoList.ListSite → ListPath.Shape → ListPath.Shape
+  | [], suffix => suffix
+  | node :: rest, suffix => .list node (nest rest suffix)
+
+private theorem projectCell_demand {layers : List TwoList.ListSite} {suffix : ListPath.Shape}
+    {side : Side} {optional : Bool} {value projected : Cell}
+    (unit : ∀ cell, ListPath.Rows.demand suffix cell = 1)
+    (read : projectCell side optional layers.length value = some projected) :
+    ListPath.Rows.demand (nest layers suffix) projected = cellDemand layers.length value := by
+  induction layers generalizing value projected with
+  | nil => exact unit projected
+  | cons node layers ih =>
+    match value with
+    | none =>
+      cases Option.some.inj read
+      rfl
+    | some (.list []) =>
+      cases Option.some.inj read
+      rfl
+    | some (.list (first :: rest)) =>
+      simp only [List.length_cons, projectCell, List.mapM_cons] at read
+      obtain ⟨elements, mapped, rfl⟩ := map_some read
+      obtain ⟨head, headRead, next⟩ := bind_some mapped
+      obtain ⟨tail, tailRead, done⟩ := bind_some next
+      cases Option.some.inj done
+      simp only [nest, ListPath.Rows.demand, cellDemand, List.length_cons, ih headRead,
+        sumDemand_mapM (fun accepted => ih accepted) tailRead]
+    | some (.int32 _) | some (.int64 _) | some (.struct _) => contradiction
+
+private theorem projectRow_demand {plan : Plan} {side : Side} {row projected : Row}
+    (read : projectRow side plan.element.nullable row = some projected) :
+    ListPath.Rows.rowDemand (plan.path side) projected = rowDemand row := by
+  match row with
+  | [value] =>
+    obtain ⟨cell, decoded, rfl⟩ := map_some read
+    let child := plan.child side
+    let leaf := ListPath.Shape.signed child.1 child.2
+    let suffix := if plan.element.nullable then ListPath.Shape.struct plan.element leaf else leaf
+    have unit : ∀ cell, ListPath.Rows.demand suffix cell = 1 := by
+      intro cell
+      cases optional : plan.element.nullable with
+      | false => simp [suffix, leaf, optional, ListPath.Rows.demand]
+      | true =>
+        simp only [suffix, optional, ↓reduceIte]
+        match cell with
+        | none | some (.int32 _) | some (.int64 _) | some (.list _) |
+            some (.struct []) | some (.struct [_]) | some (.struct (_ :: _ :: _)) => rfl
+    exact projectCell_demand (layers := [plan.outer, plan.inner]) (suffix := suffix) unit decoded
+  | [] | _ :: _ :: _ => contradiction
+
+public theorem projectRows_demand {plan : Plan} {side : Side} {rows projected : List Row}
+    (read : projectRows side rows plan.element.nullable = some projected) :
+    ListPath.Rows.slotDemand (plan.path side) projected = slotDemand rows :=
+  sumDemand_mapM (project := projectRow side plan.element.nullable)
+    (fun accepted => projectRow_demand (plan := plan) accepted) read
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows

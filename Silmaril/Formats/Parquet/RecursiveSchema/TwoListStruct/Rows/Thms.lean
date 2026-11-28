@@ -49,6 +49,11 @@ theorem projectRows_count {side : Side} {optional : Bool} {rows out : List Row}
     (read : projectRows side rows optional = some out) : out.length = rows.length :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.projectRows_count read
 
+theorem projectRows_demand {plan : Plan} {side : Side} {rows projected : List Row}
+    (read : projectRows side rows plan.element.nullable = some projected) :
+    ListPath.Rows.slotDemand (plan.path side) projected = slotDemand rows :=
+  Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.projectRows_demand read
+
 end
 
 end Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows
