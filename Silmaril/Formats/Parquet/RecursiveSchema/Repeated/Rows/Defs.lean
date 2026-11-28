@@ -169,17 +169,18 @@ private def requireSingletons (position : Position) (site : Location) (inputs : 
     if let some extra := slice.at 1 then
       throw (.extra position site extra.point)
 
-private def listLength (position : Position) (site : Location) (inputs : List Slice) :
-    Except Error Nat := do
-  let first :: rest := inputs | throw (.shape position)
-  for other in rest do
-    if first.count < other.count then
-      throw (.missing { position with element := some (site, first.count) } site first.address
-        ((other.at first.count).map Addressed.point))
-    if other.count < first.count then
-      throw (.missing { position with element := some (site, other.count) } site other.address
-        ((first.at other.count).map Addressed.point))
-  return first.count
+/-- Compare every common element before reporting a missing element.
+Choosing the shortest slice also locates the first unmatched element
+when more than two physical columns share the list. -/
+private def commonLength (first : Slice) (rest : List Slice) : Nat :=
+  rest.foldl (fun common slice => min common slice.count) first.count
+
+private def requireLength (position : Position) (site : Location) (inputs : List Slice)
+    (length : Nat) : Except Error Unit := do
+  if let some longer := inputs.find? (fun slice => length < slice.count) then
+    let some shorter := inputs.find? (fun slice => slice.count = length) | throw (.shape position)
+    throw (.missing { position with element := some (site, length) } site shorter.address
+      ((longer.at length).map Addressed.point))
 
 private def assembleFields (position : Position)
     (assemble : (field : Field) → List Slice → Except Error (CheckedCell field)) :
@@ -254,10 +255,12 @@ private def assembleField :
       requireSingletons position site.location inputs
       return ⟨some (.list []), by rw [Field.arrow]; exact .list .nil⟩
     | .live =>
-      let length ← listLength position site.location inputs
+      let first :: rest := inputs | throw (.shape position)
+      let length := commonLength first rest
       let elements ← (List.range length).mapM fun index =>
         assembleField depth { position with element := some (site.location, index) }
           element (inputs.map (·.element index))
+      requireLength position site.location inputs length
       return ⟨some (.list (elements.map CheckedCell.value)), by
         rw [Field.arrow]
         exact .list (elements_fit element elements)⟩

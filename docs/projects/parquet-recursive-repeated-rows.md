@@ -25,8 +25,10 @@ Struct with missing descendants, and a present Struct with all its
 children null remain distinct. A disagreement carries both original
 slot coordinates and the logical group, row and schema site.
 Element-level errors also carry the enclosing list and element
-ordinal. A short column is reported with the available counterpart's
-first unmatched slot.
+ordinal. The assembler visits the common elements in order before
+reporting a short column at the first unmatched slot. The short-column
+error retains the available counterpart's original coordinates.
+[Shared LIST-of-Struct topology](parquet-recursive-list-struct.md)
 
 The typed assembler constructs `RowFits` evidence for the original
 Arrow declaration. Its independent projection computes the expected
