@@ -116,7 +116,7 @@ structure Source (limits : Snapshot.Limits) (bytes : Bytes) where
 
 end
 
-private def entryAt (original : Array Entry) (ordinal : Nat) :
+public def entryAt (original : Array Entry) (ordinal : Nat) :
     Except Error {entry // original[ordinal]? = some entry} :=
   match _found : original[ordinal]? with
   | none => .error (.shape ordinal)
@@ -129,7 +129,7 @@ private def nullable (entry : Entry) (ordinal : Nat) :
   | some .optional => .ok ⟨true, found⟩
   | other => .error (.repetition ordinal other)
 
-private def readList (reader : ThriftCompact.Traversal.Reader) (original : Array Entry)
+public def readList (reader : ThriftCompact.Traversal.Reader) (original : Array Entry)
     (ctx : Repeated.Context) (ordinal : Nat) :
     Except Error {node // ListWire reader original ctx ordinal node} := do
   let ⟨entry, found⟩ ← entryAt original ordinal
@@ -143,7 +143,7 @@ private def readList (reader : ThriftCompact.Traversal.Reader) (original : Array
         ⟨entry, wrapper, found, foundWrapper, repetition, shape.1, annotation, shape.2, rfl, rfl⟩⟩
   else throw (.shape ordinal)
 
-private def readLeaf (original : Array Entry) (ctx : Repeated.Context) (ordinal : Nat) :
+public def readLeaf (original : Array Entry) (ctx : Repeated.Context) (ordinal : Nat) :
     Except Error {result : Site × Kind // SignedWire original ctx ordinal result.1 result.2} := do
   let ⟨entry, found⟩ ← entryAt original ordinal
   let ⟨optional, repetition⟩ ← nullable entry ordinal

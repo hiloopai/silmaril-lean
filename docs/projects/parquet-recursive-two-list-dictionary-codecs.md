@@ -55,7 +55,9 @@ dictionary and lies outside the local table.
 - Schema compilation covers exactly one top-level LIST of LISTs and one
   unannotated signed leaf. Struct-wrapped two-LIST fields, repeated
   siblings, multi-leaf row reconstruction, and deeper LIST ancestry
-  remain outside the shape.
+  remain outside the native reader. The LIST-path core compiles longer
+  canonical signed paths and checks their logical traces.
+  [LIST-path core](parquet-recursive-list-path.md)
 - Framing covers positive-sized unindexed chunks. Column and offset
   indexes and explicit pageless two-LIST groups remain separate geometry.
   A schema-only source has no row groups to read.
