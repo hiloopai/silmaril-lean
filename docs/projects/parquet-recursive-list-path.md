@@ -30,8 +30,8 @@ slot budgets. The proof also establishes Arrow typing, signed-word
 order and exact projected slot demand before trace allocation.
 
 The footer and logical trace core also serves the bounded native
-unindexed UNCOMPRESSED PLAIN V1/V2 reader.
-[Native V1 reader](parquet-recursive-list-path-v1.md) · [Native V2 reader](parquet-recursive-list-path-v2.md)
+unindexed PLAIN V1/V2 reader with UNCOMPRESSED and Snappy columns.
+[Native V1 reader](parquet-recursive-list-path-v1.md) · [Native V2 reader](parquet-recursive-list-path-v2.md) · [Snappy](parquet-recursive-list-path-snappy.md)
 
 ## Verification
 

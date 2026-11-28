@@ -29,9 +29,10 @@ both projections. This applies to the legal V1 reframes checked by
 the native reader's trace law.
 [Recursive Arrow Events](arrow-recursive-events.md)
 
-The source profile is the unindexed UNCOMPRESSED PLAIN V1/V2 LIST-path
-reader. Projection operates on whole top-level fields. Indexed,
-pageless, compressed and dictionary chunks remain outside this profile.
+The source profile is unindexed PLAIN V1/V2 with UNCOMPRESSED
+and bounded Snappy columns. Projection operates on whole top-level
+fields. Indexed, pageless and dictionary chunks remain outside this
+profile. [Snappy](parquet-recursive-list-path-snappy.md)
 
 ## Verification
 

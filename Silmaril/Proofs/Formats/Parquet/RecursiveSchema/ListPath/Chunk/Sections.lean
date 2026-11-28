@@ -1,7 +1,7 @@
 module
 
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk.Defs
-import Silmaril.Formats.Parquet.Page.Checksum.Thms
+
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
@@ -38,18 +38,17 @@ private theorem section_slice {source body : Bytes} {start stop : Nat}
     Nat.min_eq_left (by omega)] at selected
   simpa [Nat.add_comm] using selected.symm
 
-public theorem sections_wire {limits : Hybrid.Limits} {plan : Plan} {count : Nat} {source : Bytes}
-    {frame : Page.Frame} {reps defs : LevelBlock}
-    (extent : Page.Checksum.PayloadWithin source frame)
-    (repWire : LevelWire limits plan.shape.repetitions count (Page.Checksum.payloadBytes source frame) reps)
+public theorem sections_wire {limits : Hybrid.Limits} {plan : Plan} {count : Nat}
+    {input : SectionSource} {body : Bytes} {reps defs : LevelBlock}
+    (sliced : input.bytes.slice? input.span.start (some input.span.stop) = some body)
+    (repWire : LevelWire limits plan.shape.repetitions count body reps)
     (defWire : LevelWire limits plan.shape.definitions count reps.tail defs) :
-    SectionsWire limits plan count source frame
-      (sections frame (Page.Checksum.payloadBytes source frame) reps defs) reps.levels defs.levels defs.tail := by
-  let body := Page.Checksum.payloadBytes source frame
-  obtain ⟨sliced, size⟩ := Page.Checksum.payload_exact extent
-  have total : frame.payload.stop = frame.payload.start + body.length := by
-    change (Page.Checksum.payloadBytes source frame).length = _ at size
-    rw [extent.2.2.1, ← size]
+    SectionsWire limits plan count input (sections input body reps defs) reps.levels defs.levels defs.tail := by
+  have total : input.span.stop = input.span.start + body.length := by
+    have ordered := (Bytes.slice?_eq_some_iff.mp sliced).1
+    have length := Bytes.length_of_slice? sliced
+    simp only [Option.getD_some] at ordered length
+    omega
   have repeated : plan.shape.repetitions ≠ 0 := by simp [Plan.shape, Shape.repetitions]
   have defined : plan.shape.definitions ≠ 0 := by
     simp only [Plan.shape, Shape.definitions]
@@ -62,7 +61,6 @@ public theorem sections_wire {limits : Hybrid.Limits} {plan : Plan} {count : Nat
     | @encoded defs suffix defBytes defPrefix _ defLen defSize defBound defBody defHybrid =>
       let repetition := repPrefix ++ repBytes.toList
       let definition := defPrefix ++ defBytes.toList
-      change body.toList = _ at repBody
       have split : body.toList = repetition ++ definition ++ suffix.toList := by
         rw [repBody, defBody]
         simp [repetition, definition, List.append_assoc]
@@ -76,7 +74,7 @@ public theorem sections_wire {limits : Hybrid.Limits} {plan : Plan} {count : Nat
         simp only [List.length_append, Bytes.length_toList] at count
         omega
       have suffixEnd :
-          frame.payload.start + (repetition ++ definition).length + suffix.length = frame.payload.stop := by
+          input.span.start + (repetition ++ definition).length + suffix.length = input.span.stop := by
         have count := congrArg List.length split
         simp only [List.length_append, Bytes.length_toList] at count ⊢
         omega
@@ -87,18 +85,18 @@ public theorem sections_wire {limits : Hybrid.Limits} {plan : Plan} {count : Nat
       have suffixSlice := section_slice sliced (preceding := repetition ++ definition) (part := suffix.toList)
         (suffix := []) (by simpa using split)
       refine ⟨repPrefix, defPrefix, repBytes.toList, defBytes.toList, repLen, defLen, ?_, ?_, ?_, ?_,
-        repHybrid, defHybrid, rfl, rfl, rfl, rfl, ?_, ?_, ?_⟩
+        repHybrid, defHybrid, rfl, rfl, rfl, rfl, rfl, ?_, ?_, ?_⟩
       · simpa using repSize
       · simpa using defSize
       · simpa using repBound
       · simpa using defBound
-      · simpa [sections, ← show body = Page.Checksum.payloadBytes source frame from rfl, afterRep, repetition]
+      · simpa [sections, afterRep, repetition]
           using repSlice
-      · simpa [sections, ← show body = Page.Checksum.payloadBytes source frame from rfl, afterRep, afterDef,
+      · simpa [sections, afterRep, afterDef,
           Nat.add_assoc, definition] using defSlice
       · rw [Bytes.length_toList] at suffixSlice
         rw [suffixEnd] at suffixSlice
-        simpa [sections, ← show body = Page.Checksum.payloadBytes source frame from rfl, afterDef,
+        simpa [sections, afterDef,
           List.length_append] using suffixSlice
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk

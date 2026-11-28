@@ -70,13 +70,13 @@
       "bytes": 843,
       "sha256": "35848b8632660dc7720582e5d31a20c800f5f20d5818a8f56cd752a719f8d707"
     },
+    "gzip": {
+      "bytes": 807,
+      "sha256": "d1ef73f8c75ce79d76994d1031a1f42539f4958743e43f6ce1e582c323472acf"
+    },
     "indexed": {
       "bytes": 829,
       "sha256": "858e5794462ba8a6399bfd4a633f4b3d256d999d9a2ca932ccc1911d2aecd6c4"
-    },
-    "snappy": {
-      "bytes": 750,
-      "sha256": "5f0aa8ca714851c09add2d9f081f126d293e2c1d03306bc664f3543d16b41ca0"
     }
   },
   "genuine_parquet": {

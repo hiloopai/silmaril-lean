@@ -51,34 +51,48 @@ private theorem decodeSlots_wire {plan : Plan} {wrappers : List Nat} {spans : Se
     Plain.decodeFixedWidth_ok_iff.mp (from_mapError wordsRead)
   exact ⟨rfl, aligned, physical, states, extent, count, widths, alignedWire.1, alignedWire.2.trans values, rfl⟩
 
+private theorem v1_body_slice {limits : Limits} {codec : Codec} {source body : Bytes} {frame : Page.Frame}
+    (read : RecursiveSchema.Repeated.Chunk.readV1Body limits.payload codec.column source frame = .ok body) :
+    let input := codec.v1Source source frame body
+    input.bytes.slice? input.span.start (some input.span.stop) = some body := by
+  cases codec with
+  | uncompressed =>
+    obtain ⟨_, checked, done⟩ := bind_ok read
+    cases Except.ok.inj done
+    exact (Page.Checksum.payload_exact (checked_extent (from_mapError checked))).1
+  | snappy =>
+    change body.slice? 0 (some body.length) = some body
+    apply Bytes.slice?_eq_some_iff.mpr
+    refine ⟨by simp, by simp, ?_⟩
+    simp only [Option.getD_some, Nat.sub_zero, List.drop_zero]
+    rw [← Bytes.length_toList, List.take_length, Bytes.ofList_toList]
+
 public theorem decodePage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (accepted : decodePage limits plan wrappers source frame start remaining ceiling = .ok decoded) :
-    PageWire limits plan wrappers source frame start remaining ceiling decoded := by
+    {codec : Codec}
+    (accepted : decodePage limits plan wrappers source frame start remaining ceiling codec = .ok decoded) :
+    PageWire limits plan wrappers source frame start remaining ceiling decoded codec := by
   unfold decodePage at accepted
   obtain ⟨info, header, accepted⟩ := bind_ok accepted
-  obtain ⟨status, checked, accepted⟩ := bind_ok accepted
+  obtain ⟨body, bodyRead, accepted⟩ := bind_ok accepted
   obtain ⟨reps, repRead, accepted⟩ := bind_ok accepted
   obtain ⟨defs, defRead, slots⟩ := bind_ok accepted
-  have crc := from_mapError checked
+  have admitted := from_mapError header
+  unfold RecursiveSchema.Repeated.Chunk.admitPage at admitted
+  obtain ⟨kind, encodings, cap, sizes⟩ := RecursiveSchema.Chunk.admitPageWith_wire (from_mapError admitted)
+  have decodedBody := from_mapError bodyRead
+  have bodyWire := RecursiveSchema.Repeated.Chunk.readV1Body_wire sizes decodedBody
   obtain ⟨repWire, repCount⟩ := RecursiveSchema.Repeated.Chunk.readLevels_wire (from_mapError repRead)
   obtain ⟨defWire, defCount⟩ := RecursiveSchema.Repeated.Chunk.readLevels_wire (from_mapError defRead)
-  have parts := sections_wire (checked_extent crc) repWire defWire
-  obtain ⟨layout, ⟨aligned, words, scanned, suffix, count, widths, maskWire, alignedWire, atomsWire⟩⟩ :=
-    decodeSlots_wire slots
-  exact ⟨info, status, reps, defs, aligned, words,
-    RecursiveSchema.Chunk.admitPage_wire (from_mapError header), crc, layout.symm ▸ parts, scanned,
-    repCount, defCount, suffix, count, widths, maskWire, alignedWire, atomsWire⟩
-
-private theorem identity_v2 (info : Page.DataV2) :
-    RecursiveSchema.Repeated.Chunk.ColumnCodec.uncompressed.v2 info = 0 := by
-  cases info with
-  | mk _ _ _ _ _ _ flag => cases flag <;> rfl
+  have parts := sections_wire (v1_body_slice decodedBody) repWire defWire
+  obtain ⟨layout, values⟩ := decodeSlots_wire slots
+  exact ⟨info, body, reps, defs, kind, encodings, cap, bodyWire, layout.symm ▸ parts, repCount, defCount, values⟩
 
 public theorem decodeV2Page_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (accepted : decodeV2Page limits plan wrappers source frame start remaining ceiling = .ok decoded) :
-    V2PageWire limits plan wrappers source frame start remaining ceiling decoded := by
+    {codec : Codec}
+    (accepted : decodeV2Page limits plan wrappers source frame start remaining ceiling codec = .ok decoded) :
+    V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec := by
   unfold decodeV2Page at accepted
   obtain ⟨info, header, accepted⟩ := bind_ok accepted
   obtain ⟨parts, sections, accepted⟩ := bind_ok accepted
@@ -88,23 +102,23 @@ public theorem decodeV2Page_wire {limits : Limits} {plan : Plan} {wrappers : Lis
   obtain ⟨kind, encoding, cap, sizes⟩ := RecursiveSchema.Repeated.Chunk.admitV2Page_wire (from_mapError header)
   have rawLevels := RecursiveSchema.Repeated.Chunk.readV2SectionsWith_wire (from_mapError sections)
   obtain ⟨_, bounded, suffixWire⟩ := RecursiveSchema.Repeated.Chunk.readV2SuffixWith_wire (from_mapError suffixRead)
-  cases suffixWire with
-  | compressed _ compressed => exact False.elim (compressed (identity_v2 info))
-  | raw _ length =>
-    change (RecursiveSchema.Repeated.Chunk.bytesAt source parts.spans.values).length =
-      frame.value.uncompressedSize - RecursiveSchema.Repeated.Chunk.v2LevelBytes info at length
-    have extent : RecursiveSchema.Repeated.Chunk.v2LevelBytes info +
-        (RecursiveSchema.Repeated.Chunk.bytesAt source parts.spans.values).length = frame.value.uncompressedSize := by
-      omega
-    obtain ⟨first, rows, nulls, slots⟩ := RecursiveSchema.Repeated.Chunk.checkV2Counts_wire counted
-    obtain ⟨layout, values⟩ := decodeSlots_wire slots
-    exact ⟨info, parts, checked, kind, encoding, cap, sizes (identity_v2 info), rawLevels, extent,
-      first, rows, nulls, layout, values, rfl⟩
+  have length : suffix.length = (RecursiveSchema.Repeated.Chunk.v2ValueBounds limits.payload frame info).expectedSize := by
+    cases suffixWire with
+    | raw _ length => exact length
+    | compressed _ _ _ _ length _ _ => exact length
+  have extent : RecursiveSchema.Repeated.Chunk.v2LevelBytes info + suffix.length = frame.value.uncompressedSize := by
+    change suffix.length = frame.value.uncompressedSize - RecursiveSchema.Repeated.Chunk.v2LevelBytes info at length
+    omega
+  obtain ⟨first, rows, nulls, slots⟩ := RecursiveSchema.Repeated.Chunk.checkV2Counts_wire counted
+  obtain ⟨layout, values⟩ := decodeSlots_wire slots
+  exact ⟨info, parts, suffix, checked, kind, encoding, cap, sizes, rawLevels, suffixWire, extent,
+    first, rows, nulls, layout, values, rfl⟩
 
 public theorem decodeDataPage_wire {limits : Limits} {plan : Plan} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (accepted : decodeDataPage limits plan wrappers source frame start remaining ceiling = .ok decoded) :
-    DataPageWire limits plan wrappers source frame start remaining ceiling decoded := by
+    {codec : Codec}
+    (accepted : decodeDataPage limits plan wrappers source frame start remaining ceiling codec = .ok decoded) :
+    DataPageWire limits plan wrappers source frame start remaining ceiling decoded codec := by
   unfold decodeDataPage at accepted
   split at accepted
   · exact .v2 (decodeV2Page_wire accepted)
@@ -135,31 +149,28 @@ private theorem slot_counts {plan : Plan} {wrappers : List Nat} {start : State} 
 
 public theorem page_counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (wire : PageWire limits plan wrappers source frame start remaining ceiling decoded) :
+    {codec : Codec} (wire : PageWire limits plan wrappers source frame start remaining ceiling decoded codec) :
     ∃ info, frame.value.kind = .dataV1 info ∧ decoded.atoms.length = info.numValues ∧
       start.slots + decoded.atoms.length = decoded.after.slots ∧
       start.rows + decoded.atoms.countP (·.repetition == 0) = decoded.after.rows := by
-  obtain ⟨info, _, reps, defs, aligned, words, header, _, _, scanned, repCount, defCount,
-    suffix, count, widths, maskWire, alignedWire, atomsWire⟩ := wire.original
-  have slotsWire : SlotsWire plan wrappers start ceiling reps.levels defs.levels defs.tail decoded :=
-    ⟨aligned, words, scanned, suffix, count, widths, maskWire, alignedWire, atomsWire⟩
-  obtain ⟨count, _, slots, rows⟩ := slot_counts slotsWire (repCount.trans defCount.symm)
-  exact ⟨info, header.kind, count.trans repCount, slots, rows⟩
+  obtain ⟨info, _, reps, defs, kind, _, _, _, _, repCount, defCount, values⟩ := wire.original
+  obtain ⟨count, _, slots, rows⟩ := slot_counts values (repCount.trans defCount.symm)
+  exact ⟨info, kind, count.trans repCount, slots, rows⟩
 
 public theorem v2_page_counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (wire : V2PageWire limits plan wrappers source frame start remaining ceiling decoded) :
+    {codec : Codec} (wire : V2PageWire limits plan wrappers source frame start remaining ceiling decoded codec) :
     ∃ info, frame.value.kind = .dataV2 info ∧ decoded.atoms.length = info.numValues ∧
       decoded.atoms.countP (·.repetition == 0) = info.numRows ∧ absentSlots decoded = info.numNulls ∧
       decoded.after.live = 0 ∧ start.slots + decoded.atoms.length = decoded.after.slots ∧
       start.rows + decoded.atoms.countP (·.repetition == 0) = decoded.after.rows := by
-  obtain ⟨info, parts, checked, kind, _, _, _, levels, _, _, headerRows, nulls, _, values, rfl⟩ := wire.original
+  obtain ⟨info, parts, _, checked, kind, _, _, _, levels, _, _, _, headerRows, nulls, _, values, rfl⟩ := wire.original
   obtain ⟨count, pageRows, slots, rows⟩ := slot_counts values (levels.count.trans levels.definitionCount.symm)
   exact ⟨info, kind, count.trans levels.count, pageRows.trans headerRows, nulls, rfl, slots, rows⟩
 
 public theorem data_page_counts {limits : Limits} {plan : Plan} {wrappers : List Nat}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded}
-    (wire : DataPageWire limits plan wrappers source frame start remaining ceiling decoded) :
+    {codec : Codec} (wire : DataPageWire limits plan wrappers source frame start remaining ceiling decoded codec) :
     start.slots + decoded.atoms.length = decoded.after.slots ∧
       start.rows + decoded.atoms.countP (·.repetition == 0) = decoded.after.rows := by
   cases wire with
