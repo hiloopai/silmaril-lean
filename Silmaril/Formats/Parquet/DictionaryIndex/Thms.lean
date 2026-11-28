@@ -32,6 +32,12 @@ theorem select_indices_lt {α : Type} {dictionary : Array α} {indices : List Na
     {index : Nat} (member : index ∈ indices) : index < dictionary.size :=
   Proofs.Formats.Parquet.DictionaryIndex.select_indices_lt selected member
 
+theorem readValues_wire {α : Type} {limits : Hybrid.Limits} {dictionary : Array α}
+    {count : Nat} {source : Bytes} {values : List α}
+    (accepted : readValues limits dictionary count source = .ok values) :
+    ValuesWire limits dictionary count source values :=
+  Proofs.Formats.Parquet.DictionaryIndex.readValues_wire accepted
+
 /-- Successful decoding projects back to the checked mask and the values in index order. -/
 theorem decode_ok_iff {α : Type} {dictionary : Array α} {params : ScalarPage.Parameters}
     {pageLimits : ScalarPage.Limits} {indexLimits : Hybrid.Limits} {source : Bytes}

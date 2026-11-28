@@ -27,11 +27,11 @@ private theorem from_mapError {α ε δ : Type} {first : Except ε α} {wrap : �
   | error => simp [Except.mapError] at read
   | ok => simpa only [Except.mapError, Except.ok.injEq] using read
 
-public theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
+public theorem readDictionaryWith_wire {limits : Limits} {physical : RecursiveSchema.Kind} {source : Bytes}
     {frame : Page.Frame} {dictionary : Dictionary} {codec : DictionaryCodec}
-    (read : readDictionary limits leaf source frame codec = .ok dictionary) :
-    dictionary.frame = frame ∧ dictionary.codec = codec ∧ DictionaryWire limits leaf source dictionary := by
-  unfold readDictionary at read
+    (read : readDictionaryWith limits physical source frame codec = .ok dictionary) :
+    dictionary.frame = frame ∧ dictionary.codec = codec ∧ DictionaryContentsWire limits physical source dictionary := by
+  unfold readDictionaryWith at read
   split at read
   · rename_i info kind
     split at read
@@ -58,10 +58,17 @@ public theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Byt
                   frame.value.uncompressedSize = frame.value.compressedSize :=
                 fun identity => Classical.byContradiction (fun mismatch =>
                   sizes ⟨beq_iff_eq.mp identity, mismatch⟩)
-              exact ⟨rfl, rfl, ⟨info, body, original, kind, Classical.not_not.mp encoding,
+              exact ⟨rfl, rfl, info, body, original, kind, Classical.not_not.mp encoding,
                 Nat.le_of_not_gt entries, Nat.le_of_not_gt bytes, Nat.le_of_not_gt rawBytes,
-                readV1Body_wire rawSize bodyRead, exact, count, width, congrArg List.toArray ordered⟩⟩
+                readV1Body_wire rawSize bodyRead, exact, count, width, congrArg List.toArray ordered⟩
   · contradiction
+
+public theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
+    {frame : Page.Frame} {dictionary : Dictionary} {codec : DictionaryCodec}
+    (read : readDictionary limits leaf source frame codec = .ok dictionary) :
+    dictionary.frame = frame ∧ dictionary.codec = codec ∧ DictionaryWire limits leaf source dictionary := by
+  obtain ⟨original, codec, words⟩ := readDictionaryWith_wire read
+  exact ⟨original, codec, ⟨words⟩⟩
 
 public theorem decodeDictionarySlots_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
     {reps defs : List Nat} {suffix : Bytes} {start : State} {rowCeiling : Nat} {decoded : DecodedPage}
@@ -69,17 +76,14 @@ public theorem decodeDictionarySlots_wire {limits : Limits} {leaf : Leaf} {dicti
     DictionarySlotsWire limits leaf dictionary reps defs suffix start rowCeiling decoded := by
   unfold decodeDictionarySlots at read
   obtain ⟨classified, levelRead, read⟩ := bind_ok read
-  obtain ⟨indices, indexRead, read⟩ := bind_ok read
   obtain ⟨words, selected, read⟩ := bind_ok read
   obtain ⟨aligned, alignment, done⟩ := bind_ok read
-  have selection := from_mapError selected
-  obtain ⟨byteCap, width, runs, exact, widthCap, runCap, countCap, hybrid⟩ :=
-    DictionaryIndex.readIndices_ok_iff.mp (from_mapError indexRead)
+  obtain ⟨width, runs, indices, exact, widthCap, byteCap, countCap, runCap, hybrid, inRange, orderedLookups⟩ :=
+    DictionaryIndex.readValues_wire (from_mapError selected)
   obtain ⟨mask, positions⟩ := FlatPage.reconstruct_ok_iff.mp (from_mapError alignment)
   cases Except.ok.inj done
   exact ⟨classifySlots_wire levelRead, mask, width, runs, indices, exact, widthCap, byteCap,
-    countCap, runCap, hybrid, fun _ member => DictionaryIndex.select_indices_lt selection member,
-    (DictionaryIndex.select_ok_iff.mp selection).trans (congrArg (List.map some) positions.symm)⟩
+    countCap, runCap, hybrid, inRange, orderedLookups.trans (congrArg (List.map some) positions.symm)⟩
 
 public theorem decodeDictionaryPage_wire {limits : Limits} {leaf : Leaf} {dictionary : Array Word}
     {source : Bytes} {frame : Page.Frame} {start : State} {remaining rowCeiling : Nat} {decoded : DecodedPage} {codec : DictionaryCodec}

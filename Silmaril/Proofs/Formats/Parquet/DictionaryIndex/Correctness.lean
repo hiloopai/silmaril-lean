@@ -140,4 +140,18 @@ public theorem decode_counts {α : Type} {dictionary : Array α} {params : Scala
       rw [version] at counts
       exact present.symm.trans counts
 
+public theorem readValues_wire {α : Type} {limits : Hybrid.Limits} {dictionary : Array α}
+    {count : Nat} {source : Bytes} {values : List α}
+    (accepted : readValues limits dictionary count source = .ok values) :
+    ValuesWire limits dictionary count source values := by
+  unfold readValues at accepted
+  cases read : readIndices limits count source with
+  | error cause => simp [read, Bind.bind, Except.bind] at accepted
+  | ok indices =>
+    have selected : select dictionary indices = .ok values := by
+      simpa [read, Bind.bind, Except.bind] using accepted
+    obtain ⟨cap, width, runs, exact, widthCap, runCap, countCap, hybrid⟩ := readIndices_ok_iff.mp read
+    exact ⟨width, runs, indices, exact, widthCap, cap, countCap, runCap, hybrid,
+      fun _ member => select_indices_lt selected member, select_ok_iff.mp selected⟩
+
 end Silmaril.Proofs.Formats.Parquet.DictionaryIndex

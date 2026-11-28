@@ -6,6 +6,7 @@ import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Thms
 import Silmaril.Formats.Parquet.RecursiveSchema.Chunk.Thms
 import Silmaril.Formats.Parquet.FlatPage.Thms
 import Silmaril.Formats.Parquet.Plain.Thms
+import Silmaril.Formats.Parquet.DictionaryIndex.Thms
 
 namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoList.Chunk
 
@@ -26,25 +27,31 @@ public theorem from_mapError {α ε δ : Type} {first : Except ε α} {wrap : ε
   | error => simp [Except.mapError] at read
   | ok => simpa only [Except.mapError, Except.ok.injEq] using read
 
-public theorem decodeSlots_wire {plan : Plan} {ceiling : Nat} {start : State}
+public theorem decodeSlots_wire {limits : Limits} {encoding : ValueEncoding} {plan : Plan} {ceiling : Nat} {start : State}
     {reps defs : List Nat} {suffix : Bytes} {decoded : Decoded}
-    (accepted : decodeSlots plan ceiling start reps defs suffix = .ok decoded) :
-    DecodedWire plan ceiling start reps defs suffix decoded := by
+    (accepted : decodeSlots limits plan ceiling start reps defs suffix encoding = .ok decoded) :
+    DecodedWire limits plan ceiling start reps defs suffix decoded encoding := by
   unfold decodeSlots at accepted
   obtain ⟨classified, levelRead, read⟩ := bind_ok accepted
   obtain ⟨values, valueRead, read⟩ := bind_ok read
   obtain ⟨aligned, alignment, packaged⟩ := bind_ok read
-  obtain ⟨_, words, exactWords, wordCount, width, ordered⟩ :=
-    Plain.decodeFixedWidth_ok_iff.mp (from_mapError valueRead)
   obtain ⟨mask, positions⟩ := FlatPage.reconstruct_ok_iff.mp (from_mapError alignment)
   cases Except.ok.inj packaged
-  exact ⟨classify_wire (from_mapError levelRead), words, exactWords, wordCount, width, mask,
-    positions.trans ordered⟩
+  refine ⟨classify_wire (from_mapError levelRead), mask, ?_⟩
+  change encoding.Wire limits plan.kind ((classified.levels.map Slot.present).count true) suffix (aligned.filterMap id)
+  rw [positions]
+  cases encoding with
+  | plain =>
+    obtain ⟨_, words, exactWords, count, width, ordered⟩ :=
+      Plain.decodeFixedWidth_ok_iff.mp (from_mapError valueRead)
+    exact ⟨words, exactWords, count, width, ordered⟩
+  | dictionary entries =>
+    exact DictionaryIndex.readValues_wire (from_mapError valueRead)
 
 public theorem decodePage_wire {limits : Limits} {plan : Plan} {source : Bytes}
-    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
-    (accepted : decodePage limits plan source frame start remaining ceiling codec = .ok decoded) :
-    PageWire limits plan source frame start remaining ceiling decoded codec := by
+    {frame : Page.Frame} {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec} {encoding : ValueEncoding}
+    (accepted : decodePage limits plan source frame start remaining ceiling codec encoding = .ok decoded) :
+    PageWire limits plan source frame start remaining ceiling decoded codec encoding := by
   unfold decodePage at accepted
   obtain ⟨info, header, read⟩ := bind_ok accepted
   obtain ⟨body, bodyRead, read⟩ := bind_ok read
@@ -64,8 +71,8 @@ public theorem decodePage_wire {limits : Limits} {plan : Plan} {source : Bytes}
   exact ⟨info, body, reps, defs, kind, encodings, cap, bodyWire, repetition, definition, slots, count⟩
 
 public theorem v1_counts {limits : Limits} {plan : Plan} {source : Bytes} {frame : Page.Frame}
-    {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec}
-    (wire : PageWire limits plan source frame start remaining ceiling decoded codec) :
+    {start : State} {remaining ceiling : Nat} {decoded : Decoded} {codec : Codec} {encoding : ValueEncoding}
+    (wire : PageWire limits plan source frame start remaining ceiling decoded codec encoding) :
     start.slots + decoded.levels.length = decoded.after.slots ∧
     start.rows + decoded.levels.countP Slot.startsRow = decoded.after.rows := by
   obtain ⟨_, _, _, _, _, _, _, _, _, _, slots, _⟩ := wire.original

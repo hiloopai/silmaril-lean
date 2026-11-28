@@ -1,6 +1,6 @@
 # Arrow events from checked two-LIST Parquet groups
 
-The event adapter opens the unindexed PLAIN V1/V2 two-LIST profile
+The event adapter opens the unindexed V1/V2 two-LIST profile
 and exposes its exact recursive Arrow declaration once.
 It uses the shared Parquet reader to emit one complete batch per
 successfully reconstructed original group in footer order. Exhausting
@@ -8,7 +8,7 @@ those groups yields the Arrow event terminator `.eos`. A footer or
 schema error is an open failure. A later read failure keeps its original
 group ordinal and source cause, including the page address and incoming
 cursor for a page error. Only complete earlier groups appear in the trace.
-[Column codecs](parquet-recursive-two-list-codecs.md) · [Logical batch reader](parquet-recursive-two-list-rows.md)
+[PLAIN codec matrix](parquet-recursive-two-list-codecs.md) · [Dictionary data](parquet-recursive-two-list-dictionary.md) · [Logical batch reader](parquet-recursive-two-list-rows.md)
 
 ## Projection and equivalence
 

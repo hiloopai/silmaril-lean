@@ -664,7 +664,7 @@ structure Dictionary where
   codec : DictionaryCodec
   deriving Repr
 
-def readDictionary (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+def readDictionaryWith (limits : Limits) (kind : RecursiveSchema.Kind) (source : Bytes) (frame : Page.Frame)
     (codec : DictionaryCodec := .uncompressed) : Except PageCause Dictionary := do
   let .dictionary info := frame.value.kind | throw .missingDictionary
   if info.encoding ≠ 0 then throw (.dictionaryEncoding info.encoding)
@@ -677,28 +677,35 @@ def readDictionary (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Pag
     throw (.header (.pageSizes frame.value.uncompressedSize frame.value.compressedSize))
   else
     let body ← readV1Body limits codec.column source frame
-    let entries ← (RecursiveSchema.Chunk.readWords leaf.kind info.numValues body).mapError .plain
+    let entries ← (RecursiveSchema.Chunk.readWords kind info.numValues body).mapError .plain
     return ⟨frame, entries.toArray, codec⟩
 
-structure DictionaryWire (limits : Limits) (leaf : Leaf) (source : Bytes)
-    (dictionary : Dictionary) : Prop where
-  original : ∃ (info : Page.Dictionary) (body : Bytes) (words : List (List UInt8)),
+def readDictionary (limits : Limits) (leaf : Leaf) (source : Bytes) (frame : Page.Frame)
+    (codec : DictionaryCodec := .uncompressed) : Except PageCause Dictionary :=
+  readDictionaryWith limits leaf.kind source frame codec
+
+def DictionaryContentsWire (limits : Limits) (kind : RecursiveSchema.Kind) (source : Bytes)
+    (dictionary : Dictionary) : Prop :=
+  ∃ (info : Page.Dictionary) (body : Bytes) (words : List (List UInt8)),
     dictionary.frame.value.kind = .dictionary info ∧ info.encoding = 0 ∧
     info.numValues ≤ limits.maxDictionaryEntries ∧
     dictionary.frame.value.compressedSize ≤ limits.maxDictionaryBytes ∧
     dictionary.frame.value.uncompressedSize ≤ limits.maxDictionaryBytes ∧
     V1BodyWire limits dictionary.codec.column source dictionary.frame body ∧
     body.toList = words.flatten ∧ words.length = info.numValues ∧
-    (∀ word ∈ words, word.length = RecursiveSchema.Chunk.wordWidth leaf.kind) ∧
-    dictionary.entries = (words.map (RecursiveSchema.Chunk.readWord leaf.kind)).toArray
+    (∀ word ∈ words, word.length = RecursiveSchema.Chunk.wordWidth kind) ∧
+    dictionary.entries = (words.map (RecursiveSchema.Chunk.readWord kind)).toArray
+
+structure DictionaryWire (limits : Limits) (leaf : Leaf) (source : Bytes)
+    (dictionary : Dictionary) : Prop where
+  original : DictionaryContentsWire limits leaf.kind source dictionary
 
 def decodeDictionarySlots (limits : Limits) (leaf : Leaf) (dictionary : Array Word)
     (repetitions definitions : List Nat) (suffix : Bytes) (start : State) (rowCeiling : Nat) :
     Except PageCause DecodedPage := do
   let classified ← classifySlots leaf rowCeiling repetitions definitions start
   let mask := classified.levels.map LevelSlot.present
-  let indices ← (DictionaryIndex.readIndices limits.indices (mask.count true) suffix).mapError .dictionaryIndices
-  let words ← (DictionaryIndex.select dictionary indices).mapError .dictionaryIndices
+  let words ← (DictionaryIndex.readValues limits.indices dictionary (mask.count true) suffix).mapError .dictionaryIndices
   let aligned ← (FlatPage.reconstruct mask words).mapError .alignment
   return ⟨classified.levels, aligned, classified.after⟩
 

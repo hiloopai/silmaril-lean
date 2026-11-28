@@ -165,6 +165,12 @@ theorem PrefixWire.matchesBinding {schemaLimits : Snapshot.Limits} {snapshot : S
 
 /-- The ordered entries come from exact signed words in the original
 checksum-checked dictionary frame. -/
+theorem readDictionaryWith_wire {limits : Limits} {kind : RecursiveSchema.Kind} {source : Bytes}
+    {frame : Page.Frame} {dictionary : Dictionary} {codec : DictionaryCodec}
+    (read : readDictionaryWith limits kind source frame codec = .ok dictionary) :
+    dictionary.frame = frame ∧ dictionary.codec = codec ∧ DictionaryContentsWire limits kind source dictionary :=
+  Proofs.Formats.Parquet.RecursiveSchema.Repeated.Chunk.readDictionaryWith_wire read
+
 theorem readDictionary_wire {limits : Limits} {leaf : Leaf} {source : Bytes}
     {frame : Page.Frame} {dictionary : Dictionary} {codec : DictionaryCodec}
     (read : readDictionary limits leaf source frame codec = .ok dictionary) :

@@ -21,9 +21,9 @@ theorem Relation.typedWords {plan : Plan} {input : List Atom} {rows : List Row}
 
 /-- The checked levels and aligned words have the same extent. Every atom
 keeps its original repetition, definition and optional signed word. -/
-theorem decoded_axes {plan : Plan} {ceiling : Nat} {start : Chunk.State} {reps defs : List Nat}
-    {suffix : Bytes} {decoded : Chunk.Decoded}
-    (wire : Chunk.DecodedWire plan ceiling start reps defs suffix decoded) :
+theorem decoded_axes {limits : Chunk.Limits} {encoding : Chunk.ValueEncoding} {plan : Plan} {ceiling : Nat} {start : Chunk.State} {reps defs : List Nat}
+    {suffix : Silmaril.Formats.Bytes} {decoded : Chunk.Decoded}
+    (wire : Chunk.DecodedWire limits plan ceiling start reps defs suffix decoded encoding) :
     (pageAtoms decoded).map Atom.repetition = reps ∧
     (pageAtoms decoded).map Atom.definition = defs ∧
     (pageAtoms decoded).map Atom.word = decoded.words :=
@@ -31,7 +31,8 @@ theorem decoded_axes {plan : Plan} {ceiling : Nat} {start : Chunk.State} {reps d
 
 theorem chain_trace_rows {limits : Chunk.Limits} {carrier : Chunk.Carrier} {start stop : Chunk.State}
     {frames : List Page.Frame} {pages : List Chunk.ObservedPage}
-    (wire : Chunk.ChainWire limits carrier start frames pages stop) :
+    {dictionary : Option Repeated.Chunk.Dictionary}
+    (wire : Chunk.ChainWire limits carrier dictionary start frames pages stop) :
     start.rows + (atoms pages).countP (fun slot => slot.repetition == 0) = stop.rows :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoList.Rows.chain_trace_rows wire
 

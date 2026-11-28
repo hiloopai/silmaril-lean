@@ -1,8 +1,9 @@
 # Checked column codecs for two-LIST Parquet
 
-The reader accepts a single signed INT32 or INT64 leaf under two
-canonical LISTs in unindexed PLAIN V1/V2 chunks. Each row group binds
+The PLAIN profile accepts a single signed INT32 or INT64 leaf under
+two canonical LISTs in unindexed V1/V2 chunks. Each row group binds
 its codec from its own original column metadata.
+[Dictionary-first profile](parquet-recursive-two-list-dictionary.md)
 
 | Codec | Parquet ID | Checked payload |
 | --- | ---: | --- |

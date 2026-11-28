@@ -3,8 +3,8 @@
 The bridge opens the checked two-LIST Parquet profile and reads every
 original group in footer order. It passes the resulting logical batches
 to the existing recursive Arrow V5 stream writer. The source profile
-is unindexed PLAIN V1/V2 with one top-level LIST of LISTs of signed INT32 or INT64.
-[Page checks](parquet-recursive-two-list-v2.md) · [Column codecs](parquet-recursive-two-list-codecs.md) · [Logical batches](parquet-recursive-two-list-rows.md) · [Direct events](parquet-recursive-two-list-events.md)
+is unindexed V1/V2 with one top-level LIST of LISTs of signed INT32 or INT64.
+[Page checks](parquet-recursive-two-list-v2.md) · [PLAIN codec matrix](parquet-recursive-two-list-codecs.md) · [Dictionary data](parquet-recursive-two-list-dictionary.md) · [Logical batches](parquet-recursive-two-list-rows.md) · [Direct events](parquet-recursive-two-list-events.md)
 
 Selection uses the same two cases as direct Events. `Selection.field`
 emits the original names, nullability and complete nested field.

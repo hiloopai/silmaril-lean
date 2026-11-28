@@ -29,22 +29,21 @@ private theorem zip_axes {levels : List Chunk.Slot} {words : List (Option Chunk.
       simp [pageAtoms] at rep defn values ⊢
       exact ⟨rep, defn, values⟩
 
-public theorem decoded_axes {plan : Plan} {ceiling : Nat} {start : Chunk.State} {reps defs : List Nat}
+public theorem decoded_axes {limits : Chunk.Limits} {encoding : Chunk.ValueEncoding} {plan : Plan} {ceiling : Nat} {start : Chunk.State} {reps defs : List Nat}
     {suffix : Silmaril.Formats.Bytes} {decoded : Chunk.Decoded}
-    (wire : Chunk.DecodedWire plan ceiling start reps defs suffix decoded) :
+    (wire : Chunk.DecodedWire limits plan ceiling start reps defs suffix decoded encoding) :
     (pageAtoms decoded).map Atom.repetition = reps ∧
     (pageAtoms decoded).map Atom.definition = defs ∧
     (pageAtoms decoded).map Atom.word = decoded.words := by
   obtain ⟨rep, defn⟩ := wire.levels.originalLevels
-  obtain ⟨_, _, _, _, alignment, _⟩ := wire.words
   have lengths : decoded.levels.length = decoded.words.length := by
-    simpa only [List.length_map] using (congrArg List.length alignment).symm
+    simpa only [List.length_map] using (congrArg List.length wire.aligned).symm
   obtain ⟨r, d, w⟩ := zip_axes lengths (after := decoded.after)
   exact ⟨r.trans rep, d.trans defn, w⟩
 
-private theorem decoded_row_starts {plan : Plan} {source : Silmaril.Formats.Bytes}
+private theorem decoded_row_starts {limits : Chunk.Limits} {encoding : Chunk.ValueEncoding} {plan : Plan} {source : Silmaril.Formats.Bytes}
     {start : Chunk.State} {ceiling : Nat} {reps defs : List Nat} {decoded : Chunk.Decoded}
-    (original : Chunk.DecodedWire plan ceiling start reps defs source decoded) :
+    (original : Chunk.DecodedWire limits plan ceiling start reps defs source decoded encoding) :
     (pageAtoms decoded).countP (fun slot => slot.repetition == 0) =
       decoded.levels.countP Chunk.Slot.startsRow := by
   have reps := (decoded_axes original).1
@@ -53,20 +52,22 @@ private theorem decoded_row_starts {plan : Plan} {source : Silmaril.Formats.Byte
 
 private theorem page_row_starts {limits : Chunk.Limits} {plan : Plan} {source : Silmaril.Formats.Bytes}
     {frame : Page.Frame} {start : Chunk.State} {remaining ceiling : Nat} {decoded : Chunk.Decoded} {codec : Chunk.Codec}
-    (wire : Chunk.DataPageWire limits plan source frame start remaining ceiling decoded codec) :
+    {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
+    (wire : Chunk.DataPageWire limits plan source frame start remaining ceiling decoded codec dictionary) :
     (pageAtoms decoded).countP (fun slot => slot.repetition == 0) =
       decoded.levels.countP Chunk.Slot.startsRow := by
   cases wire with
-  | v1 v1 =>
+  | v1 _ v1 =>
     obtain ⟨_, _, _, _, _, _, _, _, _, _, original, _⟩ := v1.original
     exact decoded_row_starts original
-  | v2 v2 =>
+  | v2 _ v2 =>
     obtain ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, original, rfl⟩ := v2.original
     simpa only [Chunk.closeV2, pageAtoms] using decoded_row_starts original
 
 public theorem chain_trace_rows {limits : Chunk.Limits} {carrier : Chunk.Carrier} {start stop : Chunk.State}
     {frames : List Page.Frame} {pages : List Chunk.ObservedPage}
-    (wire : Chunk.ChainWire limits carrier start frames pages stop) :
+    {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
+    (wire : Chunk.ChainWire limits carrier dictionary start frames pages stop) :
     start.rows + (atoms pages).countP (fun slot => slot.repetition == 0) = stop.rows := by
   have rows := wire.counts.2
   suffices exactCount : (atoms pages).countP (fun slot => slot.repetition == 0) =

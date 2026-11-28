@@ -127,7 +127,7 @@ def inspect(wire, nullable, width, groups, *, codecs=None, expand=None):
         yield group, start, stop, cursor, pages
 
 
-def checked_page_term(page, nullable, width):
+def checked_page_term(page, nullable, width, encoding=0):
     original, data_v2 = page
     expected = page_term(original, nullable, width)
     v2 = "none"
@@ -135,7 +135,7 @@ def checked_page_term(page, nullable, width):
         count, nulls, rows, dl, rl, compressed = data_v2
         _, payload, end, *_ = original
         rep_end, def_end = payload + rl, payload + rl + dl
-        v2 = (f"some (⟨{count}, {nulls}, {rows}, 0, {dl}, {rl}, {str(compressed).lower()}⟩, "
+        v2 = (f"some (⟨{count}, {nulls}, {rows}, {encoding}, {dl}, {rl}, {str(compressed).lower()}⟩, "
               f"⟨⟨{payload}, {rep_end}⟩, ⟨{rep_end}, {def_end}⟩, ⟨{def_end}, {end}⟩⟩)")
     return f"{expected[:-1]}, {v2}⟩"
 

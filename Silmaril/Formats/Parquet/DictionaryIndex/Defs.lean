@@ -37,6 +37,21 @@ def select {α : Type} (dictionary : Array α) (indices : List Nat) : Except Err
     | some value => .ok value
     | none => .error (.outOfBounds index)
 
+/-- Resolve an entire width-prefixed index suffix against the local dictionary. -/
+def readValues {α : Type} (limits : Hybrid.Limits) (dictionary : Array α)
+    (expected : Nat) (source : Bytes) : Except Error (List α) := do
+  let indices ← readIndices limits expected source
+  select dictionary indices
+
+def ValuesWire {α : Type} (limits : Hybrid.Limits) (dictionary : Array α)
+    (expected : Nat) (source : Bytes) (values : List α) : Prop :=
+  ∃ (width : UInt8) (runs : List UInt8) (indices : List Nat),
+    source.toList = width :: runs ∧ width.toNat ≤ 32 ∧ source.length ≤ limits.bytes ∧
+    expected ≤ limits.values ∧ expected < Hybrid.runLimit ∧
+    Hybrid.Wire width.toNat expected runs indices ∧
+    (∀ index ∈ indices, index < dictionary.size) ∧
+    indices.map (fun index => dictionary[index]?) = values.map some
+
 /-- Decode an exact flat V1 or V2 body with a caller-supplied typed dictionary.
 Both dictionary data-page tags use the width-prefixed Hybrid index stream. -/
 def decode {α : Type} (dictionary : Array α) (params : ScalarPage.Parameters)

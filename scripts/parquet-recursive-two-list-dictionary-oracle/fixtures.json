@@ -1,0 +1,245 @@
+{
+  "authored": {
+    "after_v2": {
+      "bytes": 2457,
+      "sha256": "43c7663500f35a9dcb5db8c016ff073a64bd16f7496420dfb4f8c4fa22976c7e"
+    },
+    "dictionary_word_extent": {
+      "bytes": 1282,
+      "sha256": "71ad9c2c44bb42afa8b854a43b4952bd5cfbfee98414618ca58b98256bec38b3"
+    },
+    "duplicate_dictionary": {
+      "bytes": 1251,
+      "sha256": "6966a748ccd686c1f1b587912389418adb555beafb6d38c45f63d676fc228951"
+    },
+    "index_trailing_v1": {
+      "bytes": 1246,
+      "sha256": "87a93848bb5fabd06217e68c3745de99520a441e12af1c251225591425dbe4bc"
+    },
+    "index_trailing_v2": {
+      "bytes": 1198,
+      "sha256": "0a088d8048093e9ff64310c3188375550ec18105adb586fc0b1a8eac7083c9f7"
+    },
+    "late_dictionary_crc": {
+      "bytes": 1197,
+      "sha256": "f86521e35bbc1cd879768ab956f8dda44fdb4185d57bdc4367b5a3840f1dbf66"
+    },
+    "late_index_v1": {
+      "bytes": 1235,
+      "sha256": "1b4d89f667ddd54ad32e3a09808011a8b34ffcd3babd370ed5c5a8fda982e226"
+    },
+    "late_index_v2": {
+      "bytes": 1186,
+      "sha256": "80a589a779c121b59ec2a775d1fc35d44435a235086d2cd75d7d5bb8e51ff0f6"
+    },
+    "late_plain_tail": {
+      "bytes": 1566,
+      "sha256": "97de0273f3da0983911271f31d17b35382af75f7fb34e37bd223cc3ee9feb1ed"
+    },
+    "late_unadvertised_dictionary": {
+      "bytes": 1715,
+      "sha256": "ad6f96402ffbea55d2170a44f85d0f99edac769e9b82ac25f11e16ad05fe4a86"
+    },
+    "missing_dictionary_frame": {
+      "bytes": 1143,
+      "sha256": "a1fdd337a15318aa9dfb404883d244f24347c43f1fa234e38b2754a4fe0de9f5"
+    },
+    "missing_dictionary_offset": {
+      "bytes": 1140,
+      "sha256": "e812be7cbe2ed3130c4d30de50010e5159c0f91b74f976c722788ee611a15ffb"
+    },
+    "mixed": {
+      "bytes": 2844,
+      "sha256": "3ac9165be5affdeb28b0960d013d22b1ef4a9e78b0e9194cd87db7c1e5fc1e0f"
+    },
+    "raw_total": {
+      "bytes": 1195,
+      "sha256": "04e4ebb3610b0628c607895f52c266396d9eb99cdd5dfd45c99bbf9af7793dbb"
+    },
+    "snappy_raw_bypass": {
+      "bytes": 1259,
+      "sha256": "18c5736232d01381c08a99c3d514ac4cee1356c50b54df57af37288db398b96d"
+    },
+    "v2_midrow": {
+      "bytes": 2811,
+      "sha256": "2505003c4d99620336deae2bf38472747d2f3a60a66a4a979e6a3612f9d9e25a"
+    },
+    "wrong_data_offset": {
+      "bytes": 1195,
+      "sha256": "ee5c32f1d25e1b63aa310e2f1fb87dfd9e841195ae8a57a577f58d2873aa5974"
+    }
+  },
+  "genuine": {
+    "fallback_0_v1": {
+      "bytes": 1564,
+      "sha256": "f735c45c58c3fe9ed2f4f52a3d14598b05619b8a303511973a522ace37bc1740"
+    },
+    "fallback_0_v2": {
+      "bytes": 1807,
+      "sha256": "e87cd7a9e8a8a22653099f69d72a17b80afd3ed794f511b3fe9985f08aeb7b5b"
+    },
+    "fallback_1_v1": {
+      "bytes": 1588,
+      "sha256": "5e7d260b6121b0a02ca64766a87abc6b994c4cd52e9a7909e8c39fa2e7dfc7c6"
+    },
+    "fallback_1_v2": {
+      "bytes": 1767,
+      "sha256": "c28ad8aca8c04be8c6a7fad4b06e38ce6463cbb375cbcf97c353c5c6489ac476"
+    },
+    "gzip_dictionary": {
+      "bytes": 1434,
+      "sha256": "da7809d4550ccc2c632feddf45f8171f9dbc816b38d54ed11b5965984245c5af"
+    },
+    "native_0_v1_32": {
+      "bytes": 1279,
+      "sha256": "58ba9e2e48311cc60f2965629e3ec599b8d0e302a0fda88a8970a7093a554c8d"
+    },
+    "native_0_v1_64": {
+      "bytes": 1446,
+      "sha256": "02d4afbbddc92ff63c0929d1d2f9085783a47f10677f79c94795feaf85e8422f"
+    },
+    "native_0_v2_32": {
+      "bytes": 1248,
+      "sha256": "396915e8b658d4254cf8b212e17f3e170e42f426f75b78d4940db8d7bcd426d4"
+    },
+    "native_0_v2_64": {
+      "bytes": 1415,
+      "sha256": "c114c5a2998ca2981520e027a8b830f09443e2ac915ae6a97a392f4aad3382a9"
+    },
+    "native_1_v1_32": {
+      "bytes": 1244,
+      "sha256": "05746c4b4666a07480409f85190d31a6a4b09aa3f1e161011e48c77004eced44"
+    },
+    "native_1_v1_64": {
+      "bytes": 1374,
+      "sha256": "7ab0736d360366e37ef973f885b1f46ca429586877f881c3a7c3dd7d531732d2"
+    },
+    "native_1_v2_32": {
+      "bytes": 1195,
+      "sha256": "9ecba6c2bfa095c57ce055e1c30b3413698136e22e8f5260da7e270adfe6e88a"
+    },
+    "native_1_v2_64": {
+      "bytes": 1325,
+      "sha256": "57c05260209e9331515dc8a74a23bbc79e2f4d76f6c3eb5963cbc8a0c48606b1"
+    }
+  },
+  "lean_ipc": {
+    "fallback_0_v1_empty": {
+      "bytes": 312,
+      "sha256": "17e014e2073426495754060c5ebed85560bc7b137d2903cab1f5d7ef53adaa93"
+    },
+    "fallback_0_v1_field": {
+      "bytes": 1512,
+      "sha256": "8442672419d87f168ffee0e21b712e7e98192c15b70c9f3fd8717a6d135e0f3d"
+    },
+    "fallback_0_v2_empty": {
+      "bytes": 312,
+      "sha256": "17e014e2073426495754060c5ebed85560bc7b137d2903cab1f5d7ef53adaa93"
+    },
+    "fallback_0_v2_field": {
+      "bytes": 1728,
+      "sha256": "19e8f0151ff2f005ec5e97b6627e13e46355d4de23d45cee37fa640141dae372"
+    },
+    "fallback_1_v1_empty": {
+      "bytes": 312,
+      "sha256": "17e014e2073426495754060c5ebed85560bc7b137d2903cab1f5d7ef53adaa93"
+    },
+    "fallback_1_v1_field": {
+      "bytes": 1512,
+      "sha256": "8442672419d87f168ffee0e21b712e7e98192c15b70c9f3fd8717a6d135e0f3d"
+    },
+    "fallback_1_v2_empty": {
+      "bytes": 312,
+      "sha256": "17e014e2073426495754060c5ebed85560bc7b137d2903cab1f5d7ef53adaa93"
+    },
+    "fallback_1_v2_field": {
+      "bytes": 1728,
+      "sha256": "19e8f0151ff2f005ec5e97b6627e13e46355d4de23d45cee37fa640141dae372"
+    },
+    "mixed_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "mixed_field": {
+      "bytes": 2200,
+      "sha256": "7e1a1d0bd7ab3bac25f30a16cbf393eeccc85c96f1dc221af89d23a4fe68f1c3"
+    },
+    "native_0_v1_32_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "native_0_v1_32_field": {
+      "bytes": 2200,
+      "sha256": "7e1a1d0bd7ab3bac25f30a16cbf393eeccc85c96f1dc221af89d23a4fe68f1c3"
+    },
+    "native_0_v1_64_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "native_0_v1_64_field": {
+      "bytes": 3024,
+      "sha256": "a5bef366182d48f990ffbb1e35a26c4aa51a39008fc5fa56d4256d6c4c787749"
+    },
+    "native_0_v2_32_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "native_0_v2_32_field": {
+      "bytes": 2200,
+      "sha256": "7e1a1d0bd7ab3bac25f30a16cbf393eeccc85c96f1dc221af89d23a4fe68f1c3"
+    },
+    "native_0_v2_64_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "native_0_v2_64_field": {
+      "bytes": 3024,
+      "sha256": "a5bef366182d48f990ffbb1e35a26c4aa51a39008fc5fa56d4256d6c4c787749"
+    },
+    "native_1_v1_32_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "native_1_v1_32_field": {
+      "bytes": 2200,
+      "sha256": "7e1a1d0bd7ab3bac25f30a16cbf393eeccc85c96f1dc221af89d23a4fe68f1c3"
+    },
+    "native_1_v1_64_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "native_1_v1_64_field": {
+      "bytes": 3024,
+      "sha256": "a5bef366182d48f990ffbb1e35a26c4aa51a39008fc5fa56d4256d6c4c787749"
+    },
+    "native_1_v2_32_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "native_1_v2_32_field": {
+      "bytes": 2200,
+      "sha256": "7e1a1d0bd7ab3bac25f30a16cbf393eeccc85c96f1dc221af89d23a4fe68f1c3"
+    },
+    "native_1_v2_64_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "native_1_v2_64_field": {
+      "bytes": 3024,
+      "sha256": "a5bef366182d48f990ffbb1e35a26c4aa51a39008fc5fa56d4256d6c4c787749"
+    },
+    "snappy_raw_bypass_empty": {
+      "bytes": 424,
+      "sha256": "dace7217592d917aa275f3899c1583d65358553219b608c2c31f1abc3ffb61fd"
+    },
+    "snappy_raw_bypass_field": {
+      "bytes": 2200,
+      "sha256": "7e1a1d0bd7ab3bac25f30a16cbf393eeccc85c96f1dc221af89d23a4fe68f1c3"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}

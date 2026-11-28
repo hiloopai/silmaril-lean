@@ -11,7 +11,7 @@ The entry point returns
 original page frames, classified slots, aligned signed words and a
 terminal cursor. Rows, Events, IPC and the writer retain their existing
 profiles.
-[V2 and mixed chunks](parquet-recursive-two-list-v2.md) · [Column codecs](parquet-recursive-two-list-codecs.md) · [One-LIST reader](parquet-recursive-repeated-chunk.md) · [Pinned Parquet nested encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/README.md#nested-encoding)
+[V2 and mixed chunks](parquet-recursive-two-list-v2.md) · [Column codecs](parquet-recursive-two-list-codecs.md) · [Dictionary data](parquet-recursive-two-list-dictionary.md) · [One-LIST reader](parquet-recursive-repeated-chunk.md) · [Pinned Parquet nested encoding](https://github.com/apache/parquet-format/blob/04d56f291ff963e98bc37ab8100e2fc133ff583c/README.md#nested-encoding)
 
 For three optional sites the ordered definitions are:
 
