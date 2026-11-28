@@ -34,6 +34,9 @@ and batches. The projection laws identify the selected declaration
 and every batch's positional cells with the corresponding view of
 the full trace. Both views share its first terminal result.
 
+The [strict Arrow V5 IPC bridge](parquet-recursive-tree-to-ipc.md)
+uses this same selected trace and its checked original groups.
+
 ## Evidence and verification
 
 Each complete batch is tied to its original `Tree.Rows.GroupResult`.
