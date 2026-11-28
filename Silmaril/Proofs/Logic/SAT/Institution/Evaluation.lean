@@ -1,12 +1,13 @@
 module
 
 public import Silmaril.Logic.SAT.Institution.Defs
+import Silmaril.Logic.ManyValued.Thms
 
 public section
 
 namespace Silmaril.Proofs.Logic.SAT.Institution
 
-open Silmaril.Logic.SAT.Institution
+open Silmaril.Logic.SAT.Institution Silmaril.Logic.ManyValued
 
 universe u v w x
 variable {A : Type u} {B : Type v}
@@ -76,55 +77,83 @@ private theorem evalWith_rel {V : Type w} {W : Type x} (R : V → W → Prop)
   · exact hv l.atom
   · exact hneg (hv l.atom)
 
+theorem evalK3Option_eq_evalWith (v : PartialValuation A) (F : Problem A) :
+    F.evalK3Option v =
+      F.evalWith (some true) (some false) (Option.map Bool.not)
+        (fun a b => if a = some false ∨ b = some false then some false
+          else if a = some true ∧ b = some true then some true else none)
+        (fun a b => if a = some true ∨ b = some true then some true
+          else if a = some false ∧ b = some false then some false else none) v := by
+  refine evalWith_rel (fun k o => K3.toOptionBool k = o) rfl rfl ?_ ?_ ?_ ?_ F
+  · rintro a _ rfl
+    exact K3.toOptionBool_neg a
+  · rintro a _ b _ rfl rfl
+    cases a <;> cases b <;> rfl
+  · rintro a _ b _ rfl rfl
+    cases a <;> cases b <;> rfl
+  · intro a
+    exact K3.toOptionBool_ofOptionBool (v a)
+
 theorem evalK3_total (v : TotalValuation A) (F : Problem A) :
-    F.evalK3 (some ∘ v) = some (F.eval v) := by
+    F.evalK3 (K3.ofBool ∘ v) = K3.ofBool (F.eval v) := by
   rw [← evalWith_bool v F]
   symm
-  refine evalWith_rel (fun b k => some b = k) rfl rfl ?_ ?_ ?_ (fun _ => rfl) F
+  refine evalWith_rel (fun b k => K3.ofBool b = k) rfl rfl ?_ ?_ ?_ (fun _ => rfl) F
   · rintro b _ rfl
-    cases b <;> rfl
+    exact K3.ofBool_not b
   · rintro b _ c _ rfl rfl
-    cases b <;> cases c <;> rfl
+    exact K3.ofBool_and b c
   · rintro b _ c _ rfl rfl
-    cases b <;> cases c <;> rfl
+    exact K3.ofBool_or b c
 
-theorem evalEvidence_ofK3 (v : PartialValuation A) (F : Problem A) :
-    F.evalEvidence (Evidence.ofK3 ∘ v) = Evidence.ofK3 (F.evalK3 v) := by
+theorem evalEvidence_bits (v : EvidenceValuation A) (F : Problem A) :
+    ((F.evalEvidence v).support, (F.evalEvidence v).refute) =
+      F.evalWith (true, false) (false, true) Prod.swap
+        (fun a b => (a.1 && b.1, a.2 || b.2))
+        (fun a b => (a.1 || b.1, a.2 && b.2))
+        (fun a => ((v a).support, (v a).refute)) := by
+  refine evalWith_rel (fun e p => (FDE.support e, FDE.refute e) = p) rfl rfl
+    ?_ ?_ ?_ (fun _ => rfl) F
+  · rintro a _ rfl
+    simp only [FDE.support_neg, FDE.refute_neg, Prod.swap]
+  · rintro a _ b _ rfl rfl
+    simp only [FDE.conj, FDE.support_ofBits, FDE.refute_ofBits]
+  · rintro a _ b _ rfl rfl
+    simp only [FDE.disj, FDE.support_ofBits, FDE.refute_ofBits]
+
+theorem evalEvidence_ofK3 (v : K3Valuation A) (F : Problem A) :
+    F.evalEvidence (K3.toFDE ∘ v) = (F.evalK3 v).toFDE := by
   symm
-  refine evalWith_rel (fun k e => Evidence.ofK3 k = e) rfl rfl ?_ ?_ ?_ (fun _ => rfl) F
-  · rintro (_ | (_ | _)) _ rfl <;> rfl
-  · rintro (a | (a | a)) _ (b | (b | b)) _ rfl rfl <;> rfl
-  · rintro (a | (a | a)) _ (b | (b | b)) _ rfl rfl <;> rfl
-
-theorem evalK3_informationLE {v v' : PartialValuation A}
-    (hv : ∀ a, K3.InformationLE (v a) (v' a)) (F : Problem A) :
-    K3.InformationLE (F.evalK3 v) (F.evalK3 v') := by
-  refine evalWith_rel K3.InformationLE (fun _ h => h) (fun _ h => h) ?_ ?_ ?_ hv F
-  · intro a a' h
-    rcases a with _ | a
-    · simp [K3.InformationLE, K3.neg]
-    · rw [h a rfl]
-      exact fun _ he => he
-  · intro a a' b b' ha hb
-    rcases a with _ | (_ | _) <;> rcases b with _ | (_ | _) <;>
-      simp_all [K3.InformationLE, K3.conj]
-    rcases a' with _ | (_ | _) <;> rfl
-  · intro a a' b b' ha hb
-    rcases a with _ | (_ | _) <;> rcases b with _ | (_ | _) <;>
-      simp_all [K3.InformationLE, K3.disj]
-    rcases a' with _ | (_ | _) <;> rfl
+  refine evalWith_rel (fun k e => K3.toFDE k = e) rfl rfl ?_ ?_ ?_ (fun _ => rfl) F
+  · rintro a _ rfl
+    exact K3.toFDE_neg a
+  · rintro a _ b _ rfl rfl
+    exact K3.toFDE_inf a b
+  · rintro a _ b _ rfl rfl
+    exact K3.toFDE_sup a b
 
 theorem evalEvidence_informationLE {v v' : EvidenceValuation A}
-    (hv : ∀ a, Evidence.InformationLE (v a) (v' a)) (F : Problem A) :
-    Evidence.InformationLE (F.evalEvidence v) (F.evalEvidence v') := by
-  have refl (e : Evidence) : e.InformationLE e := ⟨fun h => h, fun h => h⟩
-  refine evalWith_rel Evidence.InformationLE (refl _) (refl _) ?_ ?_ ?_ hv F
-  · exact fun h => ⟨h.2, h.1⟩
+    (hv : ∀ a, (⟨v a⟩ : FDE.Information) ≤ ⟨v' a⟩) (F : Problem A) :
+    (⟨F.evalEvidence v⟩ : FDE.Information) ≤ ⟨F.evalEvidence v'⟩ := by
+  refine evalWith_rel (fun a b => (⟨a⟩ : FDE.Information) ≤ ⟨b⟩)
+    le_rfl le_rfl ?_ ?_ ?_ hv F
+  · intro a a' h
+    exact (FDE.Information.neg_le_neg_iff ⟨a⟩ ⟨a'⟩).2 h
   · intro a a' b b' ha hb
-    simp only [Evidence.InformationLE, Evidence.conj, Bool.and_eq_true, Bool.or_eq_true] at *
-    exact ⟨fun h => ⟨ha.1 h.1, hb.1 h.2⟩, fun h => h.imp ha.2 hb.2⟩
+    simp only [FDE.Information.le_iff_bits, FDE.conj, FDE.support_ofBits,
+      FDE.refute_ofBits, Bool.le_iff_imp, Bool.and_eq_true, Bool.or_eq_true] at *
+    exact ⟨And.imp ha.1 hb.1, Or.imp ha.2 hb.2⟩
   · intro a a' b b' ha hb
-    simp only [Evidence.InformationLE, Evidence.disj, Bool.and_eq_true, Bool.or_eq_true] at *
-    exact ⟨fun h => h.imp ha.1 hb.1, fun h => ⟨ha.2 h.1, hb.2 h.2⟩⟩
+    simp only [FDE.Information.le_iff_bits, FDE.disj, FDE.support_ofBits,
+      FDE.refute_ofBits, Bool.le_iff_imp, Bool.and_eq_true, Bool.or_eq_true] at *
+    exact ⟨Or.imp ha.1 hb.1, And.imp ha.2 hb.2⟩
+
+theorem evalK3_informationLE {v v' : K3Valuation A}
+    (hv : ∀ a, (⟨v a⟩ : K3.Information) ≤ ⟨v' a⟩) (F : Problem A) :
+    (⟨F.evalK3 v⟩ : K3.Information) ≤ ⟨F.evalK3 v'⟩ := by
+  apply (K3.Information.toFDE_le_iff _ _).1
+  change (⟨(F.evalK3 v).toFDE⟩ : FDE.Information) ≤ ⟨(F.evalK3 v').toFDE⟩
+  rw [← evalEvidence_ofK3 v F, ← evalEvidence_ofK3 v' F]
+  exact evalEvidence_informationLE (fun a => (K3.Information.toFDE_le_iff _ _).2 (hv a)) F
 
 end Silmaril.Proofs.Logic.SAT.Institution

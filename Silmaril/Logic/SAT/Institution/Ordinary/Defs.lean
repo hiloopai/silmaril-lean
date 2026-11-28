@@ -10,7 +10,7 @@ public import Mathlib.CategoryTheory.Discrete.Basic
 
 namespace Silmaril.Logic.SAT.Institution
 
-open CategoryTheory Silmaril.Logic.Institution
+open CategoryTheory Silmaril.Logic.Institution Silmaril.Logic.ManyValued
 
 universe u
 
@@ -32,11 +32,11 @@ def totalInstitution : Type u ⥤ Room.{u, u, u} :=
 
 /-- Partial valuations observed by strong Kleene truth. -/
 def kleeneTruthInstitution : Type u ⥤ Room.{u, u, u} :=
-  observationInstitution Problem.evalK3 (· = some true) Problem.evalK3_rename
+  observationInstitution Problem.evalK3Partial (· = K3.ofBool true) Problem.evalK3Partial_rename
 
 /-- Partial valuations observed by strong Kleene falsity. -/
 def kleeneRefutationInstitution : Type u ⥤ Room.{u, u, u} :=
-  observationInstitution Problem.evalK3 (· = some false) Problem.evalK3_rename
+  observationInstitution Problem.evalK3Partial (· = K3.ofBool false) Problem.evalK3Partial_rename
 
 /-- Evidence valuations observed by positive support, including the value `both`. -/
 def evidenceSupportInstitution : Type u ⥤ Room.{u, u, u} :=
