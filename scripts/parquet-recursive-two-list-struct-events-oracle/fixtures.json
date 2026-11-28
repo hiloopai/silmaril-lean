@@ -1,0 +1,22 @@
+{
+  "empty_input": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "late_crc": {
+    "bytes": 1606,
+    "sha256": "5ebe8de47e808f6d0c47534ff11f84527fc8764d3d4db7d6b7907515b24ea78b"
+  },
+  "physical_empty": {
+    "bytes": 1937,
+    "sha256": "69f27b3e8ae6e831fde9f2d774a0349cd5e8ba8e5a6cb1789ad0c70abb50921f"
+  },
+  "renamed": {
+    "bytes": 683,
+    "sha256": "b82eff46655e5e5a8f962243385019c28711de3a08e8350d9dc3e491203540e4"
+  },
+  "schema_only": {
+    "bytes": 168,
+    "sha256": "9f2ef00ec92b6e9cb77570a1ca9e3b7c2d68c39b11f6d708d38cc30f950fd5b0"
+  }
+}

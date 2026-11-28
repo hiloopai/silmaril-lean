@@ -11,7 +11,7 @@ namespace Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader
 open Silmaril.Formats.Parquet
 open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct (Plan Compiled Side)
 open Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader
-open Silmaril.Formats.Arrow.RecursiveSchema.Batch.Rows (Observation)
+open Silmaril.Formats.Arrow.RecursiveSchema.Batch.Rows (Observation RowFits)
 
 private theorem bind_ok {α β ε : Type} {first : Except ε α} {next : α → Except ε β} {out : β}
     (read : (first >>= next) = .ok out) : ∃ found, first = .ok found ∧ next found = .ok out := by
@@ -62,9 +62,10 @@ public theorem column_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
   obtain ⟨wire, version⟩ := RecursiveSchema.ListPath.Chunk.readCarrier_wire read
   exact ⟨wire, v1_frames version⟩
 
-public theorem group_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
+public theorem group_checked {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {limits : Limits} {out : Observation}
-    (read : readGroup limits schema group = .ok out) : GroupWire limits schema group out := by
+    (read : readGroup limits schema group = .ok out) :
+    GroupWire limits schema group out ∧ (∀ row ∈ out.rows, RowFits schema.plan.arrow.fields row) := by
   unfold readGroup at read
   obtain ⟨bound, _, read⟩ := bind_ok read
   obtain ⟨left, _, read⟩ := bind_ok read
@@ -82,8 +83,9 @@ public theorem group_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.
     have rightExact := RecursiveSchema.ListPath.Rows.reconstruct_wire (from_mapError rightLogical)
     have projections := RecursiveSchema.TwoListStruct.Rows.mergeRows_wire merged
     have count := (RecursiveSchema.TwoListStruct.Rows.projectRows_count (projections .left)).symm.trans leftExact.count
-    refine ⟨bound, left, right, leftOriginal, rightOriginal, column_wire (from_mapError leftRead),
-      column_wire (from_mapError rightRead), rfl, count, topology, ?_⟩
+    refine ⟨⟨bound, left, right, leftOriginal, rightOriginal, column_wire (from_mapError leftRead),
+      column_wire (from_mapError rightRead), rfl, count, topology, ?_⟩,
+      RecursiveSchema.TwoListStruct.Rows.mergeRows_typed merged leftExact.typed rightExact.typed⟩
     intro side
     cases side with
     | left => exact ⟨_, projections .left, leftExact.original⟩
@@ -150,6 +152,6 @@ public theorem all_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Ch
     {schema : Compiled schemaLimits snapshot} {limits : Limits} {out : List Observation}
     (read : readAll limits schema = .ok out) :
     List.Forall₂ (GroupWire limits schema) (List.range snapshot.groupCount) out :=
-  List.Forall₂.imp (fun _ _ => group_wire) (mapM_wire read)
+  List.Forall₂.imp (fun _ _ accepted => (group_checked accepted).1) (mapM_wire read)
 
 end Silmaril.Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader
