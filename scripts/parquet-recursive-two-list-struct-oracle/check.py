@@ -205,7 +205,7 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block
         assert set(THRIFT["list_field"](footer, 2)) == tags
         assert codec == 0 or (codec in (1, 2, 6, 7) and decode_block is not None)
         if dictionary:
-            assert dictionaries is not None and codec == 0 and footer[11][1] == lo
+            assert dictionaries is not None and footer[11][1] == lo
         else:
             assert footer[9][1] == lo
         assert footer[7][1] == hi - lo
@@ -228,8 +228,10 @@ def inspect(wire, schema, groups, *, checksums=True, versions=(0,), decode_block
                 assert crc == zlib.crc32(body)
             if version == 2:
                 assert dictionary and at == lo and entries is None
-                assert raw_size == stored_size and footer[9][1] == body_at + stored_size
-                entries = [word for word, in struct.iter_unpack(physical, body)]
+                assert footer[9][1] == body_at + stored_size
+                plain = decode_block(codec, body, raw_size) if codec != 0 else body
+                assert len(plain) == raw_size
+                entries = [word for word, in struct.iter_unpack(physical, plain)]
                 info = header[7][1]
                 assert info[1][1] == len(entries) and info[2][1] == 0
                 dictionaries[group, side] = (at, header, body_at, body, entries)

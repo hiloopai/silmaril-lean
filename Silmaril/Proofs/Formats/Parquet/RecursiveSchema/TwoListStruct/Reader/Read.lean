@@ -54,17 +54,8 @@ public theorem column_wire {schemaLimits : Snapshot.Limits} {snapshot : Snapshot
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
     {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
     {out : RecursiveSchema.ListPath.Chunk.Observation} (read : readColumn limits binding = .ok out) :
-    ColumnWire limits binding out := by
-  have wire := (RecursiveSchema.ListPath.Chunk.readCarrier_wire read).1
-  refine ⟨wire, fun table found => ?_⟩
-  obtain ⟨_, _, _, _, _, offset, _⟩ := wire.dictionary_anchors found
-  change binding.column.metadata.dictionaryPageOffset = _ at offset
-  have identity := binding.dictionaryUncompressed (by rw [offset]; simp)
-  have original := (wire.dictionary_payloadOf
-    (RecursiveSchema.ListPath.Chunk.Codec.column_ofId binding.originalCodec) found).1
-  change RecursiveSchema.Repeated.Chunk.DictionaryCodec.ofId binding.column.metadata.codec = some table.codec at original
-  rw [identity] at original
-  exact (Option.some.inj original).symm
+    ColumnWire limits binding out :=
+  ⟨(RecursiveSchema.ListPath.Chunk.readCarrier_wire read).1⟩
 
 private theorem column_data_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}

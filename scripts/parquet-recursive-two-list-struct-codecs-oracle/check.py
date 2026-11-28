@@ -21,7 +21,6 @@ encode, header_body, raw_chunks, raw_bypass, repack = (SNAPPY[key] for key in
                                                        ("encode", "header_body", "raw_chunks", "raw_bypass", "repack"))
 PRODUCERS, parts, GZIP_ZERO, ZSTD_ZERO, ZSTD_FRAME = (REFERENCE[key] for key in
                                                     ("PRODUCERS", "parts", "GZIP_ZERO", "ZSTD_ZERO", "ZSTD_FRAME"))
-FIRST = (0, 0)
 LATE = (1, 1)
 ALL = (True,) * 4
 
@@ -270,10 +269,8 @@ def verify(folder):
         failure(label, "gzip_v2_optional", 1, cause)
     failure("late_legacy_lz4", "lz4_v1_optional", 1, f".binding (.column {NATIVE['address'](*LATE)} (.codec 5))")
     failure("late_topology", "mixed_child_cuts", 1, topology)
-    footer = THRIFT["column_metadata"](NATIVE["metadata"](dictionary), *FIRST)
-    encodings = SNAPPY["lst"](map(str, THRIFT["list_field"](footer, 2)))
-    failure("parquet_dictionary", "gzip_v2_optional", 0,
-            f".binding (.column {NATIVE['address'](*FIRST)} (.encodings {encodings}))")
+    schema, logical, _ = observations["gzip_v2_optional"]
+    control.append(f'  checkRows (← load folder "parquet_dictionary") {IPC["batches_term"](schema, logical)}')
 
     code.extend(["private def controls (folder : System.FilePath) : IO Unit := do", *control,
                  'public def main (args : List String) : IO Unit := do',
@@ -294,7 +291,7 @@ def verify(folder):
         assert ipc[f"native_independent_codecs_{selection}"] == ipc[f"zstd_v2_optional_{selection}"]
     print(f"Checked {len(positives)} sources, {counts['v1']} V1 and {counts['v2']} V2 frames, "
           f"{counts['v2_raw_words']} false-flag V2 suffixes with signed words, {len(ipc)} exact IPC streams "
-          f"and {len(refusals) + len(totals_errors) + 3} typed controls")
+          f"and {len(refusals) + len(totals_errors) + 2} typed controls")
     pins = NATIVE["fingerprints"]
     return {
         "reference": {"liblz4": REFERENCE["LZ4"]["PIN"], "libzstd": REFERENCE["ZSTD"]["ZSTD"]["PIN"],

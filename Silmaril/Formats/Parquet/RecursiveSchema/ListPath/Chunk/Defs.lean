@@ -100,8 +100,9 @@ private def checked {ε : Type} (condition : Prop) [Decidable condition] (error 
     Except ε (PLift condition) :=
   if yes : condition then .ok ⟨yes⟩ else .error error
 
-private def bindEncoding (metadata : Footer.ColumnMetadata)
-    (fail : BindCause → BindError) : Except BindError (ColumnEncoding metadata) := do
+/-- Select the original encoding and dictionary codec for a signed carrier. -/
+public def bindEncoding {ε : Type} (metadata : Footer.ColumnMetadata)
+    (fail : BindCause → ε) : Except ε (ColumnEncoding metadata) := do
   if dictionary : Repeated.Chunk.DictionaryEncodings metadata then
     let ⟨codec, original⟩ ← lookup
       (Repeated.Chunk.DictionaryCodec.ofId metadata.codec) (fail (.codec metadata.codec))

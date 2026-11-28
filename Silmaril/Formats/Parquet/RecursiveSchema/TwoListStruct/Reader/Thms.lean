@@ -52,16 +52,17 @@ theorem ColumnWire.dictionary_anchors {schemaLimits : Snapshot.Limits} {snapshot
       binding.column.metadata.dataPageOffset = Int.ofNat first.header.start :=
   wire.original.dictionary_anchors found
 
-/-- The original dictionary contains the exact checked signed entries. -/
+/-- The dictionary retains its original column codec and exact checked signed entries. -/
 theorem ColumnWire.dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {bound : GroupBinding snapshot group}
     {side : Side} {binding : ColumnBinding schema bound side} {limits : Limits}
     {out : ListPath.Chunk.Observation} {table : Repeated.Chunk.Dictionary}
     (wire : ColumnWire limits binding out) (found : out.dictionary = some table) :
-    table.codec = .uncompressed ∧
+    Repeated.Chunk.DictionaryCodec.ofId binding.column.metadata.codec = some table.codec ∧
+      table.codec.column = binding.codec.column ∧
       Repeated.Chunk.DictionaryContentsWire limits.payload (schema.plan.path side).shape.leaf.2
         snapshot.bytes table :=
-  ⟨wire.dictionaryCodec table found, (wire.original.dictionary_payloadOf binding.codec_exact found).2.2⟩
+  wire.original.dictionary_payloadOf binding.codec_exact found
 
 /-- Recover the original V1 frame and the full-body wire witness for its codec. -/
 theorem ColumnWire.v1_page {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}

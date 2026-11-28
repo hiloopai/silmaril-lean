@@ -19,6 +19,7 @@ NATIVE, EVENTS, IPC = (BASE[key] for key in ("NATIVE", "EVENTS", "IPC"))
 THRIFT, frames_in, lst, page_term, triple = (BASE[key] for key in
                                            ("THRIFT", "frames_in", "lst", "page_term", "triple"))
 SNAPPY = runpy.run_path(str(HERE.parent / "parquet-recursive-two-list-snappy-oracle/check.py"))
+TAGS = {0: "uncompressed", 1: "snappy", 2: "gzip", 6: "zstd", 7: "lz4Raw"}
 encode, expand, frame_bytes, header_body, level_bytes, raw_bypass, raw_chunks, repack = (
     SNAPPY[key] for key in ("encode", "expand", "frame_bytes", "header_body",
                            "level_bytes", "raw_bypass", "raw_chunks", "repack")
@@ -44,8 +45,8 @@ private def checkPayloads (file : Bytes) (group : Nat) (side : Side) (codec : Re
       | .dataV2 info => do
         let some spans := frame.v2Spans | throw (IO.userError "invalid original V2 spans")
         let width := RecursiveSchema.Chunk.wordWidth (source.schema.plan.child side).2
-        take (readV2SuffixWith limits.payload codec.column frame info
-          (bytesAt file spans.values) (some ((info.numValues - info.numNulls) * width)))
+        let extent := if info.encoding = 0 then some ((info.numValues - info.numNulls) * width) else none
+        take (readV2SuffixWith limits.payload codec.column frame info (bytesAt file spans.values) extent)
       | .skipped _ => throw (IO.userError "unexpected skipped frame")
     unless (bytesAt file frame.payload).toList == stored.toList && expanded.toList == plain.toList do
       throw (IO.userError "original stored or decoded payload bytes differ")
@@ -233,7 +234,7 @@ def source_commands(label, schema, groups, wire, decode_block, *, checksums=True
             counts["v2" if v2 else "v1"] += 1
             if v2 and codec != 0 and not header[8][1].get(7, (None, True))[1] and plain:
                 counts["v2_raw_words"] += 1
-        lean_codec = {0: ".uncompressed", 1: ".snappy", 2: ".gzip", 6: ".zstd", 7: ".lz4Raw"}[codec]
+        lean_codec = f".{TAGS[codec]}"
         commands.append(f'  checkPayloads (← load folder "{label}") {group} {tag} {lean_codec} '
                         f'{hi - lo} {raw_total} {lst(pairs)} {limits}')
     fields, batches = IPC["fields_term"](schema), IPC["batches_term"](schema, logical)
@@ -273,13 +274,10 @@ def verify(folder):
     for label, limits, error in errors:
         commands.append(f'  groupRefusal (← load folder "{label}") 1 {limits} ({error})')
         commands.append(f'  checkFailure (← load folder "{label}") {limits} {prefix} (.group 1 ({error}))')
-    addr = NATIVE["address"](0, 0)
     schema, logical = expected["optional_v2_1111"]
-    commands.append(f'  checkRows (← load folder "other_codec") {IPC["batches_term"](schema, logical)}')
-    footer = THRIFT["column_metadata"](NATIVE["metadata"](probes["dictionary"]), 0, 0)
-    encodings = lst(map(str, THRIFT["list_field"](footer, 2)))
-    commands.append(f'  groupRefusal (← load folder "dictionary") 0 {{}} '
-                    f'(.binding (.column {addr} (.encodings {encodings})))')
+    batches = IPC["batches_term"](schema, logical)
+    for label in ("other_codec", "dictionary"):
+        commands.append(f'  checkRows (← load folder "{label}") {batches}')
 
     driver = folder / "TwoListStructSnappy.lean"
     driver.write_text("\n".join(commands) + "\n", encoding="utf-8")
@@ -296,7 +294,7 @@ def verify(folder):
         assert ipc[f"v2_raw_bypass_{selection}"] == ipc[f"per_child_v2_{selection}"] == ipc[f"optional_v2_1111_{selection}"]
     print(f"Checked {len(positives)} sources, {counts['v1']} V1 and {counts['v2']} V2 frames, "
           f"{counts['v2_raw_words']} Snappy false-flag V2 suffixes with signed words, "
-          f"{len(ipc)} strict IPC streams and {len(errors) + 1} typed controls")
+          f"{len(ipc)} strict IPC streams and {len(errors)} typed controls")
     pins = NATIVE["fingerprints"]
     return {key: pins(data) for key, data in {
         "genuine_parquet": originals, "authored_parquet": authored, "genuine_probes": probes, "lean_ipc": ipc,
