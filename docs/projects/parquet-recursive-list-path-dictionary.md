@@ -27,10 +27,11 @@ original raw level spans from the values, checks slot, row and null counts,
 and closes the ancestry at both boundaries. V2 codec-zero suffixes use
 the original stored bytes under either flag.
 
-A refusal preserves its original group and column path, physical
-ordinal, and absolute byte offset. Data refusals also retain the incoming
-slot, row and ancestry cursor. Events keep the complete earlier groups
-under both projections. Empty selection validates the original bytes
+Dictionary and data-page refusals preserve the original group and
+column path, physical ordinal, and absolute byte offset. Data refusals
+also retain the incoming slot, row and ancestry cursor. Chunk framing
+and total refusals retain the original column span. Events keep the
+complete earlier groups under both projections. Empty selection validates the original bytes
 and preserves each earlier group's row count. The strict Arrow IPC
 bridge returns the native refusal and the selected prefix before target
 budget admission. [Events](parquet-recursive-list-path-events.md) · [Arrow V5 IPC](parquet-recursive-list-path-to-ipc.md)
