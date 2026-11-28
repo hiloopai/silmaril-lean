@@ -1,4 +1,4 @@
-# TLA+ proof obligations and exact fact reuse
+# TLA+ proof obligations, exact fact reuse and rule application
 
 `Silmaril.Logic.Temporal.TLA.ProofFrontEnd.Thms` exposes a constant-level
 proof profile for one standalone source module. `prepare` parses source and
@@ -47,10 +47,15 @@ Each obligation has a goal, its preceding module assumptions, its own
 interpretation, if the preceding module assumptions and the local hypotheses
 evaluate to that interpretation's true value, so does the goal. All
 expressions share the same data operations, Boolean policy and valuation.
-This is the semantic judgment for the extracted obligation. The `ONLY`
-flag is retained on the leaf citation, and the automatic rule below uses
-just its single cited premise.
+This is the semantic judgment for the extracted obligation. The source
+checker retains the `ONLY` flag and uses only explicitly listed facts as
+direct evidence for either `BY` or `BY ONLY`. In the reference, preceding
+module assumptions and theorems are known and none are usable by default.
+The expression hypotheses of a named theorem are known within its proof.
+`BY ONLY` restricts usable facts to the cited facts and known domain
+formulas. This profile has no domain formulas from declarations.
 [*Specifying Systems*, §§17.5.6–17.6](https://lamport.azurewebsites.net/tla/book-21-07-04.pdf#page=352) ·
+[TLA+ Version 2, §§7.2–7.3](https://lamport.azurewebsites.net/tla/tla2-guide.pdf#page=22) ·
 [TLA+ Version 2, §8.2](https://lamport.azurewebsites.net/tla/tla2-guide.pdf#page=38)
 
 ## Evidence
@@ -62,32 +67,44 @@ just its single cited premise.
   or local hypothesis cited by `BY` or `BY ONLY`. `Context.checkExact` also
   checks single citations of earlier named formula theorems. It processes
   the actual obligations in declaration order and reuses only a successful
-  certificate for the cited theorem in that module. The certificate requires
-  the earlier module assumptions to be in the current obligation's scope and
-  requires the earlier theorem to have no local hypotheses. A certified
-  `ASSUME … PROVE` can therefore establish its own judgment. Applying it as
-  a rule in another proof is outside this profile.
+  certificate for the cited theorem in that module.
+- **Rule application.** A single flat `BY` or `BY ONLY` leaf can cite one
+  earlier certified `ASSUME … PROVE` theorem and facts that match every
+  local premise. The other citations may be preceding named module
+  assumptions, labelled hypotheses of the current theorem, and earlier
+  certified formula theorems. A matching fact can discharge multiple
+  identical premises. The rule conclusion must match the current goal.
+  Both formula and rule reuse check declaration order and carry evidence
+  that the reused certificate's module assumptions remain in scope. Those
+  assumptions travel with the certificate, including under `ONLY`. To
+  discharge a rule's local premise directly with a module assumption or a
+  local hypothesis, the current leaf must cite it.
 - **Term matching.** Exact reuse compares expanded typed data terms. The
   matcher covers rigid declaration identities, numerals, Boolean literals
   and structurally matching equality or disequality. A successful
   `ExactCertificate` carries the Lean equality and the in-scope evidence.
   `ExactCertificate.sound` gives the semantic judgment in every data
-  interpretation. A failed match, multiple citations or a dependency
-  without a certificate leaves the proof unresolved.
+  interpretation. A failed match, an uncovered premise or a theorem
+  citation without a certificate leaves the proof unresolved. Multiple
+  citations require exactly one conditional rule.
 - **Supplied.** A Lean caller can separately furnish `SuppliedEvidence` for
   `Obligation.Valid`. Its proof is scoped to the supplied interpretation and
   does not change the source proof status.
 
-`First` uses the module assumption `Zero`, `Same` uses the certificate for
-`First`, and `Rule` uses its own hypothesis `H`.
+`Rule` is certified under its own local hypotheses using `Result`.
+`Applied` cites `First` and `One` for the two local premises. `WithLocal`
+cites its own `WithLocal!K` for the second premise.
 
 ```tla
 ---- MODULE ExactFacts ----
-CONSTANT C
+CONSTANT C, D, E
 ASSUME Zero == C = 0
+ASSUME Result == E = 2
 THEOREM First == C = 0 BY ONLY Zero
-THEOREM Same == C = 0 BY First
-THEOREM Rule == ASSUME H :: C = 1 PROVE C = 1 BY ONLY Rule!H
+THEOREM Rule == ASSUME H :: C = 0, K :: D = 1 PROVE E = 2 BY ONLY Result
+ASSUME One == D = 1
+THEOREM Applied == E = 2 BY ONLY Rule, First, One
+THEOREM WithLocal == ASSUME K :: D = 1 PROVE E = 2 BY First, WithLocal!K, Rule
 ====
 ```
 
@@ -105,8 +122,18 @@ SHA-256 `ace1b572ff0c80965de6db654dae69847ec63debe11c595c428d7367ea194951`.
 lake build --wfail +Silmaril.Logic.Temporal.TLA.ProofFrontEnd.Examples
 ```
 
-The parsed examples exercise exact matching through expanded definitions,
-label qualification and scope, theorem dependency chains across later module
-assumptions, and refusal to reuse uncertified theorems and conditional rules.
-The same module proves an example of separately supplied Lean evidence.
+The parsed examples cover exact matching, chained rule applications, both
+leaf forms, missing or mismatched premises, a mismatched conclusion, and
+uncertified or out-of-scope citations. The same module proves an example
+of separately supplied Lean evidence.
 [Regressions](../../Silmaril/Logic/Temporal/TLA/ProofFrontEnd/Examples.lean)
+
+SANY from the v1.7.4 distribution accepted the rule application fixtures
+through semantic processing and rejected forward references to a rule or a
+module assumption. SANY accepts the other theorem's labelled subexpression
+as a formula reference. This checker restricts its use as a hypothesis
+fact to the owning theorem's proof. SANY checks the source forms and
+reference resolution. Lean checks certificate validity. The
+`tla2tools.jar` SHA-256 is
+`936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88`.
+[SANY distribution](https://github.com/tlaplus/tlaplus/releases/tag/v1.7.4)

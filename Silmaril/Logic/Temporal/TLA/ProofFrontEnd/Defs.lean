@@ -79,6 +79,10 @@ def Context.theorems (context : Context) : List Obligation :=
 def Obligation.assumptions (obligation : Obligation) : List Assumption :=
   obligation.moduleAssumptions.filter (fun fact => fact.unit < obligation.unit)
 
+/-- A premise-checking goal with the same module and local context. -/
+def Obligation.withGoal (obligation : Obligation) (goal : Proposition) : Obligation :=
+  ⟨{ obligation.toTheoremStatement with goal }, obligation.moduleAssumptions⟩
+
 /-- A theorem judgment under its preceding module assumptions and local hypotheses,
 for every valuation in the chosen data interpretation. -/
 @[expose] def Obligation.Valid {V : Type u} (obligation : Obligation)
@@ -88,12 +92,20 @@ for every valuation in the chosen data interpretation. -/
     (∀ hypothesis ∈ obligation.hypotheses, hypothesis.proposition.holds model valuation) →
     obligation.goal.holds model valuation
 
+theorem Obligation.holds_of_valid_withGoal {V : Type u} {obligation : Obligation}
+    {goal : Proposition} {model : Interpretation V} {valuation : Valuation V}
+    (valid : (obligation.withGoal goal).Valid model)
+    (assumptions : ∀ fact ∈ obligation.assumptions, fact.proposition.holds model valuation)
+    (hypotheses : ∀ hyp ∈ obligation.hypotheses, hyp.proposition.holds model valuation) :
+    goal.holds model valuation :=
+  valid valuation assumptions hypotheses
+
 /-- Evidence provided by a Lean caller for the denoted judgment. -/
 structure SuppliedEvidence {V : Type u} (obligation : Obligation)
     (model : Interpretation V) : Prop where
   valid : obligation.Valid model
 
-/-- Exact reuse of an in-scope premise or an independently certified formula theorem. -/
+/-- Exact reuse of in-scope facts and independently certified theorems. -/
 inductive ExactCertificate : Obligation → Type where
   | assumption {obligation : Obligation} (premise : Assumption)
       (inScope : premise ∈ obligation.assumptions)
@@ -104,6 +116,12 @@ inductive ExactCertificate : Obligation → Type where
   | theoremDecl {obligation : Obligation} (earlier : Obligation)
       (certificate : ExactCertificate earlier) (before : earlier.unit < obligation.unit)
       (inScope : earlier.assumptions ⊆ obligation.assumptions) (closed : earlier.hypotheses = [])
+      (termEq : earlier.goal.term = obligation.goal.term) : ExactCertificate obligation
+  | applyRule {obligation : Obligation} (earlier : Obligation)
+      (certificate : ExactCertificate earlier) (before : earlier.unit < obligation.unit)
+      (inScope : earlier.assumptions ⊆ obligation.assumptions)
+      (premises : (hypothesis : LocalHypothesis) → hypothesis ∈ earlier.hypotheses →
+        ExactCertificate (obligation.withGoal hypothesis.proposition))
       (termEq : earlier.goal.term = obligation.goal.term) : ExactCertificate obligation
 
 inductive Diagnostic where
@@ -268,46 +286,92 @@ private def matchTerm (left right : Term noPrimitives) : Option (PLift (left = r
     else none
   | _, _ => none
 
-/-- Check a leaf with exactly one module or local assumption citation. -/
-public def Obligation.checkExact (obligation : Obligation) : Option (ExactCertificate obligation) := do
-  match obligation.sourceProof with
-  | .byFacts _ [.assumption unit] =>
+private def Obligation.checkFact (obligation : Obligation) :
+    FactRef → Option (ExactCertificate obligation)
+  | .assumption unit => do
     let ⟨premise, inScope⟩ ← obligation.assumptions.attach.find? (·.val.unit == unit)
     let ⟨termEq⟩ ← matchTerm premise.proposition.term obligation.goal.term
     return .assumption premise inScope termEq
-  | .byFacts _ [.hypothesis label] =>
+  | .hypothesis label => do
     let ⟨premise, inScope⟩ ← obligation.hypotheses.attach.find? (·.val.label == some label)
     let ⟨termEq⟩ ← matchTerm premise.proposition.term obligation.goal.term
     return .hypothesis premise inScope termEq
+  | .theoremDecl _ => none
+
+/-- Check a leaf with exactly one module or local assumption citation. -/
+public def Obligation.checkExact (obligation : Obligation) : Option (ExactCertificate obligation) :=
+  match obligation.sourceProof with
+  | .byFacts _ [fact] => obligation.checkFact fact
   | _ => none
 
-private def Context.checkTheorem (context : Context) (statement earlier : TheoremStatement)
-    (certificate : ExactCertificate (context.obligation earlier)) :
+private theorem Context.assumptions_mono (context : Context) {earlier current : TheoremStatement}
+    (before : earlier.unit < current.unit) :
+    (context.obligation earlier).assumptions ⊆ (context.obligation current).assumptions := by
+  intro _ member
+  rcases List.mem_filter.mp member with ⟨inModule, earlierScope⟩
+  exact List.mem_filter.mpr ⟨inModule,
+    decide_eq_true (Nat.lt_trans (of_decide_eq_true earlierScope) before)⟩
+
+private abbrev CertifiedTheorem (context : Context) :=
+  (statement : TheoremStatement) × ExactCertificate (context.obligation statement)
+
+private abbrev CheckedTheorem (context : Context) :=
+  (statement : TheoremStatement) × Option (ExactCertificate (context.obligation statement))
+
+private def findCertified {context : Context} (checked : List (CheckedTheorem context)) (unit : Nat) :
+    Option (CertifiedTheorem context) := do
+  let ⟨earlier, some proof⟩ ← checked.find? (·.1.unit == unit) | none
+  return ⟨earlier, proof⟩
+
+private def Context.checkTheorem (context : Context) (statement : TheoremStatement)
+    (citation : CertifiedTheorem context) :
     Option (ExactCertificate (context.obligation statement)) := do
-  if before : earlier.unit < statement.unit then
+  let ⟨earlier, certificate⟩ := citation
+  if hBefore : earlier.unit < statement.unit then
     if closed : earlier.hypotheses.isEmpty then
       let ⟨termEq⟩ ← matchTerm earlier.goal.term statement.goal.term
-      return .theoremDecl (context.obligation earlier) certificate before
-        (fun _ member => by
-          have ⟨inModule, earlierScope⟩ := List.mem_filter.mp member
-          have currentScope := Nat.lt_trans (of_decide_eq_true earlierScope) before
-          exact List.mem_filter.mpr ⟨inModule, decide_eq_true currentScope⟩)
-        (List.isEmpty_iff.mp closed) termEq
+      return .theoremDecl (context.obligation earlier) certificate hBefore
+        (context.assumptions_mono hBefore) (List.isEmpty_iff.mp closed) termEq
     else none
   else none
 
-/-- Check each obligation in source order. A theorem citation can only reuse a
-certificate already obtained for the named formula theorem in this context. -/
+private def Context.checkRule (context : Context) (statement : TheoremStatement)
+    (checked : List (CheckedTheorem context)) (facts : List FactRef) :
+    Option (ExactCertificate (context.obligation statement)) := do
+  let units := facts.filterMap fun
+    | .theoremDecl unit => some unit
+    | _ => none
+  let cited ← units.mapM (findCertified checked)
+  let (formulas, rules) := cited.partition (·.1.hypotheses.isEmpty)
+  let [⟨earlier, certificate⟩] := rules | none
+  if before : earlier.unit < statement.unit then
+    let ⟨termEq⟩ ← matchTerm earlier.goal.term statement.goal.term
+    let checkPremise (hypothesis : LocalHypothesis) :
+        Option (ExactCertificate ((context.obligation statement).withGoal hypothesis.proposition)) := by
+      let target := { statement with goal := hypothesis.proposition }
+      change Option (ExactCertificate (context.obligation target))
+      exact (facts.findSome? (context.obligation target).checkFact).orElse fun _ =>
+        formulas.findSome? (context.checkTheorem target)
+    if covered : earlier.hypotheses.all (fun hypothesis => (checkPremise hypothesis).isSome) then
+      return .applyRule (context.obligation earlier) certificate before
+        (context.assumptions_mono before)
+        (fun hypothesis member =>
+          (checkPremise hypothesis).get (List.all_eq_true.mp covered hypothesis member))
+        termEq
+    else none
+  else none
+
+/-- Check each obligation in source order. A multi-fact leaf can apply one
+certified rule using explicitly cited facts for all its local premises. -/
 public def Context.checkExact (context : Context) :
     List ((obligation : Obligation) × Option (ExactCertificate obligation)) := Id.run do
-  let mut checked : List ((statement : TheoremStatement) ×
-      Option (ExactCertificate (context.obligation statement))) := []
+  let mut checked : List (CheckedTheorem context) := []
   for statement in context.statements do
     let obligation := context.obligation statement
     let certificate := match statement.sourceProof with
       | .byFacts _ [.theoremDecl unit] => do
-        let ⟨earlier, some proof⟩ ← checked.find? (·.1.unit == unit) | none
-        context.checkTheorem statement earlier proof
+        context.checkTheorem statement (← findCertified checked unit)
+      | .byFacts _ facts@(_ :: _ :: _) => context.checkRule statement checked facts
       | _ => obligation.checkExact
     checked := ⟨statement, certificate⟩ :: checked
   return checked.reverse.map fun ⟨statement, certificate⟩ =>

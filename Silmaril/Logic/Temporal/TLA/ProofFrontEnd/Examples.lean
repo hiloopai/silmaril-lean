@@ -3,7 +3,7 @@ module
 import Silmaril.Logic.Temporal.TLA.ProofFrontEnd.Thms
 meta import Silmaril.Logic.Temporal.TLA.ProofFrontEnd.Defs
 
-/-! Parsed regressions for obligation scope and exact premise reuse. -/
+/-! Parsed regressions for obligation scope, exact fact reuse and rule application. -/
 
 namespace Silmaril.Logic.Temporal.TLA.ProofFrontEnd.Examples
 
@@ -102,6 +102,41 @@ THEOREM Multiple == C = 0 BY First, Second
        (10, false), (11, false), (12, false), (13, false), (14, false), (15, false)])
   | .error _ => false
 
+private def ruleApplications := source r#"
+CONSTANT C, D, E
+ASSUME Zero == C = 0
+ASSUME Result == E = 2
+THEOREM KnownZero == C = 0 BY ONLY Zero
+THEOREM Rule == ASSUME H :: C = 0, K :: D = 1 PROVE E = 2 BY ONLY Result
+ASSUME One == D = 1
+THEOREM Applied == E = 2 BY ONLY Rule, KnownZero, One
+THEOREM Local == ASSUME K :: D = 1 PROVE E = 2 BY KnownZero, Local!K, Rule
+THEOREM Chained == E = 2 BY ONLY One, Local
+THEOREM RuleAlone == E = 2 BY Rule
+THEOREM Missing == ASSUME K :: D = 1 PROVE E = 2 BY Rule, KnownZero
+THEOREM OnlyMissing == ASSUME K :: D = 1 PROVE E = 2 BY ONLY Rule, KnownZero
+THEOREM WrongPremise == E = 2 BY ONLY Rule, KnownZero, Result
+THEOREM WrongGoal == E = 3 BY Rule, KnownZero, One
+THEOREM SkippedRule == ASSUME D = 1 PROVE E = 2 OMITTED
+THEOREM UseSkippedRule == E = 2 BY SkippedRule, One
+THEOREM SkippedFact == D = 1 OMITTED
+THEOREM UseSkippedFact == E = 2 BY Rule, KnownZero, SkippedFact
+THEOREM TwoRules == E = 2 BY Rule, Local, KnownZero, One
+"#
+
+#guard match prepare ruleApplications with
+  | .ok context =>
+    decide ((context.theorems.take 5).map (fun o => o.assumptions.map (·.unit)) =
+      [[1, 2], [1, 2], [1, 2, 5], [1, 2, 5], [1, 2, 5]]) &&
+    decide (((context.theorems.drop 2).take 2).map (·.sourceProof) =
+      [.byFacts true [.theoremDecl 4, .theoremDecl 3, .assumption 5],
+       .byFacts false [.theoremDecl 3, .hypothesis "K", .theoremDecl 4]]) &&
+    decide (context.checkExact.map (fun ⟨o, cert⟩ => (o.unit, cert.isSome)) =
+      [(3, true), (4, true), (6, true), (7, true), (8, true), (9, false),
+       (10, false), (11, false), (12, false), (13, false), (14, false),
+       (15, false), (16, false), (17, false), (18, false)])
+  | .error _ => false
+
 private def rejected (body : String) (test : Diagnostic → Bool) : Bool :=
   match prepare (source body) with
   | .error diagnostic => test diagnostic
@@ -118,6 +153,25 @@ private def outOfScope (body : String) (unit : Nat) (name : String) : Bool :=
 #guard outOfScope "P == TRUE\nTHEOREM T == TRUE BY P" 1 "P"
 #guard outOfScope "THEOREM T == TRUE BY SMT" 0 "SMT"
 #guard outOfScope "THEOREM T == ASSUME H :: TRUE PROVE TRUE BY H" 0 "H"
+
+#guard outOfScope r#"
+ASSUME Fact == TRUE
+THEOREM T == TRUE BY ONLY Rule, Fact
+THEOREM Rule == ASSUME H :: TRUE PROVE TRUE BY ONLY Rule!H
+"# 1 "Rule"
+
+#guard outOfScope r#"
+THEOREM Rule == ASSUME H :: TRUE PROVE TRUE BY ONLY Rule!H
+THEOREM T == TRUE BY Rule, Later
+ASSUME Later == TRUE
+"# 1 "Later"
+
+#guard rejected r#"
+THEOREM Rule == ASSUME H :: TRUE PROVE TRUE BY ONLY Rule!H
+THEOREM T == ASSUME H :: TRUE PROVE TRUE BY ONLY Rule, Rule!H
+"# fun
+  | .hypothesisNotInScope 1 "Rule" "H" => true
+  | _ => false
 
 #guard rejected "THEOREM T == ASSUME H :: TRUE PROVE H" fun
   | .resolution _ => true

@@ -7,7 +7,7 @@ namespace Silmaril.Logic.Temporal.TLA.ProofFrontEnd
 
 universe u
 
-/-- Exact premise reuse and certified theorem dependencies establish the denoted
+/-- Exact fact reuse and certified rule applications establish the denoted
 judgment in every interpretation. -/
 public theorem ExactCertificate.sound {V : Type u} {obligation : Obligation}
     (certificate : ExactCertificate obligation) (model : Interpretation V) :

@@ -32,5 +32,11 @@ public theorem exact_sound {V : Type u} {obligation : Obligation}
     have holds := proved valuation (fun fact member => assumptions fact (inScope member))
       (fun hypothesis member => by simp [closed] at member)
     exact holds_of_termEq termEq holds
+  | applyRule earlier _ _ inScope _ termEq proved premisesProved =>
+    intro valuation assumptions hypotheses
+    have holds := proved valuation (fun fact member => assumptions fact (inScope member))
+      (fun premise member =>
+        Obligation.holds_of_valid_withGoal (premisesProved premise member) assumptions hypotheses)
+    exact holds_of_termEq termEq holds
 
 end Silmaril.Proofs.Logic.Temporal.TLA.ProofFrontEnd
