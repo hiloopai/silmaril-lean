@@ -66,13 +66,13 @@
     }
   },
   "genuine_controls": {
+    "brotli": {
+      "bytes": 759,
+      "sha256": "bd3000275cdf02cf62eec1030c7c0d637fe69147777d2f2f04c2f8fd9c765ca9"
+    },
     "dictionary": {
       "bytes": 843,
       "sha256": "35848b8632660dc7720582e5d31a20c800f5f20d5818a8f56cd752a719f8d707"
-    },
-    "gzip": {
-      "bytes": 807,
-      "sha256": "d1ef73f8c75ce79d76994d1031a1f42539f4958743e43f6ce1e582c323472acf"
     },
     "indexed": {
       "bytes": 829,

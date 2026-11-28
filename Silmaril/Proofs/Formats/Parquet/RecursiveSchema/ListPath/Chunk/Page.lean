@@ -60,7 +60,7 @@ private theorem v1_body_slice {limits : Limits} {codec : Codec} {source body : B
     obtain ⟨_, checked, done⟩ := bind_ok read
     cases Except.ok.inj done
     exact (Page.Checksum.payload_exact (checked_extent (from_mapError checked))).1
-  | snappy =>
+  | snappy | gzip | zstd | lz4Raw =>
     change body.slice? 0 (some body.length) = some body
     apply Bytes.slice?_eq_some_iff.mpr
     refine ⟨by simp, by simp, ?_⟩

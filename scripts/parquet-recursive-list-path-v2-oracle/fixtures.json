@@ -79,8 +79,8 @@
   },
   "genuine_controls": {
     "compressed": {
-      "bytes": 705,
-      "sha256": "a9d7bdd389784992b2fa357c2daa641cb1dc6487a6a7351d4f9ce1dafa1ee303"
+      "bytes": 697,
+      "sha256": "91c49a0058efc3347ab748a5eff3c5d344d1c712e022e2ae116ab2b0d7550d52"
     },
     "dictionary": {
       "bytes": 861,

@@ -4,8 +4,9 @@ ListPath admits Snappy codec 1 for an unindexed PLAIN column with one
 signed INT32 or INT64 leaf under a canonical LIST chain. The checked
 binding selects the codec separately for each original column chunk.
 The same native Rows, Events and IPC routes read both page versions.
-Dictionary pages, additional codecs, indexes and pageless groups remain
-outside this profile. [V1 reader](parquet-recursive-list-path-v1.md) · [V2 reader](parquet-recursive-list-path-v2.md)
+Dictionary pages, indexes and pageless groups remain outside the
+profile. The other admitted codecs use the same page dispatcher.
+[Codec profiles](parquet-recursive-list-path-codecs.md) [V1 reader](parquet-recursive-list-path-v1.md) · [V2 reader](parquet-recursive-list-path-v2.md)
 
 The shared repeated-leaf payload checks verify optional CRC over the
 original stored frame and bound both stored and decoded extents. In V1

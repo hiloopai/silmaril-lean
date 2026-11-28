@@ -3,7 +3,7 @@ module
 public import Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Rows.Defs
 public import Silmaril.Formats.Parquet.RecursiveSchema.Repeated.Chunk.Defs
 
-/-! Original unindexed PLAIN V1/V2 with bounded identity and Snappy pages for one canonical LIST path. -/
+/-! Original unindexed PLAIN V1/V2 with bounded column codecs pages for one canonical LIST path. -/
 
 namespace Silmaril.Formats.Parquet.RecursiveSchema.ListPath.Chunk
 
@@ -14,24 +14,38 @@ open Repeated.Chunk (LevelBlock LevelCause bitWidth)
 
 structure Limits extends RecursiveSchema.Chunk.Limits where
   maxSlots : Nat := 1024 * 1024
+  /-- Controller calls per reached GZIP member. -/
+  gzipCalls : Nat := ({} : Repeated.Chunk.Limits).gzipCalls
+  /-- Window and command bounds for one dictionary-free Zstandard frame. -/
+  zstd : FlatColumn.Zstd.CompressionLimits := ({} : Repeated.Chunk.Limits).zstd
 
 def Limits.logical (limits : Limits) : Rows.Limits := ⟨limits.maxRows, limits.maxSlots⟩
 
-def Limits.payload (limits : Limits) : Repeated.Chunk.Limits := { toLimits := limits.toLimits }
+def Limits.payload (limits : Limits) : Repeated.Chunk.Limits :=
+  { toLimits := limits.toLimits, gzipCalls := limits.gzipCalls, zstd := limits.zstd }
 
 inductive Codec where
   | uncompressed
   | snappy
+  | gzip
+  | zstd
+  | lz4Raw
   deriving DecidableEq, Repr
 
 def Codec.ofId : Int → Option Codec
   | 0 => some .uncompressed
   | 1 => some .snappy
+  | 2 => some .gzip
+  | 6 => some .zstd
+  | 7 => some .lz4Raw
   | _ => none
 
 def Codec.column : Codec → Repeated.Chunk.ColumnCodec
   | .uncompressed => .uncompressed
   | .snappy => .snappy
+  | .gzip => .gzip
+  | .zstd => .zstd
+  | .lz4Raw => .lz4Raw
 
 inductive BindCause where
   | columns (actual : Nat)
@@ -171,7 +185,7 @@ inductive SectionOrigin where
   | decodedBody
   deriving DecidableEq, Repr
 
-/-- V1 level spans include their four-byte prefixes. Snappy V1 spans
+/-- V1 level spans include their four-byte prefixes. Compressed V1 spans
 are relative to the decoded body. V2 records the raw stored spans. -/
 structure Sections where
   repetition : Footer.Span
@@ -188,7 +202,7 @@ structure SectionSource where
 def Codec.v1Source (codec : Codec) (source : Bytes) (frame : Page.Frame) (body : Bytes) : SectionSource :=
   match codec with
   | .uncompressed => ⟨source, frame.payload, .file⟩
-  | .snappy => ⟨body, ⟨0, body.length⟩, .decodedBody⟩
+  | _ => ⟨body, ⟨0, body.length⟩, .decodedBody⟩
 
 def sections (input : SectionSource) (body : Bytes) (reps defs : LevelBlock) : Sections :=
   let definition := input.span.start + (body.length - reps.tail.length)
