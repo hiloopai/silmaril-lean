@@ -1,0 +1,59 @@
+{
+  "authored_controls": {
+    "deep_reframed": {
+      "bytes": 1014,
+      "sha256": "0c13b53d1e710acbd62fea4349487e9818be5fcb6df62eaa879ff69ad0655d62"
+    },
+    "empty_group": {
+      "bytes": 992,
+      "sha256": "8f1ff9e67915765a79a5aabfd4e5286609d52133293ab4c8441d0575cc948d4c"
+    },
+    "empty_input": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "late_crc": {
+      "bytes": 1015,
+      "sha256": "0b99f31f965aa285484412acffac89d06f678167f61645231d1e9ee3380e99ac"
+    },
+    "late_words": {
+      "bytes": 1015,
+      "sha256": "50a33219a250f59af8a4f0f3926812d364baba500d1bede81a0358b52b93d915"
+    }
+  },
+  "genuine_parquet": {
+    "crc_absent": {
+      "bytes": 722,
+      "sha256": "b52cb260f79ac101f6ba842a7982ba9aeda5517c9a2ef55f61b40028cb09fe9e"
+    },
+    "schema_only": {
+      "bytes": 178,
+      "sha256": "a3983c6371aafc525ef19e4f7009de32ef11e3b8378e5f8bb94b2b3e9faebfca"
+    },
+    "signed_32_depth_16_131071": {
+      "bytes": 1800,
+      "sha256": "63e1578fb419f7b226753ea889330be79752c631fbc207beedc036893fb3e247"
+    },
+    "signed_32_depth_3_15": {
+      "bytes": 817,
+      "sha256": "32c6800626dc92b4b4a5684eca1a74315032215a517f4b0b9e6151f9c405e285"
+    },
+    "signed_32_depth_4_10": {
+      "bytes": 838,
+      "sha256": "0fe0db53cb49134681c479ec0566d5394b652718f824d830fa7fc13a856c426a"
+    },
+    "signed_64_depth_3_0": {
+      "bytes": 883,
+      "sha256": "616253afe25c52b56ac175c9ee3f8905819dff26d69ff741089059242cef5727"
+    },
+    "signed_64_depth_6_85": {
+      "bytes": 1143,
+      "sha256": "d5b9362a3b68d955d1569a228f75babfcc01f94067cc957e865787da8e0499f7"
+    }
+  },
+  "producer": {
+    "cpython": "3.13.5",
+    "pyarrow": "26.0.1",
+    "thrift": "0.25.0"
+  }
+}
