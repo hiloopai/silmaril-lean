@@ -104,5 +104,6 @@ example : ∃ final, Result bias fixture final 0x7f :=
 #print axioms symbol_at
 #print axioms firstReturn
 #print axioms firstReturn_of_loaded
+#print axioms firstReturn_at
 
 end Silmaril.Elf.Corpus.SqliteOneByteVarint

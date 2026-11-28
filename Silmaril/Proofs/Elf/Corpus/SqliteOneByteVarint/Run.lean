@@ -39,74 +39,46 @@ private theorem initialLoaded {bias : Word} {memory : Memory}
     parses rfl rfl (file_codeAt window) placement image
   exact loaded.1
 
-private theorem imageStable {bias : Word} {entry : MState} {byte : Byte} {memory : Memory}
-    (admit : Entry bias entry byte)
-    (loaded : ∀ w : Window, Ext.Loaded entry.memory (bias + BitVec.ofNat 64 w.va) w.code)
+private theorem imageStable {layout : Layout} {bias : Word} {entry : MState} {byte : Byte} {memory : Memory}
+    (admit : EntryAt layout bias entry byte)
+    (loaded : ∀ w : Window, Ext.Loaded entry.memory (bias + BitVec.ofNat 64 (layout.va w)) (layout.code w))
     (frame : entry.memory.WritesWithin memory (writable entry)) (w : Window) :
-    Ext.Loaded memory (bias + BitVec.ofNat 64 w.va) w.code := by
+    Ext.Loaded memory (bias + BitVec.ofNat 64 (layout.va w)) (layout.code w) := by
   unfold Ext.Loaded
   rw [frame.fetchBytes (admit.codeSeparate w)]
   exact loaded w
 
-private theorem Trace.runsIn {bias : Word} {entry s t : MState} {ev : List MemEvent.Event}
-    (trace : Trace bias entry s ev t) :
+private theorem TraceAt.runsIn {layout : Layout} {bias : Word} {entry s t : MState} {ev : List MemEvent.Event}
+    (trace : TraceAt layout bias entry s ev t) :
     FnContract.RunsIn Open9.isa (fun m => ¬ FnContract.Returned Open9.isa entry m) s t := by
   induction trace with
   | nil state => exact .refl state
   | cons _ _ _ _ loaded pc fits dec exec before _ ih =>
     exact .step before (Open9.step_of_listed loaded pc fits dec exec) ih
 
-/-- A fixed program path. Offsets are relative to the corresponding ELF window. -/
-private abbrev Site := Window × Nat × Ext.Instr × Nat
+private theorem pathValid {layout : Layout} (checked : layout.checkPath = true) :
+    ∀ site ∈ varintPath layout, site.valid layout :=
+  fun site mem => of_decide_eq_true ((List.all_eq_true.mp checked) site mem)
 
-private def operand (r : Reg) (disp : BitVec 32 := 0) : Ext.Mem :=
-  ⟨.reg r, none, disp, fun _ => rfl⟩
+private theorem pc_add (layout : Layout) (bias : Word) (w : Window) (offset n : Nat) :
+    layout.pc bias w offset + BitVec.ofNat 64 n = layout.pc bias w (offset + n) := by
+  simp only [Layout.pc, BitVec.ofNat_add, BitVec.add_assoc]
 
-private def path : List Site :=
-  [(.caller, 0, .lea .q .rdi (operand .rsi 4), 4),
-   (.caller, 4, .mov .q (.reg .rsi) .rdx, 3),
-   (.caller, 7, .mov .q (.reg .r9) .rdx, 3),
-   (.caller, 10, .call 0xfffff281, 5),
-   (.callee, 0, .movx false .d .b .rax (.mem (operand .rdi)), 3),
-   (.callee, 3, .mov .q (.reg .rcx) .rsi, 3),
-   (.callee, 6, .mov .q (.reg .rdx) .rdi, 3),
-   (.callee, 9, .movI32 .rsi 1, 5),
-   (.callee, 14, .aluI8 .q .cmp (.reg .rax) 0x7f, 4),
-   (.callee, 18, .jcc8 .be 0x1e, 2),
-   (.callee, 50, .mov .q (.mem (operand .rcx)) .rax, 3),
-   (.callee, 53, .mov .d (.reg .rax) .rsi, 2),
-   (.callee, 55, .ret, 1),
-   (.caller, 15, .movI .d (.mem (operand .r9 16)) 0, 8),
-   (.caller, 23, .aluI8 .d .add (.reg .rax) 4, 3),
-   (.caller, 26, .movI .q (.mem (operand .r9 8)) 0, 8),
-   (.caller, 34, .movx false .d .b .rax (.reg .rax), 3),
-   (.caller, 37, .store .w (.mem (operand .r9 22)) .rax, 5),
-   (.caller, 42, .alu .d .xor (.reg .rax) .rax, 2),
-   (.caller, 44, .store .w (.mem (operand .r9 20)) .rax, 5),
-   (.caller, 49, .ret, 1)]
-
-private def Site.valid : Site → Prop
-  | (w, offset, i, len) => offset + len ≤ w.code.length ∧
-      Open9.decode ((w.code.drop offset).take len) = some (.ext8 (.base i), len)
-
-private instance (site : Site) : Decidable site.valid := by
-  rcases site with ⟨w, offset, i, len⟩
-  unfold Site.valid
-  infer_instance
-
-private theorem pathValid : ∀ site ∈ path, Site.valid site := by
-  have checked : path.all (fun site => decide site.valid) = true := by decide +kernel
-  exact fun site mem => of_decide_eq_true ((List.all_eq_true.mp checked) site mem)
+private theorem call_pc {layout : Layout} (direct : layout.DirectCall) (bias : Word) :
+    layout.pc bias .caller 15 + layout.displacement.signExtend 64 = layout.pc bias .callee 0 := by
+  unfold Layout.DirectCall at direct
+  simpa only [Layout.pc, BitVec.ofNat_eq_ofNat, BitVec.zero_add, BitVec.add_assoc]
+    using congrArg (fun pc => bias + pc) direct
 
 /-- Execute the proposed path with the decoded instruction semantics. The
 checked listing and preservation of the executable bytes connect it to Open9. -/
-private def follow (bias stopSP : Word) : List Site → MState → Option (MState × List MemEvent.Event)
+private def follow (layout : Layout) (bias stopSP : Word) : List Site → MState → Option (MState × List MemEvent.Event)
   | [], s => some (s, [])
   | (w, o, i, len) :: rest, s =>
-    if s.core.rip = (bias + BitVec.ofNat 64 w.va) + BitVec.ofNat 64 o ∧
+    if s.core.rip = layout.pc bias w o ∧
         s.core.read .rsp ≠ stopSP then
       match Ext.exec i s.core s.memory len with
-      | .ok c m => (follow bias stopSP rest ⟨c, m⟩).map fun (t, ev) =>
+      | .ok c m => (follow layout bias stopSP rest ⟨c, m⟩).map fun (t, ev) =>
           (t, MemEvent.extAccesses i s.core len ++ ev)
       | _ => none
     else none
@@ -125,15 +97,15 @@ private theorem setSub_append_right {front rest : List MemEvent.Event} {W : Nat 
   obtain ⟨ev, mem, writes, covers⟩ := h
   exact bound a ⟨ev, List.mem_append_right _ mem, writes, covers⟩
 
-private theorem follow_sound {bias : Word} {entry : MState} {byte : Byte}
-    (admit : Entry bias entry byte)
-    (loaded : ∀ w : Window, Ext.Loaded entry.memory (bias + BitVec.ofNat 64 w.va) w.code)
-    {sites : List Site} (valid : ∀ site ∈ sites, Site.valid site)
+private theorem follow_sound {layout : Layout} {bias : Word} {entry : MState} {byte : Byte}
+    (admit : EntryAt layout bias entry byte)
+    (loaded : ∀ w : Window, Ext.Loaded entry.memory (bias + BitVec.ofNat 64 (layout.va w)) (layout.code w))
+    {sites : List Site} (valid : ∀ site ∈ sites, site.valid layout)
     {s t : MState} {ev : List MemEvent.Event}
-    (running : follow bias (entry.core.read .rsp + 8) sites s = some (t, ev))
+    (running : follow layout bias (entry.core.read .rsp + 8) sites s = some (t, ev))
     (frame : entry.memory.WritesWithin s.memory (writable entry))
     (bound : ∀ a, MemEvent.writeSet ev a → writable entry a) :
-    Trace bias entry s ev t := by
+    TraceAt layout bias entry s ev t := by
   induction sites generalizing s ev with
   | nil =>
     simp only [follow, Option.some.injEq, Prod.mk.injEq] at running
@@ -169,7 +141,7 @@ private theorem allowedEvents (s : MState) (a : Nat)
   rcases mem with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     simp_all [MemEvent.Kind.writes, MemEvent.Event.Covers, writable, within] <;> omega
 
-private theorem outputAddress {bias : Word} {s : MState} {byte : Byte} (admit : Entry bias s byte)
+private theorem outputAddress {layout : Layout} {bias : Word} {s : MState} {byte : Byte} (admit : EntryAt layout bias s byte)
     {off : Nat} (h : off < 24) :
     (s.core.read .rdx + BitVec.ofNat 64 off).toNat = output s + off := by
   have limit := admit.outputBound
@@ -183,7 +155,7 @@ private theorem outputAddress {bias : Word} {s : MState} {byte : Byte} (admit : 
   rw [BitVec.toNat_add_of_lt sumLt, offNat]
   rfl
 
-private theorem outputStore {bias : Word} {s : MState} {byte : Byte} (admit : Entry bias s byte)
+private theorem outputStore {layout : Layout} {bias : Word} {s : MState} {byte : Byte} (admit : EntryAt layout bias s byte)
     {mem : Memory} (frame : s.memory.WritesWithin mem (writable s))
     {off size : Nat} (positive : 0 < size) (fit : off + size ≤ 24) (value : Word) :
     ∃ after, Ext.storeN mem (s.core.read .rdx + BitVec.ofNat 64 off) size value = some after ∧
@@ -239,14 +211,15 @@ private theorem readWritten (regs : RegisterFile Reg Word) (reg dest : Reg) (val
     RegisterFile.write regs dest value reg = (if reg = dest then value else regs reg) := rfl
 
 set_option maxRecDepth 4096 in
-private theorem runPath {bias : Word} {s : MState} {byte : Byte} (admit : Entry bias s byte) :
-    ∃ final, follow bias (s.core.read .rsp + 8) path s = some (final, events s) ∧
+private theorem runPath {layout : Layout} {bias : Word} {s : MState} {byte : Byte}
+    (direct : layout.DirectCall) (admit : EntryAt layout bias s byte) :
+    ∃ final, follow layout bias (s.core.read .rsp + 8) (varintPath layout) s = some (final, events s) ∧
       FnContract.AbiReturn s.core s.memory final.core ∧
       s.memory.WritesWithin final.memory (writable s) ∧
       ∀ i : Fin 24, final.memory.bytes.get? (output s + i.val) =
         some (if i.val = 0 then byte else if i.val = 22 then 5 else 0) := by
-  obtain ⟨pushMem, push, wrotePush⟩ := Ext.pushWord_isSome (v := bias + 0x117bf) admit.callWrite
-  have pushWrite : s.memory.writeBytes (privateSlot s) (encodeWords [bias + 0x117bf]) =
+  obtain ⟨pushMem, push, wrotePush⟩ := Ext.pushWord_isSome (v := layout.pc bias .caller 15) admit.callWrite
+  have pushWrite : s.memory.writeBytes (privateSlot s) (encodeWords [layout.pc bias .caller 15]) =
       some pushMem := by
     obtain ⟨w, write, eq⟩ := Option.map_eq_some_iff.mp push
     have h : w = pushMem := congrArg Prod.snd eq
@@ -273,7 +246,7 @@ private theorem runPath {bias : Word} {s : MState} {byte : Byte} (admit : Entry 
     outputStore admit framePointer (off := 22) (size := 2) (by decide) (by decide) 5
   obtain ⟨localMem, writeLocal, wroteLocal, frameLocal⟩ :=
     outputStore admit frameSize (off := 20) (size := 2) (by decide) (by decide) 0
-  have readInner : keyMem.readBytes (privateSlot s) 8 = some (encodeWords [bias + 0x117bf]) := by
+  have readInner : keyMem.readBytes (privateSlot s) 8 = some (encodeWords [layout.pc bias .caller 15]) := by
     have keyFrame : pushMem.WritesWithin keyMem (within (output s) 24) := wroteKey.writesWithin (by
       intro offset h
       simp only [Ext.length_leBytes] at h
@@ -315,7 +288,7 @@ private theorem runPath {bias : Word} {s : MState} {byte : Byte} (admit : Entry 
     rip := FnContract.retOf s.core s.memory
     flags := Ext.AluOp.flagsN .xor (5#32) 5 }
   refine ⟨⟨finalCore, localMem⟩, ?_, ?_, frameLocal, ?_⟩
-  · simp only [finalCore, core, input, out, sp, path, follow, Window.va, admit.pc, Ext.exec, Ext.retire, Ext.writeRM,
+  · simp only [finalCore, core, input, out, sp, varintPath, follow, admit.pc, pc_add, call_pc direct, Ext.exec, Ext.retire, Ext.writeRM,
       Ext.readRM, Ext.readNarrow, Ext.writeNarrow, Ext.Mem.addr, Ext.Base.value_reg, operand,
       Ext.Sz.bits, Ext.Sz.bytes, Ext.Narrow.bits, Ext.Narrow.bytes, Ext.Sz.write, Ext.Sz.read,
       Ext.aluStep, Ext.AluOp.resultN, reduceCtorEq, State.read, writtenRegs, readWritten,
@@ -324,9 +297,9 @@ private theorem runPath {bias : Word} {s : MState} {byte : Byte} (admit : Entry 
       Option.getD_none, pushWord, popWord, pushWrite,
       readByte, writeKey, writePayload, writePointer, writeSize, writeLocal, readInner, readOuter,
       wordOfBytes?_encodeWords, cmp, ite_eq_left spNot, ite_eq_left privateNot,
-      widened, BitVec.add_assoc, BitVec.add_zero, BitVec.ofNat_eq_ofNat,
-      BitVec.ofNat_add_ofNat, Nat.reduceAdd, BitVec.reduceAdd, BitVec.reduceSignExtend,
-      BitVec.reduceSetWidth, BitVec.reduceXOr, BitVec.reduceOfNat,
+      widened, BitVec.add_zero, BitVec.ofNat_eq_ofNat, Nat.reduceAdd,
+      BitVec.reduceAdd, BitVec.reduceSignExtend,
+      BitVec.reduceSetWidth, BitVec.reduceXOr,
       BitVec.sub_add_cancel, BitVec.setWidth_setWidth_of_le _ pow,
       BitVec.setWidth_eq, events, MemEvent.extAccesses, MemEvent.memEv, MemEvent.rmEv,
       MemEvent.pushEv, MemEvent.popEv, privateSlot, cellByte, output, savedSlot,
@@ -387,14 +360,21 @@ private theorem runPath {bias : Word} {s : MState} {byte : Byte} (admit : Entry 
             have : idx = 22 ∨ idx = 23 := by omega
             rcases this with h | h <;> simp [h, Silmaril.Machine.LittleEndian.wordByte]
 
+theorem firstReturn_at {layout : Layout} {bias : Word} {entry : MState} {byte : Byte}
+    (checked : layout.checkPath = true) (direct : layout.DirectCall)
+    (loaded : ∀ w : Window, Ext.Loaded entry.memory (bias + BitVec.ofNat 64 (layout.va w)) (layout.code w))
+    (admit : EntryAt layout bias entry byte) :
+    ∃ final, ResultAt layout bias entry final byte := by
+  obtain ⟨final, running, abi, frame, contents⟩ := runPath direct admit
+  have trace := follow_sound admit loaded (pathValid checked) running
+    (Memory.WritesWithin.refl ..) (allowedEvents entry)
+  exact ⟨final, trace, ⟨TraceAt.runsIn trace, abi.pc, abi.stack⟩, abi, frame, contents⟩
+
 theorem firstReturn_of_loaded {bias : Word} {entry : MState} {byte : Byte}
     (loaded : ∀ w : Window, Ext.Loaded entry.memory (bias + BitVec.ofNat 64 w.va) w.code)
     (admit : Entry bias entry byte) :
-    ∃ final, Result bias entry final byte := by
-  obtain ⟨final, running, abi, frame, contents⟩ := runPath admit
-  have trace := follow_sound admit loaded pathValid running
-    (Memory.WritesWithin.refl ..) (allowedEvents entry)
-  exact ⟨final, trace, ⟨Trace.runsIn trace, abi.pc, abi.stack⟩, abi, frame, contents⟩
+    ∃ final, Result bias entry final byte :=
+  firstReturn_at (by decide +kernel) (by decide +kernel) loaded admit
 
 theorem firstReturn {bias : Word} {entry : MState} {byte : Byte}
     (placement : Silmaril.Elf.Placement F bias.toNat)
