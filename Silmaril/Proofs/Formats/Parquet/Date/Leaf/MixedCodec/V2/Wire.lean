@@ -28,19 +28,19 @@ theorem readGroup_unsupportedCodec {limits : Limits} {bound : Bound} {index : Na
     (selected : selectedCodec bound index = .ok actual)
     (gzip : actual ≠ Payload.Codec.gzip.id) (zstd : actual ≠ Payload.Codec.zstd.id) :
     readGroup limits bound index = .error (.unsupportedCodec actual) := by
-  simp [readGroup, selected, gzip, zstd, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readWithCodec, selected, gzip, zstd, Except.mapError, Bind.bind, Except.bind]
 
 theorem readGroup_gzip_agrees {limits : Limits} {bound : Bound} {index : Nat}
     (selected : selectedCodec bound index = .ok Payload.Codec.gzip.id) :
     readGroup limits bound index =
       (Date.Leaf.Gzip.Dispatch.V2.WithPlain.readGroup limits.gzip bound index).mapError .gzip := by
-  simp [readGroup, selected, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readWithCodec, selected, Except.mapError, Bind.bind, Except.bind]
 
 theorem readGroup_zstd_agrees {limits : Limits} {bound : Bound} {index : Nat}
     (selected : selectedCodec bound index = .ok Payload.Codec.zstd.id) :
     readGroup limits bound index =
       (Date.Leaf.Zstd.Dispatch.V2.readGroup limits.zstd bound index).mapError .zstd := by
-  simp [readGroup, selected, Payload.Codec.id, Except.mapError, Bind.bind, Except.bind]
+  simp [readGroup, readWithCodec, selected, Payload.Codec.id, Except.mapError, Bind.bind, Except.bind]
 
 private theorem mapError_ok {α ε δ : Type} {input : Except ε α} {wrap : ε → δ} {out : α}
     (read : input.mapError wrap = .ok out) : input = .ok out := by
