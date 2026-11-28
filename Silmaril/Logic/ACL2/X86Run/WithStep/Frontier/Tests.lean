@@ -12,6 +12,9 @@ private def msSymbol : X86Step.frontier.Symbol 1 := ⟨msName, by decide⟩
 private def mvNthSymbol : X86Step.frontier.Symbol 2 := ⟨⟨"ACL2", "MV-NTH"⟩, by decide⟩
 private def eqlSymbol : X86Step.frontier.Symbol 2 := ⟨⟨"COMMON-LISP", "EQL"⟩, by decide⟩
 private def notSymbol : X86Step.frontier.Symbol 1 := ⟨⟨"COMMON-LISP", "NOT"⟩, by decide⟩
+private def prefixesAdrSymbol : X86Step.frontier.Symbol 1 := ⟨prefixesAdrName, by decide⟩
+private def prefixesNumSymbol : X86Step.frontier.Symbol 1 := ⟨prefixesNumName, by decide⟩
+private def prefixesNxtSymbol : X86Step.frontier.Symbol 1 := ⟨prefixesNxtName, by decide⟩
 
 example (bindings : Bindings) : Status.observations.all (fun o =>
     decide (extend bindings faultSymbol (fun _ => o.state) = o.fault ∧
@@ -32,6 +35,25 @@ example : (fixedBinding ⟨"ACL2", "PART-SELECT-LOW-HIGH$INLINE"⟩ 3).isNone = 
 example : (fixedBinding ⟨"BITOPS", "PART-SELECT-LOW-HIGH"⟩ 3).isNone = true := rfl
 example : (fixedBinding partSelectLowHighName 2).isNone = true := rfl
 
+example (bindings : Bindings) : FixedWidth.Source.observations.all (fun (x, _, adr, num, nxt) =>
+    decide (extend bindings prefixesAdrSymbol (fun _ => x) = adr ∧
+      extend bindings prefixesNumSymbol (fun _ => x) = num ∧
+      extend bindings prefixesNxtSymbol (fun _ => x) = nxt)) = true := by
+  change FixedWidth.Source.observations.all (fun (x, _, adr, num, nxt) =>
+    decide (x.prefixesAdr = adr ∧ x.prefixesNum = num ∧ x.prefixesNxt = nxt)) = true
+  decide +kernel
+
+example : [prefixesAdrName, prefixesNumName, prefixesNxtName].all (fun name =>
+    (fixedBinding ⟨"ACL2", name.symbol⟩ 1).isNone && (fixedBinding name 2).isNone) = true := by decide
+
+example : ["PREFIXES->ADR", "PREFIXES->NUM", "PREFIXES->NXT"].all (fun name =>
+    (fixedBinding ⟨"X86ISA", name⟩ 1).isNone) = true := by decide
+
+-- Transitive helpers are internal to the checked readers.
+example : [(⟨"X86ISA", "PREFIXES-FIX$INLINE"⟩, 1), (⟨"ACL2", "LOGHEAD$INLINE"⟩, 2),
+    (⟨"BITOPS", "PART-SELECT-WIDTH-LOW$INLINE"⟩, 3)].all (fun (name, arity) =>
+    (X86Step.frontier.arity name).isNone && (fixedBinding name arity).isNone) = true := by decide
+
 private def both := (Status.observations[1]'(by decide)).state
 private def msOnly := (Status.observations[2]'(by decide)).state
 
@@ -43,9 +65,11 @@ example (bindings : Bindings) : (machineBindings bindings).run (.integer 2) msOn
 
 run_elab do
   let allowed : Array Lean.Name := #[``propext, ``Classical.choice, ``Quot.sound]
-  let declarations := #[``installed_exact, ``remaining_exact, ``remaining_iff, ``remaining_count,
+  let declarations := #[``fixedBinding, ``extend, ``machineBindings, ``installed_exact, ``remaining_entries_exact,
+    ``remaining_exact, ``remaining_iff, ``remaining_count,
     ``extend_of_fixed, ``extend_of_remaining, ``fault_agrees, ``ms_agrees,
-    ``partSelectLowHigh_agrees, ``step_defining_equation, ``run_equation_holds, ``halted_holds]
+    ``partSelectLowHigh_agrees, ``prefixesAdr_agrees, ``prefixesNum_agrees, ``prefixesNxt_agrees,
+    ``step_defining_equation, ``run_equation_holds, ``halted_holds]
   for declaration in declarations do
     for axiomName in ← Lean.collectAxioms declaration do
       unless allowed.contains axiomName do
