@@ -100,6 +100,17 @@ theorem Wire.dictionary_anchors {limits : Limits} {carrier : Carrier} {observed 
       carrier.metadata.dataPageOffset = Int.ofNat first.header.start :=
   Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.dictionary_anchors wire found
 
+/-- The original column codec and checked dictionary agree for any carrier. -/
+theorem Wire.dictionary_payloadOf {limits : Limits} {carrier : Carrier}
+    {observed : Observation} {table : Repeated.Chunk.Dictionary}
+    (wire : Wire limits carrier observed)
+    (codec : Repeated.Chunk.ColumnCodec.ofId carrier.metadata.codec = some carrier.codec.column)
+    (found : observed.dictionary = some table) :
+    Repeated.Chunk.DictionaryCodec.ofId carrier.metadata.codec = some table.codec ∧
+      table.codec.column = carrier.codec.column ∧
+      Repeated.Chunk.DictionaryContentsWire limits.payload carrier.plan.shape.leaf.2 carrier.source table :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.dictionary_payload codec wire found
+
 /-- The checked dictionary uses the same original column codec as its data
 pages. Its wire witness covers the stored CRC, decoded extent and signed entries. -/
 theorem Wire.dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
@@ -109,7 +120,7 @@ theorem Wire.dictionary_payload {schemaLimits : Snapshot.Limits} {snapshot : Sna
     Repeated.Chunk.DictionaryCodec.ofId binding.column.metadata.codec = some table.codec ∧
       table.codec.column = binding.codec.column ∧
       Repeated.Chunk.DictionaryContentsWire limits.payload schema.plan.shape.leaf.2 snapshot.bytes table :=
-  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.dictionary_payload binding.codec_exact wire found
+  wire.dictionary_payloadOf binding.codec_exact found
 
 theorem ChainWire.page_of_mem {limits : Limits} {carrier : Carrier} {dictionary : Option RecursiveSchema.Repeated.Chunk.Dictionary}
     {start stop : State} {pages : List ObservedPage} {page : ObservedPage}
@@ -135,13 +146,20 @@ theorem read_page_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.
     PageFailureWire limits (carrierOf binding) address ordinal byte start cause :=
   readCarrier_page_failure refused
 
+theorem readCarrier_dictionary_failure {limits : Limits} {carrier : Carrier}
+    {encoding : ColumnEncoding carrier.metadata} {address : RecursiveSchema.Chunk.Address}
+    {ordinal byte : Nat} {cause : Repeated.Chunk.PageCause}
+    (refused : readCarrier limits carrier encoding (fun _ => .ok ()) = .error (.dictionary address ordinal byte cause)) :
+    DictionaryFailureWire limits carrier encoding address ordinal byte cause :=
+  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.readCarrier_dictionary_failure refused
+
 theorem read_dictionary_failure {schemaLimits : Snapshot.Limits} {snapshot : Snapshot.Checked}
     {schema : Compiled schemaLimits snapshot} {group : Nat} {binding : Binding schema group}
     {limits : Limits} {address : RecursiveSchema.Chunk.Address} {ordinal byte : Nat}
     {cause : Repeated.Chunk.PageCause}
     (refused : read limits binding = .error (.dictionary address ordinal byte cause)) :
     DictionaryFailureWire limits (carrierOf binding) binding.encodings address ordinal byte cause :=
-  Proofs.Formats.Parquet.RecursiveSchema.ListPath.Chunk.read_dictionary_failure refused
+  readCarrier_dictionary_failure refused
 
 theorem readCarrier_wire {limits : Limits} {carrier : Carrier} {encoding : ColumnEncoding carrier.metadata}
     {checkFrames : List Page.Frame → Except Error Unit} {out : Observation}

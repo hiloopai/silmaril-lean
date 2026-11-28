@@ -19,7 +19,8 @@ theorem addressed_slot {address : RecursiveSchema.Chunk.Address}
     (member : slot ∈ addressed address observed) :
     ∃ page ordinal indexInPage,
       observed.pages[ordinal]? = some page ∧ page.decoded.atoms[indexInPage]? = some slot.atom ∧
-      slot.point = ⟨address, ordinal, page.frame.header.start, page.start.slots + indexInPage⟩ :=
+      slot.point = ⟨address, observed.dictionary.isSome.toNat + ordinal, page.frame.header.start,
+        page.start.slots + indexInPage⟩ :=
   Proofs.Formats.Parquet.RecursiveSchema.TwoListStruct.Rows.addressed_slot member
 
 theorem checkTopology_wire {ceiling start : Nat} {left right : RecursiveSchema.Chunk.Address}

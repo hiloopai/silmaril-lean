@@ -11,8 +11,8 @@ Struct. An optional Struct adds one shared definition step.
 [Single-leaf LIST paths](parquet-recursive-list-path-v1.md) · [One shared LIST ancestor](parquet-recursive-list-struct.md)
 
 The reader binds exactly two positional chunks in each original row
-group. This profile reads dictionary-free, unindexed PLAIN V1 and V2.
-Each column independently admits UNCOMPRESSED, bounded Snappy, bounded
+group. This profile reads unindexed V1 and V2 data pages.
+PLAIN columns independently admit UNCOMPRESSED, bounded Snappy, bounded
 LZ4_RAW, single-member GZIP, or bounded single-frame dictionary-free
 Zstandard according to its original footer metadata. Each keeps the
 LIST-path byte, page, row, slot and codec bounds and reuses its
@@ -30,7 +30,13 @@ The two columns can use different codecs, page versions and row cuts.
 `Reader.ColumnWire.v1_page` and `Reader.ColumnWire.v2_page` recover
 the original frame at its absolute header offset and expose the
 LIST-path wire witness at the codec selected by the original chunk.
-The native writer emits UNCOMPRESSED V1.
+Each UNCOMPRESSED child may also declare a leading PLAIN dictionary
+and use RLE_DICTIONARY data pages with page-local PLAIN fallback.
+Dictionary and data anchors, signed entries, counted Hybrid indices
+and both header-inclusive totals bind to that child's original chunk.
+An empty dictionary may serve a page with zero physical values.
+Slot and refusal ordinals include the leading dictionary when present.
+The native writer emits UNCOMPRESSED PLAIN V1.
 
 The topology check compares the complete addressed traces in slot
 order. Repetition distinguishes new rows, new inner LISTs and
@@ -102,8 +108,8 @@ checks original CRC, raw level sections, counters and signed slots for
 both children. PyArrow and raw IPC inspection verify native Events
 observations through the strict IPC bridge under both selections.
 The refusal cases check late shared Struct presence, illegal boundary
-transitions, V2 counters and extents, CRC, dictionary admission,
-and output-budget precedence.
+transitions, V2 counters and extents, CRC and output-budget precedence.
+The original uncompressed dictionary probe decodes successfully.
 [V2 producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-v2-oracle/fixtures.json)
 
 ~~~sh
@@ -122,7 +128,7 @@ header-inclusive totals. Full and empty projections retain ordered
 group counts through exact Arrow IPC EOS. Late stored CRC, malformed
 and trailing payloads, declared extents, byte bounds and footer totals retain an
 original typed failure and the preceding complete group. The oracle
-also checks dictionary refusal at encoding admission and reads the original GZIP probe.
+also checks compressed dictionary refusal at encoding admission and reads the original GZIP probe.
 [Snappy producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-snappy-oracle/fixtures.json)
 
 ~~~sh
@@ -142,7 +148,7 @@ and exact decoded values using pinned liblz4, libzstd and zlib.
 False-flag V2 suffixes bypass even exhausted GZIP and Zstandard
 codec budgets. Typed refusals cover legacy LZ4 IDs, framed LZ4 bodies,
 GZIP trailers and extra members, Zstandard dictionary IDs and extra
-frames, and Parquet dictionary encoding. Late payload and shared
+frames, and compressed Parquet dictionary encoding. Late payload and shared
 topology refusals retain their original positions and complete group
 prefix under both projections, including with exhausted IPC budgets.
 [Codec producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-codecs-oracle/fixtures.json)
@@ -151,4 +157,25 @@ prefix under both projections, including with exhausted IPC budgets.
 lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Thms
 lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-codecs-oracle/Axioms.lean
 python3 scripts/parquet-recursive-two-list-struct-codecs-oracle/check.py
+~~~
+
+The dictionary oracle checks genuine PyArrow UNCOMPRESSED files in
+both page versions and signed width orders. It covers required and
+optional Structs, null Structs beside present all-null Structs,
+per-child dictionary selection, genuine PLAIN fallback, and empty
+dictionary and zero-value index lists. The labeled mixed-version reframe
+retains distinct original signed tables and independent child cuts.
+An uncompressed dictionary child also reads alongside a Snappy PLAIN
+sibling. Independent Compact, Hybrid and signed-word inspection binds
+the frames, entries, index lists and selected child slots. Late index,
+dictionary CRC, data-anchor and shared-topology errors preserve their
+original coordinates and completed group prefix through both Events
+and strict IPC selections under exhausted target budgets. A late
+compressed dictionary exercises the existing admission refusal.
+[Dictionary producer and fixture pins](../../scripts/parquet-recursive-two-list-struct-dictionary-oracle/fixtures.json)
+
+~~~sh
+lake build --wfail +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Reader.ToIpc.Thms +Silmaril.Formats.Parquet.RecursiveSchema.TwoListStruct.Writer.Thms
+lake env lean -DautoImplicit=false -DwarningAsError=true scripts/parquet-recursive-two-list-struct-dictionary-oracle/Axioms.lean
+python3 scripts/parquet-recursive-two-list-struct-dictionary-oracle/check.py
 ~~~

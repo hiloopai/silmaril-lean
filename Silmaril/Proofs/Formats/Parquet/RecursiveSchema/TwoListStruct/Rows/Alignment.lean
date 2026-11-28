@@ -17,11 +17,12 @@ public theorem addressed_atoms (address : RecursiveSchema.Chunk.Address)
   unfold addressed RecursiveSchema.ListPath.Chunk.Observation.atoms
   rw [List.map_flatMap]
   simp only [List.map_map]
-  change (observed.pages.zipIdx.flatMap fun page =>
+  change ((observed.pages.zipIdx observed.dictionary.isSome.toNat).flatMap fun page =>
     (page.1.decoded.atoms.zipIdx page.1.start.slots).map Prod.fst) = _
   simp only [List.zipIdx_map_fst]
   calc
-    _ = ((observed.pages.zipIdx).map Prod.fst).flatMap (fun page => page.decoded.atoms) := by
+    _ = ((observed.pages.zipIdx observed.dictionary.isSome.toNat).map Prod.fst).flatMap
+        (fun page => page.decoded.atoms) := by
       rw [List.flatMap_map]
     _ = _ := by rw [List.zipIdx_map_fst]
 
@@ -30,12 +31,14 @@ public theorem addressed_slot {address : RecursiveSchema.Chunk.Address}
     (member : slot ∈ addressed address observed) :
     ∃ page ordinal indexInPage,
       observed.pages[ordinal]? = some page ∧ page.decoded.atoms[indexInPage]? = some slot.atom ∧
-      slot.point = ⟨address, ordinal, page.frame.header.start, page.start.slots + indexInPage⟩ := by
+      slot.point = ⟨address, observed.dictionary.isSome.toNat + ordinal, page.frame.header.start,
+        page.start.slots + indexInPage⟩ := by
   obtain ⟨⟨page, ordinal⟩, pageMember, atomMember⟩ := List.mem_flatMap.mp member
   obtain ⟨⟨atom, index⟩, found, rfl⟩ := List.mem_map.mp atomMember
   obtain ⟨low, atomAt⟩ := List.mk_mem_zipIdx_iff_le_and_getElem?_sub.mp found
-  exact ⟨page, ordinal, index - page.start.slots, List.mk_mem_zipIdx_iff_getElem?.mp pageMember,
-    atomAt, by simp [Nat.add_sub_of_le low]⟩
+  obtain ⟨first, pageAt⟩ := List.mk_mem_zipIdx_iff_le_and_getElem?_sub.mp pageMember
+  exact ⟨page, ordinal - observed.dictionary.isSome.toNat, index - page.start.slots, pageAt,
+    atomAt, by simp [Nat.add_sub_of_le first, Nat.add_sub_of_le low]⟩
 
 public theorem topology_wire {ceiling start : Nat} {left right : RecursiveSchema.Chunk.Address}
     {lhs rhs : List Addressed} (read : checkTopology ceiling left right lhs rhs start = .ok ()) :

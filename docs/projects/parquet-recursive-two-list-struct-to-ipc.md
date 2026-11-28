@@ -1,8 +1,8 @@
 # Strict Arrow IPC for two shared Parquet LIST ancestors
 
 `TwoListStruct.Reader.ToIpc.convert` takes the native unindexed
-PLAIN V1/V2 profile with independently selected bounded LIST-path
-codecs for a canonical LIST of LISTs of required or optional
+V1/V2 profile with independently selected bounded LIST-path codecs
+and UNCOMPRESSED dictionaries for a canonical LIST of LISTs of required or optional
 Structs with two signed INT32 or INT64 children. It produces a strict
 Arrow V5 IPC stream using the checked Events adapter and the existing
 recursive stream writer.

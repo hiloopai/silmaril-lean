@@ -3,7 +3,9 @@
 `TwoListStruct.Reader.Events` exposes the original native reader as a
 recursive Arrow event stream. It takes one canonical LIST of LISTs of
 required or optional Structs with two signed INT32 or INT64 fields, in unindexed
-PLAIN V1/V2 with independently selected bounded LIST-path codecs.
+V1/V2 pages with independently selected bounded LIST-path codecs.
+UNCOMPRESSED columns may use a leading PLAIN dictionary with
+RLE_DICTIONARY data pages and PLAIN fallback.
 The Arrow declaration preserves the original
 outer LIST, inner LIST, Struct and child names and nullability. An optional Struct can be
 null or present with independently null children.

@@ -21,8 +21,9 @@ structure Addressed where
   atom : Atom
   deriving Repr
 
+/-- Data-page slots carry their ordinal in the original chunk, including a leading dictionary. -/
 def addressed (address : Address) (observed : ListPath.Chunk.Observation) : List Addressed :=
-  observed.pages.zipIdx.flatMap fun (page, ordinal) =>
+  (observed.pages.zipIdx observed.dictionary.isSome.toNat).flatMap fun (page, ordinal) =>
     page.decoded.atoms.zipIdx page.start.slots |>.map fun (atom, slot) =>
       ⟨⟨address, ordinal, page.frame.header.start, slot⟩, atom⟩
 
