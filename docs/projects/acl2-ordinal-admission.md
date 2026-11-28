@@ -91,6 +91,9 @@ and submit these events in `saved_acl2`.
 
 ## x86isa closure boundary
 
+The follow-up [non-default relation adapters](acl2-x86isa-ordinal-relations.md)
+check selected measures from the GL and RTL books described below.
+
 The [x86isa inventory procedure](acl2-x86isa.md#reproduce), run for `machine/x86`
 with `X86ISA_EXEC=nil`, returned 1,030 certificate targets and 1,163 sources.
 The following are examples from a source scan of that build closure. The
@@ -100,12 +103,13 @@ event. Its manifest SHA-256 is
 
 - GL's `MAGICER-EV` declares `ACL2::NAT-LIST-<` with measure
   `(list clk (acl2-count x))`. The corresponding `NAT-LIST-MEASURE` mapping
-  yields ordinals in the implemented domain. Translating the list measure
-  and proving that the selected relation reduces to `O<` are still needed.
+  yields ordinals in the implemented domain. The follow-up checks the
+  list-measure adapter and selected recursive calls.
   [GL source][gl] · [NAT-LIST-< rule][nat-list]
 - RTL's `EXPE` and `EXPO` use legacy `E0-ORD-<` with `EXPO-MEASURE`.
   Its `(2 . 0)` and `(cons 1 (fl (/ x)))` forms use the old encoding.
-  These require a separate checked correspondence. [RTL source][rtl] ·
+  The follow-up checks the legacy correspondence and the RTL measure.
+  [RTL source][rtl] ·
   [ACL2 legacy ordinal book][legacy]
 - The ordinal-bearing `MAKE-ORD` measure in `TOOLS/FLAG` is in a
   `:program` declaration. Source event expansion and program-mode execution

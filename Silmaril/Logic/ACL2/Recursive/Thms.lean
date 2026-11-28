@@ -64,6 +64,13 @@ theorem Block.callInductionBy (wf : WellFounded lt) (h : B.TerminatesBy M lt)
 
 end
 
+/-- Transport evidence at each selected recursive call along a pointwise implication. -/
+theorem Body.CallsSatisfy.mono {R : Signature} {n : Nat} {env : Env M n}
+    {body : Body S R n} {p q : Call R M.primitives.Value → Prop}
+    (h : body.CallsSatisfy M env p) (imp : ∀ state, p state → q state) :
+    body.CallsSatisfy M env q :=
+  Proofs.Logic.ACL2.Recursive.callsSatisfy_mono M env imp body h
+
 theorem BlockCertificate.terminates (size : CdrSize M.primitives)
     (arg : MeasureArgument B.members) (cert : BlockCertificate B)
     (accepted : cert.Accepted B arg) : B.Terminates M (size.rank arg) :=
