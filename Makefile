@@ -42,6 +42,7 @@ CHECK_TARGETS += PeggyFieldHeapTests PeggyFieldHeapLinearizeTests
 CHECK_TARGETS += +Silmaril.Logic.ACL2.Dependencies.Defs
 CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Step.Tests
 CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Run.WithStep.Tests
+CHECK_TARGETS += +Silmaril.Logic.ACL2.X86Run.WithStep.Frontier.Tests
 
 CHECK_TARGETS += PeggyInstitutionTests PeggySortMapTests
 CHECK_TARGETS += PeggyEquationalTests
